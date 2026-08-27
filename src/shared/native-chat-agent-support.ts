@@ -1,6 +1,6 @@
 import type { TuiAgent } from './tui-agent'
 
-export type NativeChatTranscriptAgent = 'claude' | 'codex' | 'grok' | 'omp'
+export type NativeChatTranscriptAgent = 'claude' | 'codex' | 'cursor' | 'grok' | 'omp'
 
 /** Agents whose transcripts the native chat view can parse and render, in the
  *  order the settings pane advertises them. */
@@ -8,6 +8,7 @@ export const NATIVE_CHAT_SUPPORTED_AGENT_LIST: readonly TuiAgent[] = [
   'claude',
   'openclaude',
   'codex',
+  'cursor',
   'grok',
   'omp'
 ]
@@ -24,7 +25,7 @@ export function isNativeChatSupportedAgent(agent: string | null | undefined): bo
  *  does not establish owning-host reads, so OMP remains gated even with metadata. */
 export function nativeChatRequiresLocalTranscript(agent: string | null | undefined): boolean {
   const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
-  return transcriptAgent === 'grok' || transcriptAgent === 'omp'
+  return transcriptAgent === 'cursor' || transcriptAgent === 'grok' || transcriptAgent === 'omp'
 }
 
 /** True when the agent renders a digit-commit question selector that ignores
@@ -45,7 +46,7 @@ export function resolveNativeChatTranscriptAgent(
   if (agent === 'claude' || agent === 'openclaude') {
     return 'claude'
   }
-  if (agent === 'codex' || agent === 'grok' || agent === 'omp') {
+  if (agent === 'codex' || agent === 'cursor' || agent === 'grok' || agent === 'omp') {
     return agent
   }
   return null
