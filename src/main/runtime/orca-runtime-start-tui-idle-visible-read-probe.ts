@@ -69,6 +69,12 @@ export class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRuntimeWith
         ) {
           return
         }
+        const ptyId =
+          this.getLivePtyForHandle(waiter.handle)?.pty.ptyId ??
+          this.getLiveLeafForHandle(waiter.handle).leaf.ptyId
+        if (ptyId && this.getPtyLivenessVerdict(ptyId)?.status === 'unverifiable') {
+          return
+        }
         const snapshotText =
           agent === 'antigravity'
             ? [...projection.tail, projection.draft ?? ''].join('\n')
