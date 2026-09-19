@@ -177,6 +177,7 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
   },
   antigravity: {
     detectCmd: 'agy',
+    draftPasteReadyTimeoutMs: 60_000,
     promptInjectionMode: 'flag-prompt-interactive',
     // Why: agy's first-launch trust menu consumes the bracketed paste, and its trust is
     // exact-path rather than inherited, so every freshly created child worktree raises it
