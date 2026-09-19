@@ -80,6 +80,8 @@ export type ResolveSessionFileOptions = {
   cursorProjectsDir?: string
   /** Override the omp sessions root (`~/.omp/agent/sessions`). */
   ompSessionsDir?: string
+  /** Antigravity CLI brain root on the execution host. */
+  antigravityBrainDir?: string
   /** Authoritative transcript path reported by the agent hook
    *  (`providerSession.transcriptPath`). When set and the file exists, it is used
    *  directly — recent Claude Code names the transcript with a UUID that differs
@@ -215,6 +217,22 @@ async function resolveSessionFileById(
       ),
       overrideDir ? undefined : wslCursorProjectsDirs,
       signal
+    )
+  }
+  if (transcriptAgent === 'antigravity') {
+    // A conversation id is one directory segment, never a caller-supplied path.
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedId)) {
+      return null
+    }
+    return toHostReadableTranscriptPath(
+      join(
+        options.antigravityBrainDir ?? join(homedir(), '.gemini', 'antigravity-cli', 'brain'),
+        trimmedId,
+        '.system_generated',
+        'logs',
+        'transcript.jsonl'
+      ),
+      { signal }
     )
   }
   if (transcriptAgent === 'grok') {

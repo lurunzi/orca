@@ -14,3 +14,5 @@ export { decodeCodexTranscriptLine } from './transcript-line-decoders-codex'
 export { decodeCursorTranscriptLine } from './transcript-line-decoders-cursor'
 export { decodeGrokTranscriptLine } from './transcript-line-decoders-grok'
 export { decodeOmpTranscriptLine } from './transcript-line-decoders-omp'
+
+export { decodeAntigravityTranscriptLine } from './transcript-line-decoders-antigravity'
