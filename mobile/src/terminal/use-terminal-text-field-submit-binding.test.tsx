@@ -8,11 +8,10 @@ import { useTerminalTextFieldSubmitBinding } from './use-terminal-text-field-sub
  * The seam is mocked so the handler it was handed can be called on demand: the real one is a DOM
  * listener, and what is under test is which closure that listener reaches, on every platform.
  */
-const mocks = vi.hoisted(() => ({
-  boundHandlers: [] as Array<() => void>,
-  unbindCount: 0,
-  releasedCount: 0
-}))
+const mocks = vi.hoisted(() => {
+  const boundHandlers: Array<() => void> = []
+  return { boundHandlers, unbindCount: 0, releasedCount: 0 }
+})
 
 vi.mock('./terminal-text-field-submit-binding', () => ({
   bindTerminalTextFieldSubmit: (_node: unknown, onSubmit: () => void) => {

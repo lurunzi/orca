@@ -13,9 +13,10 @@ import type { MobileSessionTerminalWebviewModel } from './use-mobile-session-ter
  * rendered first as a session is before its effects land — no client, no handle, nothing sendable —
  * then again as it is after, and the field's bound listener has to reach the second one.
  */
-const mocks = vi.hoisted(() => ({
-  sent: [] as Array<Record<string, unknown>>
-}))
+const mocks = vi.hoisted(() => {
+  const sent: Array<Record<string, unknown>> = []
+  return { sent }
+})
 
 vi.mock('react-native', () => ({
   Keyboard: { dismiss: vi.fn(), addListener: () => ({ remove: vi.fn() }) }
