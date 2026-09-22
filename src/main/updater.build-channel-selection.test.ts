@@ -26,7 +26,7 @@ vi.mock('./local-builds/local-build-switch', () => moduleFactories.localBuildSwi
 vi.mock('./local-builds/local-build-feed-server', () => moduleFactories.localBuildFeedServer())
 
 /** Mirrors AUTO_UPDATE_CHECK_INTERVAL_MS in updater.ts. */
-const AUTO_UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 warmUpdaterModule()
 
