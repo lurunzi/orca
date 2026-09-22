@@ -9,8 +9,10 @@ import { resolveSessionFilePath, type ResolveSessionFileOptions } from './sessio
 import { openTranscriptReadStream } from './wsl-transcript-fs-access'
 import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
 import {
+  decodeAntigravityTranscriptLine,
   decodeClaudeTranscriptLine,
   decodeCodexTranscriptLine,
+  decodeCursorTranscriptLine,
   decodeGrokTranscriptLine,
   decodeOmpTranscriptLine
 } from './transcript-line-decoders'
@@ -55,11 +57,17 @@ export async function readNativeChatTranscript(
   }
   try {
     const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
+    if (transcriptAgent === 'antigravity') {
+      return { messages: await readTranscript(filePath, decodeAntigravityTranscriptLine) }
+    }
     if (transcriptAgent === 'claude') {
       return { messages: await readTranscript(filePath, decodeClaudeTranscriptLine) }
     }
     if (transcriptAgent === 'codex') {
       return { messages: await readTranscript(filePath, decodeCodexTranscriptLine) }
+    }
+    if (transcriptAgent === 'cursor') {
+      return { messages: await readTranscript(filePath, decodeCursorTranscriptLine) }
     }
     if (transcriptAgent === 'grok') {
       return { messages: await readTranscript(filePath, decodeGrokTranscriptLine) }

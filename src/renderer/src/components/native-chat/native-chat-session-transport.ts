@@ -1,7 +1,14 @@
+import {
+  ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY,
+  CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY
+} from '../../../../shared/protocol-version'
+import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabilities'
+import { guardNativeChatAgentTransport } from './native-chat-provider-capability'
 import type { NativeChatApi, NativeChatAppendedMessages } from '../../../../preload/api-types'
 import { isWebClientLocation } from '@/lib/web-client-location'
 import {
   callRuntimeRpc,
+  runtimeEnvironmentSupportsCapability,
   RuntimeRpcCallError,
   type RuntimeClientTarget
 } from '@/runtime/runtime-rpc-client'
@@ -9,16 +16,14 @@ import { isRuntimeCompatBlockError } from '@/runtime/runtime-protocol-compat'
 import {
   parseRuntimeNativeChatReadSessionResult,
   parseRuntimeNativeChatTurnLifecycle,
-  RUNTIME_NATIVE_CHAT_READ_ERROR
+  RUNTIME_NATIVE_CHAT_READ_ERROR,
+  RUNTIME_NATIVE_CHAT_TOO_OLD
 } from './native-chat-runtime-contract'
 
 /** The read/subscribe surface the live-session hook needs, decoupled from where
  *  the transcript actually lives. Same shape as `window.api.nativeChat`, so the
  *  hook and everything downstream (merge, assembler, pagination) are unchanged. */
 export type NativeChatSessionTransport = Pick<NativeChatApi, 'readSession' | 'subscribe'>
-
-const RUNTIME_TOO_OLD =
-  'This remote runtime is too old to show agent chat history. Update the remote runtime to view it.'
 
 /** Backoff before re-opening a dropped runtime chat stream. Exported for tests. */
 export const RUNTIME_NATIVE_CHAT_RECONNECT_MS = 2_000
@@ -30,10 +35,10 @@ export const RUNTIME_NATIVE_CHAT_RECONNECT_MS = 2_000
  *  never mislabeled as a version problem (KTD-4, not catch-all). */
 export function toRuntimeNativeChatErrorMessage(err: unknown): string {
   if (err instanceof RuntimeRpcCallError && err.code === 'method_not_found') {
-    return RUNTIME_TOO_OLD
+    return RUNTIME_NATIVE_CHAT_TOO_OLD
   }
   if (isRuntimeCompatBlockError(err)) {
-    return RUNTIME_TOO_OLD
+    return RUNTIME_NATIVE_CHAT_TOO_OLD
   }
   return RUNTIME_NATIVE_CHAT_READ_ERROR
 }
@@ -268,8 +273,27 @@ function createRuntimeNativeChatTransport(environmentId: string): NativeChatSess
 export function getNativeChatSessionTransport(
   runtimeEnvironmentId: string | null
 ): NativeChatSessionTransport {
-  if (runtimeEnvironmentId && !isWebClientLocation()) {
-    return createRuntimeNativeChatTransport(runtimeEnvironmentId)
-  }
-  return localNativeChatTransport
+  const webClient = isWebClientLocation()
+  const remote = runtimeEnvironmentId && !webClient ? runtimeEnvironmentId : null
+  const transport = remote ? createRuntimeNativeChatTransport(remote) : localNativeChatTransport
+  const guardedAgents = [
+    ['antigravity', ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY],
+    ['cursor', CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY]
+  ] as const
+  return guardedAgents.reduce(
+    (guarded, [agent, capability]) =>
+      guardNativeChatAgentTransport(guarded, agent, async () => {
+        if (remote) {
+          return runtimeEnvironmentSupportsCapability(remote, capability)
+        }
+        const capabilities = webClient
+          ? (await window.api.runtime.getStatus()).capabilities
+          : await ensureLocalRuntimeCapabilities()
+        if (!capabilities) {
+          throw new Error('Runtime capabilities unavailable')
+        }
+        return capabilities.includes(capability)
+      }),
+    transport
+  )
 }

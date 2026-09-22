@@ -14781,7 +14781,8 @@
         "skillScopeBuiltIn": "内置",
         "skillScopePlugin": "插件",
         "skillsLoaded": "技能已加载",
-        "noCommands": "没有匹配的命令"
+        "noCommands": "没有匹配的命令",
+        "acceptPromptSuggestion": "使用建议的提示词"
       },
       "tool": {
         "running": "正在运行…",

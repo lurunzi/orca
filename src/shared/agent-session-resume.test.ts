@@ -8,6 +8,19 @@ import {
 } from './agent-session-resume'
 
 describe('agent session resume metadata', () => {
+  it('preserves the Antigravity hook transcript path for host-owned chat reads', () => {
+    expect(
+      extractAgentProviderSession('antigravity', {
+        conversationId: 'agy-conversation',
+        transcriptPath: '/workspace/brain/transcript.jsonl'
+      })
+    ).toEqual({
+      key: 'conversation_id',
+      id: 'agy-conversation',
+      transcriptPath: '/workspace/brain/transcript.jsonl'
+    })
+  })
+
   it('treats devin as a resumable TUI agent', () => {
     expect(isResumableTuiAgent('devin')).toBe(true)
   })
@@ -36,6 +49,11 @@ describe('agent session resume metadata', () => {
       'antigravity',
       { conversationId: 'agy-conversation' },
       { key: 'conversation_id', id: 'agy-conversation' }
+    ],
+    [
+      'cursor',
+      { conversation_id: 'cursor-conversation' },
+      { key: 'conversation_id', id: 'cursor-conversation' }
     ],
     ['opencode', { sessionID: 'opencode-session' }, { key: 'session_id', id: 'opencode-session' }],
     [
@@ -101,6 +119,7 @@ describe('agent session resume metadata', () => {
 
   it('rejects unsupported sources and unsafe ids', () => {
     expect(extractAgentProviderSession('cursor', { session_id: 'cursor-session' })).toBeNull()
+    expect(extractAgentProviderSession('cursor', { conversation_id: '--last' })).toBeNull()
     expect(normalizeAgentProviderSession({ key: 'session_id', id: 'bad\nid' })).toBeNull()
     expect(normalizeAgentProviderSession({ key: 'session_id', id: '--last' })).toBeNull()
     expect(extractAgentProviderSession('codex', { session_id: '--last' })).toBeNull()

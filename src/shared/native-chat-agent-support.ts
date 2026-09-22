@@ -1,6 +1,12 @@
 import type { TuiAgent } from './tui-agent'
 
-export type NativeChatTranscriptAgent = 'claude' | 'codex' | 'grok' | 'omp'
+export type NativeChatTranscriptAgent =
+  | 'claude'
+  | 'codex'
+  | 'cursor'
+  | 'grok'
+  | 'omp'
+  | 'antigravity'
 
 /** Agents whose transcripts the native chat view can parse and render, in the
  *  order the settings pane advertises them. */
@@ -8,8 +14,10 @@ export const NATIVE_CHAT_SUPPORTED_AGENT_LIST: readonly TuiAgent[] = [
   'claude',
   'openclaude',
   'codex',
+  'cursor',
   'grok',
-  'omp'
+  'omp',
+  'antigravity'
 ]
 
 export const NATIVE_CHAT_SUPPORTED_AGENTS: ReadonlySet<string> = new Set(
@@ -20,11 +28,16 @@ export function isNativeChatSupportedAgent(agent: string | null | undefined): bo
   return agent != null && NATIVE_CHAT_SUPPORTED_AGENTS.has(agent)
 }
 
-/** Agents whose Model-A SSH transcript reader is not supported. A hook path alone
- *  does not establish owning-host reads, so OMP remains gated even with metadata. */
+/** Agents whose chat reads require a filesystem owned by the selected runtime.
+ * Direct SSH has no transcript transport; a hook path alone is not a local file. */
 export function nativeChatRequiresLocalTranscript(agent: string | null | undefined): boolean {
   const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
-  return transcriptAgent === 'grok' || transcriptAgent === 'omp'
+  return (
+    transcriptAgent === 'cursor' ||
+    transcriptAgent === 'grok' ||
+    transcriptAgent === 'omp' ||
+    transcriptAgent === 'antigravity'
+  )
 }
 
 /** True when the agent renders a digit-commit question selector that ignores
@@ -45,7 +58,13 @@ export function resolveNativeChatTranscriptAgent(
   if (agent === 'claude' || agent === 'openclaude') {
     return 'claude'
   }
-  if (agent === 'codex' || agent === 'grok' || agent === 'omp') {
+  if (
+    agent === 'codex' ||
+    agent === 'cursor' ||
+    agent === 'grok' ||
+    agent === 'omp' ||
+    agent === 'antigravity'
+  ) {
     return agent
   }
   return null

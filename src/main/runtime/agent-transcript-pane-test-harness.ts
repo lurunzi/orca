@@ -13,6 +13,7 @@ export type TranscriptPaneOptions = {
   foregroundProcess: string | null
   data: string
   launchAgent?: TuiAgent
+  size?: { cols: number; rows: number }
   /** Set for a pane whose PTY lives on an SSH host or WSL distro rather than locally. */
   connectionId?: string
   /** Simulates a PTY controller whose foreground probe never settles. */
@@ -80,6 +81,9 @@ export async function createTranscriptPane(
       incarnationId: 'inc-1',
       agentLaunchAuthority: { launchToken: 'transcript-launch', launchAgent: options.launchAgent }
     })
+  }
+  if (options.size) {
+    runtime.seedHeadlessTerminal(TRANSCRIPT_PANE_PTY_ID, '\x1b[0m', options.size)
   }
   // Why the guard: a restore seed is only applied to a never-written record, so the restore
   // cases must not write an empty chunk first.

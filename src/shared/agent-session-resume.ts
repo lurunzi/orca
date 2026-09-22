@@ -202,6 +202,10 @@ export function extractAgentProviderSession(
     }
     case 'antigravity': {
       const id = readSessionId(payload, ['conversationId'])
+      return id ? withTranscriptPath({ key: 'conversation_id', id }, payload) : null
+    }
+    case 'cursor': {
+      const id = readSessionId(payload, ['conversation_id'])
       return id ? { key: 'conversation_id', id } : null
     }
     case 'opencode':
@@ -238,7 +242,6 @@ export function extractAgentProviderSession(
       return id ? { key: 'session_id', id } : null
     }
     case 'amp':
-    case 'cursor':
     case 'command-code':
     case 'hermes':
       return null

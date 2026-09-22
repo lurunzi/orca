@@ -16045,7 +16045,8 @@
           "xhigh": "Extra élevé",
           "max": "Max",
           "ultra": "Ultra"
-        }
+        },
+        "acceptPromptSuggestion": "Utiliser le message suggéré"
       },
       "tool": {
         "running": "En cours…",

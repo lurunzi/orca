@@ -1,3 +1,4 @@
+import { waitForAntigravityDraftReady } from './antigravity-draft-readiness'
 import type { GlobalSettings } from '../../../shared/global-settings-types'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
@@ -35,11 +36,7 @@ export const BRACKETED_PASTE_BEGIN = BRACKETED_PASTE_START
 export { BRACKETED_PASTE_END }
 export const POST_PASTE_SUBMIT_DELAY_MS = 50
 
-// Why: "the tab has a PTY" and "the agent's composer accepts input" are separate
-// states with separate failure modes, so they get separate budgets. A PTY that
-// hasn't appeared in 8s means the launch itself failed — waiting the (longer)
-// composer budget on top would only delay that verdict. Keeping them distinct
-// also stops one slow step from spending the other's budget (STA-3367).
+// PTY binding and composer readiness have separate budgets (STA-3367).
 const PTY_SPAWN_TIMEOUT_MS = 8000
 
 export function getSettingsForAgentTabRuntimeOwner(
@@ -100,8 +97,13 @@ export async function pasteDraftWhenAgentReady(args: {
   const readinessTimeoutMs = resolveDraftPasteReadyTimeoutMs(agent, timeoutMs)
   const readiness = await waitForAgentDraftInputReadyOnTab({
     tabId,
-    spawnTimeoutMs: PTY_SPAWN_TIMEOUT_MS,
+    // Windows Antigravity launches can bind their PTY after the ordinary eight-second budget.
+    spawnTimeoutMs:
+      agent === 'antigravity'
+        ? Math.max(PTY_SPAWN_TIMEOUT_MS, readinessTimeoutMs)
+        : PTY_SPAWN_TIMEOUT_MS,
     readinessTimeoutMs,
+    agent,
     readySignal,
     settings
   })
@@ -112,6 +114,10 @@ export async function pasteDraftWhenAgentReady(args: {
 
   const { ptyId } = readiness
   if (!readiness.ready) {
+    if (agent === 'antigravity') {
+      onTimeout?.()
+      return false
+    }
     // Why: fast-starting TUIs can emit the paste-ready escape sequence before
     // this sidecar subscription attaches. If process/title inspection says the
     // launched agent owns the PTY, fall back to a best-effort paste instead of
@@ -154,8 +160,15 @@ export async function pasteDraftToAgentPtyWhenReady(args: {
   const settings = getSettingsForAgentTabRuntimeOwner(tabId)
   const readySignal = agentConfig?.draftPasteReadySignal ?? 'render-quiet-after-bracketed-paste'
   const budget = resolveDraftPasteReadyTimeoutMs(agent, timeoutMs)
-  const ready = await waitForAgentDraftInputReady(ptyId, budget, readySignal, settings)
+  const ready =
+    agent === 'antigravity'
+      ? await waitForAntigravityDraftReady(tabId, ptyId, budget, settings)
+      : await waitForAgentDraftInputReady(ptyId, budget, readySignal, settings)
   if (!ready) {
+    if (agent === 'antigravity') {
+      onTimeout?.()
+      return false
+    }
     const fallbackReady = agentConfig
       ? await waitForExpectedAgentOnPty(ptyId, agentConfig.expectedProcess, 1000, settings)
       : false
@@ -240,6 +253,7 @@ function waitForAgentDraftInputReadyOnTab(args: {
   tabId: string
   spawnTimeoutMs: number
   readinessTimeoutMs: number
+  agent?: TuiAgent
   readySignal: Parameters<typeof waitForAgentDraftInputReady>[2]
   settings: Pick<GlobalSettings, 'activeRuntimeEnvironmentId'> | null | undefined
 }): Promise<{ ptyId: string; ready: boolean } | null> {
@@ -271,12 +285,16 @@ function waitForAgentDraftInputReadyOnTab(args: {
       unsubscribeStore?.()
       // Why: Zustand subscribers run inside updateTabPtyId. Registering the
       // sidecar here precedes the transport's immediate pre-handler drain.
-      void waitForAgentDraftInputReady(
-        ptyId,
-        args.readinessTimeoutMs,
-        args.readySignal,
-        args.settings
-      ).then((ready) => finish({ ptyId, ready }))
+      const readiness =
+        args.agent === 'antigravity'
+          ? waitForAntigravityDraftReady(args.tabId, ptyId, args.readinessTimeoutMs, args.settings)
+          : waitForAgentDraftInputReady(
+              ptyId,
+              args.readinessTimeoutMs,
+              args.readySignal,
+              args.settings
+            )
+      void readiness.then((ready) => finish({ ptyId, ready }))
     }
     const bindFromState = (state: ReturnType<typeof useAppStore.getState>): void => {
       const ptyId = state.ptyIdsByTabId[args.tabId]?.[0]

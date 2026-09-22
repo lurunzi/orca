@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { removeTreeSync } from '../../shared/windows-transient-lock-removal'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -19,6 +19,7 @@ vi.mock('os', async () => {
 })
 
 import { CursorHookService } from './hook-service'
+import { extractAgentProviderSession } from '../../shared/agent-session-resume'
 import { POSIX_HOOK_STDIN_READER } from '../agent-hooks/hook-stdin-contract'
 import { CURSOR_EVENTS, type CursorEvent } from './hook-events'
 
@@ -259,6 +260,42 @@ describe('CursorHookService', () => {
       }
     },
     HOOK_CASE_TIMEOUT_MS
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'carries the real managed-script conversation_id into providerSession',
+    () => {
+      expect(new CursorHookService().install().state).toBe('installed')
+      const command = requireRegisteredCommand(
+        readInstalledCursorHooks(homeDir),
+        'beforeSubmitPrompt'
+      )
+      const binDir = join(homeDir, 'bin')
+      const capturePath = join(homeDir, 'captured-payload.json')
+      const curlStub = join(binDir, 'curl')
+      mkdirSync(binDir)
+      writeFileSync(curlStub, '#!/bin/sh\ncommand -p cat > "$ORCA_CURSOR_CAPTURE_FILE"\nexit 0\n')
+      chmodSync(curlStub, 0o755)
+      const payload = {
+        hook_event_name: 'beforeSubmitPrompt',
+        conversation_id: 'cursor-conversation',
+        prompt: 'add a README'
+      }
+      const result = runRegisteredCursorHook(command, JSON.stringify(payload), {
+        ORCA_AGENT_HOOK_PORT: '12345',
+        ORCA_AGENT_HOOK_TOKEN: 'token',
+        ORCA_PANE_KEY: 'tab:leaf',
+        ORCA_CURSOR_CAPTURE_FILE: capturePath,
+        PATH: `${binDir}:${process.env.PATH ?? ''}`
+      })
+      expect(result.status).toBe(0)
+      const captured = JSON.parse(readFileSync(capturePath, 'utf8'))
+      expect(captured).toEqual(payload)
+      expect(extractAgentProviderSession('cursor', captured)).toEqual({
+        key: 'conversation_id',
+        id: 'cursor-conversation'
+      })
+    }
   )
 
   it(

@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { SFTPWrapper } from 'ssh2'
@@ -5,7 +6,7 @@ import type { AgentHookInstallState, AgentHookInstallStatus } from '../../shared
 import {
   getSharedManagedScriptPath,
   readHooksJson,
-  wrapPosixHookCommand,
+  wrapPosixHookCommandForExec,
   wrapWindowsCmdHookCommand,
   writeHooksJson,
   writeManagedScript,
@@ -32,6 +33,14 @@ import {
   removeInstalledConfig
 } from './hooks-json-bundle'
 
+function isManagedScriptFile(scriptPath: string): boolean {
+  try {
+    return statSync(scriptPath).isFile()
+  } catch {
+    return false
+  }
+}
+
 function getConfigPath(): string {
   // Why: Antigravity's hook docs define global hooks in ~/.gemini/config/hooks.json,
   // not in the CLI settings file used by Gemini CLI.
@@ -51,7 +60,9 @@ function getWindowsWrapperScriptPath(event: AntigravityEvent): string {
 }
 
 function getPosixManagedCommand(scriptPath: string, event: AntigravityEvent): string {
-  return wrapPosixHookCommand(
+  // Why: Antigravity's ACP host execs this string as argv[0] rather than running it through a shell,
+  // so it must stay one spawnable token (#16087) — see wrapPosixHookCommandForExec.
+  return wrapPosixHookCommandForExec(
     scriptPath,
     { ORCA_ANTIGRAVITY_EVENT: event.eventName },
     // Why: a missing managed script must not brick tools; the guard answers PreToolUse itself instead of staying silent.
@@ -131,6 +142,23 @@ export class AntigravityHookService {
         missing.length > 0
           ? `Managed hook missing for events: ${missing.join(', ')}`
           : 'Stale managed hook entries need cleanup'
+    }
+    if (managedHooksPresent) {
+      const scriptNames = [
+        getManagedScriptFileName(),
+        ...(process.platform === 'win32'
+          ? ANTIGRAVITY_EVENTS.map((event) => event.windowsWrapperFileName)
+          : [])
+      ]
+      const unavailable = scriptNames.filter(
+        (name) => !isManagedScriptFile(getSharedManagedScriptPath(name))
+      )
+      if (unavailable.length > 0) {
+        state = 'partial'
+        detail = [detail, `Managed scripts unavailable: ${unavailable.join(', ')}`]
+          .filter(Boolean)
+          .join('; ')
+      }
     }
     return { agent: 'antigravity', state, configPath, managedHooksPresent, detail }
   }

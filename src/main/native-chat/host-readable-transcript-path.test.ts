@@ -16,7 +16,8 @@ import {
   needsWslHostTranslation,
   resetHostReadableTranscriptPathCacheForTests,
   toHostReadableTranscriptPath,
-  wslCodexSessionsDirs
+  wslCodexSessionsDirs,
+  wslCursorProjectsDirs
 } from './host-readable-transcript-path'
 import { WslTranscriptFsError } from './wsl-transcript-fs-gate'
 
@@ -348,5 +349,18 @@ describe('wslCodexSessionsDirs', () => {
     await expect(
       wslCodexSessionsDirs({ platform: 'win32', listWslHomeDirs: async () => [] })
     ).resolves.toEqual([])
+  })
+})
+
+describe('wslCursorProjectsDirs', () => {
+  it('reuses cached WSL homes across resolve-poll ticks', async () => {
+    const listWslHomeDirs = vi.fn(async () => [UBUNTU_HOME])
+
+    await expect(wslCursorProjectsDirs({ platform: 'win32', listWslHomeDirs })).resolves.toEqual([
+      `${UBUNTU_HOME}\\.cursor\\projects`
+    ])
+    await wslCursorProjectsDirs({ platform: 'win32', listWslHomeDirs })
+
+    expect(listWslHomeDirs).toHaveBeenCalledTimes(1)
   })
 })
