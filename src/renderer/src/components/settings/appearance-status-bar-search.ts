@@ -1,18 +1,13 @@
-import type { StatusBarItem } from '../../../../shared/ui-chrome-types'
+import type { StatusBarToggleSearchEntry } from './status-bar-toggle-search-entry'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { translate } from '@/i18n/i18n'
 import { translateSearchKeyword } from './settings-search-keywords'
 import { getAntigravityStatusBarToggleSearchEntry } from './appearance-status-bar-antigravity-toggle-search'
 import { getGrokStatusBarToggleSearchEntry } from './appearance-status-bar-grok-toggle-search'
+import { getCursorStatusBarToggleSearchEntry } from './appearance-status-bar-cursor-toggle-search'
 
 export const getStatusBarToggles = createLocalizedCatalog(
-  (): readonly {
-    id: StatusBarItem
-    title: string
-    description: string
-    keywords: string[]
-    toggleDescription: string
-  }[] => [
+  (): readonly StatusBarToggleSearchEntry[] => [
     {
       id: 'claude',
       title: translate('auto.components.settings.appearance.search.9dc15020d7', 'Claude Usage'),
@@ -200,6 +195,7 @@ export const getStatusBarToggles = createLocalizedCatalog(
       )
     },
     getGrokStatusBarToggleSearchEntry(),
+    getCursorStatusBarToggleSearchEntry(),
     {
       id: 'ssh',
       title: translate('auto.components.settings.appearance.search.57fb424c56', 'Remote Hosts'),

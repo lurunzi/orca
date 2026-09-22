@@ -54,6 +54,7 @@ export type ProviderRateLimits = {
     | 'kimi'
     | 'minimax'
     | 'grok'
+    | 'cursor'
     | 'antigravity'
   /** 5-hour session window, null if not available. */
   session: RateLimitWindow | null
@@ -116,6 +117,8 @@ export type GrokAccountStatus = {
 }
 
 export type RateLimitState = {
+  /** Optional for older remote hosts. Credentials belong to the usage service host. */
+  cursor?: ProviderRateLimits | null
   claude: ProviderRateLimits | null
   codex: ProviderRateLimits | null
   gemini: ProviderRateLimits | null

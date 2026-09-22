@@ -21,6 +21,7 @@ export type UsageProviderSettings = Pick<
 }
 
 type UsageProviderSnapshots = {
+  cursor?: ProviderRateLimits | null
   claude: ProviderRateLimits | null | undefined
   codex: ProviderRateLimits | null | undefined
   gemini: ProviderRateLimits | null | undefined
@@ -180,6 +181,7 @@ export function isUsageEmptyState(
     !isProviderConfigured(providers.kimi) &&
     !isProviderConfigured(providers.antigravity) &&
     !isProviderConfigured(providers.minimax) &&
-    !isProviderConfigured(providers.grok)
+    !isProviderConfigured(providers.grok) &&
+    !isProviderConfigured(providers.cursor)
   )
 }

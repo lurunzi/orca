@@ -37,6 +37,16 @@ export abstract class RateLimitServiceResultPolicy extends RateLimitServiceFetch
       (previous?.buckets && previous.buckets.length > 0)
     )
 
+    // Cursor credentials can change outside Orca; never retain a different account's usage.
+    if (
+      fresh.provider === 'cursor' &&
+      (!fresh.usageMetadata?.authProvenance ||
+        fresh.usageMetadata.authProvenance !== previous?.usageMetadata?.authProvenance ||
+        fresh.usageMetadata.failureKind === 'stale-token')
+    ) {
+      return fresh
+    }
+
     // No previous data to fall back on
     if (!previous || !previousHasData) {
       return fresh
@@ -91,6 +101,7 @@ export abstract class RateLimitServiceResultPolicy extends RateLimitServiceFetch
       | 'kimi'
       | 'minimax'
       | 'grok'
+      | 'cursor'
       | 'antigravity'
   ): ProviderRateLimits {
     if (!current) {

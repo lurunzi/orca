@@ -1,4 +1,11 @@
 {
+  "cursorUsage": {
+    "refreshFailed": "无法刷新 Cursor 用量。",
+    "usage": "Cursor 用量",
+    "description": "显示已登录的 Cursor 应用或 CLI 的月度用量。",
+    "signIn": "在运行 Orca 的电脑上打开 Cursor 或运行 agent login，然后刷新用量。",
+    "noAllowance": "Cursor 未返回支持的月度额度。"
+  },
   "app": {
     "recoverableError": {
       "rootTitle": "Orca 遇到渲染器错误。",

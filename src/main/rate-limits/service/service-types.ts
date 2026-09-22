@@ -99,6 +99,7 @@ export const DEFERRED_STARTUP_ACTIVE_REFRESH_MS = 1000
 
 // Why: inactive account arrays are derived from provider caches on demand in getState()/pushToRenderer().
 export type InternalRateLimitState = {
+  cursor: ProviderRateLimits | null
   claude: ProviderRateLimits | null
   codex: ProviderRateLimits | null
   gemini: ProviderRateLimits | null

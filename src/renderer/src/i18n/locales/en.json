@@ -1,4 +1,11 @@
 {
+  "cursorUsage": {
+    "refreshFailed": "Could not refresh Cursor usage.",
+    "usage": "Cursor Usage",
+    "description": "Show Cursor monthly usage from the signed-in Cursor app or CLI.",
+    "signIn": "Open Cursor or run agent login on the computer running Orca, then refresh usage.",
+    "noAllowance": "Cursor did not report a supported monthly allowance."
+  },
   "sidebar": {
     "revealFiltered": {
       "title": "Reveal hidden workspace?",

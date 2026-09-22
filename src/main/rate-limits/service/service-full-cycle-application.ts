@@ -32,7 +32,8 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
         geminiResult,
         opencodeGoResult,
         kimiResult,
-        miniMaxResult
+        miniMaxResult,
+        cursorResult
       ],
       grokResultPromise
     } = prepared
@@ -125,6 +126,19 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
             status: 'error'
           } satisfies ProviderRateLimits)
 
+    const cursor: ProviderRateLimits =
+      cursorResult.status === 'fulfilled'
+        ? cursorResult.value
+        : {
+            provider: 'cursor',
+            session: null,
+            weekly: null,
+            updatedAt: Date.now(),
+            status: 'error',
+            error: 'Could not refresh Cursor usage.'
+          }
+    this.trackActiveFailureStreak('cursor', cursor)
+
     const latestCodexHome = this.resolveCodexHome(codexTarget)
     const latestClaudeAuthPreparation = await this.claudeAuthPreparationResolver?.(claudeTarget)
     if (signal.aborted) {
@@ -177,6 +191,7 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
           ? codexStateBeforeFetch
           : this.state.codex,
       gemini: this.applyStalePolicy(gemini, previousState.gemini),
+      cursor: this.applyStalePolicy(cursor, previousState.cursor),
       opencodeGo: shouldApplyOpencode
         ? opencodeConfigChanged
           ? opencodeGo

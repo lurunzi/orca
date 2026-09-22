@@ -17,6 +17,8 @@ function inactiveCodexAccount(id: string, managedHomePath: string) {
   }
 }
 
+vi.mock('./cursor-fetcher', () => ({ fetchCursorRateLimits: vi.fn() }))
+
 vi.mock('./claude-fetcher', () => ({
   fetchClaudeRateLimits: vi.fn(),
   fetchManagedAccountUsage: vi.fn()
@@ -206,7 +208,7 @@ describe('RateLimitService', () => {
     expect(fetchManagedAccountUsage).toHaveBeenCalledWith(
       account,
       expect.objectContaining({
-        allowUsagePanelSupplement: true,
+        allowUsagePanelSupplement: process.platform !== 'win32',
         signal: expect.any(AbortSignal)
       })
     )

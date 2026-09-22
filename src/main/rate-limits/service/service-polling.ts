@@ -77,6 +77,7 @@ export abstract class RateLimitServicePolling extends RateLimitServiceFetchQueue
       'opencode-go': this.state.opencodeGo,
       kimi: this.state.kimi,
       minimax: this.state.minimax,
+      cursor: this.state.cursor,
       grok: this.state.grok,
       antigravity: this.state.antigravity
     }

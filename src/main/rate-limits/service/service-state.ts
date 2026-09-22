@@ -31,6 +31,7 @@ export abstract class RateLimitServiceState {
     kimi: null,
     antigravity: null,
     minimax: null,
+    cursor: null,
     grok: null
   }
   protected grokAuthConfigured = readGrokAuthSession().status === 'ok'
@@ -45,6 +46,7 @@ export abstract class RateLimitServiceState {
     'opencode-go': 0,
     kimi: 0,
     minimax: 0,
+    cursor: 0,
     grok: 0,
     antigravity: 0
   }
@@ -56,6 +58,7 @@ export abstract class RateLimitServiceState {
     'opencode-go': 0,
     kimi: 0,
     minimax: 0,
+    cursor: 0,
     grok: 0,
     antigravity: 0
   }

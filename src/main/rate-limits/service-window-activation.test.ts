@@ -19,6 +19,8 @@ import {
   unavailableProvider
 } from './rate-limit-service-test-harness'
 
+vi.mock('./cursor-fetcher', () => ({ fetchCursorRateLimits: vi.fn() }))
+
 vi.mock('./claude-fetcher', () => ({
   fetchClaudeRateLimits: vi.fn(),
   fetchManagedAccountUsage: vi.fn()
