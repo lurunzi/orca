@@ -63,6 +63,8 @@ type Probe = {
   droppedBinaryFrames: number[]
   /** One per paint the page reported, which is what lifts the screen's cover. */
   paints: number
+  /** Every claim on the device Back key the host carried up, in order. */
+  backClaims: boolean[]
 }
 
 /** What the page cannot read for itself, as the screen hands it over. */
@@ -180,7 +182,8 @@ function Harness(props: {
     },
     onPagePainted: () => {
       props.probe.paints += 1
-    }
+    },
+    onPageBackClaim: (claimed) => props.probe.backClaims.push(claimed)
   })
   props.probe.view = view
   return props.session.kind === 'ready'
@@ -228,6 +231,7 @@ async function mount(session: MobileWebShellSessionState): Promise<Mounted> {
     backPops: 0,
     droppedBinaryFrames: [],
     paints: 0,
+    backClaims: [],
     storageWrites: []
   }
   const faults: BridgeErrorCapture[] = []
@@ -581,6 +585,7 @@ describe('the callbacks a render passes', () => {
       backPops: 0,
       droppedBinaryFrames: [],
       paints: 0,
+      backClaims: [],
       storageWrites: []
     }
     // One session throughout, so the host is never rebuilt: only the ref refresh can carry the
@@ -644,6 +649,7 @@ describe('client changes', () => {
       backPops: 0,
       droppedBinaryFrames: [],
       paints: 0,
+      backClaims: [],
       storageWrites: []
     }
     const render = (deliver: readonly string[]): ReactElement =>
@@ -679,6 +685,7 @@ function newProbe(): Probe {
     backPops: 0,
     droppedBinaryFrames: [],
     paints: 0,
+    backClaims: [],
     storageWrites: []
   }
 }

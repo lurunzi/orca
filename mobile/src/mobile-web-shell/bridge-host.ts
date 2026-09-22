@@ -198,7 +198,9 @@ export function createBridgeHost(options: BridgeHostOptions): BridgeHost {
 
   const back = createBridgeHostBack({
     send,
-    deliverable: () => serving && initSent,
+    // The same three the outbound frames are gated on, read here as well: the caller spends the
+    // answer on a hardware key, and a `true` for a frame that never left is a dead press.
+    deliverable: () => !closed && serving && initSent,
     onClaim: (claimed) => options.onPageBackClaim(claimed)
   })
 
