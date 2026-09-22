@@ -77,7 +77,7 @@ export abstract class UpdaterCheckFailure extends UpdaterReleaseFeed {
         // Why: benign failures (incomplete latest.yml, network blips) are transient — retry, and skip persisting the timestamp (would suppress the next startup check).
         console.warn('[updater] benign check failure:', message)
         this.clearAvailableUpdateContext()
-        this.scheduleAutomaticUpdateRetry()
+        this.scheduleAutomaticUpdateCheck(this.getAutomaticRetryInterval())
         if (userInitiated) {
           // Why: a user click needs visible feedback (idle looks broken); distinguish incomplete releases from transport failures.
           this.sendSettledCheckStatus({
@@ -99,7 +99,7 @@ export abstract class UpdaterCheckFailure extends UpdaterReleaseFeed {
       this.clearAvailableUpdateContext()
       this.persistLastUpdateCheckAt?.(Date.now())
       if (!userInitiated) {
-        this.scheduleAutomaticUpdateRetry()
+        this.scheduleAutomaticUpdateCheck(this.getAutomaticRetryInterval())
       }
       this.sendSettledCheckStatus({ state: 'error', message, userInitiated })
     }
@@ -113,4 +113,7 @@ export abstract class UpdaterCheckFailure extends UpdaterReleaseFeed {
     })
     return this.pendingCheckFailurePromise
   }
+
+  /** Keeps retry interval access in one place for the scheduling layer. */
+  protected abstract getAutomaticRetryInterval(): number
 }

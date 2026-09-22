@@ -205,7 +205,6 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
       sendErrorStatus: (message, userInitiated) => this.sendErrorStatus(message, userInitiated),
       sendStatus: (status) => this.sendStatus(status),
       scheduleAutomaticUpdateCheck: (delayMs) => this.scheduleAutomaticUpdateCheck(delayMs),
-      scheduleAutomaticUpdateRetry: () => this.scheduleAutomaticUpdateRetry(),
       shouldSuppressMissingManifestPrereleaseFallbackEvent: (message, error) =>
         this.shouldSuppressMissingManifestPrereleaseFallbackEvent(message, error),
       suppressMissingManifestPrereleaseFallbackPromiseFailure: (message) =>
@@ -224,7 +223,7 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     void this.checkForUpdateNudge()
     this.scheduleUpdateNudgeCheck()
 
-    const checkOnWake = () => {
+    const checkDailyOnWake = () => {
       void this.checkForUpdateNudge()
       if (
         this.backgroundCheckLaunchPending ||
@@ -240,8 +239,8 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
         this.scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)
       }
     }
-    powerMonitor.on('resume', checkOnWake)
-    app.on('browser-window-focus', checkOnWake)
+    powerMonitor.on('resume', checkDailyOnWake)
+    app.on('browser-window-focus', checkDailyOnWake)
 
     const lastUpdateCheckAt = opts?.getLastUpdateCheckAt?.() ?? null
     const msSinceLastCheck =
