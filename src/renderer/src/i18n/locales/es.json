@@ -14701,7 +14701,8 @@
         "skillScopeBuiltIn": "Integrado",
         "skillScopePlugin": "Plugin",
         "skillsLoaded": "Habilidades cargadas",
-        "noCommands": "No hay comandos coincidentes"
+        "noCommands": "No hay comandos coincidentes",
+        "acceptPromptSuggestion": "Usar el mensaje sugerido"
       },
       "tool": {
         "running": "Ejecutando…",
