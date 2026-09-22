@@ -70,7 +70,7 @@ describe('terminal send keyboard dismissal wiring', () => {
     const slice = sourceSlice(
       sendActionsSource,
       'const submitLiveInput = useCallback(() => {',
-      'useTerminalLiveInputSubmitBinding(liveInputRef, submitLiveInput)'
+      'useTerminalTextFieldSubmitBinding(liveInputRef, submitLiveInput)'
     )
     expect(slice).toContain('const submit = handleLiveInputSubmit()')
     expect(slice).toContain('generation: getSendCompletionGeneration()')
@@ -125,7 +125,7 @@ describe('terminal send keyboard dismissal wiring', () => {
   it('keeps buffered Return focused until accepted-agent dismissal runs', () => {
     const slice = sourceSlice(
       commandDockSource,
-      'ref={commandInputRef}',
+      'ref={bindCommandField}',
       'onSubmitEditing={() => void handleSend()}'
     )
     expect(slice).toContain('blurOnSubmit={false}')

@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest'
 import type { TextInput } from 'react-native'
-import { bindTerminalLiveInputSubmit } from './terminal-live-input-submit-binding'
-import { bindTerminalLiveInputSubmit as bindOnWeb } from './terminal-live-input-submit-binding.web'
+import { bindTerminalTextFieldSubmit } from './terminal-text-field-submit-binding'
+import { bindTerminalTextFieldSubmit as bindOnWeb } from './terminal-text-field-submit-binding.web'
 
 /** A ref holding whatever the platform hands back, which on RN Web is the DOM node. */
 const asField = (node: unknown): TextInput | null =>
@@ -26,7 +26,7 @@ describe('the native submit binding', () => {
     const onSubmit = vi.fn()
     const field = mountField()
 
-    const unbind = bindTerminalLiveInputSubmit(asField(field), onSubmit)
+    const unbind = bindTerminalTextFieldSubmit(asField(field), onSubmit)
     sendBeforeInput(field, 'insertLineBreak')
 
     expect(onSubmit).not.toHaveBeenCalled()

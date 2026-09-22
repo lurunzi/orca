@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import type { TextInput } from 'react-native'
-import { bindTerminalLiveInputSubmit } from './terminal-live-input-submit-binding'
+import { bindTerminalTextFieldSubmit } from './terminal-text-field-submit-binding'
 
 /**
  * A ref for the live input that also binds the platform's submit signal to it.
@@ -9,7 +9,7 @@ import { bindTerminalLiveInputSubmit } from './terminal-live-input-submit-bindin
  * with `liveInputEnabled`, and no prop or dependency marks that, so an effect would keep a
  * listener on a detached node. React reports both edges here.
  */
-export function useTerminalLiveInputSubmitBinding(
+export function useTerminalTextFieldSubmitBinding(
   liveInputRef: RefObject<TextInput | null>,
   onSubmit: () => void
 ): (node: TextInput | null) => void {
@@ -24,7 +24,7 @@ export function useTerminalLiveInputSubmitBinding(
       liveInputRef.current = node
       unbindRef.current?.()
       unbindRef.current = node
-        ? bindTerminalLiveInputSubmit(node, () => onSubmitRef.current())
+        ? bindTerminalTextFieldSubmit(node, () => onSubmitRef.current())
         : null
     },
     [liveInputRef]

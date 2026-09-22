@@ -11,7 +11,7 @@ import type { TextInput } from 'react-native'
  * composing IME that is still choosing a candidate produces `insertCompositionText` instead and is
  * left alone, which is how an interrupted composition survives here as it does natively.
  */
-export function bindTerminalLiveInputSubmit(
+export function bindTerminalTextFieldSubmit(
   node: TextInput | null,
   onSubmit: () => void
 ): () => void {

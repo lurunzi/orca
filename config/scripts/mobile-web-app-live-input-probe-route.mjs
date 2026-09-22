@@ -34,7 +34,7 @@ export function liveInputProbeRouteSource({ bindingModule, commitModule, draftsM
   return `import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextInput, View } from 'react-native'
 import { useTerminalLiveInputCommit } from ${JSON.stringify(commitModule)}
-import { useTerminalLiveInputSubmitBinding } from ${JSON.stringify(bindingModule)}
+import { useTerminalTextFieldSubmitBinding } from ${JSON.stringify(bindingModule)}
 import { useBufferedTerminalDrafts } from ${JSON.stringify(draftsModule)}
 
 const HANDLE = ${JSON.stringify(LIVE_INPUT_HANDLE)}
@@ -74,7 +74,7 @@ export default function LiveInputProbeRoute() {
   const onSubmitEditing = useCallback(() => {
     void handleLiveInputSubmit()
   }, [handleLiveInputSubmit])
-  const bindLiveInputField = useTerminalLiveInputSubmitBinding(liveInputRef, onSubmitEditing)
+  const bindLiveInputField = useTerminalTextFieldSubmitBinding(liveInputRef, onSubmitEditing)
 
   const activeHandleStateRef = useRef(HANDLE)
   const bufferedDrafts = useBufferedTerminalDrafts({
@@ -82,6 +82,7 @@ export default function LiveInputProbeRoute() {
     activeHandleRef: activeHandleStateRef
   })
   const bufferedSentRef = useRef([])
+  const commandInputRef = useRef(null)
   // The three calls use-mobile-session-terminal-send-actions.ts makes in handleSend, in that
   // order, with the RPC replaced by a record: begin clears the draft, the write goes out, settle
   // keeps it cleared. Nothing here re-implements the ordering rule, which its own source census pins.
@@ -94,6 +95,7 @@ export default function LiveInputProbeRoute() {
     bufferedSentRef.current.push(draft)
     bufferedDrafts.settleBufferedTerminalDraftSend(send)
   }, [bufferedDrafts])
+  const bindCommandField = useTerminalTextFieldSubmitBinding(commandInputRef, sendBufferedDraft)
 
   // What use-mobile-session-startup.ts does on every session mount, in the same place.
   useEffect(() => {
@@ -140,6 +142,7 @@ export default function LiveInputProbeRoute() {
         style={{ fontSize: 16 }}
       />
       <TextInput
+        ref={bindCommandField}
         nativeID=${JSON.stringify(BUFFERED_FIELD_ID)}
         value={bufferedDrafts.input}
         onChangeText={bufferedDrafts.setInput}

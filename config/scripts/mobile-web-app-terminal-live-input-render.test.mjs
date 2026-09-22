@@ -81,7 +81,7 @@ beforeAll(async () => {
   await writeFile(
     join(routeDir, 'live-input-probe.tsx'),
     liveInputProbeRouteSource({
-      bindingModule: join(terminalDir, 'use-terminal-live-input-submit-binding'),
+      bindingModule: join(terminalDir, 'use-terminal-text-field-submit-binding'),
       commitModule: join(terminalDir, 'use-terminal-live-input-commit'),
       draftsModule: join(terminalDir, 'use-buffered-terminal-drafts')
     })

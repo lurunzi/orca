@@ -15,7 +15,7 @@ import {
   TERMINAL_INPUT_SEND_OPTIONS
 } from '../terminal/terminal-send-request'
 import { normalizeTerminalTextInput } from '../terminal/terminal-text-input-normalization'
-import { useTerminalLiveInputSubmitBinding } from '../terminal/use-terminal-live-input-submit-binding'
+import { useTerminalTextFieldSubmitBinding } from '../terminal/use-terminal-text-field-submit-binding'
 import { useAgentSendKeyboardDismissal } from './use-agent-send-keyboard-dismissal'
 import type { MobileSessionTab } from './mobile-session-route-types'
 import { useMobileSessionTabActionSheetOpener } from './use-mobile-session-tab-action-targets'
@@ -82,7 +82,11 @@ export function useMobileSessionTerminalSendActions(scope: MobileSessionTerminal
       )
     )
   }, [activeSessionTab, dismissKeyboardAfterAgentSend, handleLiveInputSubmit])
-  const bindLiveInputField = useTerminalLiveInputSubmitBinding(liveInputRef, submitLiveInput)
+  const bindLiveInputField = useTerminalTextFieldSubmitBinding(liveInputRef, submitLiveInput)
+  const submitBufferedDraft = useCallback(() => {
+    void handleSend()
+  }, [])
+  const bindCommandField = useTerminalTextFieldSubmitBinding(commandInputRef, submitBufferedDraft)
 
   async function handleSend() {
     // Why: the return key still submits while offline; hold the composed text instead of firing a doomed RPC (#6713).
@@ -269,6 +273,7 @@ export function useMobileSessionTerminalSendActions(scope: MobileSessionTerminal
     dismissSoftwareKeyboard,
     dismissKeyboardAfterAgentSend,
     bindLiveInputField,
+    bindCommandField,
     submitLiveInput
   }
 }

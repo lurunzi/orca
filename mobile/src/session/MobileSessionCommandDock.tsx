@@ -35,7 +35,7 @@ export function MobileSessionCommandDock({ controller }: { controller: MobileSes
     terminalModes,
     canPaste,
     dictationMode,
-    commandInputRef,
+    bindCommandField,
     handleLiveInputChange,
     handleLiveInputKeyPress,
     bindLiveInputField,
@@ -313,7 +313,7 @@ export function MobileSessionCommandDock({ controller }: { controller: MobileSes
         ) : (
           <View style={styles.inputBar}>
             <TextInput
-              ref={commandInputRef}
+              ref={bindCommandField}
               // Why: Android caches IME inputType at mount, so toggling autocomplete must remount there; iOS updates in place.
               key={
                 Platform.OS === 'android'
