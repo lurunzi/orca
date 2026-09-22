@@ -1,6 +1,10 @@
 // Antigravity (AGY) JSONL line → NativeChatMessage decoder.
 
 import type { NativeChatBlock, NativeChatMessage } from '../../shared/native-chat-types'
+import { formatNativeChatFileReference } from '../../shared/agent-image-paste'
+import { isWindowsAbsolutePathLike } from '../../shared/cross-platform-path'
+import { IMAGE_FILE_EXTENSIONS } from '../../shared/image-file-extensions'
+import { IMAGE_PASTE_FOLLOWING_TEXT_SEPARATOR } from '../../shared/image-paste-following-text'
 import {
   asRecord,
   extractString,
@@ -50,7 +54,7 @@ export function decodeAntigravityTranscriptLine(
     return {
       id,
       role: 'user',
-      blocks: [{ type: 'text', text }],
+      blocks: antigravityUserBlocks(text),
       timestamp,
       source: 'transcript'
     }
@@ -120,4 +124,35 @@ export function decodeAntigravityTranscriptLine(
 function parseTimestamp(value: unknown): number | null {
   const parsed = timestampMs(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function antigravityUserBlocks(text: string): NativeChatBlock[] {
+  const blocks: NativeChatBlock[] = []
+  let remaining = text
+  // Antigravity persists Orca's image pastes as leading file references.
+  while (remaining.startsWith('@')) {
+    const reference = remaining.match(
+      /^@(?:"((?:\\"|[^"\\\r\n]|\\(?!"))*)"|'([^'\r\n]*)'|([^\s]+))(?=\s|$)/
+    )
+    if (!reference) {
+      break
+    }
+    const path = reference[1]?.replace(/\\"/g, '"') ?? reference[2] ?? reference[3] ?? ''
+    if (
+      !(path.startsWith('/') || isWindowsAbsolutePathLike(path)) ||
+      !IMAGE_FILE_EXTENSIONS.some((extension) => path.toLowerCase().endsWith(extension)) ||
+      formatNativeChatFileReference(path) !== reference[0]
+    ) {
+      break
+    }
+    blocks.push({ type: 'image-ref', path })
+    remaining = remaining.slice(reference[0].length)
+    if (remaining.startsWith(IMAGE_PASTE_FOLLOWING_TEXT_SEPARATOR)) {
+      remaining = remaining.slice(IMAGE_PASTE_FOLLOWING_TEXT_SEPARATOR.length)
+    }
+  }
+  if (remaining) {
+    blocks.push({ type: 'text', text: remaining })
+  }
+  return blocks
 }

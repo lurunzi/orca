@@ -73,4 +73,28 @@ describe('Antigravity transcript records', () => {
     expect(decode({ source: 'MODEL', type: 'PLANNER_RESPONSE' })).toBeNull()
     expect(decode({ source: 'SYSTEM', type: 'CHECKPOINT', content: 'private context' })).toBeNull()
   })
+
+  it.each([
+    'Explain @/tmp/picture.png',
+    '@relative.png inspect this',
+    '@someone inspect this',
+    '@https://example.test/image.png inspect this',
+    '@"/tmp/unclosed.png inspect this',
+    '@/tmp/file.ts inspect this',
+    '@"/tmp/picture.png"suffix',
+    '@/tmp/image.png/notes inspect this'
+  ])('preserves ordinary text and malformed references: %s', (text) => {
+    expect(decode({ source: 'USER', type: 'REQUEST', content: text })?.blocks).toEqual([
+      { type: 'text', text }
+    ])
+  })
+
+  it('preserves indentation after the image paste separator', () => {
+    expect(
+      decode({ source: 'USER', type: 'REQUEST', content: '@/tmp/image.png     code' })?.blocks
+    ).toEqual([
+      { type: 'image-ref', path: '/tmp/image.png' },
+      { type: 'text', text: '    code' }
+    ])
+  })
 })
