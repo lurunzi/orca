@@ -19,6 +19,12 @@ vi.mock('react-native', () => ({
       stop: () => {}
     })
   },
+  BackHandler: {
+    addEventListener: (name: string, listener: () => boolean) => {
+      dependencies.backHandlers.set(name, listener)
+      return { remove: () => dependencies.backHandlers.delete(name) }
+    }
+  },
   Keyboard: {
     addListener: (
       name: string,
@@ -91,7 +97,9 @@ vi.mock('expo-router', () => ({
     canGoBack: () => dependencies.canGoBack
   }),
   // Read by the pop latch, which clears on the route this shell is mounted at changing.
-  usePathname: () => dependencies.pathname
+  usePathname: () => dependencies.pathname,
+  // The screen's own place on the stack, which is where the iOS swipe-back is taken away.
+  useNavigation: () => ({ setOptions: dependencies.setScreenOptions })
 }))
 // A component rather than a host string: the React key is what makes a retry a rebuilt WebView,
 // and a mount/unmount log is the only thing that can tell a remount from a prop update.
@@ -164,8 +172,10 @@ vi.mock('./use-mobile-web-shell-session', () => ({
     reportDocumentLoaded: dependencies.reportDocumentLoaded,
     reportPageReady: dependencies.reportPageReady,
     reportPagePainted: dependencies.reportPagePainted,
+    reportPageBackClaim: dependencies.reportPageBackClaim,
     pageReady: dependencies.pageReady,
-    pageFrame: dependencies.pageFrame
+    pageFrame: dependencies.pageFrame,
+    backClaimed: dependencies.backClaimed
   })
 }))
 

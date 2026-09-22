@@ -53,6 +53,11 @@ export type MobileWebShellBridgeView = {
    * there is no host yet; the route the host is built from carries it instead.
    */
   readonly publishRoute: (route: BridgeInitRoute) => void
+  /**
+   * Hands the mounted host one Back press. False when there is no host, or when the document it
+   * serves never said it takes one — the caller then leaves the key to the navigator.
+   */
+  readonly sendBack: () => boolean
 }
 
 /** Everything one render of the screen hands the bridge. Named rather than inline because the host
@@ -102,6 +107,9 @@ export type MobileWebShellBridgeArgs = {
   onPageReady: (reports: readonly string[]) => void
   /** The page has a frame on screen, from a page that said it would report one. */
   onPagePainted: () => void
+  /** The page is holding the device Back key, or has let it go. False arrives on its own for
+   *  every way a document ends, so no claim outlives the page that made it. */
+  onPageBackClaim: (claimed: boolean) => void
   /** The page applied a one-shot route param and asks for it to be erased (ruling 34). */
   onRouteParamClear: (param: BridgeClearableRouteParam, value: string) => void
   /** This shell named a screen the protocol does not allow, so no session is served. */
@@ -191,7 +199,8 @@ export function useMobileWebShellBridge(args: MobileWebShellBridgeArgs): MobileW
       onRouteRefused: (issue) => argsRef.current.onRouteRefused(issue),
       onBinaryFramesDropped: (total) => argsRef.current.onBinaryFramesDropped(total),
       onPageReady: (reports) => argsRef.current.onPageReady(reports),
-      onPagePainted: () => argsRef.current.onPagePainted()
+      onPagePainted: () => argsRef.current.onPagePainted(),
+      onPageBackClaim: (claimed) => argsRef.current.onPageBackClaim(claimed)
     })
     hostRef.current = { sessionId, host }
     // The count belongs to this host, so a rebuild starts it over. Without this the screen keeps
@@ -237,6 +246,13 @@ export function useMobileWebShellBridge(args: MobileWebShellBridgeArgs): MobileW
         }
       },
       [buildId, client, sessionId, snapshot]
-    )
+    ),
+    // Fenced on the session the way inbound frames are, and answering false rather than throwing
+    // when there is no host: the caller is a hardware key handler, and a press it cannot forward
+    // is one the navigator has to be left to answer.
+    sendBack: useCallback(() => {
+      const mounted = hostRef.current
+      return mounted !== null && mounted.sessionId === sessionId && mounted.host.sendBack()
+    }, [sessionId])
   }
 }
