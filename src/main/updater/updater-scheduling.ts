@@ -10,20 +10,16 @@ import { UpdaterCheckFailure } from './updater-check-failure'
 
 /** Owns timer-driven checks and the shared check-launch bookkeeping. */
 export abstract class UpdaterScheduling extends UpdaterCheckFailure {
-  protected getAutomaticRetryInterval(): number {
-    return AUTO_UPDATE_RETRY_INTERVAL_MS
+  protected scheduleAutomaticUpdateRetry(): void {
+    const delayMs = Math.min(
+      AUTO_UPDATE_RETRY_INTERVAL_MS * 2 ** this.consecutiveAutomaticRetrySchedules,
+      MAX_AUTO_UPDATE_RETRY_INTERVAL_MS
+    )
+    this.consecutiveAutomaticRetrySchedules += 1
+    this.scheduleAutomaticUpdateCheck(delayMs)
   }
 
   protected scheduleAutomaticUpdateCheck(delayMs: number): void {
-    let effectiveDelayMs = delayMs
-    // All retry-cadence callers pass exactly this constant, so keying backoff on it keeps one choke point instead of threading a flag through every schedule site.
-    if (delayMs === AUTO_UPDATE_RETRY_INTERVAL_MS) {
-      effectiveDelayMs = Math.min(
-        AUTO_UPDATE_RETRY_INTERVAL_MS * 2 ** this.consecutiveAutomaticRetrySchedules,
-        MAX_AUTO_UPDATE_RETRY_INTERVAL_MS
-      )
-      this.consecutiveAutomaticRetrySchedules += 1
-    }
     if (this.autoUpdateCheckTimer) {
       clearTimeout(this.autoUpdateCheckTimer)
     }
@@ -33,7 +29,7 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
         // Why: a deferred check reaches no outcome handler, so re-arm here or one deferral ends automatic checks for the process lifetime.
         this.scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)
       }
-    }, effectiveDelayMs)
+    }, delayMs)
   }
 
   protected recordCompletedUpdateCheck(): void {

@@ -96,6 +96,7 @@ function createContext(overrides?: Partial<HandlerContext>): HandlerContext {
     sendErrorStatus: vi.fn(),
     sendStatus: vi.fn(),
     scheduleAutomaticUpdateCheck: vi.fn(),
+    scheduleAutomaticUpdateRetry: vi.fn(),
     shouldSuppressMissingManifestPrereleaseFallbackEvent: vi.fn(() => false),
     suppressMissingManifestPrereleaseFallbackPromiseFailure: vi.fn(),
     setAvailableReleaseUrl: vi.fn(),

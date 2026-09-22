@@ -132,7 +132,7 @@ export function createUpdaterMocks(): UpdaterMocks {
   }
 
   // Why: `vi.resetModules()` abandons the previous test's `updater` module instance but cannot cancel
-  // the real timers it armed (1s silent-settle, 45s stall, 24h auto-check). Those fire during a later
+  // the real timers it armed (1s silent-settle, 45s stall, 1h auto-check). Those fire during a later
   // test — re-arming on that test's fake clock — and drove these shared spies, so a stale instance
   // could land an extra `checkForUpdates()` inside the window under assertion.
   let currentGeneration = 0

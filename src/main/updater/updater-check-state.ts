@@ -7,7 +7,6 @@ import type { UpdateCheckVariant } from './updater-types'
 import { UpdaterStatus } from './updater-status'
 import {
   AUTO_UPDATE_CHECK_INTERVAL_MS,
-  AUTO_UPDATE_RETRY_INTERVAL_MS,
   UPDATE_CHECK_SILENT_SETTLE_DELAY_MS,
   UPDATE_CHECK_STALL_TIMEOUT_MS
 } from './updater-state'
@@ -151,7 +150,7 @@ export abstract class UpdaterCheckState extends UpdaterStatus {
         this.backgroundCheckLaunchPending = false
         this.backgroundCheckPromotedToUserInitiated = false
         this.userInitiatedCheck = false
-        this.scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
+        this.scheduleAutomaticUpdateRetry()
       }
     }, UPDATE_CHECK_STALL_TIMEOUT_MS)
   }
@@ -201,7 +200,7 @@ export abstract class UpdaterCheckState extends UpdaterStatus {
     this.clearAvailableUpdateContext()
     if (shouldRetrySoon) {
       // Why: a silent result against a temporary last-good feed is still a release transition, so it must not suppress the short publish retry.
-      this.scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
+      this.scheduleAutomaticUpdateRetry()
       return true
     }
     this.recordCompletedUpdateCheck()
@@ -311,4 +310,5 @@ export abstract class UpdaterCheckState extends UpdaterStatus {
     sourceError?: unknown
   ): Promise<void>
   protected abstract scheduleAutomaticUpdateCheck(delayMs: number): void
+  protected abstract scheduleAutomaticUpdateRetry(): void
 }

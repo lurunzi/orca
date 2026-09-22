@@ -21,7 +21,7 @@ vi.mock('./local-builds/local-build-switch', () => moduleFactories.localBuildSwi
 vi.mock('./local-builds/local-build-feed-server', () => moduleFactories.localBuildFeedServer())
 
 const SILENT_SETTLE_DELAY_MS = 1_000
-const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+const AUTO_UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 
 warmUpdaterModule()
 
@@ -107,7 +107,7 @@ describe('abandoned updater instance', () => {
     vi.useFakeTimers()
 
     // Why: real time past the settle delay — the abandoned instance would settle here and re-arm its
-    // 24h auto check on this test's fake clock at its epoch.
+    // hourly auto check on this test's fake clock at its epoch.
     await sleep(SILENT_SETTLE_DELAY_MS + 300)
     await vi.advanceTimersByTimeAsync(AUTO_UPDATE_CHECK_INTERVAL_MS)
 

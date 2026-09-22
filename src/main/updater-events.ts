@@ -17,8 +17,7 @@ import {
 import { isExternallyManagedLinuxInstall } from './linux-update-package-type'
 import * as linuxPackageRecovery from './linux-package-update-recovery'
 
-const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
-const AUTO_UPDATE_RETRY_INTERVAL_MS = 60 * 60 * 1000
+import { AUTO_UPDATE_CHECK_INTERVAL_MS } from './updater/updater-state'
 
 type UpdaterHandlerContext = {
   autoUpdater: ElectronAutoUpdater
@@ -56,6 +55,7 @@ type UpdaterHandlerContext = {
   sendErrorStatus: (message: string, userInitiated?: boolean) => void
   sendStatus: (status: UpdateStatus) => void
   scheduleAutomaticUpdateCheck: (delayMs: number) => void
+  scheduleAutomaticUpdateRetry: () => void
   shouldSuppressMissingManifestPrereleaseFallbackEvent: (message: string, error: unknown) => boolean
   suppressMissingManifestPrereleaseFallbackPromiseFailure: (message: string) => void
   setAvailableReleaseUrl: (releaseUrl: string | null) => void
@@ -94,6 +94,7 @@ export function registerAutoUpdaterHandlers({
   sendErrorStatus,
   sendStatus,
   scheduleAutomaticUpdateCheck,
+  scheduleAutomaticUpdateRetry,
   shouldSuppressMissingManifestPrereleaseFallbackEvent,
   suppressMissingManifestPrereleaseFallbackPromiseFailure,
   setAvailableReleaseUrl,
@@ -144,7 +145,7 @@ export function registerAutoUpdaterHandlers({
       clearAvailableUpdateContext()
       if (missingManifestFallback || publishingWindowLastGoodCheck) {
         // Why: a current-version fallback manifest means the primary is transiently missing; keep the short retry cadence.
-        scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
+        scheduleAutomaticUpdateRetry()
       } else {
         recordCompletedUpdateCheck()
         if (!wasUserInitiated) {
@@ -186,11 +187,11 @@ export function registerAutoUpdaterHandlers({
         setAvailableReleaseUrl(null)
         // Why: a pinned dev jump is not a release check. Letting it call
         // recordCompletedUpdateCheck() would persist lastUpdateCheckAt and
-        // suppress the next real background check for a full day.
+        // suppress the next real background check for a full interval.
         if (!isLocalBuildCheck() && !isPinnedBuildCheck()) {
           if (missingManifestFallback || publishingWindowLastGoodCheck) {
             // Why: last-good release is a temporary fallback; keep probing so users can move to the newest tag once it publishes.
-            scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
+            scheduleAutomaticUpdateRetry()
           } else {
             recordCompletedUpdateCheck()
             if (!wasUserInitiated) {
@@ -232,8 +233,8 @@ export function registerAutoUpdaterHandlers({
     clearAvailableUpdateContext()
     if (!localBuildCheck && !pinnedBuildCheck) {
       if (missingManifestFallback || publishingWindowLastGoodCheck) {
-        // Why: last-good not-available is a transient release-transition outcome; keep the short retry, don't suppress for 24h.
-        scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
+        // Why: last-good not-available is a transient release-transition outcome, so use the retry policy.
+        scheduleAutomaticUpdateRetry()
       } else {
         recordCompletedUpdateCheck()
         if (!wasUserInitiated) {
