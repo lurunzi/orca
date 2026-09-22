@@ -83,9 +83,11 @@ export function useMobileSessionTerminalSendActions(scope: MobileSessionTerminal
     )
   }, [activeSessionTab, dismissKeyboardAfterAgentSend, handleLiveInputSubmit])
   const bindLiveInputField = useTerminalTextFieldSubmitBinding(liveInputRef, submitLiveInput)
-  const submitBufferedDraft = useCallback(() => {
+  // Per-render, like handleSend itself: the binding refreshes its handler every commit, so there is
+  // no identity here worth pretending is stable.
+  const submitBufferedDraft = (): void => {
     void handleSend()
-  }, [])
+  }
   const bindCommandField = useTerminalTextFieldSubmitBinding(commandInputRef, submitBufferedDraft)
 
   async function handleSend() {

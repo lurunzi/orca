@@ -87,12 +87,11 @@ export default function LiveInputProbeRoute() {
   // order, with the RPC replaced by a record: begin clears the draft, the write goes out, settle
   // keeps it cleared. Nothing here re-implements the ordering rule, which its own source census pins.
   //
-  // A per-render function, like handleSend, so the two submit paths differ here exactly as they do
-  // there: the field's onSubmitEditing prop gets this fresh one every render, while the binding
-  // below is handed a closure memoized on an empty dependency list. In the real hook that closure
-  // reads client and activeHandle, both null until effects supply them, so a binding that refreshed
-  // only when its callback identity changed reached a guard that could never pass — and the prop
-  // path kept working, which is what hid it.
+  // Per-render, like handleSend, and handed to both submit paths as the dock hands it to both.
+  // What this route cannot catch is the wiring above it: a caller that freezes this closure in a
+  // useCallback with an empty dependency list hands the binding one function forever, and no route
+  // that writes its own submit can notice. That rule is pinned on the real source instead, in
+  // terminal-field-submit-binding-wiring.test.ts.
   function sendBufferedDraft() {
     const draft = bufferedDrafts.input
     if (draft.length === 0) {
@@ -102,10 +101,7 @@ export default function LiveInputProbeRoute() {
     bufferedSentRef.current.push(draft)
     bufferedDrafts.settleBufferedTerminalDraftSend(send)
   }
-  const submitBufferedDraft = useCallback(() => {
-    sendBufferedDraft()
-  }, [])
-  const bindCommandField = useTerminalTextFieldSubmitBinding(commandInputRef, submitBufferedDraft)
+  const bindCommandField = useTerminalTextFieldSubmitBinding(commandInputRef, sendBufferedDraft)
 
   // What use-mobile-session-startup.ts does on every session mount, in the same place.
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { createElement, useCallback, type RefObject } from 'react'
+import { createElement, type RefObject } from 'react'
 import { act, create, type ReactTestRenderer } from 'react-test-renderer'
 import type { TextInput } from 'react-native'
 import { describe, expect, it, vi } from 'vitest'
@@ -10,39 +10,55 @@ import { useTerminalTextFieldSubmitBinding } from './use-terminal-text-field-sub
  */
 const mocks = vi.hoisted(() => ({
   boundHandlers: [] as Array<() => void>,
-  unbind: vi.fn()
+  unbindCount: 0,
+  releasedCount: 0
 }))
 
 vi.mock('./terminal-text-field-submit-binding', () => ({
   bindTerminalTextFieldSubmit: (_node: unknown, onSubmit: () => void) => {
     mocks.boundHandlers.push(onSubmit)
-    return mocks.unbind
+    mocks.unbindCount += 1
+    return () => {
+      mocks.releasedCount += 1
+    }
   }
 }))
 
+let submitted: string[] = []
+const field: RefObject<TextInput | null> = { current: null }
+
 /**
- * A caller memoizing its submit on `[]`, which is what the buffered command field does: its
- * handler is a per-render function closing over `client`, `activeHandle` and `canSend`, all of
- * which arrive in effects after the first render. A binding that refreshed only when the callback
- * identity changed therefore held a handler whose guard could never pass.
+ * A caller handing the binding a fresh closure each render, which is what the command dock's two
+ * fields do: their submits read `handleSend`, a per-render function whose guard reads `client` and
+ * `activeHandle`. This says the listener follows them.
  */
 function Harness({ value }: { readonly value: string }): null {
-  const fieldRef: RefObject<TextInput | null> = { current: null }
-  const onSubmit = useCallback(() => {
+  const bindField = useTerminalTextFieldSubmitBinding(field, () => {
     submitted.push(value)
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- the stale closure is the case under test.
-  }, [])
-  const bindField = useTerminalTextFieldSubmitBinding(fieldRef, onSubmit)
-  bindField({} as unknown as TextInput)
+  })
+  bindField(node)
   return null
 }
 
-let submitted: string[] = []
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the binding never reads the node; the mocked seam only records the handler it was given.
+const node = {} as TextInput
+
+function reset(): void {
+  submitted = []
+  mocks.boundHandlers.length = 0
+  mocks.unbindCount = 0
+  mocks.releasedCount = 0
+}
 
 describe('the terminal text field submit binding', () => {
-  it('calls the newest handler, not the one the first render memoized', () => {
-    submitted = []
-    mocks.boundHandlers.length = 0
+  /**
+   * The rule the fix rests on. What it cannot reach, and what the source census in
+   * `terminal-field-submit-binding-wiring.test.ts` exists for: a caller that freezes its closure in
+   * a `useCallback` with an empty dependency list hands this hook one function object for the life
+   * of the component, so there is no newer handler for any ref to find.
+   */
+  it('calls the handler the newest commit supplied, not the first', () => {
+    reset()
     let renderer: ReactTestRenderer | null = null
 
     act(() => {
@@ -56,6 +72,39 @@ describe('the terminal text field submit binding', () => {
     })
 
     expect(submitted).toEqual(['second'])
+    act(() => renderer?.unmount())
+  })
+
+  it('releases the previous listener before binding a node again', () => {
+    reset()
+    let renderer: ReactTestRenderer | null = null
+
+    act(() => {
+      renderer = create(createElement(Harness, { value: 'first' }))
+    })
+    act(() => {
+      renderer?.update(createElement(Harness, { value: 'second' }))
+    })
+
+    // One release per rebind, so a field re-bound on every render leaks no listeners: only the
+    // binding still in place is unreleased.
+    expect(mocks.unbindCount - mocks.releasedCount).toBe(1)
+    act(() => renderer?.unmount())
+  })
+
+  it('drops the binding when the field unmounts', () => {
+    reset()
+    let renderer: ReactTestRenderer | null = null
+
+    act(() => {
+      renderer = create(createElement(Harness, { value: 'first' }))
+    })
+    act(() => {
+      mocks.boundHandlers.at(-1)?.()
+    })
+
+    expect(submitted).toEqual(['first'])
+    expect(field.current).toBe(node)
     act(() => renderer?.unmount())
   })
 })
