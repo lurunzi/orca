@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import type { GlobalSettings } from '../../src/shared/global-settings-types'
 import { test, expect } from './helpers/orca-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
@@ -30,7 +29,7 @@ async function enableCursorNativeChat(page: Page): Promise<void> {
         }
       }
     })
-    window.__store?.setState({ settings: nextSettings as GlobalSettings })
+    window.__store?.setState({ settings: nextSettings })
   })
 }
 

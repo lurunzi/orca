@@ -1,6 +1,12 @@
 import type { TuiAgent } from './tui-agent'
 
-export type NativeChatTranscriptAgent = 'claude' | 'codex' | 'cursor' | 'grok' | 'omp' | 'antigravity'
+export type NativeChatTranscriptAgent =
+  | 'claude'
+  | 'codex'
+  | 'cursor'
+  | 'grok'
+  | 'omp'
+  | 'antigravity'
 
 /** Agents whose transcripts the native chat view can parse and render, in the
  *  order the settings pane advertises them. */
@@ -27,7 +33,10 @@ export function isNativeChatSupportedAgent(agent: string | null | undefined): bo
 export function nativeChatRequiresLocalTranscript(agent: string | null | undefined): boolean {
   const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
   return (
-    transcriptAgent === 'cursor' || transcriptAgent === 'grok' || transcriptAgent === 'omp' || transcriptAgent === 'antigravity'
+    transcriptAgent === 'cursor' ||
+    transcriptAgent === 'grok' ||
+    transcriptAgent === 'omp' ||
+    transcriptAgent === 'antigravity'
   )
 }
 
@@ -49,7 +58,13 @@ export function resolveNativeChatTranscriptAgent(
   if (agent === 'claude' || agent === 'openclaude') {
     return 'claude'
   }
-  if (agent === 'codex' || agent === 'cursor' || agent === 'grok' || agent === 'omp' || agent === 'antigravity') {
+  if (
+    agent === 'codex' ||
+    agent === 'cursor' ||
+    agent === 'grok' ||
+    agent === 'omp' ||
+    agent === 'antigravity'
+  ) {
     return agent
   }
   return null

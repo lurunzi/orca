@@ -1,37 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as HostReadableTranscriptPath from './host-readable-transcript-path'
+import type * as WslTranscriptFsGate from './wsl-transcript-fs-gate'
 
 const UBUNTU_ROOT = '\\\\wsl.localhost\\Ubuntu\\home\\ada\\.cursor\\projects'
 const DEBIAN_ROOT = '\\\\wsl.localhost\\Debian\\home\\ada\\.cursor\\projects'
 
-const mocks = vi.hoisted(() => ({
-  homes: vi.fn(async () => [UBUNTU_ROOT, DEBIAN_ROOT]),
-  gate: vi.fn(async (_options: { path: string }) => []),
-  hostHit: null as string | null,
-  guestHitRoot: null as string | null,
-  walk: vi.fn(
-    async (
-      dir: string,
-      _agent: string,
-      _issues: unknown[],
-      options: { readDirectory?: (dirPath: string) => Promise<unknown[]> }
-    ) => {
-      await options.readDirectory?.(dir)
-      if (!dir.startsWith('\\\\wsl.localhost\\')) {
-        return mocks.hostHit ? [mocks.hostHit] : []
+const mocks = vi.hoisted(() => {
+  const initialHits: { hostHit: string | null; guestHitRoot: string | null } = {
+    hostHit: null,
+    guestHitRoot: null
+  }
+  return {
+    homes: vi.fn(async () => [UBUNTU_ROOT, DEBIAN_ROOT]),
+    gate: vi.fn(async (_options: { path: string }) => []),
+    ...initialHits,
+    walk: vi.fn(
+      async (
+        dir: string,
+        _agent: string,
+        _issues: unknown[],
+        options: { readDirectory?: (dirPath: string) => Promise<unknown[]> }
+      ) => {
+        await options.readDirectory?.(dir)
+        if (!dir.startsWith('\\\\wsl.localhost\\')) {
+          return mocks.hostHit ? [mocks.hostHit] : []
+        }
+        return dir === mocks.guestHitRoot
+          ? [`${dir}\\project\\agent-transcripts\\cursor-session.jsonl`]
+          : []
       }
-      return dir === mocks.guestHitRoot
-        ? [`${dir}\\project\\agent-transcripts\\cursor-session.jsonl`]
-        : []
-    }
-  )
-}))
+    )
+  }
+})
 
 vi.mock('./host-readable-transcript-path', async (importOriginal) => ({
-  ...((await importOriginal()) as Record<string, unknown>),
+  ...(await importOriginal<typeof HostReadableTranscriptPath>()),
   wslCursorProjectsDirs: mocks.homes
 }))
 vi.mock('./wsl-transcript-fs-gate', async (importOriginal) => ({
-  ...((await importOriginal()) as Record<string, unknown>),
+  ...(await importOriginal<typeof WslTranscriptFsGate>()),
   runWslTranscriptFsTask: mocks.gate
 }))
 vi.mock('../ai-vault/session-scanner-discovery', () => ({

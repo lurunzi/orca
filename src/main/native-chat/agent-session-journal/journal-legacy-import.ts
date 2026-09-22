@@ -25,6 +25,7 @@ import {
   decodeAntigravityTranscriptLine,
   decodeClaudeTranscriptLine,
   decodeCodexTranscriptLine,
+  decodeCursorTranscriptLine,
   decodeGrokTranscriptLine,
   decodeOmpTranscriptLine
 } from '../transcript-line-decoders'
@@ -173,6 +174,7 @@ export async function prepareLegacyTranscriptImport(input: {
 const TRANSCRIPT_DECODERS = {
   claude: decodeClaudeTranscriptLine,
   codex: decodeCodexTranscriptLine,
+  cursor: decodeCursorTranscriptLine,
   antigravity: decodeAntigravityTranscriptLine,
   grok: decodeGrokTranscriptLine,
   omp: decodeOmpTranscriptLine

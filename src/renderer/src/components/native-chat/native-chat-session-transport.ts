@@ -1,6 +1,9 @@
-import { ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
+import {
+  ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY,
+  CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY
+} from '../../../../shared/protocol-version'
 import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabilities'
-import { guardAntigravityChatTransport } from './native-chat-antigravity-capability'
+import { guardNativeChatAgentTransport } from './native-chat-provider-capability'
 import type { NativeChatApi, NativeChatAppendedMessages } from '../../../../preload/api-types'
 import { isWebClientLocation } from '@/lib/web-client-location'
 import {
@@ -273,19 +276,24 @@ export function getNativeChatSessionTransport(
   const webClient = isWebClientLocation()
   const remote = runtimeEnvironmentId && !webClient ? runtimeEnvironmentId : null
   const transport = remote ? createRuntimeNativeChatTransport(remote) : localNativeChatTransport
-  return guardAntigravityChatTransport(transport, async () => {
-    if (remote) {
-      return runtimeEnvironmentSupportsCapability(
-        remote,
-        ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY
-      )
-    }
-    const capabilities = webClient
-      ? (await window.api.runtime.getStatus()).capabilities
-      : await ensureLocalRuntimeCapabilities()
-    if (!capabilities) {
-      throw new Error('Runtime capabilities unavailable')
-    }
-    return capabilities.includes(ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY)
-  })
+  const guardedAgents = [
+    ['antigravity', ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY],
+    ['cursor', CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY]
+  ] as const
+  return guardedAgents.reduce(
+    (guarded, [agent, capability]) =>
+      guardNativeChatAgentTransport(guarded, agent, async () => {
+        if (remote) {
+          return runtimeEnvironmentSupportsCapability(remote, capability)
+        }
+        const capabilities = webClient
+          ? (await window.api.runtime.getStatus()).capabilities
+          : await ensureLocalRuntimeCapabilities()
+        if (!capabilities) {
+          throw new Error('Runtime capabilities unavailable')
+        }
+        return capabilities.includes(capability)
+      }),
+    transport
+  )
 }

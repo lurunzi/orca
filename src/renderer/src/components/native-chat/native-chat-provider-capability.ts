@@ -6,9 +6,10 @@ import {
 
 type Transport = Pick<NativeChatApi, 'readSession' | 'subscribe'>
 
-/** An older host cannot decode agy; distinguish that from a transcript awaiting its first write. */
-export function guardAntigravityChatTransport(
+/** An older host may lack this decoder; distinguish that from a transcript awaiting its first write. */
+export function guardNativeChatAgentTransport(
   transport: Transport,
+  guardedAgent: 'antigravity' | 'cursor',
   supports: () => Promise<boolean>
 ): Transport {
   const errorForHost = async (): Promise<string | null> => {
@@ -20,11 +21,11 @@ export function guardAntigravityChatTransport(
   }
   return {
     readSession: async (agent, ...args) => {
-      const error = agent === 'antigravity' ? await errorForHost() : null
+      const error = agent === guardedAgent ? await errorForHost() : null
       return error ? { error } : transport.readSession(agent, ...args)
     },
     subscribe: (args, onFrame) => {
-      if (args.agent !== 'antigravity') {
+      if (args.agent !== guardedAgent) {
         return transport.subscribe(args, onFrame)
       }
       let cancelled = false

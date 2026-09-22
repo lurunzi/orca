@@ -1,4 +1,5 @@
 import { POSIX_HOOK_BOUNDED_STDIN } from './posix-hook-bounded-stdin'
+import { removeTreeSync } from '../../shared/windows-transient-lock-removal'
 // Why: stdin ownership is a cross-agent process contract; one executable
 // matrix catches an unread early exit without duplicating template assertions.
 // Exception (#11549): Windows batch hooks give up stdin ownership on the
@@ -28,7 +29,7 @@ afterEach(() => {
   } else {
     process.env.ORCA_USER_DATA_PATH = previousUserDataPath
   }
-  rmSync(isolatedUserDataDir, { recursive: true, force: true })
+  removeTreeSync(isolatedUserDataDir)
 })
 
 const { homedirMock } = vi.hoisted(() => ({
