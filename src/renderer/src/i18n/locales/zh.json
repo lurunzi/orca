@@ -14725,6 +14725,8 @@
   },
   "components": {
     "native-chat": {
+      "externalTranscript": "外部会话 · 只读",
+      "openTranscript": "打开会话",
       "composer": {
         "imageUnsupported": "此智能体不支持粘贴图片。",
         "send": "发送",

@@ -70,6 +70,13 @@ export type Tab = {
   isPinned?: boolean // pinned tabs survive "close others"
   /** Provider backing a structured agent-session tab. */
   agentSessionAgent?: AgentType
+  /** Observation only: the external worker owns execution and input. */
+  agentTranscript?: {
+    agent: 'cursor'
+    sessionId: string
+    transcriptPath: string
+    runtimeEnvironmentId: string | null
+  }
   /** Structured session adopted from this terminal's Codex TUI. */
   structuredSessionId?: string
   /** Why: per-tab rendering mode for coding-agent terminals. `'chat'` shows the

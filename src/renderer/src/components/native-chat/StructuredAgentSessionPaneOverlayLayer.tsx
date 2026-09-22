@@ -7,6 +7,7 @@ import { getRuntimeEnvironmentIdForWorktree } from '@/lib/worktree-runtime-owner
 import { getActiveRuntimeTarget, type RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
 import { RetainedPaneHost } from '../tab-group/RetainedPaneHost'
 import NativeChatView from './NativeChatView'
+import { NativeChatTranscriptView } from './NativeChatTranscriptView'
 
 type StructuredAgentSessionTab = Tab & {
   contentType: 'agent-session'
@@ -38,16 +39,25 @@ const StructuredAgentSessionOverlaySlot = memo(function StructuredAgentSessionOv
       data-structured-agent-session-overlay-tab-id={tab.id}
       onFocusOwningGroup={onFocusOwningGroup}
     >
-      <NativeChatView
-        mode="structured"
-        tabId={tab.id}
-        groupId={groupId}
-        sessionId={tab.entityId}
-        agent={tab.agentSessionAgent}
-        isVisible={isActive}
-        isFocusedGroup={isFocusedGroup}
-        target={target}
-      />
+      {tab.agentTranscript ? (
+        <NativeChatTranscriptView
+          tabId={tab.id}
+          source={tab.agentTranscript}
+          isVisible={isActive}
+          isFocusedGroup={isFocusedGroup}
+        />
+      ) : (
+        <NativeChatView
+          mode="structured"
+          tabId={tab.id}
+          groupId={groupId}
+          sessionId={tab.entityId}
+          agent={tab.agentSessionAgent}
+          isVisible={isActive}
+          isFocusedGroup={isFocusedGroup}
+          target={target}
+        />
+      )}
     </RetainedPaneHost>
   )
 })
@@ -86,7 +96,8 @@ const StructuredAgentSessionPaneOverlayLayer = memo(
         unifiedTabs.filter(
           (tab): tab is StructuredAgentSessionTab =>
             tab.contentType === 'agent-session' &&
-            isAgentSessionHandleProvider(tab.agentSessionAgent)
+            (isAgentSessionHandleProvider(tab.agentSessionAgent) ||
+              (tab.agentSessionAgent === 'cursor' && Boolean(tab.agentTranscript)))
         ),
       [unifiedTabs]
     )

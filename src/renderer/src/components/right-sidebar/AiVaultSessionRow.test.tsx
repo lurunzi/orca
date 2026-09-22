@@ -11,6 +11,12 @@ import type { AiVaultSearchHit } from '../../../../shared/ai-vault-search-types'
 import type { AiVaultSubagentResumeActions } from './AiVaultSessionSubagents'
 import { VaultSessionRow } from './AiVaultSessionRow'
 
+const transcriptActions = vi.hoisted(() => ({ open: vi.fn(() => true), reveal: vi.fn() }))
+vi.mock('@/lib/cursor-transcript-tab', () => ({ openCursorTranscriptTab: transcriptActions.open }))
+vi.mock('@/lib/worktree-activation', () => ({
+  activateAndRevealWorktree: transcriptActions.reveal
+}))
+
 const session = {
   id: 'local:gemini:sess-1:/home/a/.gemini/s.json',
   executionHostId: 'local',
@@ -115,6 +121,20 @@ function expectAgentIdentity(): void {
 }
 
 describe('VaultSessionRow details toggle', () => {
+  it('opens a Cursor conversation without invoking its resume action', () => {
+    const cursor = { ...session, agent: 'cursor' as const, cwd: '/work/worker' }
+    const onResume = vi.fn()
+    renderRow({
+      session: cursor,
+      detailsExpanded: true,
+      onResume,
+      worktreeInfo: { ...worktreeInfo, worktreeId: 'worker', path: '/work/worker' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Open conversation' }))
+    expect(transcriptActions.open).toHaveBeenCalledWith(cursor, 'worker')
+    expect(transcriptActions.reveal).toHaveBeenCalledWith('worker')
+    expect(onResume).not.toHaveBeenCalled()
+  })
   it('does not expand the row when a menu action is chosen', async () => {
     // Radix portals the menu out of the row's DOM, but React bubbles its
     // clicks back through the component tree. Expanding here would leave the

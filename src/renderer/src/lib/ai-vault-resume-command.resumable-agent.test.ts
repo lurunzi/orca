@@ -81,3 +81,27 @@ describe('AI Vault resume for Kimi', () => {
     })
   })
 })
+
+describe('AI Vault resume for skill-launched Cursor', () => {
+  it('carries the selected worker transcript into its own pane before hooks arrive', () => {
+    const transcriptPath = '/Users/ada/.cursor/projects/worker/agent-transcripts/worker-id.jsonl'
+    const startup = buildAiVaultResumeStartupForWorktree({
+      state: makeState(),
+      worktreeId: 'repo-1::worktree-1',
+      session: {
+        agent: 'cursor',
+        sessionId: 'worker-id',
+        filePath: transcriptPath,
+        cwd: '/Users/ada/repo',
+        codexHome: null
+      }
+    })
+    expect(startup.providerSession).toEqual({
+      key: 'conversation_id',
+      id: 'worker-id',
+      transcriptPath
+    })
+    expect(startup.launchConfig).toBeDefined()
+    expect(startup.command).toContain("'--resume' 'worker-id'")
+  })
+})
