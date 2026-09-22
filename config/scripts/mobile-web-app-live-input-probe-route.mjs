@@ -5,8 +5,8 @@
  * `liveInputEnabled`, which is `liveInputTerminalHandles.has(activeHandle)`, and no handle exists
  * until the host protocol has been scripted through a tab snapshot and a terminal inventory. So
  * `liveInputRef.current` is null on that route and every native write on it is skipped by its own
- * optional chain. This route mounts the two hooks against a real `TextInput` instead, which is the
- * state a session on a device is in the moment a terminal attaches.
+ * optional chain. This route mounts the commit hook against a real `TextInput` instead, which is
+ * the state a session on a device is in the moment a terminal attaches.
  *
  * This is a bundler entry and a page under test, not an assertion. The check itself stays the list
  * of things being measured.
@@ -18,18 +18,20 @@ export const LIVE_INPUT_HANDLE = 'live-input-probe-handle'
 export const LIVE_INPUT_FIELD_ID = 'live-input-probe-field'
 
 /**
- * The route: both live-input hooks, wired to each other the way the session screen wires them.
+ * The route: `useTerminalLiveInputCommit`, wired to a `TextInput` the way the command dock wires
+ * it, down to `blurOnSubmit={false}` — which is what decides whether react-native-web's keydown
+ * handler reaches `onSubmitEditing` at all. Keystrokes therefore enter through the browser, not
+ * through a handle that calls the hook directly.
  *
- * The mount effect is the point. `use-mobile-session-startup.ts` calls
+ * The mount effect is the other point. `use-mobile-session-startup.ts` calls
  * `clearPendingLiveInputCommit()` from an effect on every session mount, so a write the page
  * cannot honour throws under `PageFaultBoundary` and reaches the shell as a page fault rather than
  * as a rejected probe call. That is the emulator's symptom, reproduced where a browser can see it.
  */
-export function liveInputProbeRouteSource({ accessoryModule, flushModule }) {
+export function liveInputProbeRouteSource({ commitModule }) {
   return `import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextInput, View } from 'react-native'
-import { useTerminalLivePendingInputFlush } from ${JSON.stringify(flushModule)}
-import { useTerminalLiveAccessoryInputCommit } from ${JSON.stringify(accessoryModule)}
+import { useTerminalLiveInputCommit } from ${JSON.stringify(commitModule)}
 
 const HANDLE = ${JSON.stringify(LIVE_INPUT_HANDLE)}
 
@@ -45,39 +47,26 @@ export default function LiveInputProbeRoute() {
   })
   const [liveInputCapture, setLiveInputCapture] = useState('')
   const {
-    applyLiveInputMirror,
     clearPendingLiveInputCommit,
-    flushPendingLiveInputText,
-    heldLiveInputTextRef,
-    liveInputComposingRef,
-    pendingLiveInputHandleRef,
-    sentLiveInputTextRef,
-    waitForPendingLiveInputFlush
-  } = useTerminalLivePendingInputFlush({
+    handleLiveInputAccessoryBytes,
+    handleLiveInputChange,
+    handleLiveInputKeyPress,
+    handleLiveInputSubmit
+  } = useTerminalLiveInputCommit({
+    activeHandle: HANDLE,
     activeHandleRef,
+    activeSessionTabType: 'terminal',
     activeSessionTabTypeRef,
+    connected: true,
     liveInputRef,
+    liveInputTerminalHandles: liveInputTerminalHandlesRef.current,
     liveInputTerminalHandlesRef,
     sendLiveTerminalInputRef,
     setLiveInputCapture
   })
-  const onInteraction = useCallback(() => {}, [])
-  const commitAccessoryInput = useTerminalLiveAccessoryInputCommit({
-    activeHandle: HANDLE,
-    applyLiveInputMirror,
-    clearPendingLiveInputCommit,
-    flushPendingLiveInputText,
-    heldLiveInputTextRef,
-    liveInputComposingRef,
-    liveInputRef,
-    liveInputTerminalHandles: liveInputTerminalHandlesRef.current,
-    onInteraction,
-    pendingLiveInputHandleRef,
-    sentLiveInputTextRef,
-    sendLiveTerminalInputRef,
-    setLiveInputCapture,
-    waitForPendingLiveInputFlush
-  })
+  const onSubmitEditing = useCallback(() => {
+    void handleLiveInputSubmit()
+  }, [handleLiveInputSubmit])
 
   // What use-mobile-session-startup.ts does on every session mount, in the same place.
   useEffect(() => {
@@ -87,16 +76,15 @@ export default function LiveInputProbeRoute() {
   useEffect(() => {
     globalThis.__orcaLiveInputProbe = {
       type: (text) => {
-        setLiveInputCapture(text)
-        return applyLiveInputMirror(HANDLE, text)
+        handleLiveInputChange({ nativeEvent: { text } })
       },
       clear: () => {
         clearPendingLiveInputCommit()
       },
-      accessory: (input) => commitAccessoryInput(input),
+      accessory: (input) => handleLiveInputAccessoryBytes(input),
       sent: () => [...sentRef.current]
     }
-  }, [applyLiveInputMirror, clearPendingLiveInputCommit, commitAccessoryInput])
+  }, [clearPendingLiveInputCommit, handleLiveInputAccessoryBytes, handleLiveInputChange])
 
   return (
     <View testID="live-input-probe">
@@ -104,7 +92,13 @@ export default function LiveInputProbeRoute() {
         ref={liveInputRef}
         nativeID=${JSON.stringify(LIVE_INPUT_FIELD_ID)}
         value={liveInputCapture}
-        onChangeText={setLiveInputCapture}
+        onChange={handleLiveInputChange}
+        onKeyPress={handleLiveInputKeyPress}
+        onSubmitEditing={onSubmitEditing}
+        blurOnSubmit={false}
+        autoCapitalize="none"
+        autoCorrect={false}
+        spellCheck={false}
         style={{ fontSize: 16 }}
       />
     </View>

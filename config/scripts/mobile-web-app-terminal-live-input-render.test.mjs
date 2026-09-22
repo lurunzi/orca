@@ -79,10 +79,7 @@ beforeAll(async () => {
   // Extensionless, so the bundler picks a `.web.ts` sibling exactly as it would for a real route.
   await writeFile(
     join(routeDir, 'live-input-probe.tsx'),
-    liveInputProbeRouteSource({
-      accessoryModule: join(terminalDir, 'use-terminal-live-accessory-input-commit'),
-      flushModule: join(terminalDir, 'use-terminal-live-pending-input-flush')
-    })
+    liveInputProbeRouteSource({ commitModule: join(terminalDir, 'use-terminal-live-input-commit') })
   )
   const built = await buildMobileWebAppBundle({
     appDir,
@@ -186,6 +183,65 @@ describeRender(
 
       await page.evaluate(() => globalThis.__orcaLiveInputProbe.clear())
 
+      expect(await fieldValue(page)).toBe('')
+      expect(errors).toEqual([])
+      await page.close()
+    }, 300_000)
+
+    it('clears the field when Enter submits, the way it does natively', async () => {
+      // The emulator's second page-only line: the command ran and the Live input row kept showing
+      // the text that had just been sent. Keys go in through the browser because the thing under
+      // test is react-native-web's keydown handler, which is what turns Enter into onSubmitEditing.
+      const { errors, page } = await openProbe()
+      await page.focus(`#${LIVE_INPUT_FIELD_ID}`)
+      await page.keyboard.type('ls')
+      await page.waitForFunction(
+        (id) => document.getElementById(id)?.value === 'ls',
+        LIVE_INPUT_FIELD_ID,
+        { timeout: 30_000, polling: 100 }
+      )
+
+      await page.keyboard.press('Enter')
+
+      await page.waitForFunction(
+        () => (globalThis.__orcaLiveInputProbe.sent() ?? []).includes('\r'),
+        undefined,
+        { timeout: 30_000, polling: 100 }
+      )
+      expect(await fieldValue(page)).toBe('')
+      expect(errors).toEqual([])
+      await page.close()
+    }, 300_000)
+
+    it('submits when Enter arrives with the keyboard composition still open', async () => {
+      // The emulator's page-only defect. An Android soft keyboard holds a composition over the
+      // word being typed, so the Enter keydown carries `isComposing: true` — and that is exactly
+      // the condition react-native-web reads to decide `onSubmitEditing` must not fire. Native
+      // Android has no such suppression: its editor action fires and the field clears.
+      const { errors, page } = await openProbe()
+      await page.focus(`#${LIVE_INPUT_FIELD_ID}`)
+      const input = await page.context().newCDPSession(page)
+      await input.send('Input.imeSetComposition', {
+        text: 'ls',
+        selectionStart: 2,
+        selectionEnd: 2
+      })
+      await page.waitForFunction(
+        (id) => document.getElementById(id)?.value === 'ls',
+        LIVE_INPUT_FIELD_ID,
+        { timeout: 30_000, polling: 100 }
+      )
+
+      await page.keyboard.press('Enter')
+
+      // The held composition is committed to the terminal first, then the carriage return, which
+      // is the order the native path produces for the same keystroke.
+      await page.waitForFunction(
+        () => globalThis.__orcaLiveInputProbe.sent().includes('\r'),
+        undefined,
+        { timeout: 30_000, polling: 100 }
+      )
+      expect(await page.evaluate(() => globalThis.__orcaLiveInputProbe.sent())).toEqual(['ls', '\r'])
       expect(await fieldValue(page)).toBe('')
       expect(errors).toEqual([])
       await page.close()
