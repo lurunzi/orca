@@ -260,6 +260,39 @@ describeRender(
       await page.close()
     }, 300_000)
 
+    it("clears the field when the key bar's Enter chip ends the line", async () => {
+      // The device trace's variant (a), which is what shots/23 actually was: the chip emits no DOM
+      // key event at all, so react-native-web's submit handling never runs and the accessory hook
+      // is the only thing that could end the field's editing session. It did not, and the next
+      // keystrokes appended to the text still sitting there.
+      const { errors, page } = await openProbe()
+      await page.focus(`#${LIVE_INPUT_FIELD_ID}`)
+      await page.keyboard.type('ls')
+      await page.waitForFunction(
+        (id) => document.getElementById(id)?.value === 'ls',
+        LIVE_INPUT_FIELD_ID,
+        { timeout: 30_000, polling: 100 }
+      )
+
+      await page.evaluate(() => globalThis.__orcaLiveInputProbe.accessory({ bytes: '\r' }))
+
+      // Exactly once, whichever branch carries it: the hook sends the control itself or defers to
+      // the caller, and a fix that did both would double the command.
+      await page.waitForFunction(
+        () => (globalThis.__orcaLiveInputProbe.sent() ?? []).includes('\r'),
+        undefined,
+        { timeout: 30_000, polling: 100 }
+      )
+      expect(await page.evaluate(() => globalThis.__orcaLiveInputProbe.sent())).toEqual([
+        'l',
+        's',
+        '\r'
+      ])
+      expect(await fieldValue(page)).toBe('')
+      expect(errors).toEqual([])
+      await page.close()
+    }, 300_000)
+
     it('edits the field from the accessory bar and mirrors the erase to the terminal', async () => {
       // The second write site: an accessory Backspace is a local edit, so the hook writes the
       // shortened text into the field itself and the mirror diff sends the PTY erase. On the page

@@ -83,7 +83,16 @@ export default function LiveInputProbeRoute() {
       clear: () => {
         clearPendingLiveInputCommit()
       },
-      accessory: (input) => handleLiveInputAccessoryBytes(input),
+      // What use-mobile-session-terminal-send-actions.ts does with the result: 'allow-raw' means
+      // the hook declined the input and the caller puts the bytes on the wire itself. Modelled
+      // here so the check can see a control sent twice, or not at all.
+      accessory: async (input) => {
+        const result = await handleLiveInputAccessoryBytes(input)
+        if (result.kind === 'allow-raw') {
+          await sendLiveTerminalInputRef.current(HANDLE, input.bytes)
+        }
+        return result
+      },
       sent: () => [...sentRef.current]
     }
   }, [clearPendingLiveInputCommit, handleLiveInputAccessoryBytes, handleLiveInputChange])
