@@ -1,13 +1,9 @@
-import type { NativeChatComposerInput } from './native-chat-composer-input'
+import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
 import { useAppStore } from '../../store'
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
 import { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
-import {
-  applyMentionSuggestion,
-  EMPTY_HISTORY,
-  type HistoryState
-} from './native-chat-composer-state'
+import { EMPTY_HISTORY, type HistoryState } from './native-chat-composer-state'
 import { useNativeChatDraft } from './use-native-chat-draft'
 import { useNativeChatLaunchDraftAdoption } from './use-native-chat-launch-draft-adoption'
 import { NativeChatComposerField } from './NativeChatComposerField'
@@ -69,6 +65,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       onSlashCommand,
       onSwitchToTerminal,
       readTerminalScreen,
+      readTerminalPromptSuggestion,
       launchSeed,
       structuredTransport
     },
@@ -149,10 +146,6 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       ? [true, !canSend]
       : [targetPtyId !== null, targetPtyId === null || !canSend]
 
-    const syncCaret = useCallback((el: NativeChatComposerInput) => {
-      setCaret(el.selectionStart ?? el.value.length)
-    }, [])
-
     const attachments = useNativeChatComposerAttachments({
       attachmentScopeKey: paneKey,
       allowWithoutTarget: Boolean(structuredTransport),
@@ -189,15 +182,17 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       ? !hasPty || !onStop
       : disabled || hasPendingAttachment || (draft.trim() === '' && imageAttachments.length === 0)
 
-    const { insertTypedText, focus } = useNativeChatTypedInsertion({
-      textareaRef,
-      caret,
-      draft,
-      setDraft,
-      setCaret,
-      setHistory,
-      setActiveSuggestion
-    })
+    const { insertTypedText, focus, handleDraftChange, handleSelect, acceptMention } =
+      useNativeChatTypedInsertion({
+        textareaRef,
+        caret,
+        draft,
+        setDraft,
+        setCaret,
+        setHistory,
+        setActiveSuggestion,
+        onDraftOrCaretChange: handleDraftOrCaretChange
+      })
 
     const { attachExternalPaths, resolveAttachmentOwner } = useNativeChatExternalAttachments({
       terminalTabId,
@@ -345,7 +340,23 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       [dispatchPtyPickerCommand, sendStructured, structuredTransport]
     )
 
+    const promptSuggestion = useNativeChatPromptSuggestion({
+      scopeKey: structuredTransport?.sessionId ?? targetPtyId ?? paneKey,
+      enabled:
+        agent === 'claude' &&
+        !disabled &&
+        !isWorking &&
+        !isDictating &&
+        imageAttachments.length === 0,
+      draft,
+      suggestion: structuredTransport?.promptSuggestion,
+      readTerminalSuggestion: structuredTransport ? undefined : readTerminalPromptSuggestion,
+      inputRef: textareaRef,
+      insertTypedText
+    })
     const handleKeyDown = useNativeChatComposerKeyDown({
+      acceptPromptSuggestion: promptSuggestion.accept,
+      dismissPromptSuggestion: promptSuggestion.dismiss,
       autocomplete,
       activeSuggestion,
       draft,
@@ -362,22 +373,17 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       setHistory
     })
 
-    const handleDraftChange = useCallback(
-      (value: string, element: NativeChatComposerInput) => {
-        setDraft(value)
-        setHistory((prev) => ({ entries: prev.entries, index: null }))
-        syncCaret(element)
-        handleDraftOrCaretChange(value, element.selectionStart ?? value.length)
-        setActiveSuggestion(0)
-      },
-      [handleDraftOrCaretChange, setDraft, syncCaret]
-    )
-
     return (
       <NativeChatComposerField
         composerScopeKey={paneKey}
         textareaRef={textareaRef}
         draft={draft}
+        promptSuggestion={promptSuggestion.promptSuggestion}
+        onAcceptPromptSuggestion={() => {
+          if (!imeEnterGesture.isComposing()) {
+            promptSuggestion.accept()
+          }
+        }}
         disabled={disabled}
         hasPty={hasPty}
         canSend={canSend}
@@ -393,11 +399,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         isDictationHoldMode={voiceSettings?.dictationMode === 'hold'}
         imeEnterGesture={imeEnterGesture}
         onDraftChange={handleDraftChange}
-        onTextareaSelect={(element) => {
-          syncCaret(element)
-          handleDraftOrCaretChange(element.value, element.selectionStart ?? element.value.length)
-          setActiveSuggestion(0)
-        }}
+        onTextareaSelect={handleSelect}
         onKeyDown={handleKeyDown}
         onImeSettled={(element) => {
           if (element.value !== draft) {
@@ -413,12 +415,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
           if (autocomplete.mode !== 'mention') {
             return
           }
-          const result = applyMentionSuggestion(draft, caret, autocomplete.query)
-          setDraft(result.draft)
-          setCaret(result.caret)
-          const textarea = textareaRef.current
-          textarea?.focus()
-          requestAnimationFrame(() => textarea?.setSelectionRange(result.caret, result.caret))
+          acceptMention(autocomplete.query)
         }}
         onRemoveImageAttachment={(id) => removeImageAttachment(id)}
         onAttach={pickAttachment}

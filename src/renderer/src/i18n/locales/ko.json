@@ -14813,7 +14813,8 @@
         "skillScopeBuiltIn": "내장",
         "skillScopePlugin": "플러그인",
         "skillsLoaded": "스킬 로드 완료",
-        "noCommands": "일치하는 명령어가 없습니다"
+        "noCommands": "일치하는 명령어가 없습니다",
+        "acceptPromptSuggestion": "추천 프롬프트 사용"
       },
       "tool": {
         "running": "실행 중…",

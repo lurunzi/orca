@@ -14736,7 +14736,8 @@
         "skillScopeBuiltIn": "組み込み",
         "skillScopePlugin": "プラグイン",
         "skillsLoaded": "スキルを読み込みました",
-        "noCommands": "一致するコマンドがありません"
+        "noCommands": "一致するコマンドがありません",
+        "acceptPromptSuggestion": "提案されたプロンプトを使用"
       },
       "tool": {
         "running": "実行中…",

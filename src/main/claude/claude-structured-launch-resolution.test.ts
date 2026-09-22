@@ -119,6 +119,7 @@ describe('claude structured launch resolution', () => {
     })
     expect(first.options).toEqual({
       includePartialMessages: true,
+      promptSuggestions: true,
       settingSources: [...CLAUDE_DEFAULT_SETTING_SOURCES],
       supportedDialogKinds: [],
       extraArgs: { 'replay-user-messages': null },
