@@ -78,6 +78,9 @@ export function decodeClaudeTranscriptLine(
   if (!record) {
     return null
   }
+  if (record.type === 'attachment') {
+    return decodeQueuedHumanCommand(record, fallbackId)
+  }
   const role = record.type
   if (role !== 'user' && role !== 'assistant') {
     return null
@@ -126,6 +129,31 @@ export function decodeClaudeTranscriptLine(
     role: claudeMessageRole(role, blocks),
     blocks,
     timestamp,
+    source: 'transcript'
+  }
+}
+
+function decodeQueuedHumanCommand(
+  record: Record<string, unknown>,
+  fallbackId: string
+): NativeChatMessage | null {
+  const attachment = asRecord(record.attachment)
+  if (
+    attachment?.type !== 'queued_command' ||
+    attachment.commandMode !== 'prompt' ||
+    attachment.humanTurn !== true ||
+    asRecord(attachment.origin)?.kind !== 'human' ||
+    typeof attachment.prompt !== 'string' ||
+    !attachment.prompt.trim()
+  ) {
+    return null
+  }
+  // Why: Claude records mid-turn human input here, without a separate user row to reconcile its pending echo.
+  return {
+    id: extractString(record.uuid) ?? fallbackId,
+    role: 'user',
+    blocks: claudeContentBlocks(attachment.prompt),
+    timestamp: parseTimestamp(record.timestamp),
     source: 'transcript'
   }
 }
