@@ -24,7 +24,13 @@ export function useShellPageBack(args: {
   // Held rather than depended on: both are rebuilt by the caller's render, and an effect keyed on
   // them would tear the registration down and put it back on every frame of the page beneath it.
   const latest = useRef(args)
-  latest.current = args
+  // Written from an effect, not during render, which React replays and discards. Seeded by the
+  // `useRef` above, so the two effects below read this render's values on the first mount. No
+  // dependency list, because the caller builds a fresh object every render and there is nothing to
+  // compare; declared first, so it lands before the two that read it.
+  useEffect(() => {
+    latest.current = args
+  })
 
   useEffect(() => {
     if (!claimed || Platform.OS !== 'android') {

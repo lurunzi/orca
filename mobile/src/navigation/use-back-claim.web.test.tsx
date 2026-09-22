@@ -1,18 +1,23 @@
 import { createElement } from 'react'
 import { act, create, type ReactTestRenderer } from 'react-test-renderer'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPageBackConsumers } from '../mobile-web-shell/bridge/page-back-consumers'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import {
+  createPageBackConsumers,
+  type PageBackConsumers
+} from '../mobile-web-shell/bridge/page-back-consumers'
+
+/** The document this hook claims into: the real stack, and what it said. */
+type PageBackProbe = {
+  claims: boolean[]
+  unclaimed: Mock
+  /** Null stands for a tree outside the page's provider, which has no stack at all. */
+  consumers: PageBackConsumers | null
+}
 
 // Built in `beforeEach` rather than at `vi.hoisted`, which runs before this file's own imports:
 // the real stack is what the hook is measured against, and a fake answering its edges would be a
 // second copy of the rule.
-const page = vi.hoisted(() => ({
-  claims: [] as boolean[],
-  unclaimed: vi.fn(),
-  consumers: null as ReturnType<
-    typeof import('../mobile-web-shell/bridge/page-back-consumers').createPageBackConsumers
-  > | null
-}))
+const page = vi.hoisted((): PageBackProbe => ({ claims: [], unclaimed: vi.fn(), consumers: null }))
 
 vi.mock('../transport/client-context.web', () => ({
   usePageBridgeClientIfPresent: () =>
@@ -21,7 +26,7 @@ vi.mock('../transport/client-context.web', () => ({
 
 import { useBackClaim } from './use-back-claim.web'
 
-function stack(): NonNullable<typeof page.consumers> {
+function stack(): PageBackConsumers {
   if (page.consumers === null) {
     throw new Error('the page back stack was not built for this case')
   }

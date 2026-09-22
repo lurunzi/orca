@@ -18,7 +18,13 @@ export type BackClaim = (() => boolean) | null
  */
 export function useBackClaim(claim: BackClaim): void {
   const latest = useRef(claim)
-  latest.current = claim
+  // From an effect rather than during render, which React replays and discards. Seeded by the
+  // `useRef` above and declared before the registration, so the handler below reads this render's
+  // claim from its first press on. No dependency list: the caller rebuilds the handler every
+  // render, which is the whole reason it is held rather than depended on.
+  useEffect(() => {
+    latest.current = claim
+  })
   const claimed = claim !== null
 
   useEffect(() => {

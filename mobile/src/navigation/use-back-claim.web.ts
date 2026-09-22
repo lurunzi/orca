@@ -17,7 +17,12 @@ export function useBackClaim(claim: BackClaim): void {
   // there is no shell to claim from, so nothing is claimed and the key stays where it was.
   const client = usePageBridgeClientIfPresent()
   const latest = useRef({ claim, client })
-  latest.current = { claim, client }
+  // From an effect rather than during render, which React replays and discards. Seeded by the
+  // `useRef` above and declared before the registration, so that one claims against this render's
+  // client. No dependency list, for the reason the values are held at all.
+  useEffect(() => {
+    latest.current = { claim, client }
+  })
   const claimed = claim !== null && client !== null
 
   useEffect(() => {
