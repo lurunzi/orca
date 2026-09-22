@@ -213,7 +213,9 @@ export function buildNativeChatSessionOptionSnapshot(args: {
   liveTransport: NativeChatLiveOptionTransport
 }): SessionOptionDescriptor[] {
   const { catalog, models, record, mode, modelLabel, liveTransport } = args
-  if (models.length === 0) {
+  const modelAction = actionForApply(catalog.modelApply, record.model, mode, liveTransport)
+  // A live agent picker discovers its own choices, even without a host model catalog.
+  if (models.length === 0 && !modelAction) {
     return []
   }
   const modelTracked = record.model
@@ -228,7 +230,6 @@ export function buildNativeChatSessionOptionSnapshot(args: {
   const trackedModelId = typeof modelTracked?.value === 'string' ? modelTracked.value : null
   const defaultModelId = cliDefaultModelId(catalog, models, trackedModelId)
   const effectiveModelId = trackedModelId ?? defaultModelId
-  const modelAction = actionForApply(catalog.modelApply, modelTracked, mode, liveTransport)
   const snapshot: SessionOptionDescriptor[] = [
     {
       id: 'model',

@@ -17,6 +17,9 @@ import {
   type AiVaultSession
 } from '../../../../shared/ai-vault-types'
 import { translate } from '@/i18n/i18n'
+import { openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
+import { activateAndRevealWorktree } from '@/lib/worktree-activation'
+import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { FirstPromptCard } from './ai-vault-first-prompt-card'
 import { sessionDetailConversationTurns, sessionPromptPreview } from './ai-vault-session-display'
 import { SessionSubagentsSection } from './AiVaultSessionSubagents'
@@ -67,6 +70,10 @@ export function SessionInlineDetails({
   const promptPreview = sessionPromptPreview(session)
   const detailTurns = sessionDetailConversationTurns(session, 3)
   const worktreeDisplay = worktreeInfo
+  const transcriptWorktreeId =
+    session.agent === 'cursor' && parseExecutionHostId(session.executionHostId)?.kind !== 'ssh'
+      ? worktreeInfo?.worktreeId
+      : null
 
   return (
     <div
@@ -84,8 +91,23 @@ export function SessionInlineDetails({
       showResumeInNewTab ||
       onContinueInNewSession ||
       onResumeInNewChat ||
+      transcriptWorktreeId ||
       onOpenLog ? (
         <div className="flex flex-wrap items-center gap-1.5 border-b border-sidebar-border/80 bg-sidebar-accent/15 px-3 py-2">
+          {transcriptWorktreeId ? (
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => {
+                if (openCursorTranscriptTab(session, transcriptWorktreeId)) {
+                  activateAndRevealWorktree(transcriptWorktreeId)
+                }
+              }}
+            >
+              <MessagesSquare className="size-3.5" />
+              {translate('components.native-chat.openTranscript', 'Open conversation')}
+            </Button>
+          ) : null}
           {showResumeInWorktree ? (
             <Button
               type="button"

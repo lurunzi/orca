@@ -33,7 +33,9 @@ export const SYNTHETIC_AGENT_TITLE_PROFILES: Record<string, SyntheticAgentTitleP
   cursor: {
     workingLabel: 'Cursor Agent',
     permissionLabel: 'Cursor - action required',
-    idleLabel: 'Cursor ready'
+    idleLabel: 'Cursor ready',
+    // Cursor re-emits its session title on redraw; synthetic frames fight that title.
+    synthesizeWorkingTitle: false
   },
   opencode: {
     workingLabel: 'OpenCode',

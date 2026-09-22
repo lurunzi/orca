@@ -5,6 +5,7 @@ import type { TuiAgent } from './tui-agent'
 export const RESUMABLE_TUI_AGENTS = [
   'claude',
   'codex',
+  'cursor',
   'gemini',
   'antigravity',
   'opencode',
@@ -259,6 +260,8 @@ export function getAgentResumeArgv(
       return providerSession.key === 'session_id' ? ['claude', '--resume', id] : null
     case 'codex':
       return providerSession.key === 'session_id' ? ['codex', 'resume', id] : null
+    case 'cursor':
+      return providerSession.key === 'conversation_id' ? ['cursor-agent', '--resume', id] : null
     case 'gemini':
       return providerSession.key === 'session_id' ? ['gemini', '--resume', id] : null
     case 'antigravity':
