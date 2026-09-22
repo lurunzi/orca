@@ -8,6 +8,14 @@ import {
 } from './agent-session-resume'
 
 describe('agent session resume metadata', () => {
+  it('resumes Cursor worker conversations by their provider id', () => {
+    expect(isResumableTuiAgent('cursor')).toBe(true)
+    expect(getAgentResumeArgv('cursor', { key: 'conversation_id', id: 'worker-id' })).toEqual([
+      'cursor-agent',
+      '--resume',
+      'worker-id'
+    ])
+  })
   it('preserves the Antigravity hook transcript path for host-owned chat reads', () => {
     expect(
       extractAgentProviderSession('antigravity', {

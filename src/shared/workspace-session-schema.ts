@@ -132,7 +132,16 @@ const tabSchema = z.object({
   worktreeId: z.string(),
   executionHostId: executionHostIdSchema.optional(),
   contentType: tabContentTypeSchema,
-  agentSessionAgent: z.enum(['codex', 'claude']).optional().catch(undefined),
+  agentSessionAgent: z.enum(['codex', 'claude', 'cursor']).optional().catch(undefined),
+  agentTranscript: z
+    .object({
+      agent: z.literal('cursor'),
+      sessionId: z.string().min(1),
+      transcriptPath: z.string().min(1),
+      runtimeEnvironmentId: z.string().min(1).nullable()
+    })
+    .optional()
+    .catch(undefined),
   // Why: a structured terminal tab must recover its durable host session after
   // restart; omitting this additive field silently routes it back through PTY.
   structuredSessionId: z.string().min(1).optional().catch(undefined),

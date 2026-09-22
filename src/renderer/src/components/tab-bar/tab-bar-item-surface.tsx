@@ -1,8 +1,7 @@
 import React from 'react'
 import { resolveTerminalTabTitle } from '../../../../shared/tab-title-resolution'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import type { TuiAgent } from '../../../../shared/tui-agent'
-import { isAgentSessionHandleProvider } from '../../../../shared/agent-session-provider-handle'
+import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import type { OpenFile } from '../../store/slices/editor'
 import { canSwitchNativeChatView } from '../native-chat/native-chat-availability'
 import { resolveNativeChatTabAgentEvidence } from './native-chat-tab-agent-evidence'
@@ -237,8 +236,8 @@ export function renderTabBarItems({
         color: item.data.color,
         sortOrder: item.data.sortOrder,
         createdAt: item.data.createdAt,
-        ...(isAgentSessionHandleProvider(item.data.agentSessionAgent)
-          ? { launchAgent: item.data.agentSessionAgent as TuiAgent }
+        ...(isTuiAgent(item.data.agentSessionAgent)
+          ? { launchAgent: item.data.agentSessionAgent }
           : {})
       }
       return (

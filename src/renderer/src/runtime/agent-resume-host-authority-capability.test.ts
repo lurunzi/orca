@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { RESUMABLE_TUI_AGENTS } from '../../../shared/agent-session-resume'
 import {
+  AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY,
   AGENT_SESSION_KIMI_RESUME_RUNTIME_CAPABILITY,
   AGENT_SESSION_OPENCODE2_RESUME_RUNTIME_CAPABILITY,
   AGENT_SESSION_OMP_RESUME_PATH_RUNTIME_CAPABILITY,
@@ -9,6 +10,12 @@ import {
 import { agentResumeHostAuthorityCapability } from './agent-resume-host-authority-capability'
 
 describe('agentResumeHostAuthorityCapability', () => {
+  it('gates Cursor resume behind its own advertised capability', () => {
+    expect(agentResumeHostAuthorityCapability('cursor')).toBe(
+      AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY
+    )
+    expect(RUNTIME_CAPABILITIES).toContain(AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY)
+  })
   it('gates OpenCode 2 resume behind its own advertised capability', () => {
     expect(agentResumeHostAuthorityCapability('opencode2')).toBe(
       AGENT_SESSION_OPENCODE2_RESUME_RUNTIME_CAPABILITY
@@ -47,6 +54,7 @@ describe('agentResumeHostAuthorityCapability', () => {
     ).toEqual({
       claude: undefined,
       codex: undefined,
+      cursor: AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY,
       gemini: undefined,
       antigravity: undefined,
       opencode: undefined,

@@ -17228,6 +17228,8 @@
       "empty": "No users found"
     },
     "native-chat": {
+      "externalTranscript": "External session · Read-only",
+      "openTranscript": "Open conversation",
       "taskList": {
         "title": "Tasks",
         "completed": "Completed",

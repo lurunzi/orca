@@ -256,6 +256,13 @@ export function getAiVaultAgentProviderSession(
   if (!isResumableTuiAgent(session.agent)) {
     return null
   }
+  if (session.agent === 'cursor') {
+    return {
+      key: 'conversation_id',
+      id: session.sessionId,
+      ...(session.filePath ? { transcriptPath: session.filePath } : {})
+    }
+  }
   if (session.agent === 'antigravity') {
     return { key: 'conversation_id', id: session.sessionId }
   }

@@ -162,7 +162,15 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusA
         ? rootContextPreservingPayload
         : {
             ...rootContextPreservingPayload,
-            payload: { ...rootContextPreservingPayload.payload, agentType: identity.agentType }
+            // Nested hooks must not pair the parent's agent type with a child's transcript.
+            ...(identity.inheritedFromActivePane
+              ? { providerSession: previous?.providerSession }
+              : {}),
+            payload: {
+              ...rootContextPreservingPayload.payload,
+              agentType: identity.agentType,
+              ...(identity.inheritedFromActivePane ? { model: previous?.payload.model } : {})
+            }
           }
     const effectivePayload = attachClaudePermissionToolUseId(previous, identityResolvedPayload)
     const boundaryAwarePayload = attachClaudeChildOnlyBoundary(previous, effectivePayload)

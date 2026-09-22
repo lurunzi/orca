@@ -174,6 +174,9 @@ export function prepareWebSessionTabsSnapshotBrowser(
   })()
   advanceWebSessionOpenFilesIndex(batchContext, nextOpenFiles, worktreeId)
   const retainedUnifiedTabs = currentUnifiedTabs.filter((tab) => {
+    if (tab.agentTranscript) {
+      return true
+    }
     if (tab.contentType === 'agent-session') {
       // A matching host row is authoritative; retaining the provisional tab beside its mirror
       // would briefly render two panes before lifecycle publication is recorded.
