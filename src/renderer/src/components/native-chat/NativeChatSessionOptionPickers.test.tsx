@@ -412,7 +412,15 @@ describe('NativeChatSessionOptionPickers', () => {
     }
   )
 
-  it('renders agent-picker routes as one action instead of radio choices', async () => {
+  it.each([
+    { choices: [] },
+    {
+      choices: [
+        { value: 'gpt-5.5', label: 'GPT-5.5' },
+        { value: 'gpt-5.2-codex', label: 'GPT-5.2 Codex' }
+      ]
+    }
+  ])('renders agent-picker routes even without catalog choices: %j', async ({ choices }) => {
     const invokeAction = vi.fn().mockResolvedValue({ snapshot: [] })
     const liveSurface = { ...surface, invokeAction }
     render(
@@ -422,10 +430,7 @@ describe('NativeChatSessionOptionPickers', () => {
           model({
             kind: {
               type: 'select',
-              choices: [
-                { value: 'gpt-5.5', label: 'GPT-5.5' },
-                { value: 'gpt-5.2-codex', label: 'GPT-5.2 Codex' }
-              ]
+              choices
             },
             valueSource: 'unknown',
             action: { type: 'agent-picker' }
