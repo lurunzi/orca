@@ -155,6 +155,9 @@ export type AgentSessionJournalBatch = {
 /** Host wall clock (ms epoch) stamped once per published frame; see `AgentSessionHistoryPage`. */
 type AgentSessionHostClockField = { hostNow?: number }
 
+/** Ephemeral composer text; omission preserves it, null clears it. */
+type AgentSessionPromptSuggestionField = { promptSuggestion?: string | null }
+
 export type AgentSessionSubscribeEvent =
   | ({
       type: 'snapshot'
@@ -167,7 +170,8 @@ export type AgentSessionSubscribeEvent =
       commands?: AgentSessionSlashCommand[] | null
       /** Latest provider-authored turn activity; optional for mixed-version hosts. */
       activity?: AgentSessionTurnActivity | null
-    } & AgentSessionHostClockField)
+    } & AgentSessionHostClockField &
+      AgentSessionPromptSuggestionField)
   | ({
       type: 'batch'
       sessionId: string
@@ -180,7 +184,8 @@ export type AgentSessionSubscribeEvent =
       commands?: AgentSessionSlashCommand[] | null
       /** Additive ephemeral state; it never creates or advances journal rows. */
       activity?: AgentSessionTurnActivity | null
-    } & AgentSessionHostClockField)
+    } & AgentSessionHostClockField &
+      AgentSessionPromptSuggestionField)
   | ({
       type: 'reset'
       sessionId: string
@@ -192,7 +197,8 @@ export type AgentSessionSubscribeEvent =
       /** Omitted when unchanged; null clears a previous provider catalog. */
       commands?: AgentSessionSlashCommand[] | null
       activity?: AgentSessionTurnActivity | null
-    } & AgentSessionHostClockField)
+    } & AgentSessionHostClockField &
+      AgentSessionPromptSuggestionField)
   | { type: 'end' }
 
 // ─── Status feed ────────────────────────────────────────────────────────────
