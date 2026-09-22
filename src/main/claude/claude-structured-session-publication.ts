@@ -6,6 +6,7 @@ import type { ClaudeJournalTranslator } from './claude-structured-journal-transl
 import type { ClaudeSession } from './claude-structured-session-state'
 import { ClaudeBackgroundTaskTracker } from './claude-background-task-tracker'
 import { ClaudeSlashCommandCatalog } from './claude-slash-command-catalog'
+import { ClaudeContextUsageTracker } from './claude-context-usage'
 
 export function createClaudeSessionPublication(input: {
   connection: ClaudeSession['connection']
@@ -61,6 +62,7 @@ export function createClaudeSessionPublication(input: {
       replayContentFallbackBlocked: false,
       backgroundTasks: new ClaudeBackgroundTaskTracker(),
       commands: new ClaudeSlashCommandCatalog(input.init.message, input.initialization),
+      contextUsage: new ClaudeContextUsageTracker(),
       dispatchSequence: 0,
       optionMutationSequence: 0,
       options: new Map(input.options),

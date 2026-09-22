@@ -1,7 +1,11 @@
 import type { NativeChatComposerInput } from './native-chat-composer-input'
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
 import { useAppStore } from '../../store'
-import { useNativeChatComposerInterrupt } from './use-native-chat-composer-interrupt'
+import {
+  useNativeChatComposerInterrupt,
+  useNativeChatComposerSend
+} from './use-native-chat-composer-send-actions'
+import { useNativeChatContextUsageSummary } from './use-native-chat-context-usage-summary'
 import { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
 import {
   applyMentionSuggestion,
@@ -62,6 +66,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       onOptimisticSendCanceled,
       onSlashCommand,
       answerCommandLocally,
+      contextUsage,
       onSwitchToTerminal,
       readTerminalScreen,
       launchSeed,
@@ -245,6 +250,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         paneKey
       })
     const sessionOptionsSurface = structuredTransport?.optionsSurface ?? ptySessionOptionsSurface
+    const contextUsageSummary = useNativeChatContextUsageSummary(structuredTransport, contextUsage)
     const sessionOptionsSnapshot = structuredTransport?.optionSnapshot ?? ptySessionOptionsSnapshot
 
     const sendStructured = useNativeChatStructuredComposerSend({
@@ -283,16 +289,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       clearImageAttachments,
       setNotice
     })
-    const send = useCallback(() => {
-      if (hasPendingAttachment) {
-        return
-      }
-      if (!structuredTransport) {
-        sendPty()
-      } else if ((draft.trim() !== '' || imageAttachments.length > 0) && !disabled) {
-        sendStructured(draft, imageAttachments)
-      }
-    }, [
+    const send = useNativeChatComposerSend({
       disabled,
       draft,
       hasPendingAttachment,
@@ -300,7 +297,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       sendPty,
       sendStructured,
       structuredTransport
-    ])
+    })
 
     const interrupt = useNativeChatComposerInterrupt({
       cancelPendingSends,
@@ -421,6 +418,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         onStop={interrupt}
         sessionOptionsSurface={sessionOptionsSurface}
         sessionOptionsSnapshot={sessionOptionsSnapshot}
+        contextUsage={contextUsageSummary}
         sessionOptionsPickerRequest={structuredTransport?.optionPickerRequest ?? null}
       />
     )

@@ -1,5 +1,9 @@
 import type { AgentSessionConversationCommand } from '../../../../shared/agent-session-conversation-command'
-import type { AgentSessionSlashCommand } from '../../../../shared/agent-session-wire'
+import type {
+  AgentSessionContextUsage,
+  AgentSessionSlashCommand
+} from '../../../../shared/agent-session-wire'
+import type { NativeChatContextUsage } from '../../../../shared/native-chat-context-usage'
 import type { AgentType } from '../../../../shared/agent-status-types'
 import type { StructuredAgentSessionCommandOutcome } from '../../../../shared/structured-agent-session-composer'
 import type {
@@ -24,6 +28,8 @@ export type NativeChatStructuredComposerTransport = {
   /** The `/` surface the running session reports. Absent keeps the curated
    *  per-agent catalog, which is what an older host leaves the client with. */
   sessionCommands?: readonly AgentSessionSlashCommand[]
+  /** The provider's latest context report; null until the host publishes one. */
+  contextUsage?: AgentSessionContextUsage | null
   worktreeId?: string
   onError: (message: string | null) => void
   runtime: 'local' | 'remote'
@@ -56,6 +62,8 @@ export type NativeChatComposerProps = {
   onSlashCommand?: (command: string, output?: string) => void
   /** The host's own answer to a command the agent must not see, or null to send it. */
   answerCommandLocally?: (command: string) => string | null
+  /** Terminal lane only: the context estimate derived from the transcript. */
+  contextUsage?: NativeChatContextUsage | null
   /** Picker-only agent commands continue in the hosted TUI after dispatch. */
   onSwitchToTerminal?: () => void
   /** Reads the hosted TUI's current rendered screen when chat is entered. */

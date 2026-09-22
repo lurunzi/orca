@@ -5,6 +5,7 @@ import type {
 } from './agent-session-journal-types'
 import type {
   AgentSessionBackgroundTaskState,
+  AgentSessionContextUsage,
   AgentSessionSlashCommand,
   AgentSessionHandoffStatus,
   AgentSessionHistoryPage,
@@ -35,6 +36,8 @@ export type StructuredAgentSessionState = {
   handoff: AgentSessionHandoffStatus | null
   backgroundTasks?: AgentSessionBackgroundTaskState | null
   commands?: AgentSessionSlashCommand[] | null
+  /** The provider's latest context report; null once a host says there is none. */
+  contextUsage?: AgentSessionContextUsage | null
   activity?: AgentSessionTurnActivity | null
   /** Absent until a frame from a host that stamps `hostNow` has been applied. */
   hostClock?: StructuredAgentHostClock
@@ -175,6 +178,7 @@ export function reduceStructuredAgentSession(
         state.activity
       ),
       commands: state.commands,
+      contextUsage: state.contextUsage,
       ...hostClockField(action.page.hostNow, receivedAt, state.hostClock)
     }
   }
@@ -208,6 +212,7 @@ export function reduceStructuredAgentSession(
     return {
       ...replacePage(event.page, event.fence, event.handoff, event.backgroundTasks, event.activity),
       commands: event.commands,
+      contextUsage: event.contextUsage,
       ...hostClockField(event.hostNow, receivedAt, state.hostClock)
     }
   }
@@ -230,6 +235,7 @@ export function reduceStructuredAgentSession(
     (event.fence === undefined || event.fence === state.fence) &&
     (event.handoff === undefined || event.handoff === state.handoff) &&
     (event.commands === undefined || event.commands === state.commands) &&
+    (event.contextUsage === undefined || event.contextUsage === state.contextUsage) &&
     backgroundTaskStatesEqual(backgroundTasks, state.backgroundTasks) &&
     activity?.turnId === state.activity?.turnId &&
     activity?.text === state.activity?.text &&
@@ -257,6 +263,7 @@ export function reduceStructuredAgentSession(
     error: undefined,
     handoff: event.handoff ?? state.handoff,
     commands: event.commands !== undefined ? event.commands : state.commands,
+    contextUsage: event.contextUsage !== undefined ? event.contextUsage : state.contextUsage,
     ...(backgroundTasks !== undefined ? { backgroundTasks } : {}),
     ...(activity !== undefined ? { activity } : {}),
     ...hostClockField(event.hostNow, receivedAt, state.hostClock)

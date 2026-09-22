@@ -11,13 +11,18 @@ import type {
 import {
   AGENT_SESSION_HISTORY_MAX_LIMIT,
   type AgentSessionBackgroundTaskState,
-  type AgentSessionSlashCommand,
   type AgentSessionHandoffStatus,
   type AgentSessionSubscribeEvent,
   type AgentSessionTurnActivity
 } from '../../../shared/agent-session-wire'
 import type { AgentSessionJournal } from '../agent-session-journal/journal-store'
 import { emptyAgentSessionBatch } from './agent-session-empty-batch'
+import {
+  agentSessionSideChannelsChanged,
+  applyAgentSessionSideChannels,
+  type AgentSessionSideChannelReaders,
+  type AgentSessionSideChannels
+} from './structured-agent-session-side-channels'
 import {
   createAgentSessionCatchUpReader,
   readAgentSessionHydrationPage
@@ -38,11 +43,11 @@ type Subscriber = {
   emit: AgentSessionSubscriberEmit
   cursor: AgentJournalCursor
   fence: number
-  commands?: AgentSessionSlashCommand[] | null
+  /** Last sent, so a batch restates only changes. */
+  sideChannels: AgentSessionSideChannels
 }
 
-export type AgentSessionSubscribersHooks = {
-  readCommands?: (sessionId: string) => AgentSessionSlashCommand[] | undefined
+export type AgentSessionSubscribersHooks = AgentSessionSideChannelReaders & {
   /** Fires after publications that can change journal content. */
   onJournalPublished?: (sessionId: string, journal: AgentSessionJournal) => void
   now?: () => number
@@ -74,7 +79,8 @@ export class AgentSessionSubscribers {
       sessionId: input.sessionId,
       emit: input.emit,
       cursor: input.cursor ?? { epoch: liveCursor.epoch, sequence: 0 },
-      fence: input.fence
+      fence: input.fence,
+      sideChannels: {}
     }
     const session = this.bySession.get(input.sessionId) ?? new Map<string, Subscriber>()
     session.set(input.id, subscriber)
@@ -259,10 +265,12 @@ export class AgentSessionSubscribers {
       const page = result.page
       const advanced = page.window.nextCursor.sequence > subscriber.cursor.sequence
       if (!advanced) {
-        const commandsChanged =
-          this.hooks.readCommands !== undefined &&
-          (this.hooks.readCommands(subscriber.sessionId) ?? null) !== subscriber.commands
-        if (handoff || emitCheckpoint || publishedActivity !== undefined || commandsChanged) {
+        if (
+          handoff ||
+          emitCheckpoint ||
+          publishedActivity !== undefined ||
+          agentSessionSideChannelsChanged(this.hooks, subscriber)
+        ) {
           this.emit(subscriber, {
             type: 'batch',
             sessionId: subscriber.sessionId,
@@ -307,13 +315,7 @@ export class AgentSessionSubscribers {
    *  unknown outcome or poison every later publication. */
   private emit(subscriber: Subscriber, event: AgentSessionSubscribeEvent): void {
     try {
-      const commands = this.hooks.readCommands?.(subscriber.sessionId) ?? null
-      const includeCommands =
-        this.hooks.readCommands !== undefined &&
-        event.type !== 'end' &&
-        (event.type !== 'batch' || commands !== subscriber.commands)
-      subscriber.emit(includeCommands ? { ...event, commands: commands ?? null } : event)
-      subscriber.commands = commands
+      subscriber.emit({ ...event, ...applyAgentSessionSideChannels(this.hooks, subscriber, event) })
     } catch {
       this.drop(subscriber)
     }

@@ -26,6 +26,7 @@ import type {
 import type {
   AgentSessionBackgroundTaskState,
   AgentSessionOptionsResult,
+  AgentSessionContextUsage,
   AgentSessionSlashCommand,
   AgentSessionWireRefusalCode
 } from '../../../shared/agent-session-wire'
@@ -226,6 +227,9 @@ export type StructuredAgentSessionAdapter = {
   /** The `/` surface the running provider reports for itself. Undefined when the
    *  provider never reports one, which is what keeps the client on its catalog. */
   readCommands?(sessionId: string): AgentSessionSlashCommand[] | undefined
+  /** The provider's latest context-window report. Undefined when the provider
+   *  never reported one, which leaves the client with nothing to show. */
+  readContextUsage?(sessionId: string): AgentSessionContextUsage | undefined
   /** Claims the live callback, commits the journal CAS while that claim is held, then answers it.
    *  A prompt cancel claims the same callback, so only one operation can commit. */
   answerPrompt(input: {

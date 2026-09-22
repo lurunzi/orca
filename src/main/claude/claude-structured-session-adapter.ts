@@ -1,4 +1,5 @@
 import { compactClaudeSession, observeClaudeCompaction } from './claude-structured-compaction'
+import { observeClaudeContextUsage } from './claude-context-usage-observation'
 import type {
   AgentSessionAcquisition,
   StructuredAgentSessionAcquireInput,
@@ -180,6 +181,15 @@ export class ClaudeStructuredSessionAdapter implements StructuredAgentSessionAda
     if (event.type === 'message' && session?.commands.observe(event.message)) {
       session.events?.publish()
     }
+    if (event.type === 'message' && session) {
+      observeClaudeContextUsage({
+        session,
+        message: event.message,
+        now: () => this.deps.now?.() ?? Date.now(),
+        timeoutMs: this.deps.requestTimeoutMs,
+        isCurrent: () => this.sessions.get(event.sessionId) === session
+      })
+    }
     observeClaudeCompaction(this.compactions, event, session?.translator)
     this.deps.onEvent?.(event)
     if (backgroundTasksChanged) {
@@ -246,6 +256,9 @@ export class ClaudeStructuredSessionAdapter implements StructuredAgentSessionAda
   }
   readCommands: NonNullable<StructuredAgentSessionAdapter['readCommands']> = (sessionId) =>
     this.sessions.get(sessionId)?.commands.commands
+  readContextUsage: NonNullable<StructuredAgentSessionAdapter['readContextUsage']> = (sessionId) =>
+    this.sessions.get(sessionId)?.contextUsage.contextUsage
+
   answerPrompt: StructuredAgentSessionAdapter['answerPrompt'] = (request) =>
     answerClaudeStructuredPrompt({ request, sessions: this.sessions })
   setOption: StructuredAgentSessionAdapter['setOption'] = (input) =>

@@ -6,6 +6,7 @@ import {
 import type { ClaudeSession } from './claude-structured-session-state'
 import { ClaudeBackgroundTaskTracker } from './claude-background-task-tracker'
 import { ClaudeSlashCommandCatalog } from './claude-slash-command-catalog'
+import { ClaudeContextUsageTracker } from './claude-context-usage'
 import {
   observeClaudeFastModeFacts,
   readClaudeStructuredSessionOptions
@@ -30,6 +31,7 @@ function sessionFor(setModel: ClaudeSession['connection']['setModel']): ClaudeSe
     replayContentFallbackBlocked: false,
     backgroundTasks: new ClaudeBackgroundTaskTracker(),
     commands: new ClaudeSlashCommandCatalog(),
+    contextUsage: new ClaudeContextUsageTracker(),
     dispatchSequence: 0,
     optionMutationSequence: 0,
     options: new Map(),
@@ -87,7 +89,8 @@ function fastModeSession(supportsFastMode: boolean | undefined) {
       }
     ],
     applyFlagSettings,
-    getSettings: async () => ({ effective: { fastMode: reportedFastMode } })
+    getSettings: async () => ({ effective: { fastMode: reportedFastMode } }),
+    getContextUsage: async () => ({})
   } as ClaudeSession['connection']
   return { session, applyFlagSettings }
 }

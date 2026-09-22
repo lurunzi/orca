@@ -183,6 +183,47 @@ describe('AgentSessionSubscribers', () => {
     expect(events[2]).toMatchObject({ type: 'batch', commands })
   })
 
+  it('publishes a changed context report the same way it publishes a changed catalog', async () => {
+    const journal = await journals.open({
+      identity: {
+        sessionId: SESSION,
+        workspaceId: 'workspace-1',
+        hostId: 'local',
+        agent: 'claude',
+        providerHandle: { kind: 'claude', sessionId: 'provider-1', leafUuid: null }
+      },
+      journalDir: join(root, 'context-journal')
+    })
+    const report = (usedTokens: number) => ({
+      model: 'claude-fable-5-1',
+      usedTokens,
+      windowTokens: 200_000,
+      percentage: Math.round(usedTokens / 2_000),
+      estimated: false,
+      categories: [],
+      capturedAt: usedTokens
+    })
+    let contextUsage: ReturnType<typeof report> | undefined
+    const events: AgentSessionSubscribeEvent[] = []
+    const subscribers = new AgentSessionSubscribers({ readContextUsage: () => contextUsage })
+    subscribers.open({
+      id: 'one',
+      sessionId: SESSION,
+      journal,
+      fence: 7,
+      emit: (event) => events.push(event)
+    })
+    expect(events[0]).toMatchObject({ type: 'snapshot', contextUsage: null })
+    contextUsage = report(10_000)
+    subscribers.publish(SESSION, journal)
+    expect(events[1]).toMatchObject({ type: 'batch', contextUsage })
+    subscribers.publish(SESSION, journal)
+    expect(events).toHaveLength(2)
+    contextUsage = report(20_000)
+    subscribers.publish(SESSION, journal)
+    expect(events[2]).toMatchObject({ type: 'batch', contextUsage })
+  })
+
   it('reports every content publication to the journal hook, subscribed or not', async () => {
     const journal = await journals.open({
       identity: {

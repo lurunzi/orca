@@ -53,7 +53,7 @@ import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
 import { useNativeChatLinkActions } from './use-native-chat-link-actions'
 import type { NativeChatResolvedViewProps } from './native-chat-view-types'
 import { useNativeChatFileLinkContext } from './use-native-chat-file-link-context'
-import { useNativeChatLocalCommandAnswer } from './use-native-chat-local-command-answer'
+import { useNativeChatDerivations } from './use-native-chat-derivations'
 import { matchNativeChatSplitShortcut } from './native-chat-split-shortcut'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
 import { formatShortcutLabel } from '@/hooks/useShortcutLabel'
@@ -229,7 +229,7 @@ export function NativeChatResolvedView({
     },
     [commandMarkerScope]
   )
-  const answerCommandLocally = useNativeChatLocalCommandAnswer(agent, session.messages)
+  const { answerCommandLocally, contextUsage } = useNativeChatDerivations(agent, session.messages)
 
   const launchPromptMessage = useMemo(
     () => launchPromptAsMessage(paneLaunchPrompt, session.messages),
@@ -443,6 +443,7 @@ export function NativeChatResolvedView({
           onOptimisticSendCanceled={onOptimisticSendCanceled}
           onSlashCommand={onSlashCommand}
           answerCommandLocally={answerCommandLocally}
+          contextUsage={contextUsage}
           onSwitchToTerminal={onSwitchToTerminal}
           readTerminalScreen={readTerminalScreen}
           launchSeed={{ ...launchDraftSignal, ownsTabWideLaunchDraft }}

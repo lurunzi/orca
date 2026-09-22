@@ -165,6 +165,8 @@ export type AgentSessionSubscribeEvent =
       backgroundTasks?: AgentSessionBackgroundTaskState | null
       /** Omitted when unchanged; null clears a previous provider catalog. */
       commands?: AgentSessionSlashCommand[] | null
+      /** Omitted when unchanged; null clears a previous report. */
+      contextUsage?: AgentSessionContextUsage | null
       /** Latest provider-authored turn activity; optional for mixed-version hosts. */
       activity?: AgentSessionTurnActivity | null
     } & AgentSessionHostClockField)
@@ -178,6 +180,8 @@ export type AgentSessionSubscribeEvent =
       backgroundTasks?: AgentSessionBackgroundTaskState | null
       /** Omitted when unchanged; null clears a previous provider catalog. */
       commands?: AgentSessionSlashCommand[] | null
+      /** Omitted when unchanged; null clears a previous report. */
+      contextUsage?: AgentSessionContextUsage | null
       /** Additive ephemeral state; it never creates or advances journal rows. */
       activity?: AgentSessionTurnActivity | null
     } & AgentSessionHostClockField)
@@ -191,6 +195,8 @@ export type AgentSessionSubscribeEvent =
       backgroundTasks?: AgentSessionBackgroundTaskState | null
       /** Omitted when unchanged; null clears a previous provider catalog. */
       commands?: AgentSessionSlashCommand[] | null
+      /** Omitted when unchanged; null clears a previous report. */
+      contextUsage?: AgentSessionContextUsage | null
       activity?: AgentSessionTurnActivity | null
     } & AgentSessionHostClockField)
   | { type: 'end' }
@@ -355,6 +361,39 @@ export type AgentSessionFastModeSupport = {
   supported: boolean
   /** Provider-authored or host-normalized reason code; presentation may ignore unknown values. */
   reason?: string
+}
+
+/** One row of the provider's context breakdown. `used` content occupies the
+ *  window, `free` is what remains, `buffer` is the compaction reserve, and
+ *  `deferred` rows are out-of-window tool schemas listed for awareness and
+ *  excluded from the usage math. */
+export type AgentSessionContextUsageCategory = {
+  /** Display name as the provider renders it, e.g. `Messages`. Classify by `kind`. */
+  name: string
+  tokens: number
+  kind: 'used' | 'free' | 'buffer' | 'deferred'
+}
+
+/** What the running provider reports about its context window: a snapshot the
+ *  host replaces whenever the provider reports again, never a running total. */
+export type AgentSessionContextUsage = {
+  /** Model the usage was measured for. */
+  model: string
+  usedTokens: number
+  /** The window the usage is measured against; a compaction policy can make it
+   *  smaller than the model's limit. */
+  windowTokens: number
+  /** Rounded and unclamped, so an over-limit session reads above 100. */
+  percentage: number
+  /** Present when used exceeds the window; `kind` says how the window was resolved. */
+  overLimit?: { tokensOver: number; kind: 'hard_limit' | 'compaction_window' }
+  /** Where the provider compacts on its own, when it reported a threshold. */
+  autoCompactAtTokens?: number
+  /** True when counts came from a local estimate rather than a provider count. */
+  estimated: boolean
+  categories: AgentSessionContextUsageCategory[]
+  /** Host clock when the report was captured. */
+  capturedAt: number
 }
 
 /** One entry of the `/` menu the running provider reports for itself. `skill`

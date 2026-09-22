@@ -475,3 +475,45 @@ it('applies catalog-only checkpoints without replacing transcript or submission 
   const { commands: _commands, ...oldEvent } = event
   expect(reduceStructuredAgentSession(updated, { type: 'event', event: oldEvent })).toBe(updated)
 })
+
+it('carries the provider context report beside the catalog without touching the transcript', () => {
+  const contextUsage = {
+    model: 'claude-fable-5-1',
+    usedTokens: 29_400,
+    windowTokens: 200_000,
+    percentage: 15,
+    estimated: false,
+    categories: [],
+    capturedAt: 5
+  }
+  const state = reduceStructuredAgentSession(EMPTY_STRUCTURED_AGENT_SESSION, {
+    type: 'event',
+    event: {
+      type: 'snapshot',
+      sessionId: 'session-a',
+      fence: 1,
+      page: hydrationPage([item('one', 1)], [submission(1)]),
+      contextUsage: null
+    }
+  })
+  expect(state.contextUsage).toBeNull()
+  const event = {
+    type: 'batch' as const,
+    sessionId: 'session-a',
+    fence: 1,
+    contextUsage,
+    batch: { cursor: state.cursor!, items: [], removedItemIds: [], submissions: [] }
+  }
+  const updated = reduceStructuredAgentSession(state, { type: 'event', event })
+  expect(updated.contextUsage).toBe(contextUsage)
+  expect(updated.items).toBe(state.items)
+  expect(reduceStructuredAgentSession(updated, { type: 'event', event })).toBe(updated)
+  const { contextUsage: _contextUsage, ...oldEvent } = event
+  expect(reduceStructuredAgentSession(updated, { type: 'event', event: oldEvent })).toBe(updated)
+  expect(
+    reduceStructuredAgentSession(updated, {
+      type: 'history-page',
+      page: hydrationPage([item('one', 1)], [submission(1)])
+    }).contextUsage
+  ).toBe(contextUsage)
+})

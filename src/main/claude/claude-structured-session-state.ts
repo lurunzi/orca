@@ -18,6 +18,7 @@ import type {
 } from '../../shared/agent-session-wire'
 import type { ClaudeBackgroundTaskTracker } from './claude-background-task-tracker'
 import type { ClaudeSlashCommandCatalog } from './claude-slash-command-catalog'
+import type { ClaudeContextUsageTracker } from './claude-context-usage'
 
 export type ClaudeAuthDiagnostic = {
   apiKeySourceConfigured: boolean
@@ -156,6 +157,8 @@ export type ClaudeSession = {
   /** The `/` surface the CLI reports for itself; seeded from init, kept current
    *  by later init and `commands_changed` frames. */
   commands: ClaudeSlashCommandCatalog
+  /** The CLI's latest context-window report, refreshed when a turn settles. */
+  contextUsage: ClaudeContextUsageTracker
   /** Monotonic fence advanced when a dispatch starts, including unresolved dispatches. */
   dispatchSequence: number
   /** Fences overlapping option writes so a late completion cannot restore stale state. */
