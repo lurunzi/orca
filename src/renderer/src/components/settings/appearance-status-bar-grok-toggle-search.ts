@@ -1,14 +1,8 @@
-import type { StatusBarItem } from '../../../../shared/ui-chrome-types'
+import type { StatusBarToggleSearchEntry } from './status-bar-toggle-search-entry'
 import { translate } from '@/i18n/i18n'
 import { translateSearchKeyword } from './settings-search-keywords'
 
-export function getGrokStatusBarToggleSearchEntry(): {
-  id: StatusBarItem
-  title: string
-  description: string
-  keywords: string[]
-  toggleDescription: string
-} {
+export function getGrokStatusBarToggleSearchEntry(): StatusBarToggleSearchEntry {
   return {
     id: 'grok',
     title: translate('auto.components.settings.appearance.search.f8e2a1c4b6', 'Grok Usage'),

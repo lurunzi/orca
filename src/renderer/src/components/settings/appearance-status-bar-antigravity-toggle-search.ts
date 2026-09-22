@@ -1,14 +1,8 @@
-import type { StatusBarItem } from '../../../../shared/ui-chrome-types'
+import type { StatusBarToggleSearchEntry } from './status-bar-toggle-search-entry'
 import { translate } from '@/i18n/i18n'
 import { translateSearchKeyword } from './settings-search-keywords'
 
-export function getAntigravityStatusBarToggleSearchEntry(): {
-  id: StatusBarItem
-  title: string
-  description: string
-  keywords: string[]
-  toggleDescription: string
-} {
+export function getAntigravityStatusBarToggleSearchEntry(): StatusBarToggleSearchEntry {
   return {
     id: 'antigravity',
     title: translate(

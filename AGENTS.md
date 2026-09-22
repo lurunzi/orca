@@ -43,6 +43,8 @@ Avoid type assertions except `as const`. Unavoidable casts need a line-specific 
 
 # Verifying Changes
 
+- **Local source checks**: `pnpm ci:local` runs lint, typecheck, and unit tests using the CI commands. `pnpm ci:local --focused [test paths]` scopes lint to changed code and tests to the given paths. Packaging, rendered Electron, mobile, and other operating systems remain separate checks.
+
 - **Typecheck**: `pnpm tc` (or `tc:node` / `tc:cli` / `tc:web`)
 - **Test**: `pnpm test [path/to/file.test.ts]`
 - **Lint**: `oxlint`, or `pnpm run check:code-quality:changed` for changed files (full `pnpm lint` is slow); format with `pnpm format`
