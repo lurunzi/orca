@@ -364,8 +364,20 @@ const MERMAID_PACKAGE = 'node_modules/mermaid/'
  *
  *   modules        4210 -> 4211   (+1)
  *   local modules  1024 -> 1025   (+1)
+ *
+ * The page's claim on the device Back key joins beside those, and for the same reason. Two local
+ * modules, nothing vendored, each named rather than left inside the total:
+ * `src/navigation/use-back-claim.web.ts`, the seam every sheet and the handoff take, which enters
+ * through `route-handoff.web.ts`; and `src/mobile-web-shell/bridge/bridge-page-back.ts`, the two
+ * names the lane is negotiated under, which the envelope this route already reads imports.
+ * `page-back-consumers.ts` is not a third: it hangs off `bridge-rpc-client.ts`, and no route
+ * closure carries that — the page's client is built by the entry. Re-measured on this branch with
+ * all five generators run first.
+ *
+ *   modules        4207 -> 4209   (+2)
+ *   local modules  1021 -> 1023   (+2)
  */
-const SESSION_ROUTE_MODULES = 4207
+const SESSION_ROUTE_MODULES = 4209
 
 /** What the page enters this route through once the route is a switch with a `.web.tsx` sibling. */
 const ROUTE_ENTRY = [

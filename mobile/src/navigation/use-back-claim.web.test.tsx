@@ -15,7 +15,8 @@ const page = vi.hoisted(() => ({
 }))
 
 vi.mock('../transport/client-context.web', () => ({
-  usePageBridgeClient: () => ({ claimBack: (claim: () => boolean) => stack().claim(claim) })
+  usePageBridgeClientIfPresent: () =>
+    page.consumers === null ? null : { claimBack: (claim: () => boolean) => stack().claim(claim) }
 }))
 
 import { useBackClaim } from './use-back-claim.web'
@@ -57,6 +58,17 @@ beforeEach(() => {
 describe('a page screen claiming the device Back key from the shell', () => {
   it('claims nothing while the caller has nothing to do with the key', () => {
     render(null)
+    expect(page.claims).toEqual([])
+  })
+
+  /**
+   * `MountedBottomDrawer` is shared with the native app and renders under no page provider in a
+   * bare mount. Throwing for want of a shell would take the screen down; there is simply no key to
+   * claim, so nothing is claimed.
+   */
+  it('claims nothing, and does not throw, outside the page bridge', () => {
+    page.consumers = null
+    expect(() => render(() => true)).not.toThrow()
     expect(page.claims).toEqual([])
   })
 
