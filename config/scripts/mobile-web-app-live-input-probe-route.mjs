@@ -16,6 +16,8 @@
 export const LIVE_INPUT_HANDLE = 'live-input-probe-handle'
 /** RN Web renders `nativeID` as the DOM `id`, which is how the check reads the field back. */
 export const LIVE_INPUT_FIELD_ID = 'live-input-probe-field'
+/** The buffered command field, which holds a draft until Enter sends it. */
+export const BUFFERED_FIELD_ID = 'buffered-probe-field'
 
 /**
  * The route: `useTerminalLiveInputCommit`, wired to a `TextInput` the way the command dock wires
@@ -28,19 +30,23 @@ export const LIVE_INPUT_FIELD_ID = 'live-input-probe-field'
  * cannot honour throws under `PageFaultBoundary` and reaches the shell as a page fault rather than
  * as a rejected probe call. That is the emulator's symptom, reproduced where a browser can see it.
  */
-export function liveInputProbeRouteSource({ bindingModule, commitModule }) {
+export function liveInputProbeRouteSource({ bindingModule, commitModule, draftsModule }) {
   return `import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextInput, View } from 'react-native'
 import { useTerminalLiveInputCommit } from ${JSON.stringify(commitModule)}
 import { useTerminalLiveInputSubmitBinding } from ${JSON.stringify(bindingModule)}
+import { useBufferedTerminalDrafts } from ${JSON.stringify(draftsModule)}
 
 const HANDLE = ${JSON.stringify(LIVE_INPUT_HANDLE)}
+const EMPTY_HANDLES = new Set()
 
 export default function LiveInputProbeRoute() {
   const liveInputRef = useRef(null)
   const activeHandleRef = useRef(HANDLE)
   const activeSessionTabTypeRef = useRef('terminal')
+  const [liveInputEnabled, setLiveInputEnabled] = useState(true)
   const liveInputTerminalHandlesRef = useRef(new Set([HANDLE]))
+  const liveInputTerminalHandles = liveInputEnabled ? liveInputTerminalHandlesRef.current : EMPTY_HANDLES
   const sentRef = useRef([])
   const sendLiveTerminalInputRef = useRef((handle, payload) => {
     sentRef.current.push(payload)
@@ -60,7 +66,7 @@ export default function LiveInputProbeRoute() {
     activeSessionTabTypeRef,
     connected: true,
     liveInputRef,
-    liveInputTerminalHandles: liveInputTerminalHandlesRef.current,
+    liveInputTerminalHandles,
     liveInputTerminalHandlesRef,
     sendLiveTerminalInputRef,
     setLiveInputCapture
@@ -69,6 +75,25 @@ export default function LiveInputProbeRoute() {
     void handleLiveInputSubmit()
   }, [handleLiveInputSubmit])
   const bindLiveInputField = useTerminalLiveInputSubmitBinding(liveInputRef, onSubmitEditing)
+
+  const activeHandleStateRef = useRef(HANDLE)
+  const bufferedDrafts = useBufferedTerminalDrafts({
+    activeHandle: HANDLE,
+    activeHandleRef: activeHandleStateRef
+  })
+  const bufferedSentRef = useRef([])
+  // The three calls use-mobile-session-terminal-send-actions.ts makes in handleSend, in that
+  // order, with the RPC replaced by a record: begin clears the draft, the write goes out, settle
+  // keeps it cleared. Nothing here re-implements the ordering rule, which its own source census pins.
+  const sendBufferedDraft = useCallback(() => {
+    const draft = bufferedDrafts.input
+    if (draft.length === 0) {
+      return
+    }
+    const send = bufferedDrafts.beginBufferedTerminalDraftSend(HANDLE, draft)
+    bufferedSentRef.current.push(draft)
+    bufferedDrafts.settleBufferedTerminalDraftSend(send)
+  }, [bufferedDrafts])
 
   // What use-mobile-session-startup.ts does on every session mount, in the same place.
   useEffect(() => {
@@ -93,7 +118,9 @@ export default function LiveInputProbeRoute() {
         }
         return result
       },
-      sent: () => [...sentRef.current]
+      sent: () => [...sentRef.current],
+      bufferedSent: () => [...bufferedSentRef.current],
+      setLiveInputEnabled
     }
   }, [clearPendingLiveInputCommit, handleLiveInputAccessoryBytes, handleLiveInputChange])
 
@@ -107,6 +134,18 @@ export default function LiveInputProbeRoute() {
         onKeyPress={handleLiveInputKeyPress}
         onSubmitEditing={onSubmitEditing}
         blurOnSubmit={false}
+        autoCapitalize="none"
+        autoCorrect={false}
+        spellCheck={false}
+        style={{ fontSize: 16 }}
+      />
+      <TextInput
+        nativeID=${JSON.stringify(BUFFERED_FIELD_ID)}
+        value={bufferedDrafts.input}
+        onChangeText={bufferedDrafts.setInput}
+        onSubmitEditing={sendBufferedDraft}
+        blurOnSubmit={false}
+        returnKeyType="send"
         autoCapitalize="none"
         autoCorrect={false}
         spellCheck={false}
