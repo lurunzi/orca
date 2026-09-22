@@ -35,15 +35,11 @@ export function MobileSessionCommandDock({ controller }: { controller: MobileSes
     terminalModes,
     canPaste,
     dictationMode,
-    liveInputRef,
     commandInputRef,
     handleLiveInputChange,
     handleLiveInputKeyPress,
-    handleLiveInputSubmit,
-    getLiveInteractionGeneration,
-    getSendCompletionGeneration,
-    dismissKeyboardAfterAgentSend,
-    activeSessionTab,
+    bindLiveInputField,
+    submitLiveInput,
     canSend,
     canCompose,
     liveInputEnabled,
@@ -293,25 +289,12 @@ export function MobileSessionCommandDock({ controller }: { controller: MobileSes
               onDictationCancel={cancelDictation}
             />
             <TextInput
-              ref={liveInputRef}
+              ref={bindLiveInputField}
               style={styles.liveInputCapture}
               value={liveInputCapture}
               onChange={handleLiveInputChange}
               onKeyPress={handleLiveInputKeyPress}
-              onSubmitEditing={() => {
-                const submit = handleLiveInputSubmit()
-                const sendOrigin = {
-                  tab: activeSessionTab,
-                  generation: getSendCompletionGeneration(),
-                  interaction: getLiveInteractionGeneration()
-                }
-                void submit.then((accepted) =>
-                  dismissKeyboardAfterAgentSend(
-                    sendOrigin,
-                    accepted && sendOrigin.interaction === getLiveInteractionGeneration()
-                  )
-                )
-              }}
+              onSubmitEditing={submitLiveInput}
               placeholder=""
               showSoftInputOnFocus
               autoCapitalize="none"

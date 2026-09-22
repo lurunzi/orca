@@ -19,19 +19,20 @@ export const LIVE_INPUT_FIELD_ID = 'live-input-probe-field'
 
 /**
  * The route: `useTerminalLiveInputCommit`, wired to a `TextInput` the way the command dock wires
- * it, down to `blurOnSubmit={false}` — which is what decides whether react-native-web's keydown
- * handler reaches `onSubmitEditing` at all. Keystrokes therefore enter through the browser, not
- * through a handle that calls the hook directly.
+ * it, down to `blurOnSubmit={false}` and the submit binding on the ref — which together decide
+ * whether Enter reaches `onSubmitEditing` at all. Keystrokes therefore enter through the browser,
+ * not through a handle that calls the hook directly.
  *
  * The mount effect is the other point. `use-mobile-session-startup.ts` calls
  * `clearPendingLiveInputCommit()` from an effect on every session mount, so a write the page
  * cannot honour throws under `PageFaultBoundary` and reaches the shell as a page fault rather than
  * as a rejected probe call. That is the emulator's symptom, reproduced where a browser can see it.
  */
-export function liveInputProbeRouteSource({ commitModule }) {
+export function liveInputProbeRouteSource({ bindingModule, commitModule }) {
   return `import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextInput, View } from 'react-native'
 import { useTerminalLiveInputCommit } from ${JSON.stringify(commitModule)}
+import { useTerminalLiveInputSubmitBinding } from ${JSON.stringify(bindingModule)}
 
 const HANDLE = ${JSON.stringify(LIVE_INPUT_HANDLE)}
 
@@ -67,6 +68,7 @@ export default function LiveInputProbeRoute() {
   const onSubmitEditing = useCallback(() => {
     void handleLiveInputSubmit()
   }, [handleLiveInputSubmit])
+  const bindLiveInputField = useTerminalLiveInputSubmitBinding(liveInputRef, onSubmitEditing)
 
   // What use-mobile-session-startup.ts does on every session mount, in the same place.
   useEffect(() => {
@@ -89,7 +91,7 @@ export default function LiveInputProbeRoute() {
   return (
     <View testID="live-input-probe">
       <TextInput
-        ref={liveInputRef}
+        ref={bindLiveInputField}
         nativeID=${JSON.stringify(LIVE_INPUT_FIELD_ID)}
         value={liveInputCapture}
         onChange={handleLiveInputChange}

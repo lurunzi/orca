@@ -79,7 +79,10 @@ beforeAll(async () => {
   // Extensionless, so the bundler picks a `.web.ts` sibling exactly as it would for a real route.
   await writeFile(
     join(routeDir, 'live-input-probe.tsx'),
-    liveInputProbeRouteSource({ commitModule: join(terminalDir, 'use-terminal-live-input-commit') })
+    liveInputProbeRouteSource({
+      bindingModule: join(terminalDir, 'use-terminal-live-input-submit-binding'),
+      commitModule: join(terminalDir, 'use-terminal-live-input-commit')
+    })
   )
   const built = await buildMobileWebAppBundle({
     appDir,
@@ -208,6 +211,13 @@ describeRender(
         undefined,
         { timeout: 30_000, polling: 100 }
       )
+      // Exact, not `includes`: react-native-web cancels every keydown it submits on, so the page's
+      // own line-break binding must stay silent here rather than send a second carriage return.
+      expect(await page.evaluate(() => globalThis.__orcaLiveInputProbe.sent())).toEqual([
+        'l',
+        's',
+        '\r'
+      ])
       expect(await fieldValue(page)).toBe('')
       expect(errors).toEqual([])
       await page.close()

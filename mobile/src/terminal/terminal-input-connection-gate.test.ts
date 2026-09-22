@@ -98,7 +98,7 @@ describe('session route offline-compose wiring', () => {
 
     const liveCapture = sourceSlice(
       commandDockSource,
-      'ref={liveInputRef}',
+      'ref={bindLiveInputField}',
       'importantForAutofill="no"'
     )
     expect(liveCapture).toContain('editable={canSend}')
