@@ -241,7 +241,10 @@ describeRender(
         undefined,
         { timeout: 30_000, polling: 100 }
       )
-      expect(await page.evaluate(() => globalThis.__orcaLiveInputProbe.sent())).toEqual(['ls', '\r'])
+      expect(await page.evaluate(() => globalThis.__orcaLiveInputProbe.sent())).toEqual([
+        'ls',
+        '\r'
+      ])
       expect(await fieldValue(page)).toBe('')
       expect(errors).toEqual([])
       await page.close()
