@@ -1,4 +1,5 @@
 import type { NativeChatComposerInput } from './native-chat-composer-input'
+import { z } from 'zod'
 import { useCallback, useRef, useState, type RefObject } from 'react'
 import { translate } from '@/i18n/i18n'
 import {
@@ -7,6 +8,11 @@ import {
 } from './native-chat-composer-target'
 import type { NativeChatComposerImageAttachment } from './NativeChatComposerField'
 import { setBoundedScopeCacheEntry } from './native-chat-composer-scope-cache'
+import {
+  clearNativeChatComposerStorageForTests,
+  readNativeChatComposerStorage,
+  writeNativeChatComposerStorage
+} from './native-chat-composer-storage'
 import type { NativeChatResolvedPathOptions } from './native-chat-resolved-path-ownership'
 import { useNativeChatResolvedPathAttachments } from './use-native-chat-resolved-path-attachments'
 
@@ -210,11 +216,23 @@ function removeAttachmentById(
 }
 
 const attachmentCache = new Map<string, NativeChatComposerImageAttachment[]>()
+const storedAttachmentsSchema = z.array(
+  z.object({ id: z.string(), path: z.string().min(1), connectionId: z.string().optional() })
+)
 
 export function readNativeChatAttachmentCache(
   scopeKey: string
 ): NativeChatComposerImageAttachment[] {
-  return [...(attachmentCache.get(scopeKey) ?? [])]
+  let attachments = attachmentCache.get(scopeKey)
+  if (!attachments) {
+    attachments = storedAttachmentsSchema.safeParse(
+      readNativeChatComposerStorage('attachments', scopeKey)
+    ).data
+    if (attachments?.length) {
+      setBoundedScopeCacheEntry(attachmentCache, scopeKey, attachments)
+    }
+  }
+  return [...(attachments ?? [])]
 }
 
 function writeNativeChatAttachmentCache(
@@ -231,12 +249,17 @@ function writeNativeChatAttachmentCache(
     .map(({ previewUrl: _previewUrl, ...attachment }) => attachment)
   if (attachments.length === 0) {
     attachmentCache.delete(scopeKey)
+    writeNativeChatComposerStorage('attachments', scopeKey, undefined)
     return
   }
   // LRU-bounded so pending attachments for permanently-removed panes can't accumulate.
   setBoundedScopeCacheEntry(attachmentCache, scopeKey, [...attachments])
+  writeNativeChatComposerStorage('attachments', scopeKey, attachments)
 }
 
-export function clearNativeChatAttachmentCacheForTests(): void {
+export function clearNativeChatAttachmentCacheForTests(preserveStorage = false): void {
   attachmentCache.clear()
+  if (!preserveStorage) {
+    clearNativeChatComposerStorageForTests('attachments')
+  }
 }

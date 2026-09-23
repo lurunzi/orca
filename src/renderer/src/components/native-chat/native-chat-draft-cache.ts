@@ -1,16 +1,41 @@
 import type { JSONContent } from '@tiptap/react'
-// Module-level cache for the composer's in-progress draft text, keyed by the
-// same stable pane scope as image attachments. The composer unmounts when the
-// pane toggles back to the hosted terminal, so without this the typed-but-unsent
-// draft would be lost on every TUI/GUI round-trip. Mirrors the attachment cache
-// so both halves of an unsent message survive toggles and reconnects.
-
+import { z } from 'zod'
 import { setBoundedScopeCacheEntry } from './native-chat-composer-scope-cache'
+import {
+  clearNativeChatComposerStorageForTests,
+  readNativeChatComposerStorage,
+  writeNativeChatComposerStorage
+} from './native-chat-composer-storage'
+
+const documentSchema: z.ZodType<JSONContent> = z.lazy(() =>
+  z.object({
+    type: z.enum(['doc', 'paragraph', 'text', 'hardBreak', 'nativeChatSkill']),
+    text: z.string().optional(),
+    attrs: z.object({ token: z.string() }).optional(),
+    content: z.array(documentSchema).optional()
+  })
+)
+const draftSchema = z.object({
+  text: z.string(),
+  document: documentSchema.optional().catch(undefined)
+})
 
 const draftCache = new Map<string, { text: string; document?: JSONContent }>()
 
+function readDraft(scopeKey: string): { text: string; document?: JSONContent } | undefined {
+  const cached = draftCache.get(scopeKey)
+  if (cached) {
+    return cached
+  }
+  const stored = draftSchema.safeParse(readNativeChatComposerStorage('draft', scopeKey)).data
+  if (stored?.text) {
+    setBoundedScopeCacheEntry(draftCache, scopeKey, stored)
+  }
+  return stored
+}
+
 export function readNativeChatDraftCache(scopeKey: string): string {
-  return draftCache.get(scopeKey)?.text ?? ''
+  return readDraft(scopeKey)?.text ?? ''
 }
 
 export function writeNativeChatDraftCache(scopeKey: string, draft: string): void {
@@ -18,25 +43,29 @@ export function writeNativeChatDraftCache(scopeKey: string, draft: string): void
   // scope key never resurrects cleared text.
   if (draft === '') {
     draftCache.delete(scopeKey)
+    writeNativeChatComposerStorage('draft', scopeKey, undefined)
     return
   }
   // LRU-bounded so unsent drafts for permanently-removed panes can't accumulate.
-  setBoundedScopeCacheEntry(draftCache, scopeKey, {
+  const previous = readDraft(scopeKey)
+  const next = {
     text: draft,
-    document:
-      draftCache.get(scopeKey)?.text === draft ? draftCache.get(scopeKey)?.document : undefined
-  })
+    document: previous?.text === draft ? previous.document : undefined
+  }
+  setBoundedScopeCacheEntry(draftCache, scopeKey, next)
+  writeNativeChatComposerStorage('draft', scopeKey, next)
 }
 
 export function clearNativeChatDraftCacheForTests(): void {
   draftCache.clear()
+  clearNativeChatComposerStorageForTests('draft')
 }
 
 export function readNativeChatDraftDocument(
   scopeKey: string,
   text: string
 ): JSONContent | undefined {
-  const cached = draftCache.get(scopeKey)
+  const cached = readDraft(scopeKey)
   return cached?.text === text ? cached.document : undefined
 }
 
@@ -47,7 +76,9 @@ export function writeNativeChatDraftDocument(
 ): void {
   if (!text) {
     draftCache.delete(scopeKey)
+    writeNativeChatComposerStorage('draft', scopeKey, undefined)
     return
   }
   setBoundedScopeCacheEntry(draftCache, scopeKey, { text, document })
+  writeNativeChatComposerStorage('draft', scopeKey, { text, document })
 }
