@@ -6,6 +6,7 @@ import { fetchGrokRateLimits } from '../grok-fetcher'
 import { readGrokAuthSession } from '../grok-auth'
 import { fetchMiniMaxRateLimits } from '../minimax/minimax-fetcher'
 import { fetchOpenCodeGoRateLimits } from '../opencode-go-usage-fetcher'
+import { probeLocalAntigravityLanguageServer } from '../antigravity-local-probe'
 import { RateLimitServiceFetchPolicy } from './service-fetch-policy'
 import type {
   ClaudeRuntimeAuthPreparation,
@@ -38,7 +39,8 @@ export type FetchAllCyclePrepared = {
     PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
-    PromiseSettledResult<ProviderRateLimits>
+    PromiseSettledResult<ProviderRateLimits>,
+    PromiseSettledResult<ProviderRateLimits | null>
   ]
   grokResultPromise: Promise<
     { status: 'fulfilled'; value: ProviderRateLimits } | { status: 'rejected'; reason: unknown }
@@ -148,7 +150,8 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
       opencodeGoResult,
       kimiResult,
       miniMaxResult,
-      cursorResult
+      cursorResult,
+      antigravityResult
     ] = await Promise.allSettled([
       claudeFetchGated
         ? Promise.resolve(previousState.claude as ProviderRateLimits)
@@ -183,7 +186,8 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
             endpointMode: miniMaxEndpoint,
             apiKey: miniMaxApiKey
           }),
-      fetchCursorRateLimits({ signal, previous: previousState.cursor })
+      fetchCursorRateLimits({ signal, previous: previousState.cursor }),
+      probeLocalAntigravityLanguageServer({ signal })
     ])
 
     if (signal.aborted) {
@@ -212,7 +216,8 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         opencodeGoResult,
         kimiResult,
         miniMaxResult,
-        cursorResult
+        cursorResult,
+        antigravityResult
       ],
       grokResultPromise
     }

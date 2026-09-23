@@ -10,6 +10,7 @@ import { fetchMiniMaxRateLimits } from './minimax/minimax-fetcher'
 import { fetchGrokRateLimits } from './grok-fetcher'
 import { readGrokAuthSession } from './grok-auth'
 import { fetchOpenCodeGoRateLimits } from './opencode-go-usage-fetcher'
+import { probeLocalAntigravityLanguageServer } from './antigravity-local-probe'
 import { hasMiniMaxSessionCookie } from '../minimax/minimax-cookie-store'
 
 export type Deferred<T> = {
@@ -110,6 +111,7 @@ export function resetRateLimitProviderMocks(): void {
   })
   vi.mocked(hasMiniMaxSessionCookie).mockReturnValue(false)
   vi.mocked(readGrokAuthSession).mockReturnValue({ status: 'missing' })
+  vi.mocked(probeLocalAntigravityLanguageServer).mockResolvedValue(null)
 }
 
 type RateLimitWindow = Parameters<RateLimitService['attach']>[0]
