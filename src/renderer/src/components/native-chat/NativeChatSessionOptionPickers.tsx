@@ -77,30 +77,47 @@ function PickerTrigger(props: {
           value0: props.tooltipLabel,
           value1: props.label
         })
-  const button = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="xs"
-      aria-label={accessibleName}
-      disabled={props.disabled}
-      onClick={props.onClick}
-      className="max-w-48"
-    >
-      <span className="truncate">{props.label}</span>
-      {props.onClick ? null : <ChevronDown className="size-3" />}
-    </Button>
-  )
+  if (props.onClick) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            aria-label={accessibleName}
+            disabled={props.disabled}
+            onClick={props.onClick}
+            className="max-w-48"
+          >
+            <span className="truncate">{props.label}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          <PickerTooltipContent
+            label={props.tooltipLabel}
+            disabledReason={props.disabledReason}
+            dispatched={props.dispatched}
+          />
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        {props.onClick ? (
-          button
-        ) : (
-          <DropdownMenuTrigger asChild disabled={props.disabled}>
-            {button}
-          </DropdownMenuTrigger>
-        )}
+        <DropdownMenuTrigger asChild disabled={props.disabled}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            aria-label={accessibleName}
+            className="max-w-48 text-muted-foreground"
+          >
+            <span className="truncate">{props.label}</span>
+            <ChevronDown className="size-3" />
+          </Button>
+        </DropdownMenuTrigger>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <PickerTooltipContent
