@@ -36,6 +36,38 @@ export type StructuredSessionIdentityRow = {
   revoked_at: string | null
 }
 
+function readText(value: object, key: string): string | null {
+  const field: unknown = Reflect.get(value, key)
+  return typeof field === 'string' ? field : null
+}
+
+/** Checked read: a row is a credential, so a malformed one is absent rather than trusted. */
+function readIdentityRow(value: unknown): StructuredSessionIdentityRow | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined
+  }
+  const [terminalHandle, sessionId, paneKey, worktreeId, hostScope, createdAt] = [
+    'terminal_handle',
+    'session_id',
+    'pane_key',
+    'worktree_id',
+    'host_scope',
+    'created_at'
+  ].map((key) => readText(value, key))
+  if (!terminalHandle || !sessionId || !paneKey || !worktreeId || !hostScope || !createdAt) {
+    return undefined
+  }
+  return {
+    terminal_handle: terminalHandle,
+    session_id: sessionId,
+    pane_key: paneKey,
+    worktree_id: worktreeId,
+    host_scope: hostScope,
+    created_at: createdAt,
+    revoked_at: readText(value, 'revoked_at')
+  }
+}
+
 export function insertStructuredSessionIdentity(
   this: OrchestrationDb,
   row: Pick<
@@ -56,24 +88,28 @@ export function getActiveStructuredSessionIdentityByHandle(
   this: OrchestrationDb,
   terminalHandle: string
 ): StructuredSessionIdentityRow | undefined {
-  return this.db
-    .prepare(
-      `SELECT * FROM structured_session_identities
-        WHERE terminal_handle = ? AND revoked_at IS NULL`
-    )
-    .get(terminalHandle) as StructuredSessionIdentityRow | undefined
+  return readIdentityRow(
+    this.db
+      .prepare(
+        `SELECT * FROM structured_session_identities
+          WHERE terminal_handle = ? AND revoked_at IS NULL`
+      )
+      .get(terminalHandle)
+  )
 }
 
 export function getActiveStructuredSessionIdentityBySessionId(
   this: OrchestrationDb,
   sessionId: string
 ): StructuredSessionIdentityRow | undefined {
-  return this.db
-    .prepare(
-      `SELECT * FROM structured_session_identities
-        WHERE session_id = ? AND revoked_at IS NULL`
-    )
-    .get(sessionId) as StructuredSessionIdentityRow | undefined
+  return readIdentityRow(
+    this.db
+      .prepare(
+        `SELECT * FROM structured_session_identities
+          WHERE session_id = ? AND revoked_at IS NULL`
+      )
+      .get(sessionId)
+  )
 }
 
 export function listActiveStructuredSessionIdentities(
@@ -81,7 +117,9 @@ export function listActiveStructuredSessionIdentities(
 ): StructuredSessionIdentityRow[] {
   return this.db
     .prepare('SELECT * FROM structured_session_identities WHERE revoked_at IS NULL')
-    .all() as StructuredSessionIdentityRow[]
+    .all()
+    .map(readIdentityRow)
+    .filter((row) => row !== undefined)
 }
 
 /** Revoked rows are kept so an audit can still name the handle a Run was once bound to. */
