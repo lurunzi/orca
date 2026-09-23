@@ -27,6 +27,11 @@ import { hostname } from 'node:os'
 import { claudeStructuredAuthPolicyForSettings } from '../claude-accounts/claude-structured-auth-policy'
 import { probeAgentSessionProcessIdentity } from './agent-session-process-identity-probe'
 import { structuredAgentSessionTabId } from '../../shared/structured-agent-session-projection'
+import {
+  bindStructuredSessionCoordinatorIdentities,
+  installStructuredSessionIdentityLoader
+} from './structured-session-coordinator-identity'
+import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-registry'
 
 export class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithStructuredAgentSessionRecoverTuiOwner {
   async getWorktreePs(
@@ -140,6 +145,7 @@ export class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithStructuredAgent
    * should never open the record store.
    */
   async ensureStructuredAgentSessionHost(): Promise<void> {
+    installStructuredSessionIdentityLoader(() => this.getOrchestrationDb())
     await installStructuredAgentSessionHost({
       stateDirectory: getProfileUserDataPath(),
       hostId: LOCAL_EXECUTION_HOST_ID,
@@ -174,6 +180,14 @@ export class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithStructuredAgent
       ...(this.structuredAgentStatusSinkFn ? { statusSink: this.structuredAgentStatusSinkFn } : {}),
       handoffTransport: this.createStructuredAgentSessionHandoffTransport()
     })
+    const host = getStructuredAgentSessionHost()
+    if (host) {
+      bindStructuredSessionCoordinatorIdentities({
+        getDb: () => this.getOrchestrationDb(),
+        host,
+        onSessionActivity: (sessionId) => this.notifyStructuredSessionJournalActivity(sessionId)
+      })
+    }
   }
 
   protected createStructuredAgentSessionHandoffTransport(): StructuredAgentSessionHandoffTransport {

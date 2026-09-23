@@ -27,6 +27,7 @@ import { registerEphemeralVmHandlers } from '../ephemeral-vm'
 import { registerAiVaultHandlers } from '../ai-vault'
 import { registerAiVaultSearchHandlers } from '../ai-vault-search'
 import { registerNativeChatHandlers } from '../native-chat'
+import { registerOrchestrationIdentityHandlers } from '../orchestration-identity'
 import { registerNotificationHandlers } from '../notifications'
 import { registerNotebookHandlers } from '../notebook'
 import { registerOnboardingHandlers } from '../onboarding'
@@ -234,6 +235,7 @@ export function registerCoreHandlers(
       prepareRuntimeAiVaultSessionResume(app.getPath('userData'), environmentId, args)
   })
   registerNativeChatHandlers()
+  registerOrchestrationIdentityHandlers(runtime)
   registerClipboardHandlers(store)
   registerUpdaterHandlers(store)
   registerSpeechHandlers(store)

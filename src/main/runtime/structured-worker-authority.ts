@@ -11,12 +11,31 @@ import type { AgentSessionRecord } from '../../shared/agent-session-record'
 import type { RuntimeTerminalState } from '../../shared/runtime-types'
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-registry'
 import type { OrchestrationDb } from './orchestration/db'
+import type { StructuredSessionIdentityRow } from './orchestration/db/structured-session-identity/structured-session-identity-store'
 import {
   isStructuredWorkerHandle,
   structuredWorkerIdentities,
+  structuredWorkerProcessIncarnation,
   structuredWorkerRecordIsCurrent,
-  type StructuredWorkerIdentity
+  type StructuredWorkerIdentity,
+  type StructuredWorkerIdentityRow
 } from './structured-worker-identity'
+
+/** A session grant has no process row of its own; its lineage is the session, as for a worker. */
+export function structuredSessionIdentityRegistryRow(
+  row: Pick<
+    StructuredSessionIdentityRow,
+    'terminal_handle' | 'session_id' | 'pane_key' | 'worktree_id' | 'host_scope'
+  >
+): StructuredWorkerIdentityRow {
+  return {
+    terminal_handle: row.terminal_handle,
+    pane_key: row.pane_key,
+    process_incarnation: structuredWorkerProcessIncarnation(row.session_id),
+    worktree_id: row.worktree_id,
+    host_scope: row.host_scope
+  }
+}
 
 export type StructuredWorkerAuthority = {
   identity: StructuredWorkerIdentity
@@ -44,7 +63,13 @@ export function resolveStructuredWorkerIdentity(
     return known
   }
   const row = db?.getWorkerTerminalResourceByHandle?.(handle)
-  return row ? structuredWorkerIdentities.rehydrate(row) : null
+  if (row) {
+    return structuredWorkerIdentities.rehydrate(row)
+  }
+  const granted = db?.getActiveStructuredSessionIdentityByHandle?.(handle)
+  return granted
+    ? structuredWorkerIdentities.rehydrate(structuredSessionIdentityRegistryRow(granted), 'session')
+    : null
 }
 
 /** Identity plus a record that still proves this runtime owns the session. */

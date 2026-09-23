@@ -13,7 +13,7 @@ import {
 } from './structured-agent-session-unexpected-exit'
 
 export class StructuredAgentSessionEventRecovery {
-  private readonly sinkFailures = new Set<string>()
+  private readonly restarting = new Set<string>()
 
   constructor(
     private readonly context: {
@@ -32,11 +32,23 @@ export class StructuredAgentSessionEventRecovery {
   ) {}
 
   recoverAfterSinkFailure(sessionId: string, error: unknown): void {
-    if (this.sinkFailures.has(sessionId)) {
-      return
+    void this.restartProviderChild(
+      sessionId,
+      `journal sink failure: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+
+  /**
+   * Stops the provider child and lets the ordinary exit recovery re-acquire it, which re-reads the
+   * launch environment. Resolves true when a child was stopped. Callers wanting no visible
+   * interruption must gate on an idle session: a running turn is settled as interrupted.
+   */
+  restartProviderChild(sessionId: string, reason: string): Promise<boolean> {
+    if (this.restarting.has(sessionId)) {
+      return Promise.resolve(false)
     }
-    this.sinkFailures.add(sessionId)
-    void this.context
+    this.restarting.add(sessionId)
+    return this.context
       .serialize(sessionId, async () => {
         const session = this.context.sessions.get(sessionId)
         const stop =
@@ -53,15 +65,24 @@ export class StructuredAgentSessionEventRecovery {
         return {
           type: 'ended',
           sessionId,
-          reason: `journal sink failure: ${error instanceof Error ? error.message : String(error)}`,
+          reason,
           cause: 'unexpected-exit',
           fence,
           acquisitionGeneration
         } as const
       })
-      .then((event) => (event ? this.handle(event) : undefined))
-      .catch((recoveryError) => this.context.onBarrierError(sessionId, recoveryError))
-      .finally(() => this.sinkFailures.delete(sessionId))
+      .then(async (event) => {
+        if (!event) {
+          return false
+        }
+        await this.handle(event)
+        return true
+      })
+      .catch((recoveryError) => {
+        this.context.onBarrierError(sessionId, recoveryError)
+        return false
+      })
+      .finally(() => this.restarting.delete(sessionId))
   }
 
   async handle(event: StructuredAgentSessionLifecycleEvent): Promise<void> {

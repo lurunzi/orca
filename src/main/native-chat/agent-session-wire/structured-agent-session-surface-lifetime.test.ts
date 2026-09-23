@@ -592,6 +592,29 @@ describe('an unexpected provider exit', () => {
     ).runtimeState.eventSinkFor(SESSION)
   })
 
+  it('restarts an idle held child in place so the new acquisition re-reads its launch env', async () => {
+    await attach()
+    await host.hold(SESSION, SURFACE)
+
+    await expect(
+      host.eventRecovery.restartProviderChild(SESSION, 'identity granted')
+    ).resolves.toBe(true)
+
+    expect(closeSession).toHaveBeenCalledWith(SESSION)
+    expect(acquire).toHaveBeenCalledTimes(2)
+    expect(store.getRecord(SESSION)?.lease).toMatchObject({
+      claimStatus: 'live',
+      runtimeKind: 'native'
+    })
+    const history = host.history({ sessionId: SESSION, direction: 'tail' })
+    expect(
+      history.ok &&
+        history.page.items.some(
+          (item) => item.body.kind === 'status' && item.body.text.includes('identity granted')
+        )
+    ).toBe(false)
+  })
+
   it('releases the exact generation, reacquires outside the queue, and dispatches a new message', async () => {
     await attach()
     await host.hold(SESSION, SURFACE)

@@ -77,7 +77,8 @@ export class StructuredAgentSessionHost {
   private readonly handoffs: StructuredAgentSessionHostHandoff
   private readonly restore: ReturnType<typeof createStructuredAgentSessionHostRestore>
   private readonly holds: StructuredAgentSessionHolds
-  private readonly eventRecovery: StructuredAgentSessionEventRecovery
+  /** Public for `restartProviderChild`; the host file has no line budget for a forwarder. */
+  readonly eventRecovery: StructuredAgentSessionEventRecovery
   private readonly backgroundTasks: StructuredAgentSessionBackgroundTaskChannel
   /** Public because the RPC surface addresses it directly; see the restart-resume collaborator. */
   readonly restartResume: StructuredAgentSessionRestartResume

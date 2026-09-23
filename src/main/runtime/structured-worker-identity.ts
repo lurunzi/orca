@@ -44,6 +44,17 @@ export type StructuredWorkerIdentity = {
   processIncarnation: string
   worktreeId: string
   hostScope: WorkerTerminalHostScope
+  /** `session`: granted to a user-opened chat rather than minted for a dispatch. Absent = dispatch. */
+  origin?: 'dispatch' | 'session'
+}
+
+/** The durable fields a registry entry is rebuilt from, whichever table persisted them. */
+export type StructuredWorkerIdentityRow = {
+  terminal_handle: string
+  pane_key: string | null
+  process_incarnation: string | null
+  worktree_id: string | null
+  host_scope: string | null
 }
 
 export function isStructuredWorkerHandle(handle: string | null | undefined): boolean {
@@ -146,6 +157,16 @@ export function structuredWorkerRecordIsCurrent(
 export class StructuredWorkerIdentityRegistry {
   private readonly byHandle = new Map<string, StructuredWorkerIdentity>()
   private readonly bySessionId = new Map<string, StructuredWorkerIdentity>()
+  private sessionIdentityLoader:
+    | ((sessionId: string) => StructuredWorkerIdentityRow | null)
+    | null = null
+
+  /** Lets a spawn after restart find a session-granted identity before anything resolved it. */
+  setSessionIdentityLoader(
+    loader: ((sessionId: string) => StructuredWorkerIdentityRow | null) | null
+  ): void {
+    this.sessionIdentityLoader = loader
+  }
 
   register(identity: StructuredWorkerIdentity): StructuredWorkerIdentity {
     this.byHandle.set(identity.handle, identity)
@@ -158,7 +179,12 @@ export class StructuredWorkerIdentityRegistry {
   }
 
   getBySessionId(sessionId: string): StructuredWorkerIdentity | null {
-    return this.bySessionId.get(sessionId) ?? null
+    const known = this.bySessionId.get(sessionId)
+    if (known) {
+      return known
+    }
+    const row = this.sessionIdentityLoader?.(sessionId)
+    return row ? this.rehydrate(row, 'session') : null
   }
 
   /** Every worker this process knows about; callers apply their own liveness gate. */
@@ -182,13 +208,10 @@ export class StructuredWorkerIdentityRegistry {
    * only place a structured worker's pane key and host scope outlive this process. A row whose
    * pane key does not belong to its own recorded session is refused rather than trusted.
    */
-  rehydrate(row: {
-    terminal_handle: string
-    pane_key: string | null
-    process_incarnation: string | null
-    worktree_id: string | null
-    host_scope: string | null
-  }): StructuredWorkerIdentity | null {
+  rehydrate(
+    row: StructuredWorkerIdentityRow,
+    origin: 'dispatch' | 'session' = 'dispatch'
+  ): StructuredWorkerIdentity | null {
     const sessionId = sessionIdFromStructuredWorkerIncarnation(row.process_incarnation)
     const hostScope = parseWorkerTerminalHostScope(row.host_scope)
     if (
@@ -209,7 +232,8 @@ export class StructuredWorkerIdentityRegistry {
       paneKey: row.pane_key,
       processIncarnation: structuredWorkerProcessIncarnation(sessionId),
       worktreeId: row.worktree_id,
-      hostScope
+      hostScope,
+      origin
     })
   }
 
