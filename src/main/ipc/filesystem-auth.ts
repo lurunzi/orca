@@ -3,6 +3,7 @@ import { realpathSync } from 'node:fs'
 import { realpath } from 'node:fs/promises'
 import type { Store } from '../persistence'
 import { getAllowedRoots } from './filesystem-allowed-roots'
+import { isLocalClipboardImageTempFile } from '../window/clipboard-image-temp-path'
 import { isDescendantOrEqual, isENOENT, normalizeExistingPath } from './filesystem-path-containment'
 import {
   ensureAuthorizedRootsCache,
@@ -62,7 +63,10 @@ export function isPathAllowed(
   allowedRoots?: AllowedRootsSnapshot
 ): boolean {
   const resolvedTarget = resolve(targetPath)
-  if (authorizedExternalPaths.has(resolvedTarget)) {
+  if (
+    authorizedExternalPaths.has(resolvedTarget) ||
+    isLocalClipboardImageTempFile(resolvedTarget)
+  ) {
     return true
   }
   for (const authorizedPath of authorizedExternalPaths) {

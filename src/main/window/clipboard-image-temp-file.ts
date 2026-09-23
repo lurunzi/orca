@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { randomUUID } from 'node:crypto'
 
 import { getAppEnvironment } from '../../shared/app-environment'
+import { createClipboardImageTempFileName } from './clipboard-image-temp-path'
 import { requireSshFilesystemProvider } from '../providers/ssh-filesystem-dispatch'
 import { isWindowsAbsolutePathLike } from '../../shared/cross-platform-path'
 import { assertClipboardImageByteLengthWithinLimit } from '../../shared/clipboard-image'
@@ -28,7 +28,7 @@ export async function saveClipboardImageBufferAsTempFile(
 ): Promise<string> {
   assertClipboardImageByteLengthWithinLimit(buffer.byteLength)
 
-  const fileName = `orca-paste-${Date.now()}-${randomUUID()}.png`
+  const fileName = createClipboardImageTempFileName()
 
   if (args?.connectionId) {
     const provider = requireSshFilesystemProvider(args.connectionId)
