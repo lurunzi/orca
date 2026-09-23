@@ -21,7 +21,7 @@ describe('Antigravity model picker', () => {
       valueSource: 'unknown',
       settable: true,
       kind: { type: 'select', choices: [] },
-      action: { type: 'agent-picker' }
+      action: { type: 'agent-picker', directFromModelTrigger: true }
     }
     expect(surface.getSnapshot()).toEqual([expect.objectContaining(expected)])
     await surface.invokeAction('model')
@@ -52,7 +52,10 @@ describe('Antigravity model picker', () => {
     })!
     await surface.invokeAction('model')
     expect(surface.getSnapshot()).toEqual([
-      expect.objectContaining({ id: 'model', action: { type: 'agent-picker' } })
+      expect.objectContaining({
+        id: 'model',
+        action: { type: 'agent-picker', directFromModelTrigger: true }
+      })
     ])
   })
 })

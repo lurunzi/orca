@@ -31,7 +31,7 @@ export const ANTIGRAVITY_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
     launchArgs: (value) => ['--model', String(value)],
     agentArgsOverride: (tokens) => hasFlag(tokens, ['--model']),
     removeAgentArgs: (tokens) => removeAgentArgOption(tokens, ['--model']),
-    midSession: { kind: 'agent-picker', command: '/model' }
+    midSession: { kind: 'agent-picker', command: '/model', directFromModelTrigger: true }
   },
   unknownModelOptions: [ANTIGRAVITY_EFFORT]
 }

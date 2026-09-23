@@ -63,7 +63,10 @@ function actionForApply(
     return undefined
   }
   if (apply.midSession?.kind === 'agent-picker') {
-    return { type: 'agent-picker' }
+    return {
+      type: 'agent-picker',
+      ...(apply.midSession.directFromModelTrigger ? { directFromModelTrigger: true } : {})
+    }
   }
   // Why: only unknown flip-only options are actions; once we have a tracked
   // baseline the UI can show absolute On/Off without inventing a start state.

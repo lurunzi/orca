@@ -66,6 +66,7 @@ function PickerTrigger(props: {
   disabled: boolean
   disabledReason?: string | null
   dispatched: boolean
+  onClick?: () => void
 }): React.JSX.Element {
   // Why: value-only visible text must still include the category in the
   // accessible name (WCAG 2.5.3 Label in Name / voice control).
@@ -76,21 +77,30 @@ function PickerTrigger(props: {
           value0: props.tooltipLabel,
           value1: props.label
         })
+  const button = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="xs"
+      aria-label={accessibleName}
+      disabled={props.disabled}
+      onClick={props.onClick}
+      className="max-w-48"
+    >
+      <span className="truncate">{props.label}</span>
+      {props.onClick ? null : <ChevronDown className="size-3" />}
+    </Button>
+  )
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <DropdownMenuTrigger asChild disabled={props.disabled}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            aria-label={accessibleName}
-            className="max-w-48 text-muted-foreground"
-          >
-            <span className="truncate">{props.label}</span>
-            <ChevronDown className="size-3" />
-          </Button>
-        </DropdownMenuTrigger>
+        {props.onClick ? (
+          button
+        ) : (
+          <DropdownMenuTrigger asChild disabled={props.disabled}>
+            {button}
+          </DropdownMenuTrigger>
+        )}
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <PickerTooltipContent
@@ -246,6 +256,10 @@ function NativeChatSessionOptionPickersInner({
 
   const modelReason = nativeChatSessionOptionDisabledReason(model.disabledReason)
   const modelTooltip = translate('components.native-chat.composer.model', 'Model')
+  const directModelPicker =
+    model.action?.type === 'agent-picker' &&
+    model.action.directFromModelTrigger === true &&
+    model.settable
   const optionsTooltip = nativeChatOptionsPillTitle(options)
   const optionsReason =
     options.length > 0 && options.every((descriptor) => !descriptor.settable)
@@ -254,29 +268,40 @@ function NativeChatSessionOptionPickersInner({
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
-      <DropdownMenu
-        key={`model:${requestedModelSequence ?? 'idle'}`}
-        defaultOpen={requestedModelSequence !== null}
-      >
+      {directModelPicker ? (
         <PickerTrigger
           label={nativeChatModelPillLabel(model)}
           tooltipLabel={modelTooltip}
           disabled={isWorking || pendingId !== null}
           disabledReason={modelReason}
           dispatched={sessionOptionDispatchUnconfirmed(model)}
+          onClick={() => invokeAction(model)}
         />
-        <DropdownMenuContent align="start" side="top" collisionPadding={8} className="w-64">
-          {modelReason && !model.settable ? (
-            <DropdownMenuLabel className="font-normal">{modelReason}</DropdownMenuLabel>
-          ) : null}
-          <DescriptorMenuRows
-            descriptor={model}
-            pending={pendingId !== null}
-            setValue={(value) => setOption(model, value)}
-            invokeAction={() => invokeAction(model)}
+      ) : (
+        <DropdownMenu
+          key={`model:${requestedModelSequence ?? 'idle'}`}
+          defaultOpen={requestedModelSequence !== null}
+        >
+          <PickerTrigger
+            label={nativeChatModelPillLabel(model)}
+            tooltipLabel={modelTooltip}
+            disabled={isWorking || pendingId !== null}
+            disabledReason={modelReason}
+            dispatched={sessionOptionDispatchUnconfirmed(model)}
           />
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <DropdownMenuContent align="start" side="top" collisionPadding={8} className="w-64">
+            {modelReason && !model.settable ? (
+              <DropdownMenuLabel className="font-normal">{modelReason}</DropdownMenuLabel>
+            ) : null}
+            <DescriptorMenuRows
+              descriptor={model}
+              pending={pendingId !== null}
+              setValue={(value) => setOption(model, value)}
+              invokeAction={() => invokeAction(model)}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       {options.length > 0 ? (
         <DropdownMenu
           key={`options:${requestedOptionsSequence ?? 'idle'}`}
