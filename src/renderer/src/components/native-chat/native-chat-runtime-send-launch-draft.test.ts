@@ -18,6 +18,10 @@ import {
   sendNativeChatMessage
 } from './native-chat-runtime-send'
 import {
+  NATIVE_CHAT_COMPOSER_READY_POLL_MS,
+  NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS
+} from './native-chat-composer-ready-wait'
+import {
   NATIVE_CHAT_IMAGE_ATTACHMENT_SETTLE_MS,
   sendNativeChatMessageWithImageAttachments
 } from './native-chat-runtime-image-send'
@@ -155,6 +159,68 @@ describe('sendNativeChatMessage with a parked multi-line draft', () => {
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
       buildNativeChatPasteBytes('second')
     ])
+  })
+})
+
+describe('sendNativeChatMessage before the agent paints its composer', () => {
+  it('touches nothing until the composer is painted, then sends in order', () => {
+    const clearInput = buildAgentTuiClearInputForText(DRAFT)
+    let painted = false
+    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+      clearInput,
+      confirmCleared: () => true,
+      composerReady: () => painted
+    })
+    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_POLL_MS * 30)
+    expect(writes()).toEqual([])
+
+    painted = true
+    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_POLL_MS)
+    expect(writes()).toEqual([clearInput])
+    vi.advanceTimersByTime(NATIVE_CHAT_CLEAR_CONFIRM_MS + NATIVE_CHAT_SUBMIT_DELAY_MS)
+    expect(writes()).toEqual([clearInput, buildNativeChatPasteBytes('edited'), NATIVE_CHAT_SUBMIT])
+  })
+
+  it('holds a queued send behind the waiting one', async () => {
+    let painted = false
+    sendNativeChatMessage(SETTINGS, PTY, 'first', {
+      clearInput: '\x15',
+      composerReady: () => painted
+    })
+    sendNativeChatMessage(SETTINGS, PTY, 'second')
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_COMPOSER_READY_POLL_MS * 30)
+    expect(writes()).toEqual([])
+
+    painted = true
+    await vi.advanceTimersByTimeAsync(
+      NATIVE_CHAT_COMPOSER_READY_POLL_MS + NATIVE_CHAT_SUBMIT_DELAY_MS * 2
+    )
+    expect(writes().slice(0, 3)).toEqual([
+      '\x15',
+      buildNativeChatPasteBytes('first'),
+      NATIVE_CHAT_SUBMIT
+    ])
+    expect(writes()).toContain(buildNativeChatPasteBytes('second'))
+  })
+
+  it('falls back to the best-effort send after the bound', () => {
+    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+      clearInput: '\x15',
+      composerReady: () => false
+    })
+    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS)
+    expect(writes()).toEqual(['\x15', buildNativeChatPasteBytes('edited')])
+  })
+
+  it('leaves the parked draft alone when cancelled while waiting', () => {
+    const handle = sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+      clearInput: buildAgentTuiClearInputForText(DRAFT),
+      composerReady: () => false
+    })
+    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_POLL_MS * 5)
+    handle.cancel()
+    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS)
+    expect(writes()).toEqual([])
   })
 })
 

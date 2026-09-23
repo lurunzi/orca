@@ -49,6 +49,29 @@ export function agentInputLineCleared(screen: string | null | undefined): boolea
   return false
 }
 
+/** Claude's composer rule; lenient because Claude can draw labels into it. */
+const CLAUDE_FRAME_RULE_START = /^\s*─{3,}/
+
+/**
+ * Whether the agent has painted its composer: a prompt row closed by Claude's
+ * frame or Codex's footer. A shell prompt that happens to use ❯ has no frame.
+ */
+export function agentComposerPainted(screen: string | null | undefined): boolean {
+  if (!screen) {
+    return false
+  }
+  const lines = stripScrollbackAnsi(screen).split('\n')
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const match = COMPOSER_PROMPT_LINE.exec(lines[index]!)
+    if (!match) {
+      continue
+    }
+    const closing = match[1] === '❯' ? CLAUDE_FRAME_RULE_START : CODEX_FOOTER_LINE
+    return lines.slice(index + 1).some((line) => closing.test(line))
+  }
+  return false
+}
+
 /**
  * A serialized screen cannot prove the whole parked draft still matches: visual
  * wrapping loses logical-line boundaries. Always replace from the composer copy.
@@ -77,7 +100,9 @@ export function resolveNativeChatLaunchDraftSend(args: {
   readScreen: () => string | null | undefined
 }): {
   plan: NativeChatLaunchDraftSendPlan
-  sendOptions: { clearInput: string; confirmCleared: () => boolean } | undefined
+  sendOptions:
+    | { clearInput: string; confirmCleared: () => boolean; composerReady: () => boolean }
+    | undefined
 } {
   const { launchDraft, launchDraftResolved, agent, readScreen } = args
   // A resolved draft was already submitted or cleared TUI-side, so nothing of
@@ -93,7 +118,13 @@ export function resolveNativeChatLaunchDraftSend(args: {
     plan,
     sendOptions: {
       clearInput: plan.clearInput,
-      confirmCleared: () => agentInputLineCleared(readScreen())
+      confirmCleared: () => agentInputLineCleared(readScreen()),
+      // Why: a starting TUI discards input, then paints its --prefill draft;
+      // an early send vanishes and the next one glues onto that draft.
+      composerReady: () => {
+        const screen = readScreen()
+        return !screen || agentComposerPainted(screen)
+      }
     }
   }
 }

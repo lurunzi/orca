@@ -10,6 +10,7 @@ import {
   isLocalClipboardImageTempFile
 } from './clipboard-image-temp-path'
 
+// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the path guard reads only these four accessors; Store is a class, so a structural double needs the cast.
 const store = {
   getRepos: () => [],
   getProjectGroups: () => [],
@@ -21,6 +22,7 @@ let tempDir: string
 
 beforeEach(async () => {
   tempDir = await realpath(await mkdtemp(join(tmpdir(), 'orca-clipboard-temp-')))
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the temp-path check reads only getPath; the double implements exactly that.
   setAppEnvironment({ getPath: () => tempDir } as unknown as AppEnvironment)
 })
 

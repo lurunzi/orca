@@ -15,12 +15,14 @@ import {
 } from './antigravity-submit-confirmation'
 import {
   NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
-  NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_DELAY_MS,
-  NATIVE_CHAT_SUBMIT_RETRY_MAX,
   resetNativeChatPtySendQueuesForTests,
   sendNativeChatMessage
 } from './native-chat-runtime-send'
+import {
+  NATIVE_CHAT_SUBMIT_CONFIRM_MS,
+  NATIVE_CHAT_SUBMIT_RETRY_MAX
+} from './native-chat-submit-confirmation'
 import { sendNativeChatMessageWithImageAttachments } from './native-chat-runtime-image-send'
 import { NATIVE_CHAT_SUBMIT } from './native-chat-send'
 

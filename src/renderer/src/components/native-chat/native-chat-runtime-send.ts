@@ -25,6 +25,13 @@ import {
   resetNativeChatPtySendQueuesForTests,
   waitForNativeChatPtyIdle
 } from './native-chat-pty-send-queue'
+import { whenNativeChatComposerReady } from './native-chat-composer-ready-wait'
+import {
+  nativeChatSubmitDelayMs,
+  submitConfirmDurationMs,
+  writeNativeChatSubmit,
+  type NativeChatSubmitConfirmation
+} from './native-chat-submit-confirmation'
 
 export { NATIVE_CHAT_ADVANCE_BUFFER_MS, NATIVE_CHAT_QUESTION_STEP_MS, NATIVE_CHAT_SUBMIT_DELAY_MS }
 export { resetNativeChatPtySendQueuesForTests }
@@ -55,19 +62,12 @@ export type NativeChatSendOptions = {
   confirmCleared?: () => boolean
   /** Agents whose composer can swallow the delayed Enter (Antigravity). */
   submitConfirmation?: NativeChatSubmitConfirmation
+  /**
+   * Whether the agent has painted its composer. Supplied only for launch-draft
+   * replacement; the send polls it before touching the line, up to a bound.
+   */
+  composerReady?: () => boolean
 }
-
-export type NativeChatSubmitConfirmation = {
-  /** Body-to-Enter gap; replaces NATIVE_CHAT_SUBMIT_DELAY_MS. */
-  submitDelayMs: number
-  /** True only when the agent's composer is observed still holding this send. */
-  composerHoldsDraft: () => boolean
-}
-
-/** Gap between re-reading the composer after Enter. */
-export const NATIVE_CHAT_SUBMIT_CONFIRM_MS = 1_000
-/** Re-sent Enters before leaving the draft for the user. */
-export const NATIVE_CHAT_SUBMIT_RETRY_MAX = 4
 
 /** Cancels an in-flight send's pending pty writes (the delayed Enter, and any
  *  later question bodies/Enters). Safe to call after the send completes. */
@@ -96,8 +96,23 @@ export function clearUnsubmittedAgentInput(
  * actually look at the agent's input line, and widen to a maximal burst when the
  * draft is still visible — the injected line count is only a lower bound on what
  * the buffer holds, since the user can type into the TUI directly.
+ * `composerReady` defers all of this; `onLineTouched` marks the first write.
  */
 export function clearThenWrite(
+  settings: RuntimeSettings,
+  ptyId: string,
+  options: NativeChatSendOptions | undefined,
+  delay: (ms: number, fn: () => void) => void,
+  writeBody: () => void,
+  onLineTouched?: () => void
+): void {
+  whenNativeChatComposerReady(options?.composerReady, delay, () => {
+    onLineTouched?.()
+    clearConfirmedThenWrite(settings, ptyId, options, delay, writeBody)
+  })
+}
+
+function clearConfirmedThenWrite(
   settings: RuntimeSettings,
   ptyId: string,
   options: NativeChatSendOptions | undefined,
@@ -129,59 +144,6 @@ export function clearConfirmDurationMs(options?: NativeChatSendOptions): number 
   return options?.confirmCleared ? NATIVE_CHAT_CLEAR_CONFIRM_MS : 0
 }
 
-export function nativeChatSubmitDelayMs(options?: NativeChatSendOptions): number {
-  return options?.submitConfirmation?.submitDelayMs ?? NATIVE_CHAT_SUBMIT_DELAY_MS
-}
-
-/** Extra time a send may hold the line re-checking that its Enter landed. */
-export function submitConfirmDurationMs(options?: NativeChatSendOptions): number {
-  return options?.submitConfirmation
-    ? NATIVE_CHAT_SUBMIT_CONFIRM_MS * (NATIVE_CHAT_SUBMIT_RETRY_MAX + 1)
-    : 0
-}
-
-/**
- * Write Enter. With a submit confirmation, keep owning the line and re-send Enter
- * while the composer still shows the draft — agy drops an Enter that arrives while
- * it is still expanding a paste or finishing a turn, leaving the prompt unsent.
- */
-export function writeNativeChatSubmit(
-  settings: RuntimeSettings,
-  ptyId: string,
-  options: NativeChatSendOptions | undefined,
-  ctx: {
-    delay: (ms: number, fn: () => void) => void
-    markSubmitted: () => void
-    markSubmitWritten: () => void
-  }
-): void {
-  sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
-  const confirmation = options?.submitConfirmation
-  if (!confirmation) {
-    ctx.markSubmitted()
-    return
-  }
-  // Past this point a cancel must not Ctrl+U: the prompt may already be running.
-  ctx.markSubmitWritten()
-  let retries = 0
-  const check = (): void => {
-    let holdsDraft = false
-    try {
-      holdsDraft = confirmation.composerHoldsDraft()
-    } catch {
-      // An unreadable screen is unconfirmed; never press Enter blind.
-    }
-    if (!holdsDraft || retries >= NATIVE_CHAT_SUBMIT_RETRY_MAX) {
-      ctx.markSubmitted()
-      return
-    }
-    retries += 1
-    sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
-    ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
-  }
-  ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
-}
-
 /**
  * Chat message path:
  *   1. clear any unsubmitted TUI line
@@ -196,6 +158,7 @@ export function sendNativeChatMessage(
   text: string,
   options?: NativeChatSendOptions
 ): NativeChatSendHandle {
+  let lineTouched = false
   return enqueueNativeChatPtySend(
     ptyId,
     nativeChatSubmitDelayMs(options) +
@@ -206,20 +169,34 @@ export function sendNativeChatMessage(
       if (isCancelled()) {
         return
       }
-      clearThenWrite(settings, ptyId, options, delay, () => {
-        if (isCancelled()) {
-          return
+      clearThenWrite(
+        settings,
+        ptyId,
+        options,
+        delay,
+        () => {
+          if (isCancelled()) {
+            return
+          }
+          sendRuntimePtyInput(settings, ptyId, buildNativeChatPasteBytes(text))
+          // Schedule from the actual body write: an overdue clear-confirm callback
+          // must not collapse the required body-to-Enter gap after a renderer stall.
+          delay(nativeChatSubmitDelayMs(options), () =>
+            writeNativeChatSubmit(settings, ptyId, options, ctx)
+          )
+        },
+        () => {
+          lineTouched = true
         }
-        sendRuntimePtyInput(settings, ptyId, buildNativeChatPasteBytes(text))
-        // Schedule from the actual body write: an overdue clear-confirm callback
-        // must not collapse the required body-to-Enter gap after a renderer stall.
-        delay(nativeChatSubmitDelayMs(options), () =>
-          writeNativeChatSubmit(settings, ptyId, options, ctx)
-        )
-      })
+      )
     },
     {
-      onCancelUnsubmitted: () => clearUnsubmittedAgentInput(settings, ptyId, options)
+      // Why: cancelling while still waiting on the composer must keep the parked draft.
+      onCancelUnsubmitted: () => {
+        if (lineTouched) {
+          clearUnsubmittedAgentInput(settings, ptyId, options)
+        }
+      }
     }
   )
 }

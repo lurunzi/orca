@@ -412,6 +412,36 @@ describe('glued rapid sends', () => {
   })
 })
 
+// Observed with Claude --prefill: the first send never submitted, so the next
+// send's one Ctrl+U killed only the draft's wrapped last row before gluing on.
+describe('a send glued onto a truncated earlier send', () => {
+  const draft =
+    'Continue from the prior session.\n\nBriefly state where it stopped. Ask me only if the context is not enough.'
+  const truncatedRow =
+    'Continue from the prior session.\n\nBriefly state where it stopped. Ask me only if can you go on?'
+
+  it('hides and retires both echoes', () => {
+    const pending = [gluePending('p1', draft), gluePending('p2', 'can you go on?')]
+
+    expect(pendingSendsAsMessages(pending, glueTranscript(truncatedRow))).toEqual([])
+    expect(prunePendingSends(pending, advancedGlueTranscript(truncatedRow))).toEqual([])
+  })
+
+  it('keeps both when the lead is not a prefix of the first send', () => {
+    const pending = [gluePending('p1', draft), gluePending('p2', 'can you go on?')]
+
+    expect(
+      prunePendingSends(pending, advancedGlueTranscript('Something else entirely can you go on?'))
+    ).toEqual(pending)
+  })
+
+  it('leaves an exact first-send row to exact matching', () => {
+    const pending = [gluePending('p1', 'fix the bug'), gluePending('p2', 'bug')]
+
+    expect(prunePendingSends(pending, advancedGlueTranscript('fix the bug'))).toEqual([pending[1]])
+  })
+})
+
 describe('pendingSendsAsMessages', () => {
   it('returns the empty input without reading existing history', () => {
     const pending: NativeChatPendingSend[] = []

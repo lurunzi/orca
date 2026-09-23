@@ -153,6 +153,42 @@ export function countLeadingPendingTextsGluedToUserText(
   return 0
 }
 
+/**
+ * Like the leading glue above, but the first send survives only as a truncated
+ * lead: its Enter never landed, so the next send's single Ctrl+U killed the
+ * wrapped tail row of it before gluing on ("…only if the rest" + "go?" →
+ * "…only if go?"). Returns how many pending texts that row represents (≥ 2).
+ */
+export function countPendingTextsGluedAfterTruncatedLead(
+  pendingTexts: readonly string[],
+  userText: string
+): number {
+  const lead = pendingTexts[0]
+  if (!lead) {
+    return 0
+  }
+  for (let count = pendingTexts.length; count >= 2; count -= 1) {
+    let end = userText.length
+    for (let index = count - 1; index >= 1 && end >= 0; index -= 1) {
+      const piece = pendingTexts[index]
+      if (!piece || !userText.endsWith(piece, end)) {
+        end = -1
+        break
+      }
+      end -= piece.length
+      // Pieces are trimmed, so a space before one is always a collapsed boundary.
+      if (userText[end - 1] === ' ') {
+        end -= 1
+      }
+    }
+    const kept = end > 0 ? userText.slice(0, end) : ''
+    if (kept && kept.length < lead.length && lead.startsWith(kept)) {
+      return count
+    }
+  }
+  return 0
+}
+
 /** A transcript row a glue match may consume, carrying the send boundaries it
  *  satisfies — this matcher has no clock of its own. */
 export type NativeChatGluedUserRow = {
@@ -193,10 +229,10 @@ export function selectPendingIndicesRepresentedByUserRows(
       }
       open.push(entry)
     }
-    const gluedCount = countLeadingPendingTextsGluedToUserText(
-      open.map((entry) => entry.text),
-      row.text
-    )
+    const openTexts = open.map((entry) => entry.text)
+    const gluedCount =
+      countLeadingPendingTextsGluedToUserText(openTexts, row.text) ||
+      countPendingTextsGluedAfterTruncatedLead(openTexts, row.text)
     // Why: gluedCount === 1 is an exact match — leave it to occurrence counting.
     if (gluedCount < 2) {
       continue

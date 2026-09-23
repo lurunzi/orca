@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
-import { countLeadingPendingTextsGluedToUserText } from './native-chat-pending-occurrence'
+import {
+  countLeadingPendingTextsGluedToUserText,
+  countPendingTextsGluedAfterTruncatedLead
+} from './native-chat-pending-occurrence'
 import {
   appendPendingSendCache,
   clearPendingSendCacheForTests,
@@ -92,6 +95,26 @@ describe('countLeadingPendingTextsGluedToUserText', () => {
     expect(countLeadingPendingTextsGluedToUserText([], 'anything')).toBe(0)
     expect(countLeadingPendingTextsGluedToUserText(['a'], '')).toBe(0)
     expect(countLeadingPendingTextsGluedToUserText(['a', '', 'b'], 'ab')).toBe(0)
+  })
+})
+
+describe('countPendingTextsGluedAfterTruncatedLead', () => {
+  it('counts a truncated lead followed by whole later sends', () => {
+    expect(
+      countPendingTextsGluedAfterTruncatedLead(['ask me if the rest', 'go?'], 'ask me if go?')
+    ).toBe(2)
+    expect(
+      countPendingTextsGluedAfterTruncatedLead(['ask me if the rest', 'go?'], 'ask me ifgo?')
+    ).toBe(2)
+    expect(countPendingTextsGluedAfterTruncatedLead(['abc def', 'x', 'y'], 'abc x y')).toBe(3)
+  })
+
+  it('rejects rows whose lead is empty, whole, or not from the first send', () => {
+    expect(countPendingTextsGluedAfterTruncatedLead(['ask me', 'go?'], 'go?')).toBe(0)
+    expect(countPendingTextsGluedAfterTruncatedLead(['ask me', 'go?'], 'ask me go?')).toBe(0)
+    expect(countPendingTextsGluedAfterTruncatedLead(['ask me', 'go?'], 'tell me go?')).toBe(0)
+    expect(countPendingTextsGluedAfterTruncatedLead(['ask me', 'go?'], 'ask go? now')).toBe(0)
+    expect(countPendingTextsGluedAfterTruncatedLead(['ask me'], 'ask')).toBe(0)
   })
 })
 

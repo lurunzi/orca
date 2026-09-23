@@ -8,13 +8,15 @@ import {
   clearConfirmDurationMs,
   clearThenWrite,
   clearUnsubmittedAgentInput,
-  nativeChatSubmitDelayMs,
   sendNativeChatMessage,
-  submitConfirmDurationMs,
-  writeNativeChatSubmit,
   type NativeChatSendHandle,
   type NativeChatSendOptions
 } from './native-chat-runtime-send'
+import {
+  nativeChatSubmitDelayMs,
+  submitConfirmDurationMs,
+  writeNativeChatSubmit
+} from './native-chat-submit-confirmation'
 
 export const NATIVE_CHAT_IMAGE_ATTACHMENT_SETTLE_MS = 300
 
@@ -39,6 +41,7 @@ export function sendNativeChatMessageWithImageAttachments(
       : submitDelayMs) +
     clearConfirmDurationMs(options) +
     submitConfirmDurationMs(options)
+  let lineTouched = false
   return enqueueNativeChatPtySend(
     ptyId,
     durationMs,
@@ -47,31 +50,44 @@ export function sendNativeChatMessageWithImageAttachments(
       if (isCancelled()) {
         return
       }
-      clearThenWrite(settings, ptyId, options, delay, () => {
-        if (isCancelled()) {
-          return
+      clearThenWrite(
+        settings,
+        ptyId,
+        options,
+        delay,
+        () => {
+          if (isCancelled()) {
+            return
+          }
+          for (const payload of agentImagePasteWrites(
+            agent,
+            imagePaths.map((path) =>
+              buildNativeChatImagePasteBytes(formatAgentImagePath(agent, path))
+            ),
+            trimmedText.length > 0
+          )) {
+            sendRuntimePtyInput(settings, ptyId, payload)
+          }
+          if (trimmedText.length > 0) {
+            delay(NATIVE_CHAT_IMAGE_ATTACHMENT_SETTLE_MS, () => {
+              sendRuntimePtyInput(settings, ptyId, buildNativeChatPasteBytes(text))
+              delay(submitDelayMs, () => writeNativeChatSubmit(settings, ptyId, options, ctx))
+            })
+            return
+          }
+          delay(submitDelayMs, () => writeNativeChatSubmit(settings, ptyId, options, ctx))
+        },
+        () => {
+          lineTouched = true
         }
-        for (const payload of agentImagePasteWrites(
-          agent,
-          imagePaths.map((path) =>
-            buildNativeChatImagePasteBytes(formatAgentImagePath(agent, path))
-          ),
-          trimmedText.length > 0
-        )) {
-          sendRuntimePtyInput(settings, ptyId, payload)
-        }
-        if (trimmedText.length > 0) {
-          delay(NATIVE_CHAT_IMAGE_ATTACHMENT_SETTLE_MS, () => {
-            sendRuntimePtyInput(settings, ptyId, buildNativeChatPasteBytes(text))
-            delay(submitDelayMs, () => writeNativeChatSubmit(settings, ptyId, options, ctx))
-          })
-          return
-        }
-        delay(submitDelayMs, () => writeNativeChatSubmit(settings, ptyId, options, ctx))
-      })
+      )
     },
     {
-      onCancelUnsubmitted: () => clearUnsubmittedAgentInput(settings, ptyId, options)
+      onCancelUnsubmitted: () => {
+        if (lineTouched) {
+          clearUnsubmittedAgentInput(settings, ptyId, options)
+        }
+      }
     }
   )
 }
