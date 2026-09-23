@@ -103,6 +103,10 @@ ORCA orchestration worker-start --spec "<worker B task>" --worktree current --ag
 ORCA orchestration check --wait --types "worker_done,escalation,question" --timeout-ms 900000 --json
 ```
 
+A desktop chat session has no coordinator identity until the user turns on
+"Orchestration identity" in its menu; on `no_active_sender_terminal`, ask them
+to, then retry. Never borrow another pane's handle.
+
 If `worker-start` exits non-zero, do not relaunch. Read the receipt's
 `failedStage` and `residualResources`, then load
 `references/recovery-and-cleanup.md`.
