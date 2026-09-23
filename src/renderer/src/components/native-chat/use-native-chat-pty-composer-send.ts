@@ -11,6 +11,7 @@ import {
 import type { NativeChatSendHandle } from './native-chat-runtime-send'
 import { sendNativeChatMessageWithImageAttachments } from './native-chat-runtime-image-send'
 import { resolveNativeChatLaunchDraftSend } from './native-chat-launch-draft-send'
+import { withAntigravitySubmitConfirmation } from './antigravity-submit-confirmation'
 import { nativeChatComposerTargetIsRemote } from './native-chat-composer-target'
 import type { NativeChatResolvedTarget } from './native-chat-composer-target'
 import { pushHistory, type HistoryState } from './native-chat-composer-state'
@@ -57,12 +58,22 @@ export function useNativeChatPtyComposerSend(args: {
       return
     }
     const classification = args.classifySend(text)
-    const { sendOptions } = resolveNativeChatLaunchDraftSend({
+    const { sendOptions: launchDraftSendOptions } = resolveNativeChatLaunchDraftSend({
       launchDraft: args.launchDraft,
       launchDraftResolved: args.launchDraftResolved,
       agent: args.agent,
       readScreen: () => args.readTerminalScreen?.()
     })
+    // Commands may open agy pickers, where a re-sent Enter would pick an item.
+    const sendOptions =
+      classification === 'chat'
+        ? withAntigravitySubmitConfirmation(
+            args.agent,
+            [...imagePaths, text].join(' '),
+            args.readTerminalScreen,
+            launchDraftSendOptions
+          )
+        : launchDraftSendOptions
     let pendingHandle: NativeChatSendHandle | null = null
     // Why: slash-like text must not silently drop its attached images.
     if (classification !== 'chat' && imagePaths.length === 0) {

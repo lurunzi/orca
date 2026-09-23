@@ -17228,6 +17228,8 @@
       "empty": "No users found"
     },
     "native-chat": {
+      "externalTranscript": "External session · Read-only",
+      "openTranscript": "Open conversation",
       "taskList": {
         "title": "Tasks",
         "completed": "Completed",
@@ -17326,7 +17328,8 @@
         "imagePreviewUnavailable": "Preview unavailable",
         "workspaceAttachmentMismatch": "Files can only be attached to their source workspace.",
         "attachmentOwnerChanged": "This workspace changed hosts while attaching — drop the files again.",
-        "attachmentUnreadable": "Couldn't read the dropped files."
+        "attachmentUnreadable": "Couldn't read the dropped files.",
+        "acceptPromptSuggestion": "Use suggested prompt"
       },
       "tool": {
         "exitCode": "exit {{value0}}",

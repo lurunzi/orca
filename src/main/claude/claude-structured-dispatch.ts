@@ -1,3 +1,4 @@
+import { clearClaudePromptSuggestion } from './claude-prompt-suggestion'
 import { randomUUID } from 'node:crypto'
 import {
   forgetRetiredWaiter,
@@ -246,6 +247,7 @@ export async function dispatchClaudeTurn(
   const sentUuid = randomUUID()
   const arm = () => {
     ++session.dispatchSequence
+    clearClaudePromptSuggestion(session)
     return waitForReplay(
       session,
       acceptsResult,

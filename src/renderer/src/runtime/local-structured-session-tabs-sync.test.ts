@@ -163,6 +163,23 @@ function expectExactSplit(state: {
 }
 
 describe('local structured session tab projection', () => {
+  it('preserves external transcript tabs when the structured inventory is replaced or disabled', () => {
+    const state = createSnapshot()
+    const tab = state.unifiedTabsByWorktree[WORKTREE_ID][1]
+    tab.agentSessionAgent = 'cursor'
+    tab.agentTranscript = {
+      agent: 'cursor',
+      sessionId: 'external-worker',
+      transcriptPath: '/cursor/worker.jsonl',
+      runtimeEnvironmentId: null
+    }
+    const mirrored = applyLocalStructuredSessionTabSnapshots(state, [
+      structuredInventory('epoch-1', 1, 'codex-2')
+    ])
+    expect(mirrored.unifiedTabsByWorktree[WORKTREE_ID]).toContainEqual(tab)
+    const disabled = removeLocalStructuredSessionTabs(mirrored)
+    expect(disabled.unifiedTabsByWorktree[WORKTREE_ID]).toContainEqual(tab)
+  })
   it('removes only locally mirrored structured tabs when the feature is disabled', () => {
     const mirrored = applyLocalStructuredSessionTabSnapshots(createSnapshot(), [
       structuredInventory('epoch-1', 1, 'codex-1')

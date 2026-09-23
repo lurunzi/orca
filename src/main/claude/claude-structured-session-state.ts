@@ -158,6 +158,8 @@ export type ClaudeSession = {
   commands: ClaudeSlashCommandCatalog
   /** Monotonic fence advanced when a dispatch starts, including unresolved dispatches. */
   dispatchSequence: number
+  promptSuggestion?: string | null
+  promptSuggestionResultSequence?: number
   /** Fences overlapping option writes so a late completion cannot restore stale state. */
   optionMutationSequence: number
   /** Shared durable-close write; a failed write clears this for a retry. */

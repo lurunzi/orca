@@ -33,6 +33,16 @@ describe('synthetic agent titles', () => {
     expect(shouldDriveSyntheticAgentTitleFromHook('codex', 'done')).toBe(true)
   })
 
+  it('preserves Cursor working titles while retaining completion and permission signals', () => {
+    expect(shouldDriveSyntheticAgentTitleFromHook('cursor', 'working')).toBe(false)
+    for (const state of ['done', 'waiting', 'blocked'] as const) {
+      expect(shouldDriveSyntheticAgentTitleFromHook('cursor', state)).toBe(true)
+    }
+    expect(getSyntheticAgentTerminalTitle('cursor', 'done')).toBe('Cursor ready')
+    expect(getSyntheticAgentTerminalTitle('cursor', 'waiting')).toBe('Cursor - action required')
+    expect(getSyntheticAgentTerminalTitle('cursor', 'blocked')).toBe('Cursor - action required')
+  })
+
   it('does not synthesize OpenCode titles over native session titles', () => {
     expect(getSyntheticAgentTerminalTitle('opencode', 'done')).toBeNull()
     expect(getSyntheticAgentTerminalTitle('opencode', 'waiting')).toBeNull()

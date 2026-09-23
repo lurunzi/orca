@@ -81,6 +81,8 @@ export function enqueueNativeChatPtySend(
     delay: (ms: number, fn: () => void) => void
     /** Call when Enter (or the terminal write that completes the send) fires. */
     markSubmitted: () => void
+    /** Enter was written but the sequence still owns the line (submit confirmation). */
+    markSubmitWritten: () => void
   }) => void,
   options?: EnqueueNativeChatPtySendOptions
 ): NativeChatPtySendQueueHandle {
@@ -117,8 +119,12 @@ export function enqueueNativeChatPtySend(
     timers.push(timer)
   }
 
-  const markSubmitted = (): void => {
+  const markSubmitWritten = (): void => {
     submitted = true
+  }
+
+  const markSubmitted = (): void => {
+    markSubmitWritten()
     finishEntry()
   }
 
@@ -132,7 +138,7 @@ export function enqueueNativeChatPtySend(
         return
       }
       bodyStarted = true
-      start({ isCancelled: () => cancelled, delay, markSubmitted })
+      start({ isCancelled: () => cancelled, delay, markSubmitted, markSubmitWritten })
       if (durationMs <= 0) {
         markSubmitted()
       }
