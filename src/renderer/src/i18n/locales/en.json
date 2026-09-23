@@ -17556,7 +17556,13 @@
         "title": "Drop to attach to this chat",
         "subtitle": "Files are added to your message as paths the agent can read."
       },
-      "copyCode": "Copy code"
+      "copyCode": "Copy code",
+      "orchestrationIdentity": {
+        "updateFailed": "Could not change orchestration identity",
+        "busy": "Busy — try after the turn",
+        "unavailable": "Unavailable",
+        "label": "Orchestration identity"
+      }
     },
     "tab": {
       "bar": {

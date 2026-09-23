@@ -1,4 +1,4 @@
-import { useCallback, type KeyboardEventHandler, type RefObject } from 'react'
+import { useCallback, type KeyboardEventHandler, type ReactNode, type RefObject } from 'react'
 import { useAppStore } from '@/store'
 import { formatShortcutLabel } from '@/hooks/useShortcutLabel'
 import { getShortcutPlatform } from '@/lib/shortcut-platform'
@@ -18,7 +18,8 @@ export function useStructuredNativeChatPaneCommands({
   isVisible,
   rootRef,
   composerRef,
-  terminalPaneActions
+  terminalPaneActions,
+  sessionMenuItems
 }: {
   tabId: string
   groupId?: string
@@ -26,6 +27,7 @@ export function useStructuredNativeChatPaneCommands({
   rootRef: RefObject<HTMLDivElement | null>
   composerRef: RefObject<NativeChatComposerHandle | null>
   terminalPaneActions?: Omit<NativeChatContextMenuActions, 'onPaste'>
+  sessionMenuItems?: ReactNode
 }) {
   const keybindings = useAppStore((state) => state.keybindings)
   const pasteClipboardIntoComposer = useNativeChatPasteBridge({ rootRef, composerRef })
@@ -37,6 +39,7 @@ export function useStructuredNativeChatPaneCommands({
       onPaste: pasteClipboardIntoComposer
     },
     enabled: isVisible,
+    sessionMenuItems,
     showTerminalPaneActions: terminalPaneActions !== undefined,
     splitShortcutLabels: {
       right: formatShortcutLabel('terminal.splitRight', keybindings),

@@ -14837,7 +14837,13 @@
         "allow": "允许",
         "deny": "拒绝"
       },
-      "launchPromptNotDelivered": "未送达 — 请检查终端"
+      "launchPromptNotDelivered": "未送达 — 请检查终端",
+      "orchestrationIdentity": {
+        "updateFailed": "无法更改编排身份",
+        "busy": "忙碌中，本轮结束后再试",
+        "unavailable": "不可用",
+        "label": "编排身份"
+      }
     },
     "tab": {
       "bar": {

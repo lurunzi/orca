@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type MouseEventHandler,
+  type ReactNode,
   type RefObject
 } from 'react'
 import {
@@ -52,6 +53,8 @@ type UseNativeChatContextMenuArgs = {
     groupId: string
     shortcutLabels?: Partial<Record<TabSplitDirection, string>>
   }
+  /** Session-scoped items; rendered inside the menu content so they mount only while open. */
+  sessionMenuItems?: ReactNode
 }
 
 export type NativeChatContextMenuActions = {
@@ -103,7 +106,8 @@ export function useNativeChatContextMenu({
   actions,
   showTerminalPaneActions = true,
   splitShortcutLabels,
-  workspaceLayout
+  workspaceLayout,
+  sessionMenuItems
 }: UseNativeChatContextMenuArgs): {
   onContextMenuCapture: MouseEventHandler<HTMLElement>
   onSelectionCapture: () => void
@@ -222,6 +226,7 @@ export function useNativeChatContextMenu({
               </DropdownMenuItem>
             </>
           ) : null}
+          {sessionMenuItems}
           {workspaceLayout ? (
             <TabWorkspaceLayoutMenuSection
               unifiedTabId={workspaceLayout.unifiedTabId}
