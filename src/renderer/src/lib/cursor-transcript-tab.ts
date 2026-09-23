@@ -2,6 +2,7 @@ import type { AiVaultSession } from '../../../shared/ai-vault-types'
 import { normalizeRuntimePathForComparison } from '../../../shared/cross-platform-path'
 import { parseExecutionHostId, type ExecutionHostId } from '../../../shared/execution-host'
 import { useAppStore } from '@/store'
+import { translate } from '@/i18n/i18n'
 import { getKnownExecutionHostIdForWorktree } from './worktree-runtime-owner'
 import { resolveAiVaultTargetWorkspacePath } from '@/components/right-sidebar/ai-vault-session-launch-target'
 
@@ -52,7 +53,9 @@ export function openCursorTranscriptTab(
     entityId,
     executionHostId: host.id,
     agentSessionAgent: 'cursor',
-    label: `Cursor · ${session.title || session.sessionId}`,
+    label: translate('auto.lib.cursor.transcript.tab.label', 'Cursor · {{title}}', {
+      title: session.title || session.sessionId
+    }),
     agentTranscript: {
       agent: 'cursor',
       sessionId: session.sessionId,

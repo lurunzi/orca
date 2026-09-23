@@ -739,6 +739,13 @@
             "additionalErrors": "还有 {{count}} 张图片无法附加。"
           }
         }
+      },
+      "cursor": {
+        "transcript": {
+          "tab": {
+            "label": "Cursor · {{title}}"
+          }
+        }
       }
     },
     "hooks": {
