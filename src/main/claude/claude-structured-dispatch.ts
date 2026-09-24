@@ -248,6 +248,8 @@ export async function dispatchClaudeTurn(
   const arm = () => {
     ++session.dispatchSequence
     clearClaudePromptSuggestion(session)
+    // A context report asked for before this send may land after it and misstate the context.
+    session.translator?.markContextActivity()
     return waitForReplay(
       session,
       acceptsResult,
