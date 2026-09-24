@@ -109,6 +109,14 @@ function messagesAfterPendingBoundary(
   return messages.filter((message) => messageIsAfterPendingTimestamp(message, pending))
 }
 
+/** Whether a transcript stamp is at or after a local send time. Whole-second stamps
+ *  (Antigravity's `created_at`) are truncated, so the same second counts. */
+function transcriptTimestampAtOrAfterLocal(transcriptMs: number, localMs: number): boolean {
+  return transcriptMs % 1000 === 0
+    ? transcriptMs >= Math.floor(localMs / 1000) * 1000
+    : transcriptMs >= localMs
+}
+
 function messageIsAfterPendingTimestamp(
   message: NativeChatMessage,
   pending: NativeChatPendingSend
@@ -123,7 +131,7 @@ function messageIsAfterPendingTimestamp(
   // A transcript-clock boundary describes an existing message, so exclude ties.
   // Local send time has no existing record and remains inclusive.
   return pending.afterMessageTimestamp == null
-    ? message.timestamp >= boundary
+    ? transcriptTimestampAtOrAfterLocal(message.timestamp, boundary)
     : message.timestamp > boundary
 }
 
@@ -281,7 +289,9 @@ export function launchPromptAsMessage(
   // with no timestamp (e.g. Grok transcripts) can only be its own delivery.
   const represented = matchingNativeChatUserContentCounts(
     existingMessages.filter(
-      (message) => message.timestamp === null || message.timestamp >= entry.createdAt
+      (message) =>
+        message.timestamp === null ||
+        transcriptTimestampAtOrAfterLocal(message.timestamp, entry.createdAt)
     )
   )
   if ((represented.get(nativeChatPendingContentKey(entry)) ?? 0) > 0) {
@@ -304,7 +314,9 @@ export function shouldPruneLaunchPrompt(
   messages: NativeChatMessage[]
 ): boolean {
   const relevant = messages.filter(
-    (message) => message.timestamp === null || message.timestamp >= entry.createdAt
+    (message) =>
+      message.timestamp === null ||
+      transcriptTimestampAtOrAfterLocal(message.timestamp, entry.createdAt)
   )
   return (
     (advancedNativeChatUserContentCounts(relevant).get(nativeChatPendingContentKey(entry)) ?? 0) > 0

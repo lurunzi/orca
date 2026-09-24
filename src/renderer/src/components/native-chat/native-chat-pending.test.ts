@@ -530,6 +530,33 @@ describe('pendingSendsAsMessages', () => {
     expect(prunePendingSends(pending, remoteTranscript)).toEqual([])
   })
 
+  it('retires a first send whose transcript stamp is truncated to the second (antigravity)', () => {
+    const second = Date.parse('2026-09-24T17:06:44Z')
+    const pending = [
+      { ...pendingOf('first-send', 'record state'), sentAt: second + 300, afterMessageId: null }
+    ]
+    const transcript = [
+      { ...userMessage('user', 'record state'), timestamp: second },
+      { ...assistantMessage('answer', 'checking'), timestamp: second }
+    ]
+
+    expect(pendingSendsAsMessages(pending, transcript)).toEqual([])
+    expect(prunePendingSends(pending, transcript)).toEqual([])
+  })
+
+  it('still ignores a whole-second turn from before the send second', () => {
+    const second = Date.parse('2026-09-24T17:06:44Z')
+    const pending = [
+      { ...pendingOf('new-send', 'run tests'), sentAt: second + 300, afterMessageId: null }
+    ]
+    const history = [
+      { ...userMessage('old-user', 'run tests'), timestamp: second - 1000 },
+      { ...assistantMessage('old-answer', 'passed'), timestamp: second - 1000 }
+    ]
+
+    expect(prunePendingSends(pending, history)).toEqual(pending)
+  })
+
   it('hides a first send while its timestampless transcript turn is visible (grok)', () => {
     const pending = [{ ...pendingOf('p1', 'rename it'), afterMessageId: null }]
 
