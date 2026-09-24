@@ -5,6 +5,7 @@ import type { AgentType } from '../../../../shared/agent-status-types'
 import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import { useAppStore } from '@/store'
+import { findRenamableUnifiedTab } from '@/store/terminals/renamable-unified-tab'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -26,9 +27,12 @@ export function NativeChatCoordinatorLaunchButton({
     }
     lastLaunchAt.current = Date.now()
     const state = useAppStore.getState()
-    const worktreeId = Object.entries(state.tabsByWorktree ?? {}).find(([, tabs]) =>
-      tabs.some((tab) => tab.id === terminalTabId)
-    )?.[0]
+    const sourceTab = findRenamableUnifiedTab(state.unifiedTabsByWorktree ?? {}, terminalTabId)
+    const worktreeId =
+      sourceTab?.worktreeId ??
+      Object.entries(state.tabsByWorktree ?? {}).find(([, tabs]) =>
+        tabs.some((tab) => tab.id === terminalTabId)
+      )?.[0]
     if (!isTuiAgent(agent) || !worktreeId) {
       toast.error(
         translate(
@@ -44,6 +48,7 @@ export function NativeChatCoordinatorLaunchButton({
       const result = launchAgentInNewTab({
         agent,
         worktreeId,
+        groupId: sourceTab?.groupId,
         prompt: translate(
           'components.native-chat.coordinator.prompt',
           'Use Orca orchestration to coordinate: '
