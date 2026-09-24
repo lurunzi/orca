@@ -34,6 +34,9 @@ export type NativeChatInteractiveSend = {
     selections: AskAnswerSelection[],
     onDeliverySettled?: (delivered: boolean) => void
   ) => { settleAfterMs: number; waitsForVerifiedDelivery: boolean }
+  /** Reply to a non-blocking (async) question as an ordinary chat message.
+   *  False when there is no PTY to write to. */
+  sendMessage: (text: string) => boolean
   /** Send a raw control string (e.g. an approval option number or ESC) as-is. */
   sendRaw: (raw: string) => void
   /** Stop delayed writes without interrupting the agent. */
@@ -64,11 +67,42 @@ export function useNativeChatInteractiveSend(
     inFlightRef.current?.cancel()
     inFlightRef.current = null
   }, [])
+  // Why: an async reply outlives its card (dismissed on send), so only a target change stops it.
+  const messagesInFlightRef = useRef(new Set<NativeChatSendHandle>())
   // Why: a split can be rebound without unmounting this view. Cancel during
   // commit so no delayed answer write can race the replacement PTY.
-  useLayoutEffect(
-    () => cancelInFlight,
-    [agent, cancelInFlight, paneKey, targetPtyId, terminalTabId]
+  useLayoutEffect(() => {
+    const messagesInFlight = messagesInFlightRef.current
+    return () => {
+      cancelInFlight()
+      for (const handle of messagesInFlight) {
+        handle.cancel()
+      }
+      messagesInFlight.clear()
+    }
+  }, [agent, cancelInFlight, paneKey, targetPtyId, terminalTabId])
+
+  const sendMessage = useCallback(
+    (text: string): boolean => {
+      if (!targetPtyId || text.trim().length === 0) {
+        return false
+      }
+      const inFlight = messagesInFlightRef.current
+      const handle = sendNativeChatMessage(
+        getSettingsForAgentTabRuntimeOwner(terminalTabId),
+        targetPtyId,
+        text
+      )
+      inFlight.add(handle)
+      const release = (): void => void inFlight.delete(handle)
+      if (handle.settled) {
+        void handle.settled.then(release)
+      } else {
+        setTimeout(release, handle.settleAfterMs)
+      }
+      return true
+    },
+    [terminalTabId, targetPtyId]
   )
 
   const sendRaw = useCallback(
@@ -157,5 +191,5 @@ export function useNativeChatInteractiveSend(
     sendRaw(ESC)
   }, [cancelInFlight, sendRaw])
 
-  return { sendAnswer, sendRaw, cancelPending: cancelInFlight, cancel }
+  return { sendAnswer, sendMessage, sendRaw, cancelPending: cancelInFlight, cancel }
 }

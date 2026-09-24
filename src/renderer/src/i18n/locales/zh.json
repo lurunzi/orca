@@ -17604,6 +17604,11 @@
         "notFound": "未找到文件：{{value0}}",
         "unverifiable": "无法检查 {{value0}}：{{value1}}",
         "unresolved": "无法解析此工作区中的 {{value0}}"
+      },
+      "contextUsage": {
+        "label": "上下文已用 {{used}} / {{window}} 个 token（{{percent}}%）",
+        "title": "上下文",
+        "estimated": "根据上一条回复估算。"
       }
     },
     "tab": {

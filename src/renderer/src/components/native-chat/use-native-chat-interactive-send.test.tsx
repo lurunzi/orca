@@ -288,3 +288,56 @@ describe('useNativeChatInteractiveSend', () => {
     expect(mocks.cancel).not.toHaveBeenCalled()
   })
 })
+
+describe('useNativeChatInteractiveSend async question replies', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.sendNativeChatMessage.mockReturnValue({ cancel: mocks.cancel, settleAfterMs: 500 })
+  })
+
+  it('sends the reply as an ordinary chat message on the composer path', () => {
+    const { result } = renderHook(() =>
+      useNativeChatInteractiveSend('tab-1', PANE_KEY, 'pty-1', 'codex')
+    )
+
+    let sent = false
+    act(() => {
+      sent = result.current.sendMessage('Moved')
+    })
+
+    expect(sent).toBe(true)
+    expect(mocks.sendNativeChatMessage).toHaveBeenCalledWith(
+      { terminalTabId: 'tab-1' },
+      'pty-1',
+      'Moved'
+    )
+    expect(mocks.sendNativeChatAskAnswer).not.toHaveBeenCalled()
+    expect(mocks.sendRuntimePtyInput).not.toHaveBeenCalled()
+    expect(mocks.inferQuestionAnswered).not.toHaveBeenCalled()
+  })
+
+  it('reports failure without a PTY target', () => {
+    const { result } = renderHook(() =>
+      useNativeChatInteractiveSend('tab-1', PANE_KEY, null, 'codex')
+    )
+
+    expect(result.current.sendMessage('Moved')).toBe(false)
+    expect(mocks.sendNativeChatMessage).not.toHaveBeenCalled()
+  })
+
+  it('survives card teardown but stops when the PTY target changes', () => {
+    const { result, rerender } = renderHook(
+      ({ ptyId }) => useNativeChatInteractiveSend('tab-1', PANE_KEY, ptyId, 'codex'),
+      { initialProps: { ptyId: 'pty-1' } }
+    )
+    act(() => {
+      result.current.sendMessage('Moved')
+    })
+
+    act(() => result.current.cancelPending())
+    expect(mocks.cancel).not.toHaveBeenCalled()
+
+    rerender({ ptyId: 'pty-2' })
+    expect(mocks.cancel).toHaveBeenCalledOnce()
+  })
+})

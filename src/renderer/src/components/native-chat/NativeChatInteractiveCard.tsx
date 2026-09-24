@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../../store'
 import { resolveNativeChatAsk } from '../../../../shared/native-chat-ask'
+import { extractPendingAsyncAsk } from '../../../../shared/native-chat-async-ask'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import { parseInteractivePrompt } from './native-chat-interactive-prompt'
 import { nativeChatCardDismissKey } from './native-chat-dismiss-key'
 import { NativeChatQuestionCard } from './NativeChatQuestionCard'
 import { NativeChatApprovalCard } from './NativeChatApprovalCard'
+import { NativeChatAsyncQuestionCard } from './NativeChatAsyncQuestionCard'
 import type { NativeChatInteractiveSend } from './use-native-chat-interactive-send'
 
 /**
@@ -57,19 +59,25 @@ export function NativeChatInteractiveCard({
   // Thread the sibling `toolName` from the same status entry so the question
   // parser can dispatch through the tool's registered parser (mobile parity).
   const interactiveToolName = useAppStore((s) => s.agentStatusByPaneKey[paneKey]?.toolName ?? null)
-  const { sendAnswer, sendRaw, cancelPending, cancel } = send
+  const { sendAnswer, sendMessage, sendRaw, cancelPending, cancel } = send
 
   const card = useMemo(() => {
     const statusCard = parseInteractivePrompt(interactivePrompt, interactiveToolName ?? undefined)
     if (statusCard?.kind === 'approval') {
       return statusCard
     }
+    const settled = transcriptSettled && messages != null
     const prompt = resolveNativeChatAsk({
       liveAsk: statusCard?.prompt ?? null,
       messages: messages ?? [],
-      transcriptSettled: transcriptSettled && messages != null
+      transcriptSettled: settled
     })
-    return prompt ? { kind: 'question' as const, prompt } : null
+    if (prompt) {
+      return { kind: 'question' as const, prompt, async: false }
+    }
+    // A blocking question wins; an async one is answered by a chat message instead.
+    const asyncPrompt = settled ? extractPendingAsyncAsk(messages ?? []) : null
+    return asyncPrompt ? { kind: 'question' as const, prompt: asyncPrompt, async: true } : null
   }, [interactivePrompt, interactiveToolName, messages, transcriptSettled])
   const cardKey = useMemo(() => nativeChatCardDismissKey(card), [card])
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
@@ -116,6 +124,20 @@ export function NativeChatInteractiveCard({
 
   if (!card || !canSend || cardKey === dismissedKey) {
     return null
+  }
+  if (card.kind === 'question' && card.async) {
+    return (
+      <NativeChatAsyncQuestionCard
+        key={cardKey ?? 'async-question'}
+        prompt={card.prompt}
+        sendMessage={sendMessage}
+        answerInputRef={answerInputRef}
+        onDone={() => {
+          clearDismissTimer()
+          setDismissedKey(cardKey)
+        }}
+      />
+    )
   }
   if (card.kind === 'question') {
     return (

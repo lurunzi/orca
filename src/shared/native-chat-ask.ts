@@ -1,12 +1,18 @@
 import type {
+  AskAnswerSelection,
   AskOption,
   AskPrompt,
   AskQuestion,
   InteractiveQuestionParser
 } from './native-chat-ask-types'
 import { isInterruptedStatusMessage, type NativeChatMessage } from './native-chat-types'
+import {
+  CODEX_ASYNC_ASK_TOOL_NAME,
+  isAsyncAskUserQuestionTool,
+  parseAsyncAskInput
+} from './native-chat-async-ask'
 
-export type { AskOption, AskPrompt, AskQuestion, InteractiveQuestionParser }
+export type { AskAnswerSelection, AskOption, AskPrompt, AskQuestion, InteractiveQuestionParser }
 
 const QUESTION_TOOL_PARSERS = new Map<string, InteractiveQuestionParser>()
 
@@ -75,6 +81,7 @@ function parseOptions(raw: unknown): AskOption[] {
 for (const name of ['AskUserQuestion', 'ask_user_question', 'askUserQuestion']) {
   QUESTION_TOOL_PARSERS.set(name, parseCanonicalQuestionsInput)
 }
+QUESTION_TOOL_PARSERS.set(CODEX_ASYNC_ASK_TOOL_NAME, parseAsyncAskInput)
 
 function parseToolInput(toolName: string | undefined, input: unknown): AskPrompt | null {
   const parser = toolName ? QUESTION_TOOL_PARSERS.get(toolName) : undefined
@@ -131,7 +138,10 @@ export function extractPendingAsk(messages: readonly NativeChatMessage[]): AskPr
     }
     for (const block of message.blocks) {
       if (block.type === 'tool-call') {
-        const parsed = parseToolInput(block.name, block.input)
+        // Async questions never block, so they must not reach the keystroke-answered card.
+        const parsed = isAsyncAskUserQuestionTool(block.name)
+          ? null
+          : parseToolInput(block.name, block.input)
         if (parsed) {
           pending = parsed
           pendingDepth = outstanding
@@ -159,12 +169,6 @@ export function resolveNativeChatAsk(args: {
 }): AskPrompt | null {
   return args.liveAsk ?? (args.transcriptSettled ? extractPendingAsk(args.messages) : null)
 }
-
-/** One question's chosen answer, normalized for delivery: the selected option
- *  indices (in option order) plus any free-text "other" answer. Index-based (not
- *  label text) so the answer can be delivered by the selector's stable option
- *  number — see `buildAskAnswerKeys`. */
-export type AskAnswerSelection = { indices: number[]; other?: string }
 
 /** A single keystroke group to write to the agent PTY. `raw` bytes (option
  *  numbers, Enter, arrows) are written verbatim as keystrokes; `text` is a
