@@ -60,6 +60,7 @@ function cardElement(
       onShowingQuestionChange={onShowingQuestionChange}
       send={{
         sendAnswer: mocks.sendAnswer,
+        sendMessage: vi.fn(() => true),
         sendRaw: mocks.sendRaw,
         cancelPending: mocks.cancelPending,
         cancel: mocks.cancel

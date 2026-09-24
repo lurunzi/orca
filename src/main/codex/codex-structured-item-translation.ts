@@ -7,6 +7,7 @@ import {
   DEFAULT_JOURNAL_PAYLOAD_LIMITS
 } from '../native-chat/agent-session-journal/journal-payload-bounds'
 import { unhandledProviderFrameJournalItem } from '../native-chat/agent-session-wire/unhandled-provider-frame'
+import { codexAsyncQuestionBlocks } from './codex-async-question-item'
 import { codexImageItemBody } from './codex-image-item-translation'
 import { commandActionFacts } from './codex-command-action-class'
 import {
@@ -239,6 +240,9 @@ function webSearchItem(item: CodexThreadItem): CodexJournalItem {
 export function codexJournalItem(item: CodexThreadItem): CodexJournalItem {
   if (item.type === 'userMessage' || item.type === 'agentMessage') {
     const blocks = codexMessageBlocks(item)
+    if (blocks.length > 0) {
+      blocks.push(...codexAsyncQuestionBlocks(item))
+    }
     return {
       body:
         blocks.length === 0

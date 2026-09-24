@@ -8,6 +8,7 @@ import { NativeChatComposer, type NativeChatComposerHandle } from './NativeChatC
 import { NativeChatEmptyState } from './NativeChatEmptyState'
 import { NativeChatMessageList } from './NativeChatMessageList'
 import { NativeChatQuestionCard } from './NativeChatQuestionCard'
+import { NativeChatAsyncQuestionCard, usePendingAsyncAsk } from './NativeChatAsyncQuestionCard'
 import { selectNativeChatViewState } from './native-chat-view-state'
 import { useNativeChatComposerRevealFocus } from './use-native-chat-composer-reveal-focus'
 import { useNativeChatFontScale } from './use-native-chat-font-scale'
@@ -109,6 +110,8 @@ export function NativeChatStructuredSession(
     { sessionId: props.sessionId, isVisible: props.isVisible }
   )
   const prompt = controller.prompts[0] ?? null
+  const asyncAsk = usePendingAsyncAsk(controller.messages)
+  const asyncPrompt = prompt ? null : asyncAsk.prompt
   const approvalBody = prompt?.body.kind === 'approval' ? prompt.body : null
   const approval = approvalBody
     ? {
@@ -139,7 +142,7 @@ export function NativeChatStructuredSession(
     composerRef,
     isVisible: props.isVisible,
     isFocusedGroup: props.isFocusedGroup,
-    composerReady: prompt === null
+    composerReady: prompt === null && asyncPrompt === null
   })
   const questionBody = prompt?.body.kind === 'question' ? prompt.body : null
   const questions =
@@ -313,6 +316,13 @@ export function NativeChatStructuredSession(
           onCancel={cancelPrompt}
         />
       ) : null}
+      {asyncPrompt ? (
+        <NativeChatAsyncQuestionCard
+          prompt={asyncPrompt}
+          sendMessage={(text) => controller.send(text, [])}
+          onDone={asyncAsk.dismiss}
+        />
+      ) : null}
       <NativeChatDeliveryRetry
         outbox={controller.outbox}
         blockedClientMessageId={controller.blockedClientMessageId}
@@ -342,7 +352,7 @@ export function NativeChatStructuredSession(
           onChange={(change) => void controller.threadGoal?.change(change)}
         />
       ) : null}
-      {prompt ? null : (
+      {prompt || asyncPrompt ? null : (
         <NativeChatComposer
           ref={composerRef}
           terminalTabId={props.tabId}
