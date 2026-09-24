@@ -213,16 +213,15 @@ export function buildNativeChatSessionOptionSnapshot(args: {
   liveTransport: NativeChatLiveOptionTransport
 }): SessionOptionDescriptor[] {
   const { catalog, models, record, mode, modelLabel, liveTransport } = args
-  const modelAction =
+  // Opt-in only: other agents keep upstream's hidden pill until they have choices.
+  const pickerWhileDiscovering =
     models.length === 0 &&
     mode === 'live' &&
     liveTransport !== 'agent-session' &&
     catalog.modelApply.midSession?.kind === 'command' &&
-    catalog.modelApply.midSession.pickerCommand
-      ? { type: 'agent-picker' as const }
-      : actionForApply(catalog.modelApply, record.model, mode, liveTransport)
-  // A live agent picker discovers its own choices, even without a host model catalog.
-  if (models.length === 0 && !modelAction) {
+    catalog.modelApply.midSession.pickerWhileDiscovering === true &&
+    Boolean(catalog.modelApply.midSession.pickerCommand)
+  if (models.length === 0 && !pickerWhileDiscovering) {
     return []
   }
   const modelTracked = record.model
@@ -237,6 +236,9 @@ export function buildNativeChatSessionOptionSnapshot(args: {
   const trackedModelId = typeof modelTracked?.value === 'string' ? modelTracked.value : null
   const defaultModelId = cliDefaultModelId(catalog, models, trackedModelId)
   const effectiveModelId = trackedModelId ?? defaultModelId
+  const modelAction = pickerWhileDiscovering
+    ? { type: 'agent-picker' as const }
+    : actionForApply(catalog.modelApply, modelTracked, mode, liveTransport)
   const snapshot: SessionOptionDescriptor[] = [
     {
       id: 'model',

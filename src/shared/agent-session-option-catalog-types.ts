@@ -13,6 +13,8 @@ export type CatalogMidSessionApply =
       kind: 'command'
       build: (value: SessionOptionValue) => string
       pickerCommand?: string
+      /** Offer `pickerCommand` while the model list is still being discovered. */
+      pickerWhileDiscovering?: true
       detectAgentInteraction?: CatalogAgentInteractionDetection
     }
   | { kind: 'toggle-command'; command: string }
