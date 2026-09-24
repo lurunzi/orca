@@ -276,6 +276,15 @@ async function applyInvokeAction(
     throw new Error(`Unknown session option: ${id}`)
   }
   const { apply, modelId } = resolved
+  if (apply.midSession?.kind === 'command' && apply.midSession.pickerCommand) {
+    if (ctx.mode !== 'live') {
+      throw new Error('This option is only available after the session starts.')
+    }
+    return handleAgentPicker(ctx, {
+      kind: 'agent-picker',
+      command: apply.midSession.pickerCommand
+    })
+  }
   if (apply.midSession?.kind === 'agent-picker') {
     if (ctx.mode !== 'live') {
       throw new Error('This option is only available after the session starts.')

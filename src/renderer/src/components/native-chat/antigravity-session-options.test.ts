@@ -66,14 +66,24 @@ describe('Antigravity model picker', () => {
     expect(surface.getSnapshot()[0]).toMatchObject({ id: 'model', settable: true })
   })
 
-  it('shows no picker until the account model list arrives', () => {
+  it('keeps the CLI picker reachable until the account model list arrives', async () => {
+    const dispatchCommand = vi.fn().mockResolvedValue(undefined)
+    const onAgentPicker = vi.fn()
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
       scopeKey: 'antigravity-no-models',
       initialModels: [],
       mode: 'live',
-      dispatchCommand: vi.fn()
+      dispatchCommand,
+      onAgentPicker
     })!
-    expect(surface.getSnapshot()).toEqual([])
+    expect(surface.getSnapshot()[0]).toMatchObject({
+      id: 'model',
+      kind: { type: 'select', choices: [] },
+      action: { type: 'agent-picker' }
+    })
+    await surface.invokeAction('model')
+    expect(dispatchCommand).toHaveBeenCalledExactlyOnceWith('/model')
+    expect(onAgentPicker).toHaveBeenCalledOnce()
   })
 })

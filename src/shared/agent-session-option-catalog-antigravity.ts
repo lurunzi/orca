@@ -33,7 +33,11 @@ export const ANTIGRAVITY_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
     agentArgsOverride: (tokens) => hasFlag(tokens, ['--model']),
     removeAgentArgs: (tokens) => removeAgentArgOption(tokens, ['--model']),
     // agy >= 1.2 switches by slug, so the chat lists models instead of opening the TUI picker.
-    midSession: { kind: 'command', build: (value) => `/model ${String(value)}` }
+    midSession: {
+      kind: 'command',
+      build: (value) => `/model ${String(value)}`,
+      pickerCommand: '/model'
+    }
   },
   unknownModelOptions: [ANTIGRAVITY_EFFORT],
   // Why: the list is account-scoped, so a slug the account lost must be droppable.

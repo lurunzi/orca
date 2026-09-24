@@ -213,7 +213,14 @@ export function buildNativeChatSessionOptionSnapshot(args: {
   liveTransport: NativeChatLiveOptionTransport
 }): SessionOptionDescriptor[] {
   const { catalog, models, record, mode, modelLabel, liveTransport } = args
-  const modelAction = actionForApply(catalog.modelApply, record.model, mode, liveTransport)
+  const modelAction =
+    models.length === 0 &&
+    mode === 'live' &&
+    liveTransport !== 'agent-session' &&
+    catalog.modelApply.midSession?.kind === 'command' &&
+    catalog.modelApply.midSession.pickerCommand
+      ? { type: 'agent-picker' as const }
+      : actionForApply(catalog.modelApply, record.model, mode, liveTransport)
   // A live agent picker discovers its own choices, even without a host model catalog.
   if (models.length === 0 && !modelAction) {
     return []

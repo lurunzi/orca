@@ -36,7 +36,7 @@ The Chat model button is a dropdown of the account's models from `agy models`
 (`<slug>	<label>` rows), probed once per execution host. Picking one types
 `/model <slug>`; agy 1.2.10 answers `Model set to <label>` without opening its
 TUI picker, and also saves that model as the CLI default. Until the probe
-returns, no model button is shown.
+returns, the model menu can still open agy's own `/model` picker.
 
 ## Mixed versions
 
