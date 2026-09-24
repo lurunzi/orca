@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
@@ -6,6 +6,12 @@ import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault-ses
 import { cursorSessionMatchesWorkspace, openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { isAiVaultScanCancelledError } from '../../../../shared/ai-vault-types'
+import {
+  cursorTranscriptOfferKey,
+  isCursorTranscriptLive,
+  recordCursorTranscriptOffer,
+  wasCursorTranscriptOffered
+} from '@/lib/cursor-transcript-discovery-offers'
 
 /** Discover external workers through the shared history scanner, without fabricating hook status. */
 export function CursorTranscriptDiscoveryGate(): null {
@@ -19,7 +25,6 @@ export function CursorTranscriptDiscoveryGate(): null {
       ready: state.workspaceSessionReady
     }))
   )
-  const offered = useRef(new Set<string>())
   useEffect(() => {
     const host = parseExecutionHostId(hostId)
     if (!ready || !worktreeId || !path || !host || host.kind === 'ssh') {
@@ -46,11 +51,12 @@ export function CursorTranscriptDiscoveryGate(): null {
         const session = result.sessions
           .filter((entry) => cursorSessionMatchesWorkspace(entry, path, host.id))
           .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))[0]
-        if (!session) {
+        // Only a still-running worker is discovered; ended ones stay in History.
+        if (!session || !isCursorTranscriptLive(session)) {
           return
         }
-        const key = JSON.stringify([host.id, worktreeId, session.sessionId])
-        if (offered.current.has(key)) {
+        const key = cursorTranscriptOfferKey(host.id, worktreeId, session.sessionId)
+        if (wasCursorTranscriptOffered(key)) {
           return
         }
         const state = useAppStore.getState()
@@ -64,7 +70,7 @@ export function CursorTranscriptDiscoveryGate(): null {
         )
         if (!represented && openCursorTranscriptTab(session, worktreeId, false)) {
           // A user-closed tab stays closed until explicitly reopened from History.
-          offered.current.add(key)
+          recordCursorTranscriptOffer(key)
         }
       } catch (error) {
         if (!disposed && !isAiVaultScanCancelledError(error)) {

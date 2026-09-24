@@ -78,6 +78,8 @@ async function flush(): Promise<void> {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-02-01T00:05:00Z'))
+  window.localStorage.clear()
   store.setState({
     activeWorktreeId: 'worker',
     path: '/work/worker',
@@ -160,7 +162,26 @@ it('keeps a session already represented by an Orca terminal in its existing pane
     },
     agentStatusByPaneKey: { 'terminal:root': { providerSession: { id: 'one' } } }
   })
-  mocks.list.mockResolvedValue(result([session('one')]))
+  mocks.list.mockResolvedValue(result([session('one', { modifiedAt: '2026-02-01T00:00:00Z' })]))
+  render(<CursorTranscriptDiscoveryGate />)
+  await flush()
+  expect(mocks.open).not.toHaveBeenCalled()
+})
+
+it('keeps a discovered tab closed after a restart', async () => {
+  const live = session('live', { modifiedAt: '2026-02-01T00:00:00Z' })
+  mocks.list.mockResolvedValue(result([live]))
+  render(<CursorTranscriptDiscoveryGate />)
+  await flush()
+  expect(mocks.open).toHaveBeenCalledOnce()
+  cleanup()
+  render(<CursorTranscriptDiscoveryGate />)
+  await flush()
+  expect(mocks.open).toHaveBeenCalledOnce()
+})
+
+it('leaves an ended Cursor session in History', async () => {
+  mocks.list.mockResolvedValue(result([session('ended', { modifiedAt: '2026-01-31T23:00:00Z' })]))
   render(<CursorTranscriptDiscoveryGate />)
   await flush()
   expect(mocks.open).not.toHaveBeenCalled()
