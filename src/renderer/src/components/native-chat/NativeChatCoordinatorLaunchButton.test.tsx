@@ -4,14 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({
-  launch: vi.fn(),
-  toastError: vi.fn(),
-  getState: vi.fn()
-}))
+const mocks = vi.hoisted(() => ({ toastError: vi.fn() }))
 
-vi.mock('@/lib/launch-agent-in-new-tab', () => ({ launchAgentInNewTab: mocks.launch }))
-vi.mock('@/store', () => ({ useAppStore: { getState: mocks.getState } }))
 vi.mock('@/i18n/i18n', () => ({ translate: (_key: string, fallback: string) => fallback }))
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 vi.mock('@/components/ui/tooltip', () => ({
@@ -20,120 +14,90 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
-import { NativeChatCoordinatorLaunchButton } from './NativeChatCoordinatorLaunchButton'
+import {
+  NativeChatCoordinatorLaunchButton,
+  withCoordinatorPrompt
+} from './NativeChatCoordinatorLaunchButton'
+
+const PROMPT = 'Use Orca orchestration to coordinate: '
+
+function stubIdentity(api: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> }) {
+  Object.defineProperty(window, 'api', {
+    configurable: true,
+    value: { orchestrationIdentity: api }
+  })
+}
 
 afterEach(() => cleanup())
 
 beforeEach(() => {
-  mocks.launch.mockReset()
   mocks.toastError.mockReset()
-  mocks.getState.mockReturnValue({
-    tabsByWorktree: { workspace: [{ id: 'tab-1' }] }
+})
+
+describe('withCoordinatorPrompt', () => {
+  it('prefixes the prompt onto the existing draft', () => {
+    expect(withCoordinatorPrompt('', PROMPT)).toBe(PROMPT)
+    expect(withCoordinatorPrompt('  fix the build', PROMPT)).toBe(`${PROMPT}fix the build`)
+  })
+
+  it('leaves a draft that already starts with the prompt unchanged', () => {
+    const draft = `${PROMPT}fix the build`
+    expect(withCoordinatorPrompt(draft, PROMPT)).toBe(draft)
   })
 })
 
 describe('NativeChatCoordinatorLaunchButton', () => {
-  it('starts a same-agent draft in the current workspace once per double click', () => {
-    mocks.launch.mockReturnValue({ surface: { kind: 'local-terminal', tabId: 'tab-2' } })
-    render(<NativeChatCoordinatorLaunchButton agent="antigravity" terminalTabId="tab-1" />)
+  it('inserts into the current composer without granting identity for a PTY agent', () => {
+    const get = vi.fn()
+    stubIdentity({ get, set: vi.fn() })
+    const onInsert = vi.fn()
+    render(<NativeChatCoordinatorLaunchButton onInsert={onInsert} />)
 
-    const button = screen.getByRole('button', { name: 'New coordinator session' })
-    fireEvent.click(button)
-    fireEvent.click(button)
+    fireEvent.click(screen.getByRole('button', { name: 'Coordinate with Orca' }))
 
-    expect(mocks.launch).toHaveBeenCalledExactlyOnceWith({
-      agent: 'antigravity',
-      worktreeId: 'workspace',
-      groupId: undefined,
-      prompt: 'Use Orca orchestration to coordinate: ',
-      promptDelivery: 'draft'
-    })
+    expect(onInsert).toHaveBeenCalledOnce()
+    expect(get).not.toHaveBeenCalled()
   })
 
-  it('grants identity after a structured session is created', async () => {
-    mocks.getState.mockReturnValue({
-      tabsByWorktree: { unrelated: [{ id: 'terminal-elsewhere' }] },
-      unifiedTabsByWorktree: {
-        'folder:project': [
-          {
-            id: 'tab-1',
-            contentType: 'agent-session',
-            entityId: 'existing-session',
-            worktreeId: 'folder:project',
-            groupId: 'source-split'
-          }
-        ]
-      }
-    })
+  it('grants coordinator identity to the current structured session', async () => {
+    const get = vi.fn().mockResolvedValue({ state: 'disabled' })
     const set = vi.fn().mockResolvedValue({ state: 'enabled' })
-    Object.defineProperty(window, 'api', {
-      configurable: true,
-      value: { orchestrationIdentity: { set } }
-    })
-    mocks.launch.mockReturnValue({
-      surface: { kind: 'local-agent-session', tabId: 'tab-2', sessionId: 'new-session' },
-      structuredSettlement: Promise.resolve({ kind: 'structured', sessionId: 'new-session' })
-    })
-    render(<NativeChatCoordinatorLaunchButton agent="codex" terminalTabId="tab-1" />)
+    stubIdentity({ get, set })
+    const onInsert = vi.fn()
+    render(<NativeChatCoordinatorLaunchButton onInsert={onInsert} identitySessionId="session-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'New coordinator session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Coordinate with Orca' }))
 
-    await waitFor(() => expect(set).toHaveBeenCalledExactlyOnceWith('new-session', true))
-    expect(mocks.launch).toHaveBeenCalledWith(
-      expect.objectContaining({ worktreeId: 'folder:project', groupId: 'source-split' })
-    )
+    expect(onInsert).toHaveBeenCalledOnce()
+    await waitFor(() => expect(set).toHaveBeenCalledExactlyOnceWith('session-1', true))
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
-  it('keeps a terminal-backed launch in its source split group', () => {
-    mocks.getState.mockReturnValue({
-      tabsByWorktree: { workspace: [{ id: 'tab-1' }] },
-      unifiedTabsByWorktree: {
-        workspace: [
-          {
-            id: 'unified-tab-1',
-            entityId: 'tab-1',
-            contentType: 'terminal',
-            worktreeId: 'workspace',
-            groupId: 'source-split'
-          }
-        ]
-      }
-    })
-    mocks.launch.mockReturnValue({ surface: { kind: 'local-terminal', tabId: 'tab-2' } })
-    render(<NativeChatCoordinatorLaunchButton agent="cursor" terminalTabId="tab-1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'New coordinator session' }))
-    expect(mocks.launch).toHaveBeenCalledWith(
-      expect.objectContaining({ worktreeId: 'workspace', groupId: 'source-split' })
-    )
+  it('does not restart a session that already has identity', async () => {
+    const get = vi.fn().mockResolvedValue({ state: 'enabled' })
+    const set = vi.fn()
+    stubIdentity({ get, set })
+    render(<NativeChatCoordinatorLaunchButton onInsert={vi.fn()} identitySessionId="session-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Coordinate with Orca' }))
+
+    await waitFor(() => expect(get).toHaveBeenCalledOnce())
+    expect(set).not.toHaveBeenCalled()
   })
 
-  it('refuses to guess a workspace for a closed source tab', () => {
-    mocks.getState.mockReturnValue({ tabsByWorktree: {}, unifiedTabsByWorktree: {} })
-    render(<NativeChatCoordinatorLaunchButton agent="claude" terminalTabId="closed" />)
-    fireEvent.click(screen.getByRole('button', { name: 'New coordinator session' }))
-    expect(mocks.launch).not.toHaveBeenCalled()
-    expect(mocks.toastError).toHaveBeenCalledWith('Could not start coordinator session')
-  })
+  it('still inserts but reports when the session is busy', async () => {
+    const get = vi.fn().mockResolvedValue({ state: 'unavailable', reason: 'busy' })
+    stubIdentity({ get, set: vi.fn() })
+    const onInsert = vi.fn()
+    render(<NativeChatCoordinatorLaunchButton onInsert={onInsert} identitySessionId="session-1" />)
 
-  it('reports a session whose identity could not be granted', async () => {
-    const set = vi.fn().mockResolvedValue({ state: 'unavailable', reason: 'busy' })
-    Object.defineProperty(window, 'api', {
-      configurable: true,
-      value: { orchestrationIdentity: { set } }
-    })
-    mocks.launch.mockReturnValue({
-      surface: { kind: 'local-agent-session', tabId: 'tab-2', sessionId: 'new-session' },
-      structuredSettlement: Promise.resolve({ kind: 'structured', sessionId: 'new-session' })
-    })
-    render(<NativeChatCoordinatorLaunchButton agent="codex" terminalTabId="tab-1" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Coordinate with Orca' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'New coordinator session' }))
-
+    expect(onInsert).toHaveBeenCalledOnce()
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith(
-        'Session opened without coordinator access',
-        expect.objectContaining({ description: 'busy' })
+        'Coordinator access not granted',
+        expect.objectContaining({ description: 'Busy — try after the turn' })
       )
     )
   })

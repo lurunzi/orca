@@ -12,7 +12,6 @@ import { NativeChatMentionHint, NativeChatPickerMenu } from './NativeChatAutocom
 import { NativeChatComposerActions } from './NativeChatComposerActions'
 import type { NativeChatContextUsageSummary } from './native-chat-context-usage-summary'
 import { NativeChatCoordinatorLaunchButton } from './NativeChatCoordinatorLaunchButton'
-import type { AgentType } from '../../../../shared/agent-status-types'
 import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import type {
   SessionOptionDescriptor,
@@ -56,7 +55,7 @@ export type NativeChatComposerFieldProps = {
   onAcceptMention: () => void
   onRemoveImageAttachment: (id: string) => void
   onAttach: () => void
-  coordinatorAgent?: { agent: AgentType; terminalTabId: string }
+  coordinator?: { onInsert: () => void; identitySessionId?: string }
   onDictationToggle: () => void
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
@@ -133,7 +132,7 @@ export function NativeChatComposerField({
   onAcceptMention,
   onRemoveImageAttachment,
   onAttach,
-  coordinatorAgent,
+  coordinator,
   onDictationToggle,
   onDictationHoldStart,
   onDictationHoldEnd,
@@ -200,9 +199,9 @@ export function NativeChatComposerField({
               <span>{notice}</span>
             </div>
           ) : null}
-          {coordinatorAgent ? (
+          {coordinator ? (
             <div className="absolute -left-12 bottom-1 hidden lg:block">
-              <NativeChatCoordinatorLaunchButton {...coordinatorAgent} />
+              <NativeChatCoordinatorLaunchButton {...coordinator} />
             </div>
           ) : null}
           <div
@@ -315,9 +314,9 @@ export function NativeChatComposerField({
                 isDictationHoldMode={isDictationHoldMode}
                 onAttach={onAttach}
                 coordinatorLaunch={
-                  coordinatorAgent ? (
+                  coordinator ? (
                     <span className="lg:hidden">
-                      <NativeChatCoordinatorLaunchButton {...coordinatorAgent} />
+                      <NativeChatCoordinatorLaunchButton {...coordinator} />
                     </span>
                   ) : undefined
                 }

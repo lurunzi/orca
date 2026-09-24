@@ -32,6 +32,7 @@ import { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-even
 import { useNativeChatComposerAppMenuSelection } from './use-native-chat-composer-app-menu-selection'
 import { useNativeChatWorkspaceFileDrop } from './use-native-chat-workspace-file-drop'
 import { useNativeChatComposerSubmit } from './use-native-chat-composer-submit'
+import { coordinatorPrompt, withCoordinatorPrompt } from './NativeChatCoordinatorLaunchButton'
 
 export type {
   NativeChatComposerHandle,
@@ -178,7 +179,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       ? !hasPty || !onStop
       : disabled || hasPendingAttachment || (draft.trim() === '' && imageAttachments.length === 0)
 
-    const { insertTypedText, focus, handleDraftChange, handleSelect, acceptMention } =
+    const { insertTypedText, replaceDraft, focus, handleDraftChange, handleSelect, acceptMention } =
       useNativeChatTypedInsertion({
         textareaRef,
         caret,
@@ -404,7 +405,11 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         }}
         onRemoveImageAttachment={(id) => removeImageAttachment(id)}
         onAttach={pickAttachment}
-        coordinatorAgent={{ agent, terminalTabId }}
+        coordinator={{
+          onInsert: () => replaceDraft(withCoordinatorPrompt(draft, coordinatorPrompt())),
+          identitySessionId:
+            structuredTransport?.runtime === 'local' ? structuredTransport.sessionId : undefined
+        }}
         onDictationToggle={toggleDictation}
         onDictationHoldStart={startHoldDictation}
         onDictationHoldEnd={stopHoldDictation}

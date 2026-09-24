@@ -15,6 +15,7 @@ export function useNativeChatTypedInsertion(args: {
   onDraftOrCaretChange: (value: string, caret: number) => void
 }): {
   insertTypedText: (text: string) => boolean
+  replaceDraft: (next: string) => boolean
   focus: () => boolean
   handleDraftChange: (value: string, input: NativeChatComposerInput) => void
   handleSelect: (input: NativeChatComposerInput) => void
@@ -45,6 +46,26 @@ export function useNativeChatTypedInsertion(args: {
     [caret, draft, setActiveSuggestion, setCaret, setDraft, setHistory, textareaRef]
   )
 
+  /** Replaces the whole draft and parks the caret at its end. */
+  const replaceDraft = useCallback(
+    (next: string): boolean => {
+      const textarea = textareaRef.current
+      if (!textarea || textarea.disabled) {
+        return false
+      }
+      textarea.focus()
+      setDraft(next)
+      setCaret(next.length)
+      setHistory((prev) => ({ entries: prev.entries, index: null }))
+      setActiveSuggestion(0)
+      requestAnimationFrame(() => {
+        textarea.setSelectionRange(next.length, next.length)
+      })
+      return true
+    },
+    [setActiveSuggestion, setCaret, setDraft, setHistory, textareaRef]
+  )
+
   const focus = useCallback((): boolean => {
     const textarea = textareaRef.current
     if (!textarea || textarea.disabled) {
@@ -73,5 +94,5 @@ export function useNativeChatTypedInsertion(args: {
     input?.focus()
     requestAnimationFrame(() => input?.setSelectionRange(result.caret, result.caret))
   }
-  return { insertTypedText, focus, handleDraftChange, handleSelect, acceptMention }
+  return { insertTypedText, replaceDraft, focus, handleDraftChange, handleSelect, acceptMention }
 }

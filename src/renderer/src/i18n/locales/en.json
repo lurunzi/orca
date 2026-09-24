@@ -17761,10 +17761,8 @@
         "estimated": "Estimated from the last response."
       },
       "coordinator": {
-        "new": "New coordinator session",
-        "launchFailed": "Could not start coordinator session",
-        "identityFailed": "Session opened without coordinator access",
-        "visibilityUnknown": "Could not verify coordinator session",
+        "insert": "Coordinate with Orca",
+        "identityFailed": "Coordinator access not granted",
         "prompt": "Use Orca orchestration to coordinate: "
       }
     },
