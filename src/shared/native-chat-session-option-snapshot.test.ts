@@ -460,3 +460,18 @@ describe('a boolean option always carries a value to render', () => {
     })
   })
 })
+
+describe('model pill without discovered models', () => {
+  it('keeps the Codex terminal model pill hidden like upstream', () => {
+    expect(
+      buildNativeChatSessionOptionSnapshot({
+        catalog: CODEX_SESSION_OPTION_CATALOG,
+        models: [],
+        record: createNativeChatSessionOptionRecord('codex'),
+        mode: 'live',
+        modelLabel: 'Model',
+        liveTransport: 'catalog'
+      })
+    ).toEqual([])
+  })
+})

@@ -36,7 +36,8 @@ export const ANTIGRAVITY_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
     midSession: {
       kind: 'command',
       build: (value) => `/model ${String(value)}`,
-      pickerCommand: '/model'
+      pickerCommand: '/model',
+      pickerWhileDiscovering: true
     }
   },
   unknownModelOptions: [ANTIGRAVITY_EFFORT],
