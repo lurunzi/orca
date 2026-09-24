@@ -10,6 +10,8 @@ import { NATIVE_FILE_DROP_TARGET } from '../../../../shared/native-file-drop'
 import type { ComposerAutocomplete, NativeChatPickerItem } from './native-chat-composer-state'
 import { NativeChatMentionHint, NativeChatPickerMenu } from './NativeChatAutocompleteMenus'
 import { NativeChatComposerActions } from './NativeChatComposerActions'
+import { NativeChatCoordinatorLaunchButton } from './NativeChatCoordinatorLaunchButton'
+import type { AgentType } from '../../../../shared/agent-status-types'
 import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import type {
   SessionOptionDescriptor,
@@ -51,6 +53,7 @@ export type NativeChatComposerFieldProps = {
   onAcceptMention: () => void
   onRemoveImageAttachment: (id: string) => void
   onAttach: () => void
+  coordinatorAgent?: { agent: AgentType; terminalTabId: string }
   onDictationToggle: () => void
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
@@ -125,6 +128,7 @@ export function NativeChatComposerField({
   onAcceptMention,
   onRemoveImageAttachment,
   onAttach,
+  coordinatorAgent,
   onDictationToggle,
   onDictationHoldStart,
   onDictationHoldEnd,
@@ -187,6 +191,11 @@ export function NativeChatComposerField({
             <div className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <ImageOff className="size-3.5 shrink-0" />
               <span>{notice}</span>
+            </div>
+          ) : null}
+          {coordinatorAgent ? (
+            <div className="absolute -left-12 bottom-1 hidden lg:block">
+              <NativeChatCoordinatorLaunchButton {...coordinatorAgent} />
             </div>
           ) : null}
           <div
@@ -289,6 +298,13 @@ export function NativeChatComposerField({
                 isDictating={isDictating}
                 isDictationHoldMode={isDictationHoldMode}
                 onAttach={onAttach}
+                coordinatorLaunch={
+                  coordinatorAgent ? (
+                    <span className="lg:hidden">
+                      <NativeChatCoordinatorLaunchButton {...coordinatorAgent} />
+                    </span>
+                  ) : undefined
+                }
                 onDictationToggle={onDictationToggle}
                 onDictationHoldStart={onDictationHoldStart}
                 onDictationHoldEnd={onDictationHoldEnd}

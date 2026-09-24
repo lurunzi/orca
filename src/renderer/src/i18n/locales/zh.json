@@ -14874,6 +14874,13 @@
         "busy": "忙碌中，本轮结束后再试",
         "unavailable": "不可用",
         "label": "编排身份"
+      },
+      "coordinator": {
+        "new": "新建协调者会话",
+        "launchFailed": "无法启动协调者会话",
+        "identityFailed": "会话已打开，但未取得协调者权限",
+        "visibilityUnknown": "无法核实协调者会话状态",
+        "prompt": "使用 Orca 编排协调以下任务："
       }
     },
     "tab": {
