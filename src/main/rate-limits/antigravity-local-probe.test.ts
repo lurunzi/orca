@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
+import { scanPlatformListeningPorts } from '../ports/local-workspace-platform-port-scanner'
+vi.mock('../ports/local-workspace-platform-port-scanner', () => ({
+  scanPlatformListeningPorts: vi.fn()
+}))
 import {
   parseAntigravityQuotaSummary,
   parseAntigravityUserPlan,
+  selectAntigravityLocalServer,
   probeLocalAntigravityLanguageServer
 } from './antigravity-local-probe'
 
@@ -55,6 +60,18 @@ const sampleQuotaSummaryResponse = {
 }
 
 describe('parseAntigravityQuotaSummary', () => {
+  it('does not invent remaining quota for missing, disabled or out-of-range buckets', () => {
+    for (const bucket of [
+      {},
+      { remainingFraction: -0.1 },
+      { remainingFraction: 1.1 },
+      { remainingFraction: 1, disabled: true }
+    ]) {
+      expect(
+        parseAntigravityQuotaSummary({ groups: [{ buckets: [{ window: '5h', ...bucket }] }] })
+      ).toEqual({ session: null, weekly: null })
+    }
+  })
   it('extracts both 5h session and weekly windows separately', () => {
     const parsed = parseAntigravityQuotaSummary(sampleQuotaSummaryResponse)
 
@@ -144,6 +161,73 @@ describe('parseAntigravityUserPlan', () => {
 })
 
 describe('probeLocalAntigravityLanguageServer', () => {
+  it('only sends credentials to verified IPv4 loopback listeners owned by the target PID', async () => {
+    vi.mocked(scanPlatformListeningPorts).mockResolvedValue({
+      metadataAvailable: true,
+      ports: [
+        { host: '127.0.0.1', port: 4101, pid: 1234 },
+        { host: '127.0.0.1', port: 4102, pid: 9999 },
+        { host: '0.0.0.0', port: 4103 },
+        { host: '192.0.2.1', port: 4104, pid: 1234 },
+        { host: '::', port: 4105, pid: 1234 }
+      ]
+    })
+    const requestJson = vi.fn().mockResolvedValue({ status: 404, body: null })
+    await probeLocalAntigravityLanguageServer({
+      deps: {
+        findProcess: async () => ({ pid: 1234, csrfToken: 'test-only-token' }),
+        requestJson
+      }
+    })
+    expect(requestJson).toHaveBeenCalledTimes(2)
+    expect(requestJson.mock.calls.every(([options]) => options.port === 4101)).toBe(true)
+  })
+
+  it('does not enumerate processes when already aborted', async () => {
+    const findProcess = vi.fn()
+    const controller = new AbortController()
+    controller.abort()
+    expect(
+      await probeLocalAntigravityLanguageServer({
+        signal: controller.signal,
+        deps: { findProcess }
+      })
+    ).toBeNull()
+    expect(findProcess).not.toHaveBeenCalled()
+  })
+
+  it('stops probing after cancellation instead of trying other protocols or ports', async () => {
+    const controller = new AbortController()
+    const requestJson = vi.fn().mockImplementation(async () => {
+      controller.abort()
+      throw new Error('Aborted')
+    })
+    expect(
+      await probeLocalAntigravityLanguageServer({
+        signal: controller.signal,
+        deps: {
+          findProcess: async () => ({ pid: 1234, csrfToken: 'test-only-token' }),
+          findPorts: async () => [4101, 4102],
+          requestJson
+        }
+      })
+    ).toBeNull()
+    expect(requestJson).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps an unknown plan unknown', async () => {
+    const result = await probeLocalAntigravityLanguageServer({
+      deps: {
+        findProcess: async () => ({ pid: 1234, csrfToken: 'test-only-token' }),
+        findPorts: async () => [4101],
+        requestJson: async ({ path }) => ({
+          status: 200,
+          body: path.includes('Quota') ? sampleQuotaSummaryResponse : {}
+        })
+      }
+    })
+    expect(result?.planType).toBeNull()
+  })
   it('returns null if the language server process is not found', async () => {
     const result = await probeLocalAntigravityLanguageServer({
       deps: {
@@ -202,5 +286,44 @@ describe('probeLocalAntigravityLanguageServer', () => {
       resetsAt: new Date('2026-09-29T23:37:07Z').getTime(),
       resetDescription: null
     })
+  })
+})
+
+describe('selectAntigravityLocalServer', () => {
+  const command =
+    '"C:\\Program Files\\Antigravity\\bin\\language_server_windows_x64.exe" --csrf_token="test-token"'
+  it('recognizes the installation executable and quoted token', () => {
+    expect(selectAntigravityLocalServer([{ pid: 1234, command }])).toEqual({
+      pid: 1234,
+      csrfToken: 'test-token'
+    })
+    expect(
+      selectAntigravityLocalServer([
+        {
+          pid: 12,
+          command:
+            '/home/user/.antigravity-cli/bin/language_server_linux_x64 --csrf_token=test-token'
+        }
+      ])
+    ).toEqual({
+      pid: 12,
+      csrfToken: 'test-token'
+    })
+  })
+  it('rejects unrelated or ambiguous language servers', () => {
+    expect(
+      selectAntigravityLocalServer([
+        {
+          pid: 1,
+          command: '/windsurf/language_server --csrf_token=test-token --description=antigravity'
+        }
+      ])
+    ).toBeNull()
+    expect(
+      selectAntigravityLocalServer([
+        { pid: 1, command },
+        { pid: 2, command }
+      ])
+    ).toBeNull()
   })
 })
