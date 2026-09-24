@@ -245,15 +245,9 @@ async function sendBracketedPasteToAgent(args: {
         args.hostPlatform === 'win32' && agent
           ? TUI_AGENT_CONFIG[agent].windowsInputRecordPasteNewline
           : undefined
-      const pasted = await sendAgentDraftPasteContentNow(
-        settings,
-        ptyId,
-        content,
-        undefined,
-        newline
-      )
-      if (!pasted || !submit) {
-        return pasted
+      const sent = await sendAgentDraftPasteContentNow(settings, ptyId, content, undefined, newline)
+      if (!sent || !submit) {
+        return sent
       }
 
       // Why: Claude Code can leave a prompt as editable text when paste-end and
