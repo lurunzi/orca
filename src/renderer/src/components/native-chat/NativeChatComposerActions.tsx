@@ -1,4 +1,5 @@
 import { ArrowUp, Mic, Plus, Square } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { translate } from '@/i18n/i18n'
@@ -20,6 +21,7 @@ export type NativeChatComposerActionsProps = {
   isDictating: boolean
   isDictationHoldMode: boolean
   onAttach: () => void
+  coordinatorLaunch?: ReactNode
   onDictationToggle: () => void
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
@@ -42,6 +44,7 @@ export function NativeChatComposerActions({
   isDictating,
   isDictationHoldMode,
   onAttach,
+  coordinatorLaunch,
   onDictationToggle,
   onDictationHoldStart,
   onDictationHoldEnd,
@@ -90,6 +93,7 @@ export function NativeChatComposerActions({
           </TooltipContent>
         </Tooltip>
         {onExitGoalMode ? <NativeChatComposerGoalChip onExit={onExitGoalMode} /> : null}
+        {coordinatorLaunch}
       </div>
       <div className="ml-auto flex items-center gap-1.5">
         {/* Why: keep session controls beside the actions they affect; the

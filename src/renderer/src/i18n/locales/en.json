@@ -17758,6 +17758,13 @@
         "label": "Context {{used}} of {{window}} tokens, {{percent}}% used",
         "title": "Context",
         "estimated": "Estimated from the last response."
+      },
+      "coordinator": {
+        "new": "New coordinator session",
+        "launchFailed": "Could not start coordinator session",
+        "identityFailed": "Session opened without coordinator access",
+        "visibilityUnknown": "Could not verify coordinator session",
+        "prompt": "Use Orca orchestration to coordinate: "
       }
     },
     "tab": {
