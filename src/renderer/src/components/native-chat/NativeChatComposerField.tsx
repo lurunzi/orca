@@ -39,6 +39,7 @@ export type NativeChatComposerFieldProps = {
   imageAttachments: readonly NativeChatComposerImageAttachment[]
   sendButtonDisabled: boolean
   isWorking: boolean
+  showStop?: boolean
   attachDisabled: boolean
   dictationDisabled: boolean
   isDictating: boolean
@@ -116,6 +117,7 @@ export function NativeChatComposerField({
   imageAttachments,
   sendButtonDisabled,
   isWorking,
+  showStop,
   attachDisabled,
   dictationDisabled,
   isDictating,
@@ -310,6 +312,7 @@ export function NativeChatComposerField({
                 dictationDisabled={dictationDisabled}
                 sendDisabled={sendButtonDisabled}
                 isWorking={isWorking}
+                showStop={showStop}
                 isDictating={isDictating}
                 isDictationHoldMode={isDictationHoldMode}
                 onAttach={onAttach}

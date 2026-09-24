@@ -369,6 +369,11 @@ export function NativeChatStructuredSession(
               void controller.cancel(controller.turnId)
             }
           }}
+          onStopBackgroundTasks={
+            controller.backgroundTasks.isMonitoring && controller.backgroundTasks.supportsStopAll
+              ? () => void controller.stopBackgroundTask()
+              : undefined
+          }
           structuredTransport={structuredTransport}
           launchSeed={{ ...launchDraftSignal, ownsTabWideLaunchDraft: true }}
         />

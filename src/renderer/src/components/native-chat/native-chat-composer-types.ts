@@ -53,6 +53,8 @@ export type NativeChatComposerProps = {
   isWorking?: boolean
   /** Interrupt the hosted agent, usually by sending ESC into the PTY. */
   onStop?: () => void
+  /** Present while an idle session still runs background tasks; an empty composer's Stop stops them. */
+  onStopBackgroundTasks?: () => void
   /** Render an optimistic echo until the real transcript turn lands. */
   onOptimisticSend?: (text: string, imagePaths?: string[]) => string | undefined
   /** Remove an optimistic echo when its delayed submit is canceled. */

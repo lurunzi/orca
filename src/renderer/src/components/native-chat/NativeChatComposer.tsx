@@ -2,6 +2,7 @@ import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggesti
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
 import { useAppStore } from '../../store'
 import { useNativeChatComposerInterrupt } from './use-native-chat-composer-interrupt'
+import { resolveComposerCriticalAction } from './native-chat-composer-critical-action'
 import { useNativeChatContextUsageSummary } from './use-native-chat-context-usage-summary'
 import { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
 import { EMPTY_HISTORY, type HistoryState } from './native-chat-composer-state'
@@ -57,6 +58,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       canSend = true,
       isWorking = false,
       onStop,
+      onStopBackgroundTasks,
       onOptimisticSend,
       onOptimisticSendCanceled,
       onSlashCommand,
@@ -172,12 +174,10 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       attachResolvedPaths,
       setNotice
     })
-    // A pasted image has no agent-readable path until its save lands; sending
-    // mid-save would ship the message without the image the chip promises.
-    const hasPendingAttachment = imageAttachments.some((attachment) => attachment.pending)
-    const sendButtonDisabled = isWorking
-      ? !hasPty || !onStop
-      : disabled || hasPendingAttachment || (draft.trim() === '' && imageAttachments.length === 0)
+    const criticalAction = resolveComposerCriticalAction(
+      { isWorking, hasPty, disabled, onStop, onStopBackgroundTasks },
+      { draft, imageAttachments }
+    )
 
     const { insertTypedText, replaceDraft, focus, handleDraftChange, handleSelect, acceptMention } =
       useNativeChatTypedInsertion({
@@ -376,8 +376,9 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         activeSuggestion={activeSuggestion}
         notice={notice}
         imageAttachments={imageAttachments}
-        sendButtonDisabled={sendButtonDisabled}
+        sendButtonDisabled={criticalAction.disabled}
         isWorking={isWorking}
+        showStop={criticalAction.kind !== 'send'}
         attachDisabled={disabled}
         dictationDisabled={dictationDisabled}
         isDictating={isDictating}
@@ -414,7 +415,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         onDictationHoldStart={startHoldDictation}
         onDictationHoldEnd={stopHoldDictation}
         onSend={send}
-        onStop={interrupt}
+        onStop={criticalAction.kind === 'stop-background-tasks' ? onStopBackgroundTasks : interrupt}
         sessionOptionsSurface={sessionOptionsSurface}
         sessionOptionsSnapshot={sessionOptionsSnapshot}
         contextUsage={contextUsageSummary}

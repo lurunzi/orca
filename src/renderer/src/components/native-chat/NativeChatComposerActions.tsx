@@ -18,6 +18,8 @@ export type NativeChatComposerActionsProps = {
   dictationDisabled: boolean
   sendDisabled: boolean
   isWorking: boolean
+  /** Critical button reads Stop; defaults to isWorking. */
+  showStop?: boolean
   isDictating: boolean
   isDictationHoldMode: boolean
   onAttach: () => void
@@ -41,6 +43,7 @@ export function NativeChatComposerActions({
   dictationDisabled,
   sendDisabled,
   isWorking,
+  showStop = isWorking,
   isDictating,
   isDictationHoldMode,
   onAttach,
@@ -62,7 +65,7 @@ export function NativeChatComposerActions({
     if (event.detail > 1) {
       return
     }
-    if (isWorking) {
+    if (showStop) {
       onStop?.()
     } else {
       onSend()
@@ -151,23 +154,19 @@ export function NativeChatComposerActions({
         </Tooltip>
         <Button
           type="button"
-          data-native-chat-critical-action={isWorking ? 'stop' : undefined}
+          data-native-chat-critical-action={showStop ? 'stop' : undefined}
           aria-label={
-            isWorking
+            showStop
               ? translate('components.native-chat.stop', 'Stop the agent')
               : translate('components.native-chat.composer.send', 'Send')
           }
           disabled={sendDisabled}
           onClick={handleCriticalAction}
-          variant={isWorking ? 'secondary' : 'default'}
+          variant={showStop ? 'secondary' : 'default'}
           size="icon"
           className="size-8 rounded-full pointer-coarse:size-10"
         >
-          {isWorking ? (
-            <Square className="size-3.5 fill-current" />
-          ) : (
-            <ArrowUp className="size-4" />
-          )}
+          {showStop ? <Square className="size-3.5 fill-current" /> : <ArrowUp className="size-4" />}
         </Button>
       </div>
     </div>
