@@ -12,6 +12,11 @@ vi.mock('@/i18n/i18n', () => ({
 vi.mock('./NativeChatComposerActions', () => ({
   NativeChatComposerActions: () => <div data-testid="composer-actions" />
 }))
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: () => null
+}))
 vi.mock('./NativeChatAutocompleteMenus', () => ({
   NativeChatMentionHint: () => null,
   NativeChatPickerMenu: () => null
