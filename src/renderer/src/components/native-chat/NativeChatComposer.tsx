@@ -328,6 +328,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       enabled:
         agent === 'claude' &&
         !disabled &&
+        !goalMode.active &&
         !isWorking &&
         !isDictating &&
         imageAttachments.length === 0,
