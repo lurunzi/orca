@@ -14750,6 +14750,7 @@
         "valueIsDefault": "Predeterminado",
         "valueNotReported": "No informado",
         "sentNotConfirmed": "Enviado al agente — sin confirmar",
+        "appliesNextTurn": "Se aplica al terminar este turno",
         "setWhenSessionStarts": "Configúralo al iniciar la sesión.",
         "availableAfterSessionStarts": "Disponible después de iniciar la sesión.",
         "optionUpdateFailed": "No se pudo actualizar la opción",

@@ -17252,6 +17252,7 @@
         "valueIsDefault": "默认",
         "valueNotReported": "未报告",
         "sentNotConfirmed": "已发送给智能体 — 尚未确认",
+        "appliesNextTurn": "本轮结束后生效",
         "setWhenSessionStarts": "请在会话开始时设置。",
         "availableAfterSessionStarts": "会话开始后可用。",
         "optionUpdateFailed": "无法更新选项",

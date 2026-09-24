@@ -17458,6 +17458,7 @@
         "valueIsDefault": "Default",
         "valueNotReported": "Not reported",
         "sentNotConfirmed": "Sent to the agent — not confirmed",
+        "appliesNextTurn": "Applies after this turn",
         "setWhenSessionStarts": "Set when the session starts.",
         "availableAfterSessionStarts": "Available after the session starts.",
         "optionUpdateFailed": "Could not update option",

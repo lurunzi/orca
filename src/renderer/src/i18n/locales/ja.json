@@ -17271,6 +17271,7 @@
         "valueIsDefault": "既定",
         "valueNotReported": "未報告",
         "sentNotConfirmed": "Agent に送信済み — 未確認",
+        "appliesNextTurn": "このターンの終了後に適用",
         "setWhenSessionStarts": "セッション開始時に設定してください。",
         "availableAfterSessionStarts": "セッション開始後に利用できます。",
         "optionUpdateFailed": "オプションを更新できませんでした",

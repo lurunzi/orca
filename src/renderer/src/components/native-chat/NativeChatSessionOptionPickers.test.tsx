@@ -321,20 +321,49 @@ describe('NativeChatSessionOptionPickers', () => {
     expect(screen.getByRole('button', { name: 'Effort' }).textContent).toContain('Effort')
   })
 
-  it('disables both picker triggers while the agent is working', () => {
-    render(
-      <NativeChatSessionOptionPickers surface={surface} snapshot={[model(), effort]} isWorking />
+  it('queues a mid-turn pick and applies it once the turn ends', async () => {
+    const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+    const liveSurface = { ...surface, setOption }
+    const { rerender } = render(
+      <NativeChatSessionOptionPickers
+        surface={liveSurface}
+        snapshot={[model(), effort]}
+        isWorking
+      />
     )
     expect(
       screen
         .getByRole('button', { name: 'Model Opus 4.8' })
         .parentElement?.getAttribute('data-disabled')
-    ).toBe('true')
+    ).toBeNull()
+
+    screen.getByRole('radio', { name: 'Sonnet 5' }).click()
+
+    expect(await screen.findByRole('button', { name: 'Model Sonnet 5' })).not.toBeNull()
+    expect(screen.getByText('Applies after this turn')).not.toBeNull()
+    expect(setOption).not.toHaveBeenCalled()
+
+    rerender(
+      <NativeChatSessionOptionPickers
+        surface={liveSurface}
+        snapshot={[model(), effort]}
+        isWorking={false}
+      />
+    )
+    await waitFor(() => expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'sonnet'))
+  })
+
+  it('keeps terminal actions blocked while the agent is working', () => {
+    render(
+      <NativeChatSessionOptionPickers
+        surface={surface}
+        snapshot={[model({ action: { type: 'agent-picker' } })]}
+        isWorking
+      />
+    )
     expect(
-      screen
-        .getByRole('button', { name: 'Effort High' })
-        .parentElement?.getAttribute('data-disabled')
-    ).toBe('true')
+      screen.getByText('Choose in agent picker…').closest('button')?.hasAttribute('disabled')
+    ).toBe(true)
   })
 
   it('does not duplicate titles for unknown values or misname generic controls', () => {

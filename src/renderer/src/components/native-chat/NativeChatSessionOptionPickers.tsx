@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,10 @@ import {
   nativeChatSessionOptionLabel
 } from './native-chat-session-option-labels'
 import type { NativeChatOptionPickerRequest } from './native-chat-composer-types'
+import {
+  useQueuedSessionOptions,
+  withQueuedSessionOption
+} from './native-chat-queued-session-options'
 
 export type NativeChatSessionOptionPickersProps = {
   surface: SessionOptionsSurface | null
@@ -44,10 +48,16 @@ function PickerTooltipContent(props: {
   label: string
   disabledReason?: string | null
   dispatched: boolean
+  queued: boolean
 }): React.JSX.Element {
   return (
     <div className="space-y-0.5">
       <div>{props.disabledReason ?? props.label}</div>
+      {props.queued ? (
+        <div>
+          {translate('components.native-chat.composer.appliesNextTurn', 'Applies after this turn')}
+        </div>
+      ) : null}
       {props.dispatched ? (
         <div>
           {translate(
@@ -66,6 +76,7 @@ function PickerTrigger(props: {
   disabled: boolean
   disabledReason?: string | null
   dispatched: boolean
+  queued: boolean
 }): React.JSX.Element {
   // Why: value-only visible text must still include the category in the
   // accessible name (WCAG 2.5.3 Label in Name / voice control).
@@ -97,6 +108,7 @@ function PickerTrigger(props: {
           label={props.tooltipLabel}
           disabledReason={props.disabledReason}
           dispatched={props.dispatched}
+          queued={props.queued}
         />
       </TooltipContent>
     </Tooltip>
@@ -117,14 +129,17 @@ function ChoiceBody(props: { label: string; description?: string }): React.JSX.E
 function DescriptorMenuRows(props: {
   descriptor: SessionOptionDescriptor
   pending: boolean
+  /** Actions drive the TUI directly, so they cannot be queued for the next turn. */
+  actionsBlocked: boolean
   setValue: (value: SessionOptionValue) => void
   invokeAction: () => void
 }): React.JSX.Element {
   const { descriptor, pending, setValue, invokeAction } = props
+  const actionDisabled = !descriptor.settable || pending || props.actionsBlocked
   // Why: flip-only without a baseline is an action — never claim On/Off.
   if (descriptor.action?.type === 'toggle-command') {
     return (
-      <DropdownMenuItem disabled={!descriptor.settable || pending} onSelect={() => invokeAction()}>
+      <DropdownMenuItem disabled={actionDisabled} onSelect={() => invokeAction()}>
         {translate('components.native-chat.composer.toggleOption', 'Toggle {{value0}}', {
           value0: nativeChatSessionOptionLabel(descriptor).toLowerCase()
         })}
@@ -134,7 +149,7 @@ function DescriptorMenuRows(props: {
   // Why: agent-picker opens the TUI; it is not a set of radio choices.
   if (descriptor.action?.type === 'agent-picker') {
     return (
-      <DropdownMenuItem disabled={!descriptor.settable || pending} onSelect={() => invokeAction()}>
+      <DropdownMenuItem disabled={actionDisabled} onSelect={() => invokeAction()}>
         {translate(
           'components.native-chat.composer.chooseInAgentPicker',
           'Choose in agent picker…'
@@ -227,8 +242,26 @@ function NativeChatSessionOptionPickersInner({
   pickerRequest
 }: NativeChatSessionOptionPickersProps): React.JSX.Element | null {
   const [pendingId, setPendingId] = useState<string | null>(null)
-  const model = snapshot.find((descriptor) => descriptor.category === 'model')
-  const options = sortNativeChatSessionOptions(snapshot)
+  const flush = useCallback(
+    (entries: [string, SessionOptionValue][]) => {
+      if (!surface || entries.length === 0) {
+        return
+      }
+      runSurfaceCall(entries[0][0], setPendingId, () =>
+        entries.reduce<Promise<unknown>>(
+          (chain, [id, value]) => chain.then(() => surface.setOption(id, value)),
+          Promise.resolve()
+        )
+      )
+    },
+    [surface]
+  )
+  const { queued, queue } = useQueuedSessionOptions({ isWorking, flush })
+  const rawModel = snapshot.find((descriptor) => descriptor.category === 'model')
+  const model = rawModel ? withQueuedSessionOption(rawModel, queued) : undefined
+  const options = sortNativeChatSessionOptions(snapshot).map((descriptor) =>
+    withQueuedSessionOption(descriptor, queued)
+  )
   if (!surface || !model) {
     return null
   }
@@ -238,6 +271,10 @@ function NativeChatSessionOptionPickersInner({
     : null
 
   const setOption = (descriptor: SessionOptionDescriptor, value: SessionOptionValue): void => {
+    if (isWorking) {
+      queue(descriptor.id, value)
+      return
+    }
     runSurfaceCall(descriptor.id, setPendingId, () => surface.setOption(descriptor.id, value))
   }
   const invokeAction = (descriptor: SessionOptionDescriptor): void => {
@@ -261,9 +298,10 @@ function NativeChatSessionOptionPickersInner({
         <PickerTrigger
           label={nativeChatModelPillLabel(model)}
           tooltipLabel={modelTooltip}
-          disabled={isWorking || pendingId !== null}
+          disabled={pendingId !== null}
           disabledReason={modelReason}
           dispatched={sessionOptionDispatchUnconfirmed(model)}
+          queued={queued.has(model.id)}
         />
         <DropdownMenuContent align="start" side="top" collisionPadding={8} className="w-64">
           {modelReason && !model.settable ? (
@@ -272,6 +310,7 @@ function NativeChatSessionOptionPickersInner({
           <DescriptorMenuRows
             descriptor={model}
             pending={pendingId !== null}
+            actionsBlocked={isWorking}
             setValue={(value) => setOption(model, value)}
             invokeAction={() => invokeAction(model)}
           />
@@ -285,9 +324,10 @@ function NativeChatSessionOptionPickersInner({
           <PickerTrigger
             label={nativeChatOptionsPillLabel(options)}
             tooltipLabel={optionsTooltip}
-            disabled={isWorking || pendingId !== null}
+            disabled={pendingId !== null}
             disabledReason={optionsReason}
             dispatched={options.some(sessionOptionDispatchUnconfirmed)}
+            queued={options.some((descriptor) => queued.has(descriptor.id))}
           />
           <DropdownMenuContent align="start" side="top" collisionPadding={8} className="w-60">
             {options.map((descriptor, index) => {
@@ -306,6 +346,7 @@ function NativeChatSessionOptionPickersInner({
                   <DescriptorMenuRows
                     descriptor={descriptor}
                     pending={pendingId !== null}
+                    actionsBlocked={isWorking}
                     setValue={(value) => setOption(descriptor, value)}
                     invokeAction={() => invokeAction(descriptor)}
                   />
