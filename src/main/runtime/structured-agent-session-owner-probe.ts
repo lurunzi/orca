@@ -5,7 +5,7 @@ import {
   probeAgentSessionProcessIdentity,
   probeAgentSessionReservation
 } from './agent-session-process-identity-probe'
-import { findAgentSessionSpawnTokenProcesses } from './agent-session-spawn-token-process-scan'
+import { findAgentSessionReservationProcesses } from './agent-session-reservation-command-line-scan'
 import { readEchoedAgentSessionSpawnToken } from './agent-session-spawn-token-readback'
 
 /**
@@ -16,7 +16,10 @@ import { readEchoedAgentSessionSpawnToken } from './agent-session-spawn-token-re
 export function createStructuredAgentSessionOwnerProbe(
   hostId: string,
   probe = probeAgentSessionProcessIdentity,
-  findSpawnTokenProcesses = findAgentSessionSpawnTokenProcesses
+  findSpawnTokenProcesses: (
+    spawnToken: string,
+    record: AgentSessionRecord
+  ) => Promise<number[] | null> = findAgentSessionReservationProcesses
 ): (record: AgentSessionRecord) => Promise<AgentSessionOwnerProbe> {
   return async (record) => {
     const owner = record.lease.ownerProcess
@@ -38,10 +41,10 @@ export function createStructuredAgentSessionOwnerProbe(
         return { outcome: 'reservation-unused' }
       }
       // Freeing a reservation needs positive proof that nothing spawned under its token. The scan
-      // answers null where the platform cannot read another process's environment.
+      // answers null where neither child environments nor (on Windows) command lines are readable.
       return probeAgentSessionReservation({
         spawnToken,
-        findProcessesWithSpawnToken: (token) => findSpawnTokenProcesses(token),
+        findProcessesWithSpawnToken: (token) => findSpawnTokenProcesses(token, record),
         hasProviderActivitySinceReservation: async () =>
           agentSessionReservationTouchedProvider(record)
       })

@@ -166,15 +166,16 @@ through `toIdentityRow`, so an identity row carries no command line on any host.
 
 ### Which callers need which
 
-| caller                                     | reads                             | flag set |
-| ------------------------------------------ | --------------------------------- | -------- |
-| `windows-agent-foreground-process.ts`      | `command` (agent recognition)     | detailed |
-| `local-workspace-platform-port-scanner.ts` | `command` (port attribution)      | detailed |
-| `codex-structured-turn-processes.ts`       | `command` (turn-process identity) | detailed |
-| `structured-tui-process-identity.ts`       | `command` (child match)           | detailed |
-| `windows-pty-root-identity.ts`             | `pid` / `ppid` only               | identity |
-| `agent-session-process-identity-probe.ts`  | `creationTimeMs` only             | identity |
-| `relay/windows-port-scan.ts`               | `name` (port owner label)         | detailed |
+| caller                                           | reads                                 | flag set |
+| ------------------------------------------------ | ------------------------------------- | -------- |
+| `windows-agent-foreground-process.ts`            | `command` (agent recognition)         | detailed |
+| `local-workspace-platform-port-scanner.ts`       | `command` (port attribution)          | detailed |
+| `codex-structured-turn-processes.ts`             | `command` (turn-process identity)     | detailed |
+| `structured-tui-process-identity.ts`             | `command` (child match)               | detailed |
+| `agent-session-reservation-command-line-scan.ts` | `command` (reservation absence proof) | detailed |
+| `windows-pty-root-identity.ts`                   | `pid` / `ppid` only                   | identity |
+| `agent-session-process-identity-probe.ts`        | `creationTimeMs` only                 | identity |
+| `relay/windows-port-scan.ts`                     | `name` (port owner label)             | detailed |
 
 `windows-port-scan.ts` is the one mismatch in the table: it reads only `pid` and
 `name`, which the identity set answers, but it calls the detailed reader. On a
