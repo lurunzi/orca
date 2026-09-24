@@ -68,9 +68,11 @@ export function launchAiVaultSessionInNewTab(args: {
       targetGroupId
   }
 
-  const tab = args.cwd
-    ? store.createTab(args.worktreeId, targetGroupId, undefined, { startupCwd: args.cwd })
-    : store.createTab(args.worktreeId, targetGroupId)
+  // Why: agents that never paint a title (Antigravity) have no other identity until their first hook.
+  const tab = store.createTab(args.worktreeId, targetGroupId, undefined, {
+    launchAgent: args.agent,
+    ...(args.cwd ? { startupCwd: args.cwd } : {})
+  })
   store.queueTabStartupCommand(tab.id, {
     command: args.command,
     ...(args.env ? { env: args.env } : {}),

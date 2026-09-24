@@ -79,7 +79,9 @@ describe('launchAiVaultSessionInNewTab', () => {
       command: 'claude --resume session-1'
     })
 
-    expect(mockCreateTab).toHaveBeenCalledWith('wt-1', 'group-1')
+    expect(mockCreateTab).toHaveBeenCalledWith('wt-1', 'group-1', undefined, {
+      launchAgent: 'claude'
+    })
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith('tab-1', {
       command: 'claude --resume session-1',
       telemetry: {
@@ -111,6 +113,7 @@ describe('launchAiVaultSessionInNewTab', () => {
     })
 
     expect(mockCreateTab).toHaveBeenCalledWith('wt-1', undefined, undefined, {
+      launchAgent: 'claude',
       startupCwd: 'C:\\Users\\alice\\repo'
     })
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith('tab-1', {
@@ -142,7 +145,21 @@ describe('launchAiVaultSessionInNewTab', () => {
     })
 
     expect(mockCreateEmptySplitGroup).toHaveBeenCalledWith('wt-1', 'group-1', 'right')
-    expect(mockCreateTab).toHaveBeenCalledWith('wt-1', 'group-new')
+    expect(mockCreateTab).toHaveBeenCalledWith('wt-1', 'group-new', undefined, {
+      launchAgent: 'codex'
+    })
+  })
+
+  it('tags an Antigravity resume with its agent before the first hook arrives', () => {
+    launchAiVaultSessionInNewTab({
+      agent: 'antigravity',
+      worktreeId: 'wt-1',
+      command: 'agy --resume session-3'
+    })
+
+    expect(mockCreateTab).toHaveBeenCalledWith('wt-1', undefined, undefined, {
+      launchAgent: 'antigravity'
+    })
   })
 
   it('creates runtime-hosted resume terminals through the paired host', async () => {
