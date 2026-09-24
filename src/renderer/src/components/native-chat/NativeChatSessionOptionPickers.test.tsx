@@ -446,25 +446,6 @@ describe('NativeChatSessionOptionPickers', () => {
     await waitFor(() => expect(invokeAction).toHaveBeenCalledWith('model'))
   })
 
-  it('opens the Antigravity CLI model picker from the model button', async () => {
-    const invokeAction = vi.fn().mockResolvedValue({ snapshot: [] })
-    render(
-      <NativeChatSessionOptionPickers
-        surface={{ ...surface, invokeAction }}
-        snapshot={[
-          model({
-            valueSource: 'unknown',
-            action: { type: 'agent-picker', directFromModelTrigger: true }
-          })
-        ]}
-        isWorking={false}
-      />
-    )
-    expect(screen.queryByRole('button', { name: 'Choose in agent picker…' })).toBeNull()
-    screen.getByRole('button', { name: 'Model' }).click()
-    await waitFor(() => expect(invokeAction).toHaveBeenCalledExactlyOnceWith('model'))
-  })
-
   it('uses a Toggle action for unknown flip-only options via invokeAction', async () => {
     const invokeAction = vi.fn().mockResolvedValue({ snapshot: [] })
     const setOption = vi.fn().mockResolvedValue({ snapshot: [] })

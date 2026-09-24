@@ -30,6 +30,14 @@ Full reads, incremental tails, and legacy journal imports reuse the same decoder
 Unknown record types are skipped. Tool failures retain a nonzero exit code or
 `ERROR` status as an error result.
 
+## Model picker
+
+The Chat model button is a dropdown of the account's models from `agy models`
+(`<slug>	<label>` rows), probed once per execution host. Picking one types
+`/model <slug>`; agy 1.2.10 answers `Model set to <label>` without opening its
+TUI picker, and also saves that model as the CLI default. Until the probe
+returns, no model button is shown.
+
 ## Mixed versions
 
 New hosts advertise `native-chat.antigravity.v1`. A new client's chat transport

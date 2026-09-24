@@ -66,7 +66,6 @@ function PickerTrigger(props: {
   disabled: boolean
   disabledReason?: string | null
   dispatched: boolean
-  onClick?: () => void
 }): React.JSX.Element {
   // Why: value-only visible text must still include the category in the
   // accessible name (WCAG 2.5.3 Label in Name / voice control).
@@ -77,32 +76,6 @@ function PickerTrigger(props: {
           value0: props.tooltipLabel,
           value1: props.label
         })
-  if (props.onClick) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            aria-label={accessibleName}
-            disabled={props.disabled}
-            onClick={props.onClick}
-            className="max-w-48"
-          >
-            <span className="truncate">{props.label}</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          <PickerTooltipContent
-            label={props.tooltipLabel}
-            disabledReason={props.disabledReason}
-            dispatched={props.dispatched}
-          />
-        </TooltipContent>
-      </Tooltip>
-    )
-  }
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -273,10 +246,6 @@ function NativeChatSessionOptionPickersInner({
 
   const modelReason = nativeChatSessionOptionDisabledReason(model.disabledReason)
   const modelTooltip = translate('components.native-chat.composer.model', 'Model')
-  const directModelPicker =
-    model.action?.type === 'agent-picker' &&
-    model.action.directFromModelTrigger === true &&
-    model.settable
   const optionsTooltip = nativeChatOptionsPillTitle(options)
   const optionsReason =
     options.length > 0 && options.every((descriptor) => !descriptor.settable)
@@ -285,40 +254,29 @@ function NativeChatSessionOptionPickersInner({
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
-      {directModelPicker ? (
+      <DropdownMenu
+        key={`model:${requestedModelSequence ?? 'idle'}`}
+        defaultOpen={requestedModelSequence !== null}
+      >
         <PickerTrigger
           label={nativeChatModelPillLabel(model)}
           tooltipLabel={modelTooltip}
           disabled={isWorking || pendingId !== null}
           disabledReason={modelReason}
           dispatched={sessionOptionDispatchUnconfirmed(model)}
-          onClick={() => invokeAction(model)}
         />
-      ) : (
-        <DropdownMenu
-          key={`model:${requestedModelSequence ?? 'idle'}`}
-          defaultOpen={requestedModelSequence !== null}
-        >
-          <PickerTrigger
-            label={nativeChatModelPillLabel(model)}
-            tooltipLabel={modelTooltip}
-            disabled={isWorking || pendingId !== null}
-            disabledReason={modelReason}
-            dispatched={sessionOptionDispatchUnconfirmed(model)}
+        <DropdownMenuContent align="start" side="top" collisionPadding={8} className="w-64">
+          {modelReason && !model.settable ? (
+            <DropdownMenuLabel className="font-normal">{modelReason}</DropdownMenuLabel>
+          ) : null}
+          <DescriptorMenuRows
+            descriptor={model}
+            pending={pendingId !== null}
+            setValue={(value) => setOption(model, value)}
+            invokeAction={() => invokeAction(model)}
           />
-          <DropdownMenuContent align="start" side="top" collisionPadding={8} className="w-64">
-            {modelReason && !model.settable ? (
-              <DropdownMenuLabel className="font-normal">{modelReason}</DropdownMenuLabel>
-            ) : null}
-            <DescriptorMenuRows
-              descriptor={model}
-              pending={pendingId !== null}
-              setValue={(value) => setOption(model, value)}
-              invokeAction={() => invokeAction(model)}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {options.length > 0 ? (
         <DropdownMenu
           key={`options:${requestedOptionsSequence ?? 'idle'}`}

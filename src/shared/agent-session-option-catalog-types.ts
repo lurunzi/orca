@@ -16,12 +16,7 @@ export type CatalogMidSessionApply =
       detectAgentInteraction?: CatalogAgentInteractionDetection
     }
   | { kind: 'toggle-command'; command: string }
-  | {
-      kind: 'agent-picker'
-      command: string
-      delivery?: CatalogCommandDelivery
-      directFromModelTrigger?: true
-    }
+  | { kind: 'agent-picker'; command: string; delivery?: CatalogCommandDelivery }
   | { kind: 'unsupported' }
 
 export type CatalogOptionApply = {

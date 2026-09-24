@@ -54,7 +54,7 @@ export type SessionOptionDescriptor = {
   disabledReason?: SessionOptionDisabledReason
   /** Why: picker-only and toggle-only PTY commands cannot be represented as
    * a truthful radio/checkbox state, so the producer exposes an action row. */
-  action?: { type: 'agent-picker'; directFromModelTrigger?: true } | { type: 'toggle-command' }
+  action?: { type: 'agent-picker' | 'toggle-command' }
 }
 
 /** A value we typed at the agent and have never read back. Both lanes write
