@@ -35,6 +35,7 @@ export abstract class RateLimitServiceState {
     grok: null
   }
   protected grokAuthConfigured = readGrokAuthSession().status === 'ok'
+  protected openCodeGoApiKeyConfigured = false
   protected pollInterval: number = DEFAULT_POLL_MS
   protected timer: ReturnType<typeof setInterval> | null = null
   protected deferredStartupRefreshTimer: ReturnType<typeof setTimeout> | null = null

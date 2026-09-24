@@ -77,8 +77,6 @@ export type Tab = {
     transcriptPath: string
     runtimeEnvironmentId: string | null
   }
-  /** Structured session adopted from this terminal's Codex TUI. */
-  structuredSessionId?: string
   /** Why: per-tab rendering mode for coding-agent terminals. `'chat'` shows the
    *  native chat view as an overlay while the live terminal stays mounted
    *  underneath; `'terminal'` (the default for legacy/missing) shows the raw

@@ -3,7 +3,7 @@ import { resolveTerminalTabTitle } from '../../../../shared/tab-title-resolution
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import type { OpenFile } from '../../store/slices/editor'
-import { canSwitchNativeChatView } from '../native-chat/native-chat-availability'
+import { canToggleNativeChat } from '../native-chat/native-chat-availability'
 import { resolveNativeChatTabAgentEvidence } from './native-chat-tab-agent-evidence'
 import SortableTab from './SortableTab'
 import EditorFileTab from './EditorFileTab'
@@ -108,15 +108,14 @@ export function renderTabBarItems({
       const tabWideFallbackSafe = nativeChatTabWideFallbackUnsafeTabsById[terminalTab.id] !== true
       const canToggleViewMode =
         unifiedTabForItem !== undefined &&
-        canSwitchNativeChatView({
+        canToggleNativeChat({
           experimentalNativeChatEnabled: nativeChatEnabled,
           contentType: 'terminal',
           launchAgent: tabWideFallbackSafe ? terminalTab.launchAgent : null,
           detectedAgent,
           resolvedAgent: tabWideFallbackSafe ? resolvedAgent : null,
           nativeChatTranscriptIsLocalReadable,
-          isChatViewMode: unifiedTabForItem.viewMode === 'chat',
-          structuredSessionId: unifiedTabForItem.structuredSessionId ?? null
+          isChatViewMode: unifiedTabForItem.viewMode === 'chat'
         })
       return (
         <SortableTab

@@ -291,6 +291,7 @@ export class StructuredAgentSessionHost {
   cancel = this.mutations.cancel
   respondToPrompt = this.mutations.respondToPrompt
   setOption = this.mutations.setOption
+  changeThreadGoal = this.mutations.changeThreadGoal
   readOptions = this.mutations.readOptions
 
   requestHandoff = (
