@@ -1,61 +1,79 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session-option-catalog'
 import { clearNativeChatSessionOptionCacheForTests } from './native-chat-session-option-cache'
 import { createNativeChatPtySessionOptions } from './native-chat-pty-session-options'
+
+const AGY_MODELS_STDOUT = [
+  'Fetching available models...',
+  'gemini-3.8-flash-high\tGemini 3.8 Flash (High)',
+  'claude-opus-4-6-thinking\tClaude Opus 4.6 (Thinking)'
+].join('\n')
+
+const discoveredModels =
+  getAgentSessionOptionCatalog('antigravity')!.listModels!.parse(AGY_MODELS_STDOUT)
 
 describe('Antigravity model picker', () => {
   beforeEach(() => clearNativeChatSessionOptionCacheForTests())
 
-  it('keeps the live picker reachable without a model catalog or a reported model', async () => {
+  it('parses `agy models` into catalog choices', () => {
+    expect(discoveredModels).toEqual([
+      { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] },
+      { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 (Thinking)', options: [] }
+    ])
+  })
+
+  it('lists discovered models and switches with `/model <slug>` instead of the TUI picker', async () => {
     const dispatchCommand = vi.fn().mockResolvedValue(undefined)
     const onAgentPicker = vi.fn()
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
-      scopeKey: 'antigravity-model-picker',
-      initialModels: [],
+      scopeKey: 'antigravity-model-dropdown',
+      initialModels: discoveredModels,
       mode: 'live',
       dispatchCommand,
       onAgentPicker
     })!
-    const expected = {
+    const [model] = surface.getSnapshot()
+    expect(model).toMatchObject({
       id: 'model',
-      valueSource: 'unknown',
       settable: true,
-      kind: { type: 'select', choices: [] },
-      action: { type: 'agent-picker', directFromModelTrigger: true }
-    }
-    expect(surface.getSnapshot()).toEqual([expect.objectContaining(expected)])
-    await surface.invokeAction('model')
-    expect(dispatchCommand).toHaveBeenCalledExactlyOnceWith('/model')
-    expect(onAgentPicker).toHaveBeenCalledOnce()
-    expect(surface.getSnapshot()).toEqual([expect.objectContaining(expected)])
+      kind: {
+        type: 'select',
+        choices: [
+          { value: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)' },
+          { value: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 (Thinking)' }
+        ]
+      }
+    })
+    expect(model.action).toBeUndefined()
+
+    await surface.setOption('model', 'claude-opus-4-6-thinking')
+    expect(dispatchCommand).toHaveBeenCalledExactlyOnceWith('/model claude-opus-4-6-thinking')
+    expect(onAgentPicker).not.toHaveBeenCalled()
+    expect(surface.getSnapshot()[0]).toMatchObject({
+      kind: { currentValue: 'claude-opus-4-6-thinking' }
+    })
   })
 
-  it('does not offer an empty model list before the agent starts', () => {
+  it('offers discovered models as launch choices before the agent starts', () => {
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
       scopeKey: 'antigravity-draft-picker',
-      initialModels: [],
+      initialModels: discoveredModels,
       mode: 'draft',
       dispatchCommand: vi.fn()
     })!
-    expect(surface.getSnapshot()).toEqual([])
+    expect(surface.getSnapshot()[0]).toMatchObject({ id: 'model', settable: true })
   })
 
-  it('retains the picker after a reported model is cleared by opening it', async () => {
+  it('shows no picker until the account model list arrives', () => {
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
-      scopeKey: 'antigravity-reported-picker',
+      scopeKey: 'antigravity-no-models',
       initialModels: [],
       mode: 'live',
-      reportedValues: { model: 'account-model' },
-      dispatchCommand: vi.fn().mockResolvedValue(undefined)
+      dispatchCommand: vi.fn()
     })!
-    await surface.invokeAction('model')
-    expect(surface.getSnapshot()).toEqual([
-      expect.objectContaining({
-        id: 'model',
-        action: { type: 'agent-picker', directFromModelTrigger: true }
-      })
-    ])
+    expect(surface.getSnapshot()).toEqual([])
   })
 })
