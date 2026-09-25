@@ -637,4 +637,44 @@ describe('NativeChatSessionOptionPickers', () => {
     expect(screen.getAllByText('Thinking').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Sent to the agent — not confirmed').length).toBeGreaterThan(0)
   })
+
+  it('splits CLI-listed effort tiers into a model row and a tier pill', async () => {
+    const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+    const tiered = model({
+      kind: {
+        type: 'select',
+        currentValue: 'flash-medium',
+        choices: [
+          { value: 'flash-high', label: 'Flash (High)' },
+          { value: 'flash-medium', label: 'Flash (Medium)' },
+          { value: 'pro-high', label: 'Pro (High)' },
+          { value: 'pro-low', label: 'Pro (Low)' },
+          { value: 'sonnet', label: 'Sonnet (Thinking)' }
+        ]
+      }
+    })
+    render(
+      <NativeChatSessionOptionPickers
+        surface={{ ...surface, setOption }}
+        snapshot={[tiered]}
+        isWorking={false}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Model Flash' })).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Effort Medium' })).not.toBeNull()
+    const models = screen.getByRole('radiogroup', { name: 'Model' })
+    expect(
+      [...models.querySelectorAll('[role="radio"]')].map((radio) => radio.textContent)
+    ).toEqual(['Flash', 'Pro', 'Sonnet (Thinking)'])
+    const tiers = screen.getByRole('radiogroup', { name: 'Effort' })
+    expect([...tiers.querySelectorAll('[role="radio"]')].map((r) => r.textContent)).toEqual([
+      'High',
+      'Medium'
+    ])
+
+    // Pro has no Medium tier, so switching to it falls back to its first listed tier.
+    screen.getByRole('radio', { name: 'Pro' }).click()
+    await waitFor(() => expect(setOption).toHaveBeenCalledWith('model', 'pro-high'))
+  })
 })

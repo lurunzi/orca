@@ -1,7 +1,5 @@
 import { memo, useCallback, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { SwitchIndicator } from '@/components/ui/switch'
 import {
   DropdownMenu,
@@ -10,10 +8,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { translate } from '@/i18n/i18n'
 import { sortNativeChatSessionOptions } from '../../../../shared/native-chat-session-option-snapshot'
 import {
@@ -32,6 +28,9 @@ import {
   nativeChatSessionOptionLabel
 } from './native-chat-session-option-labels'
 import type { NativeChatOptionPickerRequest } from './native-chat-composer-types'
+import { buildModelPickerRows, findTieredRow } from './native-chat-model-tier-groups'
+import { ModelTierMenuRows, ModelTierPicker } from './NativeChatModelTierMenus'
+import { ChoiceBody, PickerTrigger } from './NativeChatPickerTrigger'
 import {
   useQueuedSessionOptions,
   withQueuedSessionOption
@@ -42,88 +41,6 @@ export type NativeChatSessionOptionPickersProps = {
   snapshot: SessionOptionDescriptor[]
   isWorking: boolean
   pickerRequest?: NativeChatOptionPickerRequest | null
-}
-
-function PickerTooltipContent(props: {
-  label: string
-  disabledReason?: string | null
-  dispatched: boolean
-  queued: boolean
-}): React.JSX.Element {
-  return (
-    <div className="space-y-0.5">
-      <div>{props.disabledReason ?? props.label}</div>
-      {props.queued ? (
-        <div>
-          {translate('components.native-chat.composer.appliesNextTurn', 'Applies after this turn')}
-        </div>
-      ) : null}
-      {props.dispatched ? (
-        <div>
-          {translate(
-            'components.native-chat.composer.sentNotConfirmed',
-            'Sent to the agent — not confirmed'
-          )}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function PickerTrigger(props: {
-  label: string
-  tooltipLabel: string
-  disabled: boolean
-  disabledReason?: string | null
-  dispatched: boolean
-  queued: boolean
-}): React.JSX.Element {
-  // Why: value-only visible text must still include the category in the
-  // accessible name (WCAG 2.5.3 Label in Name / voice control).
-  const accessibleName =
-    props.label === props.tooltipLabel
-      ? props.tooltipLabel
-      : translate('components.native-chat.composer.pillAccessibleName', '{{value0}} {{value1}}', {
-          value0: props.tooltipLabel,
-          value1: props.label
-        })
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <DropdownMenuTrigger asChild disabled={props.disabled}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            aria-label={accessibleName}
-            className="max-w-48 text-muted-foreground"
-          >
-            <span className="truncate">{props.label}</span>
-            <ChevronDown className="size-3" />
-          </Button>
-        </DropdownMenuTrigger>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4}>
-        <PickerTooltipContent
-          label={props.tooltipLabel}
-          disabledReason={props.disabledReason}
-          dispatched={props.dispatched}
-          queued={props.queued}
-        />
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
-function ChoiceBody(props: { label: string; description?: string }): React.JSX.Element {
-  return (
-    <div className="min-w-0 py-0.5">
-      <div>{props.label}</div>
-      {props.description ? (
-        <div className="text-xs font-normal text-muted-foreground">{props.description}</div>
-      ) : null}
-    </div>
-  )
 }
 
 function DescriptorMenuRows(props: {
@@ -288,6 +205,11 @@ function NativeChatSessionOptionPickersInner({
     options.length > 0 && options.every((descriptor) => !descriptor.settable)
       ? nativeChatSessionOptionDisabledReason(options[0]?.disabledReason)
       : null
+  const modelChoices = model.kind.type === 'select' && !model.action ? model.kind : null
+  const modelRows = modelChoices ? buildModelPickerRows(modelChoices.choices) : []
+  const currentModelId = model.valueSource === 'unknown' ? undefined : modelChoices?.currentValue
+  const tieredRow = findTieredRow(modelRows, currentModelId)
+  const currentTier = tieredRow?.tiers.find((tier) => tier.value === currentModelId)?.tier ?? null
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -296,7 +218,7 @@ function NativeChatSessionOptionPickersInner({
         defaultOpen={requestedModelSequence !== null}
       >
         <PickerTrigger
-          label={nativeChatModelPillLabel(model)}
+          label={tieredRow ? tieredRow.baseLabel : nativeChatModelPillLabel(model)}
           tooltipLabel={modelTooltip}
           disabled={pendingId !== null}
           disabledReason={modelReason}
@@ -307,15 +229,37 @@ function NativeChatSessionOptionPickersInner({
           {modelReason && !model.settable ? (
             <DropdownMenuLabel className="font-normal">{modelReason}</DropdownMenuLabel>
           ) : null}
-          <DescriptorMenuRows
-            descriptor={model}
-            pending={pendingId !== null}
-            actionsBlocked={isWorking}
-            setValue={(value) => setOption(model, value)}
-            invokeAction={() => invokeAction(model)}
-          />
+          {modelChoices && modelRows.some((row) => row.kind === 'tiered') ? (
+            <ModelTierMenuRows
+              rows={modelRows}
+              currentValue={modelChoices.currentValue}
+              currentTier={currentTier}
+              disabled={!model.settable || pendingId !== null}
+              setValue={(value) => setOption(model, value)}
+            />
+          ) : (
+            <DescriptorMenuRows
+              descriptor={model}
+              pending={pendingId !== null}
+              actionsBlocked={isWorking}
+              setValue={(value) => setOption(model, value)}
+              invokeAction={() => invokeAction(model)}
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
+      {tieredRow && currentModelId ? (
+        <ModelTierPicker
+          model={model}
+          row={tieredRow}
+          currentValue={currentModelId}
+          pending={pendingId !== null}
+          queued={queued.has(model.id)}
+          disabledReason={modelReason}
+          dispatched={sessionOptionDispatchUnconfirmed(model)}
+          setValue={(value) => setOption(model, value)}
+        />
+      ) : null}
       {options.length > 0 ? (
         <DropdownMenu
           key={`options:${requestedOptionsSequence ?? 'idle'}`}
