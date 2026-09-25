@@ -1,9 +1,7 @@
 import { applyClaudePromptAnswer, type ClaudePromptClaim } from './claude-structured-prompt-replies'
 import { ClaudeControlRequestError } from './claude-stream-json-connection'
-import {
-  settleCancelledClaudeDispatchWaiters,
-  type ClaudeLateDispatchSettlement
-} from './claude-structured-dispatch'
+import type { ClaudeLateDispatchSettlement } from './claude-structured-dispatch'
+import { settleCancelledClaudeDispatchWaiters } from './claude-structured-dispatch-waiters'
 import type { ClaudeSession } from './claude-structured-session-state'
 
 const INTERRUPT_CANCEL_QUEUED_CAPABILITY = 'interrupt_cancel_queued_v1'

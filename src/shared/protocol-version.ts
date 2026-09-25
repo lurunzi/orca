@@ -319,11 +319,17 @@ export const CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY = 'native-chat.cursor.v1' as 
 
 export const STATUS_BAR_CURSOR_ITEM_RUNTIME_CAPABILITY = 'ui.status-bar-cursor'
 
+// Why: `agentSession.create` is a strict object, so an older host refuses a payload carrying the
+// reserved `tabId` rather than ignoring it. A client sends the field only to a host advertising this.
+export const AGENT_SESSION_CREATE_TAB_ID_RUNTIME_CAPABILITY =
+  'agentSession.create.tab-id.v1' as const
+
 export const RUNTIME_CAPABILITIES = [
   STATUS_BAR_CURSOR_ITEM_RUNTIME_CAPABILITY,
   ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY,
   CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY,
   ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY,
+  AGENT_SESSION_CREATE_TAB_ID_RUNTIME_CAPABILITY,
   ANTIGRAVITY_CONFIGURED_MODEL_RUNTIME_CAPABILITY,
   'files.pathsExist',
   'runtime.status.compat.v1',

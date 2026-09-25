@@ -1,4 +1,6 @@
 import type { ClaudeDispatchWaiter, ClaudeSession } from './claude-structured-session-state'
+import type { ClaudeLateDispatchSettlement } from './claude-structured-dispatch'
+import { DISPATCH_REJECTED_CANCELLED } from '../../shared/structured-agent-session-dispatch-rejection'
 
 const MAX_RETIRED_DISPATCH_WAITERS = 64
 
@@ -58,6 +60,34 @@ export function retireWaiter(session: ClaudeSession, waiter: ClaudeDispatchWaite
         0,
         session.retiredDispatchWaiters.length - MAX_RETIRED_DISPATCH_WAITERS
       )
+    }
+  }
+}
+
+export function settleCancelledClaudeDispatchWaiters(
+  session: ClaudeSession,
+  cancelledUuids: readonly string[],
+  onSettledLate?: ClaudeLateDispatchSettlement
+): void {
+  const cancelled = new Set(cancelledUuids)
+  const activeWaiters = session.dispatchWaiters.filter((waiter) => cancelled.has(waiter.sentUuid))
+  const retiredWaiters = session.retiredDispatchWaiters.filter((waiter) =>
+    cancelled.has(waiter.sentUuid)
+  )
+  for (const waiter of activeWaiters) {
+    forgetWaiter(session, waiter)
+    waiter.resolve(null)
+  }
+  for (const waiter of retiredWaiters) {
+    forgetRetiredWaiter(session, waiter)
+  }
+  for (const waiter of [...activeWaiters, ...retiredWaiters]) {
+    if (waiter.clientMessageId) {
+      onSettledLate?.({
+        clientMessageId: waiter.clientMessageId,
+        state: 'rejected',
+        reason: DISPATCH_REJECTED_CANCELLED
+      })
     }
   }
 }
