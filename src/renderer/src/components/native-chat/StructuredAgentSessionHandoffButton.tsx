@@ -1,4 +1,4 @@
-import { SquareTerminal } from 'lucide-react'
+import { MessageSquare, SquareTerminal } from 'lucide-react'
 import type {
   AgentSessionHandoffDirection,
   AgentSessionHandoffMode,
@@ -20,14 +20,42 @@ type Props = {
   onRequest: (direction: AgentSessionHandoffDirection, mode: AgentSessionHandoffMode) => void
 }
 
-/** Top-right entry for moving a chat-owned session into its agent terminal, matching the
- *  terminal-backed chat's pane-header toggle. */
+/** Top-right chat/agent-terminal toggle, matching the terminal-backed chat's pane-header toggle:
+ *  pressed while chat owns the session, and a way back while the agent terminal owns it. */
 export function StructuredAgentSessionHandoffButton({
   status,
   isWorking,
   onRequest
 }: Props): React.JSX.Element | null {
-  if (status?.owner !== 'native' || status.phase !== 'idle') {
+  if (status?.phase !== 'idle') {
+    return null
+  }
+  if (status.owner === 'tui') {
+    const label = isWorking
+      ? translate('components.native-chat.handoff.returnAfterTurn', 'Return after this turn')
+      : translate('components.native-chat.handoff.returnToChat', 'Return to chat')
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={label}
+            aria-pressed={false}
+            onClick={() => onRequest('to-native', 'after-turn')}
+            className="pointer-coarse:size-11"
+          >
+            <MessageSquare className="size-3" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4}>
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+  if (status.owner !== 'native') {
     return null
   }
   const label = translate('components.native-chat.handoff.openAgentTui', 'Open agent TUI')
@@ -37,6 +65,7 @@ export function StructuredAgentSessionHandoffButton({
       variant="ghost"
       size="icon-xs"
       aria-label={label}
+      aria-pressed
       // A submitted turn can reach the host before isWorking updates; after-turn is immediate when idle.
       onClick={isWorking ? undefined : () => onRequest('to-tui', 'after-turn')}
       className="pointer-coarse:size-11"

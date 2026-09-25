@@ -34,6 +34,7 @@ export function TerminalPaneSurface({
     activePaneCanContinueInNewSession,
     activePaneCanToggleChat,
     activePaneIsChatLeaf,
+    activePaneReturnsToStructuredChat,
     activatePaneTitleInteraction,
     agentSessionContinuation,
     agentSessionFork,
@@ -43,6 +44,7 @@ export function TerminalPaneSurface({
     contextMenuCanContinueInNewSession,
     contextMenuCanToggleChat,
     contextMenuIsChatView,
+    contextMenuReturnsToStructuredChat,
     cwd,
     daemonActions,
     dismissTerminalError,
@@ -60,7 +62,7 @@ export function TerminalPaneSurface({
     handleRenameSubmit,
     handleRequestClosePane,
     handleStartRename,
-    handleToggleNativeChat,
+    handlePaneHeaderToggleNativeChat,
     hiddenStartupStyle,
     isActive,
     keybindings,
@@ -246,6 +248,7 @@ export function TerminalPaneSurface({
         onForkAgentSession={() => void contextMenu.onForkAgentSession()}
         canToggleNativeChat={contextMenuCanToggleChat}
         isNativeChatView={contextMenuIsChatView}
+        returnsToStructuredChat={contextMenuReturnsToStructuredChat}
         onToggleNativeChat={handleContextMenuToggleNativeChat}
         onCopyAgentSessionContext={() => void contextMenu.onCopyAgentSessionContext()}
         quickCommandHosts={visibleQuickCommandHosts}
@@ -318,7 +321,8 @@ export function TerminalPaneSurface({
         paneTransportsRef={paneTransportsRef}
         canToggleNativeChat={activePaneCanToggleChat}
         isChatViewMode={activePaneIsChatLeaf}
-        onToggleNativeChat={handleToggleNativeChat}
+        returnsToStructuredChat={activePaneReturnsToStructuredChat}
+        onToggleNativeChat={handlePaneHeaderToggleNativeChat}
         canContinueAgentSessionInNewSession={activePaneCanContinueInNewSession}
         onContinueAgentSessionInNewSession={(pane) =>
           contextMenu.runForPane(pane.id, contextMenu.onContinueAgentSessionInNewSession)

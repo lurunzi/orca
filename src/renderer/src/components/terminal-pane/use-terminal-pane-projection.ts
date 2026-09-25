@@ -19,6 +19,7 @@ import type { TerminalPaneMobileController } from './use-terminal-pane-mobile-ac
 import { useAppStore } from '@/store'
 import { makePaneKey } from '../../../../shared/stable-pane-id'
 import { resolvePaneAgentSessionId } from './pane-agent-session-id'
+import { useStructuredTuiOwnerReturn } from './use-structured-tui-owner-return'
 
 export function useTerminalPaneProjection(controller: TerminalPaneMobileController) {
   const {
@@ -36,6 +37,7 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
     isChatViewMode,
     isVisible,
     managerRef,
+    paneCount,
     toggleNativeChatForLeaf,
     paneTitles,
     paneTransportsRef,
@@ -50,7 +52,8 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
     tabAgentTypeByLeaf,
     terminalError,
     terminalErrorsByPaneId,
-    terminalTab
+    terminalTab,
+    worktreeId
   } = controller
   const effectiveAppearance = settings
     ? resolveEffectiveTerminalAppearance(settings, systemPrefersDark)
@@ -174,17 +177,55 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
   const contextMenuCanContinueInNewSession = canContinueAgentSessionInNewSession(
     resolveAgentForLeaf(contextMenuLeafId)
   )
-  // Each switcher gates on its own leaf (header=active, menu=opened-over), so mixed splits show it only where chat can render.
-  const activePaneCanToggleChat = canToggleChatForLeaf(activePane?.leafId ?? null)
-  const contextMenuCanToggleChat = canToggleChatForLeaf(contextMenuLeafId)
+  const structuredTuiOwner = useStructuredTuiOwnerReturn({
+    worktreeId,
+    tabId,
+    enabled: isActive && isVisible,
+    paneCount,
+    managerRef,
+    paneTransportsRef
+  })
   const contextMenuIsChatView = effectiveChatViewMode && contextMenuLeafId === chatLeafId
+  // A structured session's owning terminal switches back to that session's Chat, not to a transcript chat.
+  const activePaneReturnsToStructuredChat =
+    !activePaneIsChatLeaf && structuredTuiOwner.ownsLeaf(activePane?.leafId ?? null)
+  const contextMenuReturnsToStructuredChat =
+    !contextMenuIsChatView && structuredTuiOwner.ownsLeaf(contextMenuLeafId)
+  // Each switcher gates on its own leaf (header=active, menu=opened-over), so mixed splits show it only where chat can render.
+  const activePaneCanToggleChat =
+    activePaneReturnsToStructuredChat || canToggleChatForLeaf(activePane?.leafId ?? null)
+  const contextMenuCanToggleChat =
+    contextMenuReturnsToStructuredChat || canToggleChatForLeaf(contextMenuLeafId)
+  const { ownsLeaf: structuredTuiOwnsLeaf, returnLeafToChat } = structuredTuiOwner
+  const toggleChatOrReturnForLeaf = useCallback(
+    (leafId: string, isChatLeaf: boolean) => {
+      if (isChatLeaf || !structuredTuiOwnsLeaf(leafId)) {
+        toggleNativeChatForLeaf(leafId)
+        return
+      }
+      void returnLeafToChat(leafId).then((returned) => {
+        if (!returned) {
+          toggleNativeChatForLeaf(leafId)
+        }
+      })
+    },
+    [returnLeafToChat, structuredTuiOwnsLeaf, toggleNativeChatForLeaf]
+  )
   const handleContextMenuToggleNativeChat = useCallback(() => {
     const leafId = getContextMenuLeafId()
     if (!leafId) {
       return
     }
-    toggleNativeChatForLeaf(leafId)
-  }, [getContextMenuLeafId, toggleNativeChatForLeaf])
+    toggleChatOrReturnForLeaf(leafId, effectiveChatViewMode && leafId === chatLeafId)
+  }, [chatLeafId, effectiveChatViewMode, getContextMenuLeafId, toggleChatOrReturnForLeaf])
+  const handlePaneHeaderToggleNativeChat = useCallback(() => {
+    const leafId = managerRef.current?.getActivePane()?.leafId ?? null
+    if (!leafId) {
+      return
+    }
+    toggleChatOrReturnForLeaf(leafId, isChatViewMode && leafId === chatLeafId)
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- managerRef is a stable ref container.
+  }, [chatLeafId, isChatViewMode, toggleChatOrReturnForLeaf])
   return {
     effectiveAppearance,
     terminalBackground,
@@ -212,7 +253,10 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
     activePaneCanToggleChat,
     contextMenuCanToggleChat,
     contextMenuIsChatView,
-    handleContextMenuToggleNativeChat
+    activePaneReturnsToStructuredChat,
+    contextMenuReturnsToStructuredChat,
+    handleContextMenuToggleNativeChat,
+    handlePaneHeaderToggleNativeChat
   }
 }
 

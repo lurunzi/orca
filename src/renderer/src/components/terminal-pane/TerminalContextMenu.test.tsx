@@ -166,6 +166,31 @@ describe('TerminalContextMenu', () => {
     expect(items.list.some((item) => childrenText(item.children).includes('Switch to'))).toBe(false)
   })
 
+  it('labels the chat switch as a return for a structured session owner', () => {
+    const onToggleNativeChat = vi.fn()
+    renderMenu({ canToggleNativeChat: true, returnsToStructuredChat: true, onToggleNativeChat })
+
+    const item = items.list.find(
+      (candidate) => childrenText(candidate.children) === 'Return to chat'
+    )
+    expect(item).toBeDefined()
+    expect(
+      items.list.some((candidate) =>
+        childrenText(candidate.children).startsWith('Switch to chat view')
+      )
+    ).toBe(false)
+    item?.onSelect?.()
+    expect(onToggleNativeChat).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the ordinary chat switch label for other agent terminals', () => {
+    renderMenu({ canToggleNativeChat: true })
+
+    const labels = items.list.map((candidate) => childrenText(candidate.children))
+    expect(labels.some((label) => label.startsWith('Switch to chat view'))).toBe(true)
+    expect(labels.some((label) => label.startsWith('Return to chat'))).toBe(false)
+  })
+
   it('shows Copy Session ID only for panes with provider identity', () => {
     const onCopyAgentSessionId = vi.fn()
     renderMenu({ canCopyAgentSessionId: true, onCopyAgentSessionId })

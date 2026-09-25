@@ -25,8 +25,10 @@ const TERMINAL_PANE_HOOK_SOURCE_PATTERN =
 // Then the dead adopted-structured-session portal went with its local target `useMemo`
 // in projection (211 hooks, 7 useMemo).
 // Then the Claude prompt-suggestion reader added a `useCallback` in chat-state (212 hooks, 7 useMemo).
+// Then the structured-session return added `useStructuredTuiOwnerReturn` plus the header and
+// shared toggle-or-return `useCallback`s in projection (215 hooks, 7 useMemo).
 const PRE_REFACTOR_HOOK_ORDER_SHA256 =
-  '709bc5dc3a03284f9134c3683f5470f043793884caaed2b70e9729402cafbaab'
+  '562e89dd695a5606f19e97aee0e6fdbc9280dd78323e30ad35349487aec4b4dd'
 
 const sourceFiles = readdirSync(__dirname)
   .filter((name) => TERMINAL_PANE_HOOK_SOURCE_PATTERN.test(name))
@@ -91,7 +93,7 @@ function readFlattenedHookOrder(): string[] {
 describe('TerminalPane refactor hook parity', () => {
   it('preserves the recursively flattened render hook order', () => {
     const hooks = readFlattenedHookOrder()
-    expect(hooks).toHaveLength(212)
+    expect(hooks).toHaveLength(215)
     expect(hooks.filter((hook) => hook === 'useMemo')).toHaveLength(7)
     expect(createHash('sha256').update(hooks.join('\n')).digest('hex')).toBe(
       PRE_REFACTOR_HOOK_ORDER_SHA256

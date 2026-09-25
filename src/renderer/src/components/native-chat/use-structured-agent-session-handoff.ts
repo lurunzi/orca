@@ -15,6 +15,7 @@ import type { RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
 import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
 import { supportsStructuredAgentSessionHandoffControls } from '@/runtime/structured-agent-session-host-capability'
 import type { StructuredAgentSessionMutate } from './use-structured-agent-session-mutate'
+import { useStructuredChatReturnRequest } from './structured-chat-return-requests'
 
 export type StructuredAgentSessionHandoffControls = {
   /** Null when the host has not negotiated handoff controls or has published no status. */
@@ -93,5 +94,7 @@ export function useStructuredAgentSessionHandoff(args: {
       return error instanceof Error ? error.message : String(error)
     }
   }, [releaseFence, sessionId, target])
-  return { status: supported ? handoff : null, request, release }
+  const status = supported ? handoff : null
+  useStructuredChatReturnRequest({ sessionId, status, request })
+  return { status, request, release }
 }

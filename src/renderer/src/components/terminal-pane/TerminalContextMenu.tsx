@@ -60,6 +60,8 @@ type TerminalContextMenuProps = {
    *  Structured sessions are excluded — they have no terminal underneath. */
   canToggleNativeChat: boolean
   isNativeChatView: boolean
+  /** The pane owns a structured Chat's session: the toggle hands it back to that Chat. */
+  returnsToStructuredChat?: boolean
   onToggleNativeChat: () => void
   onCopyAgentSessionContext: () => void
   quickCommandHosts: TerminalQuickCommandMenuHost[]
@@ -149,6 +151,7 @@ function TerminalContextMenuItems({
   onForkAgentSession,
   canToggleNativeChat,
   isNativeChatView,
+  returnsToStructuredChat = false,
   onToggleNativeChat,
   onCopyAgentSessionContext,
   quickCommandHosts,
@@ -234,11 +237,16 @@ function TerminalContextMenuItems({
                 'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
                 'Switch to terminal view'
               )
-            : translate(
-                'components.tab.bar.SortableTabContextMenu.switchToChatView',
-                'Switch to chat view'
-              )}
-          <DropdownMenuShortcut>{shortcuts.nativeChat}</DropdownMenuShortcut>
+            : returnsToStructuredChat
+              ? translate('components.native-chat.handoff.returnToChat', 'Return to chat')
+              : translate(
+                  'components.tab.bar.SortableTabContextMenu.switchToChatView',
+                  'Switch to chat view'
+                )}
+          {/* The shortcut still flips the transcript view; it does not perform the return. */}
+          {returnsToStructuredChat && !isNativeChatView ? null : (
+            <DropdownMenuShortcut>{shortcuts.nativeChat}</DropdownMenuShortcut>
+          )}
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuSeparator />

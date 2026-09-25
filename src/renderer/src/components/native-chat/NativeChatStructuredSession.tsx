@@ -348,7 +348,6 @@ export function NativeChatStructuredSession(
       />
       <StructuredAgentSessionHandoffChrome
         status={controller.handoff.status}
-        isWorking={controller.isWorking}
         onRequest={controller.handoff.request}
         onRelease={controller.handoff.release}
       />

@@ -10,7 +10,6 @@ import { StructuredAgentSessionReleaseButton } from './StructuredAgentSessionRel
 
 type Props = {
   status: AgentSessionHandoffStatus | null
-  isWorking: boolean
   onRequest: (
     direction: AgentSessionHandoffDirection,
     mode: AgentSessionHandoffMode,
@@ -57,11 +56,10 @@ function handoffStageCopy(status: AgentSessionHandoffStatus): string {
   return translate('components.native-chat.handoff.switchingOwner', 'Switching session owner…')
 }
 
-/** One status row for a session that is not plainly chat-owned; the chat-owned entry sits at
- *  the top right so an idle chat carries no extra row. */
+/** One status row for a session that is not plainly chat-owned; the idle owner toggle sits at
+ *  the top right, so an idle row carries text only. */
 export function StructuredAgentSessionHandoffChrome({
   status,
-  isWorking,
   onRequest,
   onRelease
 }: Props): React.JSX.Element | null {
@@ -108,17 +106,6 @@ export function StructuredAgentSessionHandoffChrome({
               )
             : translate('components.native-chat.handoff.agentOpen', 'Agent is open in terminal.')}
         </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="ml-auto"
-          onClick={() => onRequest('to-native', 'after-turn')}
-        >
-          {isWorking
-            ? translate('components.native-chat.handoff.returnAfterTurn', 'Return after this turn')
-            : translate('components.native-chat.handoff.returnToChat', 'Return to chat')}
-        </Button>
       </div>
     )
   }

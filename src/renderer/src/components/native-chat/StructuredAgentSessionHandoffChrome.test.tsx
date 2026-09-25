@@ -18,14 +18,22 @@ afterEach(cleanup)
 describe('StructuredAgentSessionHandoffChrome', () => {
   it('leaves a chat-owned idle session to the composer toolbar entry', () => {
     const { container } = render(
+      <StructuredAgentSessionHandoffChrome status={IDLE_NATIVE} onRequest={vi.fn()} />
+    )
+
+    expect(container.childElementCount).toBe(0)
+  })
+
+  it('keeps the terminal-owned row as text; the top-right toggle carries the return', () => {
+    render(
       <StructuredAgentSessionHandoffChrome
-        status={IDLE_NATIVE}
-        isWorking={false}
+        status={{ ...IDLE_NATIVE, owner: 'tui', hostLabel: 'workstation' }}
         onRequest={vi.fn()}
       />
     )
 
-    expect(container.childElementCount).toBe(0)
+    expect(screen.getByText('Agent is open in terminal on workstation.')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
   })
 
   it('cancels a queued switch in the direction it was queued', () => {
@@ -33,7 +41,6 @@ describe('StructuredAgentSessionHandoffChrome', () => {
     render(
       <StructuredAgentSessionHandoffChrome
         status={{ ...IDLE_NATIVE, direction: 'to-tui', phase: 'queued' }}
-        isWorking
         onRequest={onRequest}
       />
     )
@@ -57,7 +64,6 @@ describe('StructuredAgentSessionHandoffChrome', () => {
             recoverableOwner: 'tui'
           }
         }}
-        isWorking={false}
         onRequest={onRequest}
       />
     )

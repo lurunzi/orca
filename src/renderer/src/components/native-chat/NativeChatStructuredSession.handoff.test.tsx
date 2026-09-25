@@ -82,6 +82,7 @@ describe('NativeChatStructuredSession chat/terminal switching', () => {
 
     expect(screen.getByText('Agent is open in terminal on workstation.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Open agent TUI' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Return to chat' })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Return to chat' }))
 
     expect(mocks.requestHandoff).toHaveBeenCalledWith('to-native', 'after-turn')
