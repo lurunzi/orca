@@ -17760,9 +17760,7 @@
         "estimated": "Estimated from the last response."
       },
       "coordinator": {
-        "insert": "Coordinate with Orca",
-        "identityFailed": "Coordinator access not granted",
-        "prompt": "Use Orca orchestration to coordinate: "
+        "toggle": "Coordinator mode"
       }
     },
     "tab": {

@@ -11,7 +11,7 @@ import type { ComposerAutocomplete, NativeChatPickerItem } from './native-chat-c
 import { NativeChatMentionHint, NativeChatPickerMenu } from './NativeChatAutocompleteMenus'
 import { NativeChatComposerActions } from './NativeChatComposerActions'
 import type { NativeChatContextUsageSummary } from './native-chat-context-usage-summary'
-import { NativeChatCoordinatorLaunchButton } from './NativeChatCoordinatorLaunchButton'
+import { NativeChatCoordinatorToggle } from './NativeChatCoordinatorToggle'
 import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import type {
   SessionOptionDescriptor,
@@ -56,7 +56,8 @@ export type NativeChatComposerFieldProps = {
   onAcceptMention: () => void
   onRemoveImageAttachment: (id: string) => void
   onAttach: () => void
-  coordinator?: { onInsert: () => void; identitySessionId?: string }
+  /** Local structured session that can take a coordinator identity. */
+  coordinatorSessionId?: string
   onDictationToggle: () => void
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
@@ -135,7 +136,7 @@ export function NativeChatComposerField({
   onAcceptMention,
   onRemoveImageAttachment,
   onAttach,
-  coordinator,
+  coordinatorSessionId,
   handoffControl,
   onDictationToggle,
   onDictationHoldStart,
@@ -203,9 +204,9 @@ export function NativeChatComposerField({
               <span>{notice}</span>
             </div>
           ) : null}
-          {coordinator ? (
+          {coordinatorSessionId ? (
             <div className="absolute -left-12 bottom-1 hidden lg:block">
-              <NativeChatCoordinatorLaunchButton {...coordinator} />
+              <NativeChatCoordinatorToggle sessionId={coordinatorSessionId} isWorking={isWorking} />
             </div>
           ) : null}
           <div
@@ -319,9 +320,12 @@ export function NativeChatComposerField({
                 isDictationHoldMode={isDictationHoldMode}
                 onAttach={onAttach}
                 coordinatorLaunch={
-                  coordinator ? (
+                  coordinatorSessionId ? (
                     <span className="lg:hidden">
-                      <NativeChatCoordinatorLaunchButton {...coordinator} />
+                      <NativeChatCoordinatorToggle
+                        sessionId={coordinatorSessionId}
+                        isWorking={isWorking}
+                      />
                     </span>
                   ) : undefined
                 }
