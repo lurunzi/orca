@@ -17542,11 +17542,6 @@
           "manualRecovery": "에이전트 세션을 복구해야 합니다."
         },
         "switchingOwner": "세션 소유자 전환 중…",
-        "mode": {
-          "switching": "스위칭",
-          "terminal": "터미널",
-          "chat": "채팅"
-        },
         "switchingAfterTurn": "이번 턴 이후에 전환",
         "returningAfterTurn": "이번 턴 이후에 돌아옴",
         "cancel": "취소",

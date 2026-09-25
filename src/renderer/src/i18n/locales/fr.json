@@ -17606,11 +17606,6 @@
           "manualRecovery": "La session de l'agent doit être récupérée"
         },
         "switchingOwner": "Changer de propriétaire de session…",
-        "mode": {
-          "switching": "Commutation",
-          "terminal": "Terminal",
-          "chat": "Chat"
-        },
         "switchingAfterTurn": "Changer après ce tour",
         "returningAfterTurn": "Revenir après ce tour",
         "cancel": "Annuler",

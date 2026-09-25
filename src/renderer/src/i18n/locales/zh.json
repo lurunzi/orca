@@ -17534,11 +17534,6 @@
           "manualRecovery": "代理会话需要恢复"
         },
         "switchingOwner": "切换会话所有者...",
-        "mode": {
-          "switching": "交换",
-          "terminal": "终端",
-          "chat": "聊天"
-        },
         "switchingAfterTurn": "本回合后切换",
         "returningAfterTurn": "本回合后返回",
         "cancel": "取消",
@@ -17552,7 +17547,10 @@
         "exitTerminal": "退出代理终端以继续聊天。",
         "retryProof": "重试证明",
         "retry": "重试",
-        "details": "细节"
+        "details": "细节",
+        "release": "释放会话",
+        "releaseTitle": "释放此会话？",
+        "releaseDescription": "Orca 无法确认没有智能体进程占用此会话。仅在没有终端运行它时释放。不会停止任何进程。"
       },
       "structuredSessionLaunchFailedDescription": "Orca 无法打开结构化 {{value0}} 聊天。有关详细信息，请参阅日志。",
       "subagents": {

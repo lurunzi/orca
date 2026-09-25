@@ -16,19 +16,30 @@ const IDLE_NATIVE: AgentSessionHandoffStatus = {
 afterEach(cleanup)
 
 describe('StructuredAgentSessionHandoffChrome', () => {
-  it('uses queued-safe admission when the native view still appears idle', () => {
-    const onRequest = vi.fn()
-    render(
+  it('leaves a chat-owned idle session to the composer toolbar entry', () => {
+    const { container } = render(
       <StructuredAgentSessionHandoffChrome
         status={IDLE_NATIVE}
         isWorking={false}
+        onRequest={vi.fn()}
+      />
+    )
+
+    expect(container.childElementCount).toBe(0)
+  })
+
+  it('cancels a queued switch in the direction it was queued', () => {
+    const onRequest = vi.fn()
+    render(
+      <StructuredAgentSessionHandoffChrome
+        status={{ ...IDLE_NATIVE, direction: 'to-tui', phase: 'queued' }}
+        isWorking
         onRequest={onRequest}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open agent TUI' }))
-
-    expect(onRequest).toHaveBeenCalledWith('to-tui', 'after-turn')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onRequest).toHaveBeenCalledWith('to-tui', 'after-turn', 'cancel-queued')
   })
 
   it('offers one Retry action for a recoverable dead TUI owner', () => {

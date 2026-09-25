@@ -4,8 +4,9 @@ import type {
   AgentSessionHandoffStatus
 } from '../../../../shared/agent-session-wire'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { translate } from '@/i18n/i18n'
+import { cn } from '@/lib/utils'
+import { StructuredAgentSessionReleaseButton } from './StructuredAgentSessionReleaseButton'
 
 type Props = {
   status: AgentSessionHandoffStatus | null
@@ -15,7 +16,12 @@ type Props = {
     mode: AgentSessionHandoffMode,
     action?: 'start' | 'cancel-queued' | 'retry' | 'recover'
   ) => void
+  /** Present where the host serves the user release of an ownerless reservation. */
+  onRelease?: () => Promise<string | null>
 }
+
+// Same column as the composer and the status line beside it, so no row shifts the transcript.
+const ROW = 'mx-auto flex w-full max-w-4xl items-center gap-2 px-4 py-1 text-xs'
 
 function handoffStageCopy(status: AgentSessionHandoffStatus): string {
   if (status.stage === 'preparing') {
@@ -51,175 +57,121 @@ function handoffStageCopy(status: AgentSessionHandoffStatus): string {
   return translate('components.native-chat.handoff.switchingOwner', 'Switching session owner…')
 }
 
+/** One status row for a session that is not plainly chat-owned; the chat-owned entry lives in
+ *  the composer toolbar so an idle chat carries no extra row. */
 export function StructuredAgentSessionHandoffChrome({
   status,
   isWorking,
-  onRequest
+  onRequest,
+  onRelease
 }: Props): React.JSX.Element | null {
   if (!status) {
     return null
   }
-  const owner = status?.owner ?? 'native'
-  const phase = status?.phase ?? 'idle'
-  const switching = phase === 'switching' || phase === 'waiting-for-exit'
-  return (
-    <>
-      <div className="flex min-h-9 items-center gap-2 border-b border-border px-3 py-1.5">
-        <Badge variant="outline">
-          {switching
-            ? translate('components.native-chat.handoff.mode.switching', 'Switching')
-            : owner === 'tui'
-              ? translate('components.native-chat.handoff.mode.terminal', 'Terminal')
-              : translate('components.native-chat.handoff.mode.chat', 'Chat')}
-        </Badge>
-        <div className="ml-auto flex items-center gap-1.5">
-          {phase === 'queued' && status?.direction ? (
-            <>
-              <span className="text-xs text-muted-foreground">
-                {status.direction === 'to-tui'
-                  ? translate(
-                      'components.native-chat.handoff.switchingAfterTurn',
-                      'Switching after this turn'
-                    )
-                  : translate(
-                      'components.native-chat.handoff.returningAfterTurn',
-                      'Returning after this turn'
-                    )}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={() => onRequest(status.direction!, 'after-turn', 'cancel-queued')}
-              >
-                {translate('components.native-chat.handoff.cancel', 'Cancel')}
-              </Button>
-            </>
-          ) : owner === 'native' && phase === 'idle' ? (
-            isWorking ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => onRequest('to-tui', 'after-turn')}
-                >
-                  {translate(
-                    'components.native-chat.handoff.switchAfterTurn',
-                    'Switch after this turn'
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  onClick={() => onRequest('to-tui', 'stop-turn')}
-                >
-                  {translate(
-                    'components.native-chat.handoff.stopTurnAndSwitch',
-                    'Stop turn and switch'
-                  )}
-                </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                // A submitted turn can reach the host before isWorking updates; after-turn is immediate when idle.
-                onClick={() => onRequest('to-tui', 'after-turn')}
-              >
-                {translate('components.native-chat.handoff.openAgentTui', 'Open agent TUI')}
-              </Button>
-            )
-          ) : owner === 'tui' && phase === 'idle' ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              onClick={() => onRequest('to-native', 'after-turn')}
-            >
-              {isWorking
-                ? translate(
-                    'components.native-chat.handoff.returnAfterTurn',
-                    'Return after this turn'
-                  )
-                : translate('components.native-chat.handoff.returnToChat', 'Return to chat')}
-            </Button>
-          ) : null}
-        </div>
+  const { phase } = status
+  if (phase === 'queued' && status.direction) {
+    const direction = status.direction
+    return (
+      <div className={cn(ROW, 'text-muted-foreground')}>
+        <span>
+          {direction === 'to-tui'
+            ? translate(
+                'components.native-chat.handoff.switchingAfterTurn',
+                'Switching after this turn'
+              )
+            : translate(
+                'components.native-chat.handoff.returningAfterTurn',
+                'Returning after this turn'
+              )}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="ml-auto"
+          onClick={() => onRequest(direction, 'after-turn', 'cancel-queued')}
+        >
+          {translate('components.native-chat.handoff.cancel', 'Cancel')}
+        </Button>
       </div>
-      {owner === 'tui' && phase === 'idle' ? (
-        <div className="flex items-center justify-between gap-3 border-b border-border bg-muted px-3 py-2 text-xs">
-          <span>
-            {status?.hostLabel
-              ? translate(
-                  'components.native-chat.handoff.agentOpenOnHost',
-                  'Agent is open in terminal on {{value0}}.',
-                  { value0: status.hostLabel }
-                )
-              : translate('components.native-chat.handoff.agentOpen', 'Agent is open in terminal.')}
-          </span>
+    )
+  }
+  if (status.owner === 'tui' && phase === 'idle') {
+    return (
+      <div className={ROW}>
+        <span className="text-muted-foreground">
+          {status.hostLabel
+            ? translate(
+                'components.native-chat.handoff.agentOpenOnHost',
+                'Agent is open in terminal on {{value0}}.',
+                { value0: status.hostLabel }
+              )
+            : translate('components.native-chat.handoff.agentOpen', 'Agent is open in terminal.')}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="ml-auto"
+          onClick={() => onRequest('to-native', 'after-turn')}
+        >
+          {isWorking
+            ? translate('components.native-chat.handoff.returnAfterTurn', 'Return after this turn')
+            : translate('components.native-chat.handoff.returnToChat', 'Return to chat')}
+        </Button>
+      </div>
+    )
+  }
+  if (phase === 'switching' || phase === 'waiting-for-exit') {
+    return (
+      <div className={cn(ROW, 'text-muted-foreground')} role="status">
+        {phase === 'waiting-for-exit'
+          ? translate(
+              'components.native-chat.handoff.exitTerminal',
+              'Exit the agent terminal to continue in chat.'
+            )
+          : handoffStageCopy(status)}
+      </div>
+    )
+  }
+  if (phase !== 'failed' || !status.error) {
+    return null
+  }
+  const { error } = status
+  const direction = status.direction
+  return (
+    <div className={cn(ROW, 'flex-wrap text-destructive')} role="alert">
+      <span>{error.message}</span>
+      <div className="ml-auto flex items-center gap-1.5">
+        {direction && error.canRetryProof ? (
           <Button
             type="button"
-            variant="link"
+            variant="ghost"
             size="xs"
-            onClick={() => onRequest('to-native', 'after-turn')}
+            onClick={() => onRequest(direction, 'now', 'recover')}
           >
-            {translate('components.native-chat.handoff.returnToChat', 'Return to chat')}
+            {translate('components.native-chat.handoff.retryProof', 'Retry proof')}
           </Button>
-        </div>
+        ) : direction && error.recoverableOwner !== 'none' ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={() => onRequest(direction, 'now', 'retry')}
+          >
+            {translate('components.native-chat.handoff.retry', 'Retry')}
+          </Button>
+        ) : null}
+        {error.releaseFence !== undefined && onRelease ? (
+          <StructuredAgentSessionReleaseButton onRelease={onRelease} />
+        ) : null}
+      </div>
+      {error.details ? (
+        <details className="w-full text-muted-foreground">
+          <summary>{translate('components.native-chat.handoff.details', 'Details')}</summary>
+          <p className="mt-1">{error.details}</p>
+        </details>
       ) : null}
-      {switching ? (
-        <div className="border-b border-border bg-muted px-3 py-3 text-center text-sm text-muted-foreground">
-          {phase === 'waiting-for-exit'
-            ? translate(
-                'components.native-chat.handoff.exitTerminal',
-                'Exit the agent terminal to continue in chat.'
-              )
-            : status?.stage
-              ? handoffStageCopy(status)
-              : translate(
-                  'components.native-chat.handoff.switchingOwner',
-                  'Switching session owner…'
-                )}
-        </div>
-      ) : null}
-      {phase === 'failed' && status?.error ? (
-        <div
-          className="border-b border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          role="alert"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <span>{status.error.message}</span>
-            {status.direction && status.error.canRetryProof ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={() => onRequest(status.direction!, 'now', 'recover')}
-              >
-                {translate('components.native-chat.handoff.retryProof', 'Retry proof')}
-              </Button>
-            ) : status.direction && status.error.recoverableOwner !== 'none' ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={() => onRequest(status.direction!, 'now', 'retry')}
-              >
-                {translate('components.native-chat.handoff.retry', 'Retry')}
-              </Button>
-            ) : null}
-          </div>
-          {status.error.details ? (
-            <details className="mt-1">
-              <summary>{translate('components.native-chat.handoff.details', 'Details')}</summary>
-              <p className="mt-1 text-muted-foreground">{status.error.details}</p>
-            </details>
-          ) : null}
-        </div>
-      ) : null}
-    </>
+    </div>
   )
 }

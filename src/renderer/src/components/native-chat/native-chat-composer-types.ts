@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { AgentSessionConversationCommand } from '../../../../shared/agent-session-conversation-command'
 import type { StructuredAgentContextUsage } from '../../../../shared/structured-agent-session-context-usage'
 import type { AgentSessionSlashCommand } from '../../../../shared/agent-session-wire'
@@ -37,6 +38,8 @@ export type NativeChatStructuredComposerTransport = {
   sessionId: string
   /** Owning runtime for that report; null is the local runtime. */
   runtimeEnvironmentId: string | null
+  /** Present where the host can hand this session to its agent terminal. */
+  handoffControl?: ReactNode
 }
 
 export type NativeChatComposerProps = {

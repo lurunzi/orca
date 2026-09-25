@@ -17542,11 +17542,6 @@
           "manualRecovery": "Agent セッションの回復が必要です"
         },
         "switchingOwner": "セッション所有者を切り替えています…",
-        "mode": {
-          "switching": "スイッチング",
-          "terminal": "ターミナル",
-          "chat": "チャット"
-        },
         "switchingAfterTurn": "このターン後に切り替える",
         "returningAfterTurn": "このターン後に戻る",
         "cancel": "キャンセル",

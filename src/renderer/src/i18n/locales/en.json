@@ -17679,11 +17679,6 @@
           "manualRecovery": "Agent session needs recovery"
         },
         "switchingOwner": "Switching session owner…",
-        "mode": {
-          "switching": "Switching",
-          "terminal": "Terminal",
-          "chat": "Chat"
-        },
         "switchingAfterTurn": "Switching after this turn",
         "returningAfterTurn": "Returning after this turn",
         "cancel": "Cancel",
@@ -17697,7 +17692,10 @@
         "exitTerminal": "Exit the agent terminal to continue in chat.",
         "retryProof": "Retry proof",
         "retry": "Retry",
-        "details": "Details"
+        "details": "Details",
+        "release": "Release session",
+        "releaseTitle": "Release this session?",
+        "releaseDescription": "Orca can't confirm that no agent process holds this session. Release it only if no terminal is running it. No process is stopped."
       },
       "structuredSessionLaunchFailedDescription": "Orca could not open a structured {{value0}} chat. See the logs for details.",
       "subagents": {

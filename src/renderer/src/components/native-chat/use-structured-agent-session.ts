@@ -20,6 +20,7 @@ import { useStructuredAgentSessionOptions } from './use-structured-agent-session
 import { useStructuredAgentSessionThreadGoal } from './use-structured-agent-session-thread-goal'
 import { useStructuredAgentSessionContextUsage } from './use-structured-agent-session-context-usage'
 import { useStructuredAgentSessionRailOutline } from './use-structured-agent-session-rail-outline'
+import { useStructuredAgentSessionHandoff } from './use-structured-agent-session-handoff'
 
 export type { StructuredPromptItem } from './structured-agent-session-message-projection'
 
@@ -89,6 +90,14 @@ export function useStructuredAgentSession(args: {
     target,
     state,
     enabled: providerVisible
+  })
+
+  const handoff = useStructuredAgentSessionHandoff({
+    sessionId,
+    target,
+    enabled: transportEnabled,
+    handoff: state.handoff,
+    mutate
   })
 
   const prompts = pendingStructuredSessionPrompts(transportState.journalItems)
@@ -170,6 +179,7 @@ export function useStructuredAgentSession(args: {
     promptSuggestion: transportEnabled ? (state.promptSuggestion ?? null) : null,
     setStructuredOption,
     threadGoal,
-    contextUsage
+    contextUsage,
+    handoff
   }
 }

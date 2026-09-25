@@ -26,6 +26,8 @@ import { useNativeChatProvisionalLaunch } from './use-native-chat-provisional-la
 import { NativeChatDeliveryRetry } from './NativeChatDeliveryRetry'
 import { NativeChatOrchestrationIdentityMenuItem } from './NativeChatOrchestrationIdentityMenuItem'
 import { NativeChatThreadGoalBanner } from './NativeChatThreadGoalBanner'
+import { StructuredAgentSessionHandoffButton } from './StructuredAgentSessionHandoffButton'
+import { StructuredAgentSessionHandoffChrome } from './StructuredAgentSessionHandoffChrome'
 
 function encodeQuestionAnswer(questionId: string, answer: string): string {
   return `${encodeURIComponent(questionId)}:${encodeURIComponent(answer)}`
@@ -201,7 +203,14 @@ export function NativeChatStructuredSession(
       runtime: (props.target.kind === 'local' ? 'local' : 'remote') as 'local' | 'remote',
       sessionId: props.sessionId,
       runtimeEnvironmentId:
-        props.target.kind === 'local' ? null : (props.target.environmentId ?? null)
+        props.target.kind === 'local' ? null : (props.target.environmentId ?? null),
+      handoffControl: (
+        <StructuredAgentSessionHandoffButton
+          status={controller.handoff.status}
+          isWorking={controller.isWorking}
+          onRequest={controller.handoff.request}
+        />
+      )
     }
   }, [
     controller,
@@ -332,6 +341,12 @@ export function NativeChatStructuredSession(
       <NativeChatLaunchRetry
         lifecycle={provisionalLaunch.lifecycle}
         onRetry={provisionalLaunch.retry}
+      />
+      <StructuredAgentSessionHandoffChrome
+        status={controller.handoff.status}
+        isWorking={controller.isWorking}
+        onRequest={controller.handoff.request}
+        onRelease={controller.handoff.release}
       />
       <NativeChatStructuredSessionStatus
         sessionId={props.sessionId}
