@@ -155,7 +155,32 @@ export class OrcaRuntimeWithSerializeAgentPromptSubmission extends OrcaRuntimeWi
         result.process?.trim() &&
         isShellProcess(result.process)
       ) {
-        this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
+        const confirmShell = result.controller.confirmShellForeground
+        // Why: local ConPTY names the spawned shell whenever it cannot see the foreground, so on
+        // Windows that name is only a candidate until the PTY job proves the shell is alone.
+        if (
+          process.platform !== 'win32' ||
+          current.connectionId ||
+          current.isWsl === true ||
+          !confirmShell
+        ) {
+          this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
+          return
+        }
+        void confirmShell
+          .call(result.controller, ptyId)
+          .catch(() => false)
+          .then((confirmed) => {
+            const latest = this.ptysById.get(ptyId)
+            if (latest !== pty || !latest.connected || latest.incarnationId !== incarnationId) {
+              return
+            }
+            if (confirmed) {
+              this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
+            } else {
+              this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
+            }
+          })
       } else {
         // Unverifiable foreground evidence must not close chat or consume the next exit candidate.
         this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()

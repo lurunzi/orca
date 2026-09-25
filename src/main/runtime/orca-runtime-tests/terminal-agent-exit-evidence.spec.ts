@@ -1,6 +1,16 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { syncSinglePty } from '../orca-runtime-test-fixtures.spec'
 import { createSideEffectRuntime } from '../orca-runtime-test-scenario-builders.spec'
+
+const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!
+
+function setPlatform(platform: NodeJS.Platform): void {
+  Object.defineProperty(process, 'platform', { configurable: true, value: platform })
+}
+
+afterEach(() => {
+  Object.defineProperty(process, 'platform', originalPlatform)
+})
 
 describe('terminal agent exit evidence', () => {
   it.each([
@@ -60,5 +70,50 @@ describe('terminal agent exit evidence', () => {
     resolveRead('bash.exe')
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
+  })
+
+  it('keeps Windows Cursor chat when the shell name is only the ConPTY fallback', async () => {
+    setPlatform('win32')
+    const { runtime, batches } = createSideEffectRuntime()
+    syncSinglePty(runtime)
+    runtime.ingestSyntheticTitleFrame('pty-1', ']0;Cursor ready')
+    const confirmShellForeground = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    runtime.setPtyController({
+      write: () => true,
+      kill: () => true,
+      getForegroundProcess: async () => 'powershell.exe',
+      confirmShellForeground
+    })
+
+    runtime.onPtyData('pty-1', ']0;workspace', 100)
+    await vi.waitFor(() => expect(confirmShellForeground).toHaveBeenCalledOnce())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
+
+    runtime.onPtyData('pty-1', ']0;other workspace', 101)
+    await vi.waitFor(() =>
+      expect(batches.flatMap((batch) => batch.facts)).toContainEqual({ kind: 'agent-exited' })
+    )
+    expect(confirmShellForeground).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not ask for job proof off Windows, where the shell name is real evidence', async () => {
+    setPlatform('linux')
+    const { runtime, batches } = createSideEffectRuntime()
+    syncSinglePty(runtime)
+    runtime.ingestSyntheticTitleFrame('pty-1', ']0;Cursor ready')
+    const confirmShellForeground = vi.fn().mockResolvedValue(false)
+    runtime.setPtyController({
+      write: () => true,
+      kill: () => true,
+      getForegroundProcess: async () => 'bash',
+      confirmShellForeground
+    })
+
+    runtime.onPtyData('pty-1', ']0;workspace', 100)
+    await vi.waitFor(() =>
+      expect(batches.flatMap((batch) => batch.facts)).toContainEqual({ kind: 'agent-exited' })
+    )
+    expect(confirmShellForeground).not.toHaveBeenCalled()
   })
 })
