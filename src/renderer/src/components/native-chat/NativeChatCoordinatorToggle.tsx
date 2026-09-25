@@ -6,8 +6,49 @@ import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { StructuredSessionOrchestrationIdentityStatus } from '../../../../shared/structured-session-orchestration-identity'
 import { useQueuedSessionOptions } from './native-chat-queued-session-options'
+import type { NativeChatStructuredComposerTransport } from './native-chat-composer-types'
 
 const COORDINATOR_KEY = 'coordinator'
+
+/** Why a chat cannot coordinate, known before any identity read. */
+export type CoordinatorUnavailableReason = 'terminal-agent' | 'remote'
+
+export function coordinatorTargetFor(
+  transport: NativeChatStructuredComposerTransport | undefined
+): { sessionId: string | null; unavailableReason?: CoordinatorUnavailableReason } {
+  if (transport?.runtime === 'local') {
+    return { sessionId: transport.sessionId }
+  }
+  return { sessionId: null, unavailableReason: transport ? 'remote' : 'terminal-agent' }
+}
+
+function unavailableReasonLabel(
+  reason: CoordinatorUnavailableReason | undefined,
+  status: StructuredSessionOrchestrationIdentityStatus | null
+): string | null {
+  if (reason === 'terminal-agent') {
+    return translate(
+      'components.native-chat.coordinator.terminalAgent',
+      'Only Claude and Codex chats can coordinate'
+    )
+  }
+  if (reason === 'remote' || (status?.state === 'unavailable' && status.reason === 'not-local')) {
+    return translate(
+      'components.native-chat.coordinator.remote',
+      'Only chats on this computer can coordinate'
+    )
+  }
+  if (status?.state === 'worker') {
+    return translate(
+      'components.native-chat.coordinator.worker',
+      'A dispatched worker cannot coordinate'
+    )
+  }
+  if (status === null || (status.state === 'unavailable' && status.reason !== 'busy')) {
+    return translate('components.native-chat.orchestrationIdentity.unavailable', 'Unavailable')
+  }
+  return null
+}
 
 /**
  * One-click coordinator identity for the current structured session. Nothing is written into
@@ -15,9 +56,11 @@ const COORDINATOR_KEY = 'coordinator'
  */
 export function NativeChatCoordinatorToggle({
   sessionId,
+  unavailableReason,
   isWorking
 }: {
-  sessionId: string
+  sessionId: string | null
+  unavailableReason?: CoordinatorUnavailableReason
   isWorking: boolean
 }): React.JSX.Element | null {
   const api = window.api.orchestrationIdentity
@@ -28,7 +71,7 @@ export function NativeChatCoordinatorToggle({
   // Why re-read on turn edges and hover: `missing` is transient (the durable record or host
   // may not exist yet when the composer mounts), so one mount-time read can go stale.
   useEffect(() => {
-    if (!api) {
+    if (!api || !sessionId) {
       return
     }
     let live = true
@@ -43,7 +86,7 @@ export function NativeChatCoordinatorToggle({
 
   const apply = useCallback(
     (enabled: boolean): void => {
-      if (!api) {
+      if (!api || !sessionId) {
         return
       }
       setPending(true)
@@ -88,16 +131,12 @@ export function NativeChatCoordinatorToggle({
   const { queued, queue } = useQueuedSessionOptions({ isWorking, flush })
   const queuedValue = queued.get(COORDINATOR_KEY)
 
-  // Why: remote/SSH sessions and dispatched workers can never hold a user-granted identity.
-  if (
-    !api ||
-    status?.state === 'worker' ||
-    (status?.state === 'unavailable' && status.reason === 'not-local')
-  ) {
+  if (!api) {
     return null
   }
-
-  const ready = status !== null && (status.state !== 'unavailable' || status.reason === 'busy')
+  // Why disabled, not hidden: a missing button reads as a bug; the tooltip says why.
+  const reason = unavailableReasonLabel(unavailableReason, status)
+  const ready = reason === null
   const enabled = typeof queuedValue === 'boolean' ? queuedValue : status?.state === 'enabled'
   const label = translate('components.native-chat.coordinator.toggle', 'Coordinator mode')
   const onPressedChange = (next: boolean): void => {
@@ -130,6 +169,7 @@ export function NativeChatCoordinatorToggle({
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <div>{label}</div>
+        {reason ? <div>{reason}</div> : null}
         {queuedValue !== undefined && queuedValue !== (status?.state === 'enabled') ? (
           <div>
             {translate(

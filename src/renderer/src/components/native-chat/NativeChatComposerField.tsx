@@ -11,7 +11,10 @@ import type { ComposerAutocomplete, NativeChatPickerItem } from './native-chat-c
 import { NativeChatMentionHint, NativeChatPickerMenu } from './NativeChatAutocompleteMenus'
 import { NativeChatComposerActions } from './NativeChatComposerActions'
 import type { NativeChatContextUsageSummary } from './native-chat-context-usage-summary'
-import { NativeChatCoordinatorToggle } from './NativeChatCoordinatorToggle'
+import {
+  NativeChatCoordinatorToggle,
+  type CoordinatorUnavailableReason
+} from './NativeChatCoordinatorToggle'
 import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import type {
   SessionOptionDescriptor,
@@ -56,8 +59,8 @@ export type NativeChatComposerFieldProps = {
   onAcceptMention: () => void
   onRemoveImageAttachment: (id: string) => void
   onAttach: () => void
-  /** Local structured session that can take a coordinator identity. */
-  coordinatorSessionId?: string
+  /** Session that can take a coordinator identity, or why this chat cannot. */
+  coordinator?: { sessionId: string | null; unavailableReason?: CoordinatorUnavailableReason }
   onDictationToggle: () => void
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
@@ -136,7 +139,7 @@ export function NativeChatComposerField({
   onAcceptMention,
   onRemoveImageAttachment,
   onAttach,
-  coordinatorSessionId,
+  coordinator,
   handoffControl,
   onDictationToggle,
   onDictationHoldStart,
@@ -202,11 +205,6 @@ export function NativeChatComposerField({
             <div className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <ImageOff className="size-3.5 shrink-0" />
               <span>{notice}</span>
-            </div>
-          ) : null}
-          {coordinatorSessionId ? (
-            <div className="absolute -left-12 bottom-1 hidden lg:block">
-              <NativeChatCoordinatorToggle sessionId={coordinatorSessionId} isWorking={isWorking} />
             </div>
           ) : null}
           <div
@@ -320,13 +318,12 @@ export function NativeChatComposerField({
                 isDictationHoldMode={isDictationHoldMode}
                 onAttach={onAttach}
                 coordinatorLaunch={
-                  coordinatorSessionId ? (
-                    <span className="lg:hidden">
-                      <NativeChatCoordinatorToggle
-                        sessionId={coordinatorSessionId}
-                        isWorking={isWorking}
-                      />
-                    </span>
+                  coordinator ? (
+                    <NativeChatCoordinatorToggle
+                      sessionId={coordinator.sessionId}
+                      unavailableReason={coordinator.unavailableReason}
+                      isWorking={isWorking}
+                    />
                   ) : undefined
                 }
                 onDictationToggle={onDictationToggle}

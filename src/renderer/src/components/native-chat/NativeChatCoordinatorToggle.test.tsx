@@ -78,7 +78,7 @@ describe('NativeChatCoordinatorToggle', () => {
     await waitFor(() => expect(set).toHaveBeenCalledExactlyOnceWith('session-1', false))
   })
 
-  it('is hidden for a dispatched worker or a remote session', async () => {
+  it('shows a disabled toggle with the reason for a worker or a remote session', async () => {
     const get = vi
       .fn()
       .mockResolvedValueOnce({ state: 'worker' })
@@ -87,12 +87,33 @@ describe('NativeChatCoordinatorToggle', () => {
     const { rerender } = render(
       <NativeChatCoordinatorToggle sessionId="worker" isWorking={false} />
     )
-    await waitFor(() => expect(get).toHaveBeenCalledOnce())
-    expect(screen.queryByRole('button', { name: 'Coordinator mode' })).toBeNull()
+    await screen.findByText('A dispatched worker cannot coordinate')
+    expect(screen.getByRole('button', { name: 'Coordinator mode' }).hasAttribute('disabled')).toBe(
+      true
+    )
 
     rerender(<NativeChatCoordinatorToggle sessionId="remote" isWorking={false} />)
-    await waitFor(() => expect(get).toHaveBeenCalledTimes(2))
-    expect(screen.queryByRole('button', { name: 'Coordinator mode' })).toBeNull()
+    await screen.findByText('Only chats on this computer can coordinate')
+    expect(screen.getByRole('button', { name: 'Coordinator mode' }).hasAttribute('disabled')).toBe(
+      true
+    )
+  })
+
+  it('explains, without reading identity, why a terminal-agent chat cannot coordinate', () => {
+    const get = vi.fn()
+    stubIdentity(get)
+    render(
+      <NativeChatCoordinatorToggle
+        sessionId={null}
+        unavailableReason="terminal-agent"
+        isWorking={false}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Coordinator mode' }).hasAttribute('disabled')).toBe(
+      true
+    )
+    expect(screen.getByText('Only Claude and Codex chats can coordinate')).not.toBeNull()
+    expect(get).not.toHaveBeenCalled()
   })
 
   it('stays visible while the session record is missing and re-reads on the next turn edge', async () => {

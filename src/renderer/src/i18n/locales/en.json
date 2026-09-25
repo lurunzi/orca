@@ -17776,7 +17776,10 @@
         "estimated": "Estimated from the last response."
       },
       "coordinator": {
-        "toggle": "Coordinator mode"
+        "toggle": "Coordinator mode",
+        "terminalAgent": "Only Claude and Codex chats can coordinate",
+        "remote": "Only chats on this computer can coordinate",
+        "worker": "A dispatched worker cannot coordinate"
       }
     },
     "tab": {

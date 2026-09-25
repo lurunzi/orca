@@ -8,6 +8,7 @@ import { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
 import { EMPTY_HISTORY, type HistoryState } from './native-chat-composer-state'
 import { useNativeChatDraft } from './use-native-chat-draft'
 import { useNativeChatLaunchDraftAdoption } from './use-native-chat-launch-draft-adoption'
+import { coordinatorTargetFor } from './NativeChatCoordinatorToggle'
 import { NativeChatComposerField } from './NativeChatComposerField'
 import type { NativeChatResolvedTarget } from './native-chat-composer-target'
 import { useNativeChatComposerAttachments } from './use-native-chat-composer-attachments'
@@ -405,9 +406,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         }}
         onRemoveImageAttachment={(id) => removeImageAttachment(id)}
         onAttach={pickAttachment}
-        coordinatorSessionId={
-          structuredTransport?.runtime === 'local' ? structuredTransport.sessionId : undefined
-        }
+        coordinator={coordinatorTargetFor(structuredTransport)}
         onDictationToggle={toggleDictation}
         onDictationHoldStart={startHoldDictation}
         onDictationHoldEnd={stopHoldDictation}

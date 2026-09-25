@@ -17433,7 +17433,10 @@
         "label": "编排身份"
       },
       "coordinator": {
-        "toggle": "协调者模式"
+        "toggle": "协调者模式",
+        "terminalAgent": "仅 Claude 和 Codex 对话支持",
+        "remote": "仅本机对话支持",
+        "worker": "派发的 worker 不能当协调者"
       },
       "taskList": {
         "title": "任务",
