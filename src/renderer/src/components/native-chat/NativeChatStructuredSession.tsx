@@ -28,7 +28,7 @@ import { NativeChatOrchestrationIdentityMenuItem } from './NativeChatOrchestrati
 import { useStructuredAgentSessionHostExecutionPhase } from './StructuredAgentSessionStatusBridge'
 import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-label'
 import { NativeChatThreadGoalBanner } from './NativeChatThreadGoalBanner'
-import { StructuredAgentSessionHandoffButton } from './StructuredAgentSessionHandoffButton'
+import { StructuredAgentSessionHeaderActions } from './StructuredAgentSessionHeaderActions'
 import { StructuredAgentSessionHandoffChrome } from './StructuredAgentSessionHandoffChrome'
 
 function encodeQuestionAnswer(questionId: string, answer: string): string {
@@ -214,14 +214,13 @@ export function NativeChatStructuredSession(
       onContextMenuCapture={paneCommands.onContextMenuCapture}
       className="relative flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
     >
-      {/* Same top-right spot as the terminal-backed chat's pane-header toggle. */}
-      <div className="absolute right-1 top-1 z-20 flex items-center">
-        <StructuredAgentSessionHandoffButton
-          status={controller.handoff.status}
-          isWorking={controller.isWorking}
-          onRequest={controller.handoff.request}
-        />
-      </div>
+      <StructuredAgentSessionHeaderActions
+        tabId={props.tabId}
+        groupId={props.groupId}
+        handoffStatus={controller.handoff.status}
+        isWorking={controller.isWorking}
+        onHandoffRequest={controller.handoff.request}
+      />
       <div className="flex min-h-0 flex-1 flex-col">
         {viewState.kind === 'loading' ? (
           <NativeChatEmptyState kind="loading" />
