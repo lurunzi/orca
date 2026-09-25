@@ -97,7 +97,8 @@ export type AgentSessionLease = {
   ownerProcess: AgentSessionProcessIdentity | null
   /** Reserved before any process exists, then matched against the child's environment. */
   reservedSpawnToken: string | null
-  /** Set only when acquisition failed before any spawn attempt. */
+  /** Set when acquisition failed before any spawn attempt, or when the user released an ownerless
+   *  reservation (`agentSession.releaseReservation`). */
   processlessAt?: number | null
   leaseDeadlineAt: number
   lastRenewedAt: number

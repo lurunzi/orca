@@ -35,7 +35,8 @@ export function idleStructuredHandoffStatus(record: AgentSessionRecord): AgentSe
       error: {
         message: "Couldn't verify which runtime owns this session — manual recovery is required",
         recoverableOwner: 'none',
-        ...(canRetryProof ? { canRetryProof: true } : {})
+        ...(canRetryProof ? { canRetryProof: true } : {}),
+        ...userReleaseField(record)
       }
     }
   }
@@ -147,9 +148,28 @@ export function failedStructuredHandoffStatus(
             : "Couldn't resume chat — the agent terminal still owns this session",
       details: error instanceof Error ? error.message : String(error),
       recoverableOwner,
-      ...(canRetryProof ? { canRetryProof: true } : {})
+      ...(canRetryProof ? { canRetryProof: true } : {}),
+      ...userReleaseField(record)
     }
   }
+}
+
+function userReleaseField(record: AgentSessionRecord): { releaseFence?: number } {
+  return structuredReservationIsUserReleasable(record)
+    ? { releaseFence: record.lease.runtimeFence }
+    : {}
+}
+
+/** Only a reservation that names no process and waits on proof nothing else can supply. */
+export function structuredReservationIsUserReleasable(record: AgentSessionRecord): boolean {
+  const { lease } = record
+  return (
+    lease.claimStatus === 'reserved' &&
+    lease.ownerProcess === null &&
+    (lease.handoffStage === 'manual-recovery' || lease.handoffStage === 'recovering') &&
+    !lease.unreconciled &&
+    lease.settlementRetryRequired !== true
+  )
 }
 
 /** A latched TUI with a recorded process can be re-proved, regardless of which acquisition

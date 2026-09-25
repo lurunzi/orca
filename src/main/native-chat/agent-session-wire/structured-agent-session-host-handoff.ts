@@ -8,7 +8,6 @@ import {
   rethrowAfterAgentSessionAcquisitionCleanup,
   type StructuredAgentSessionAdapter
 } from './structured-agent-session-adapter'
-import { canRestoreLiveTuiOwner } from './structured-agent-session-handoff-restart'
 import type { DeferredStructuredAgentSessionEventSink } from './structured-agent-session-event-sink'
 import type { StructuredAgentSessionHostDeps } from './structured-agent-session-host'
 import type { StructuredAgentSessionHostSession } from './structured-agent-session-host-types'
@@ -20,6 +19,10 @@ import { StructuredTuiTranscriptCatchup } from './structured-tui-transcript-catc
 import { adapterSupportsCreateIfDeclared } from './structured-agent-session-provider-support'
 import { retryLoadedStructuredAgentSessionSettlement } from './structured-agent-session-settlement-retry'
 import { latestJournalDispatchObservation } from '../agent-session-journal/journal-dispatch-observation'
+import {
+  createStructuredAgentSessionHostHandoffRecoverySurface,
+  type StructuredAgentSessionHostHandoffRecoverySurface
+} from './structured-agent-session-host-handoff-recovery-surface'
 
 type HostHandoffAccess = {
   session: (sessionId: string) => StructuredAgentSessionHostSession
@@ -27,32 +30,24 @@ type HostHandoffAccess = {
   findSession: (sessionId: string) => StructuredAgentSessionHostSession | undefined
   eventSink: (sessionId: string) => DeferredStructuredAgentSessionEventSink
   flush: (sessionId: string) => Promise<void>
-  serialize: (sessionId: string, task: () => Promise<void>) => Promise<void>
+  serialize: <T>(sessionId: string, task: () => Promise<T>) => Promise<T>
   subscribers: AgentSessionSubscribers
   publishStatus?: (sessionId: string) => void
   now: () => number
+  /** Both absent only in isolated handoff tests; a release then reports the lease still latched. */
+  resolveRecovery?: (sessionId: string) => Promise<'resolved' | 'unresolved' | 'not-applicable'>
+  resumeHeld?: (sessionId: string) => Promise<void>
 }
 
-export type StructuredAgentSessionHostHandoff = StructuredAgentSessionHandoffCoordinator & {
-  stopTuiHistoryCatchup: () => void
-  recoverDeadTuiOwner: (
-    sessionId: string,
-    expectedFence: number,
-    probe: AgentSessionOwnerProbe
-  ) => Promise<void>
-}
-
-export async function refreshRecoverableStructuredHandoffStatus(
-  handoff: StructuredAgentSessionHostHandoff,
-  store: StructuredAgentSessionHostDeps['store'],
-  sessionId: string
-) {
-  const record = store.getRecord(sessionId)
-  if (record && canRestoreLiveTuiOwner(record)) {
-    await handoff.restore(sessionId)
+export type StructuredAgentSessionHostHandoff = StructuredAgentSessionHandoffCoordinator &
+  StructuredAgentSessionHostHandoffRecoverySurface & {
+    stopTuiHistoryCatchup: () => void
+    recoverDeadTuiOwner: (
+      sessionId: string,
+      expectedFence: number,
+      probe: AgentSessionOwnerProbe
+    ) => Promise<void>
   }
-  return handoff.status(sessionId)
-}
 
 export function createStructuredAgentSessionHostHandoff(
   deps: StructuredAgentSessionHostDeps,
@@ -157,7 +152,8 @@ export function createStructuredAgentSessionHostHandoff(
       if (status) {
         coordinator.setStatus(sessionId, status)
       }
-    }
+    },
+    ...createStructuredAgentSessionHostHandoffRecoverySurface(coordinator, deps.store, host)
   })
 }
 

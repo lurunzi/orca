@@ -3,7 +3,8 @@ import type { AgentSessionRecord } from '../../shared/agent-session-record'
 export type AgentSessionReservationProcesslessProof = {
   sessionId: string
   fence: number
-  spawnToken: string
+  /** Null only for the user release of a reservation that never recorded a token. */
+  spawnToken: string | null
   now: number
 }
 

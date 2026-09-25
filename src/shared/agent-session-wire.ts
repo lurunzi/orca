@@ -56,6 +56,9 @@ export type AgentSessionHandoffStatus = {
     details?: string
     recoverableOwner: AgentSessionOwnerRuntimeKind | 'none'
     canRetryProof?: boolean
+    /** Lease fence of an ownerless reservation only the user can attest is unused; present means
+     *  agentSession.releaseReservation may be offered for exactly this fence. */
+    releaseFence?: number
   }
 }
 
@@ -67,6 +70,10 @@ export type AgentSessionHandoffRequest = {
 }
 
 export type AgentSessionHandoffResult = { status: AgentSessionHandoffStatus }
+
+export type AgentSessionReservationReleaseResult =
+  | { ok: true; status: AgentSessionHandoffStatus }
+  | { ok: false; refusal: AgentSessionWireRefusal }
 
 export type {
   AgentSessionBackgroundTask,

@@ -78,6 +78,10 @@ export const ADMISSION_METHODS = [
     params: { envelope: envelope(), direction: 'to-tui', mode: 'now' }
   },
   { method: 'agentSession.handoffStatus', params: { sessionId: SESSION } },
+  {
+    method: 'agentSession.releaseReservation',
+    params: { sessionId: SESSION, expectedRuntimeFence: 3 }
+  },
   { method: 'agentSession.options', params: { sessionId: SESSION } },
   { method: 'agentSession.history', params: { sessionId: SESSION, direction: 'tail' } },
   { method: 'agentSession.conversationOutline', params: { sessionId: SESSION } },

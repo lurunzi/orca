@@ -32,6 +32,7 @@ import {
   commitStructuredAgentSessionCreate,
   prepareStructuredAgentSessionCreateForWorktree
 } from './structured-agent-session-create'
+import { STRUCTURED_AGENT_SESSION_HANDOFF_METHODS } from './structured-agent-session-handoff-methods'
 import { STRUCTURED_AGENT_SESSION_HOLD_METHODS } from './structured-agent-session-hold'
 import { STRUCTURED_AGENT_SESSION_REVEAL_METHODS } from './structured-agent-session-reveal'
 import { STRUCTURED_AGENT_SESSION_RESTART_RESUME_METHODS } from './structured-agent-session-restart-resume'
@@ -54,8 +55,6 @@ import {
   CreateParams,
   CreateSupportParams,
   HistoryParams,
-  HandoffParams,
-  HandoffStatusParams,
   OptionsParams,
   RespondParams,
   RewindParams,
@@ -242,16 +241,6 @@ export const STRUCTURED_AGENT_SESSION_METHODS = [
     handler: async (params, ctx) => requireHost(ctx).setOption(callerFor(ctx), params)
   }),
   defineMethod({
-    name: 'agentSession.requestHandoff',
-    params: HandoffParams,
-    handler: async (params, ctx) => requireHost(ctx).requestHandoff(callerFor(ctx), params)
-  }),
-  defineMethod({
-    name: 'agentSession.handoffStatus',
-    params: HandoffStatusParams,
-    handler: async (params, ctx) => requireHost(ctx).handoffStatus(params.sessionId)
-  }),
-  defineMethod({
     name: 'agentSession.options',
     params: OptionsParams,
     handler: async (params, ctx) => requireHost(ctx).readOptions(params.sessionId)
@@ -328,6 +317,7 @@ export const STRUCTURED_AGENT_SESSION_METHODS = [
       return { unsubscribed: true }
     }
   }),
+  ...STRUCTURED_AGENT_SESSION_HANDOFF_METHODS,
   ...STRUCTURED_AGENT_SESSION_HOLD_METHODS,
   ...STRUCTURED_AGENT_SESSION_REVEAL_METHODS,
   ...STRUCTURED_AGENT_SESSION_RESTART_RESUME_METHODS,

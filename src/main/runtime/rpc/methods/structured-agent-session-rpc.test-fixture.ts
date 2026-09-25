@@ -201,6 +201,10 @@ export function hostStub(): StructuredAgentSessionHost {
     })),
     supportsCreate: vi.fn(() => true),
     handoffStatus: vi.fn(async () => ({ owner: 'native' })),
+    releaseReservation: vi.fn(async () => ({
+      ok: true,
+      status: { owner: 'none', direction: null, phase: 'idle', stage: null, operationId: null }
+    })),
     readOptions: vi.fn(async () => ({
       models: [{ id: 'gpt-live', label: 'GPT Live', isDefault: true, efforts: [] }],
       current: { model: 'gpt-live' }

@@ -16,7 +16,6 @@ import * as providerSupport from './structured-agent-session-provider-support'
 import { createStructuredAgentSessionHostRestore } from './structured-agent-session-reveal'
 import {
   createStructuredAgentSessionHostHandoff,
-  refreshRecoverableStructuredHandoffStatus,
   type StructuredAgentSessionHostHandoff
 } from './structured-agent-session-host-handoff'
 import { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
@@ -94,7 +93,7 @@ export class StructuredAgentSessionHost {
     )
     this.runtimeState = new StructuredAgentSessionHostRuntimeState(
       deps,
-      (record) => this.restoreRenewedHandoff(record.sessionId),
+      (record) => this.handoffs.restoreRenewed(record.sessionId),
       (record, probe) =>
         this.sessions.has(record.sessionId)
           ? this.serialize(record.sessionId, () =>
@@ -117,7 +116,9 @@ export class StructuredAgentSessionHost {
       serialize: (sessionId, task) => this.serialize(sessionId, task),
       subscribers: this.subscribers,
       publishStatus: this.clientDelivery.publishStatus,
-      now: this.now
+      now: this.now,
+      resolveRecovery: (sessionId) => this.runtimeState.resolveRecovery(sessionId),
+      resumeHeld: (sessionId) => this.holds.resumeHeld(sessionId)
     })
     this.holds = createStructuredAgentSessionHolds(this.lifetimeContext(), {
       reconcileLeases: this.reconcileLeases,
@@ -236,14 +237,6 @@ export class StructuredAgentSessionHost {
 
   private serialize = this.tasks.serialize.bind(this.tasks)
 
-  private restoreRenewedHandoff(sessionId: string): Promise<void> {
-    return this.serialize(sessionId, async () => {
-      if (this.sessions.has(sessionId)) {
-        await refreshRecoverableStructuredHandoffStatus(this.handoffs, this.deps.store, sessionId)
-      }
-    })
-  }
-
   attach(
     caller: StructuredAgentSessionCaller,
     params: AgentSessionAttachParams
@@ -311,12 +304,11 @@ export class StructuredAgentSessionHost {
     commands: this.deps.adapter.readCommands?.(sessionId)
   })
 
-  async handoffStatus(sessionId: string): Promise<SessionWire.AgentSessionHandoffStatus> {
-    this.requireSession(sessionId)
-    return this.serialize(sessionId, () =>
-      refreshRecoverableStructuredHandoffStatus(this.handoffs, this.deps.store, sessionId)
-    )
-  }
+  handoffStatus = (sessionId: string): Promise<SessionWire.AgentSessionHandoffStatus> =>
+    this.handoffs.refreshedStatus(sessionId)
+  /** User-confirmed release of an ownerless reservation; see its module. */
+  releaseReservation = (sessionId: string, expectedRuntimeFence: number) =>
+    this.handoffs.releaseReservation(sessionId, expectedRuntimeFence)
 
   history: StructuredAgentSessionBackgroundTaskChannel['history'] = (request) =>
     this.backgroundTasks.history(request)
