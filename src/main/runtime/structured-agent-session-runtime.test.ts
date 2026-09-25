@@ -169,6 +169,15 @@ describe('structured agent-session owner probe', () => {
     expect(result).toEqual({ outcome: 'reservation-unused' })
   })
 
+  it('hands the reservation record to the scan so Windows can prove absence from argv', async () => {
+    const scan = vi.fn(async () => [])
+    const reserved = record(null, { claimStatus: 'reserved', reservedSpawnToken: 'token-1' })
+
+    await createStructuredAgentSessionOwnerProbe(HOST_ID, deadProbe(), scan)(reserved)
+
+    expect(scan).toHaveBeenCalledWith('token-1', reserved)
+  })
+
   it('frees a lease that names neither an owner nor a spawn token', async () => {
     const probe = deadProbe()
     const scan = vi.fn(async () => [] as number[])
