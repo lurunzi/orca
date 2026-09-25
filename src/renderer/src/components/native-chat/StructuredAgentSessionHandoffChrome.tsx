@@ -57,8 +57,8 @@ function handoffStageCopy(status: AgentSessionHandoffStatus): string {
   return translate('components.native-chat.handoff.switchingOwner', 'Switching session owner…')
 }
 
-/** One status row for a session that is not plainly chat-owned; the chat-owned entry lives in
- *  the composer toolbar so an idle chat carries no extra row. */
+/** One status row for a session that is not plainly chat-owned; the chat-owned entry sits at
+ *  the top right so an idle chat carries no extra row. */
 export function StructuredAgentSessionHandoffChrome({
   status,
   isWorking,

@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { isValidElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
@@ -42,27 +41,20 @@ function renderSession(): void {
   )
 }
 
-/** The composer is mocked, so its toolbar slot is rendered on its own. */
-function renderComposerHandoffControl(): void {
-  const control = mocks.composerProps?.structuredTransport?.handoffControl
-  render(<TooltipProvider>{isValidElement(control) ? control : null}</TooltipProvider>)
-}
-
 describe('NativeChatStructuredSession chat/terminal switching', () => {
   afterEach(() => {
     cleanup()
     resetStructuredSessionMocks()
   })
 
-  it('adds no row and no toolbar button while the host offers no handoff controls', () => {
+  it('adds no row and no toggle while the host offers no handoff controls', () => {
     renderSession()
-    renderComposerHandoffControl()
 
     expect(screen.queryByRole('button', { name: 'Open agent TUI' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Return to chat' })).toBeNull()
   })
 
-  it('opens the agent terminal from the composer toolbar of a chat-owned session', () => {
+  it('opens the agent terminal from the top-right toggle of a chat-owned session', () => {
     mocks.handoffStatus = {
       owner: 'native',
       direction: null,
@@ -71,7 +63,6 @@ describe('NativeChatStructuredSession chat/terminal switching', () => {
       operationId: null
     }
     renderSession()
-    renderComposerHandoffControl()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open agent TUI' }))
 
@@ -88,7 +79,6 @@ describe('NativeChatStructuredSession chat/terminal switching', () => {
       hostLabel: 'workstation'
     }
     renderSession()
-    renderComposerHandoffControl()
 
     expect(screen.getByText('Agent is open in terminal on workstation.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Open agent TUI' })).toBeNull()

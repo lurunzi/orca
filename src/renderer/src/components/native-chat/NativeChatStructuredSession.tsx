@@ -185,14 +185,7 @@ export function NativeChatStructuredSession(
       runtime: (props.target.kind === 'local' ? 'local' : 'remote') as 'local' | 'remote',
       sessionId: props.sessionId,
       runtimeEnvironmentId:
-        props.target.kind === 'local' ? null : (props.target.environmentId ?? null),
-      handoffControl: (
-        <StructuredAgentSessionHandoffButton
-          status={controller.handoff.status}
-          isWorking={controller.isWorking}
-          onRequest={controller.handoff.request}
-        />
-      )
+        props.target.kind === 'local' ? null : (props.target.environmentId ?? null)
     }
   }, [
     controller,
@@ -219,8 +212,16 @@ export function NativeChatStructuredSession(
       onKeyUpCapture={paneCommands.onSelectionCapture}
       onKeyDownCapture={paneCommands.onKeyDownCapture}
       onContextMenuCapture={paneCommands.onContextMenuCapture}
-      className="flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
+      className="relative flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
     >
+      {/* Same top-right spot as the terminal-backed chat's pane-header toggle. */}
+      <div className="absolute right-1 top-1 z-20 flex items-center">
+        <StructuredAgentSessionHandoffButton
+          status={controller.handoff.status}
+          isWorking={controller.isWorking}
+          onRequest={controller.handoff.request}
+        />
+      </div>
       <div className="flex min-h-0 flex-1 flex-col">
         {viewState.kind === 'loading' ? (
           <NativeChatEmptyState kind="loading" />

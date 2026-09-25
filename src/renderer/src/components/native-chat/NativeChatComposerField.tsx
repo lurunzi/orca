@@ -1,7 +1,7 @@
 import { NativeChatPromptEditor } from './NativeChatPromptEditor'
 import { NativeChatPromptSuggestion } from './NativeChatPromptSuggestion'
 import type { NativeChatComposerInput } from './native-chat-composer-input'
-import type { ClipboardEventHandler, KeyboardEventHandler, ReactNode, RefObject } from 'react'
+import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
 import { useLayoutEffect, useRef } from 'react'
 import { ImageOff } from 'lucide-react'
 import type { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
@@ -71,7 +71,6 @@ export type NativeChatComposerFieldProps = {
   contextUsage?: NativeChatContextUsageSummary | null
   sessionOptionsPickerRequest?: NativeChatOptionPickerRequest | null
   goalMode?: NativeChatComposerGoalMode
-  handoffControl?: ReactNode
 }
 
 export type NativeChatComposerImageAttachment = {
@@ -140,7 +139,6 @@ export function NativeChatComposerField({
   onRemoveImageAttachment,
   onAttach,
   coordinator,
-  handoffControl,
   onDictationToggle,
   onDictationHoldStart,
   onDictationHoldEnd,
@@ -336,7 +334,6 @@ export function NativeChatComposerField({
                 contextUsage={contextUsage}
                 sessionOptionsPickerRequest={sessionOptionsPickerRequest}
                 onExitGoalMode={goalMode?.active ? goalMode.exit : undefined}
-                handoffControl={handoffControl}
               />
             </div>
           </div>

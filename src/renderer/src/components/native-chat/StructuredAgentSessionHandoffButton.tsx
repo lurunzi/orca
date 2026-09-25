@@ -20,7 +20,8 @@ type Props = {
   onRequest: (direction: AgentSessionHandoffDirection, mode: AgentSessionHandoffMode) => void
 }
 
-/** Composer toolbar entry for moving a chat-owned session into its agent terminal. */
+/** Top-right entry for moving a chat-owned session into its agent terminal, matching the
+ *  terminal-backed chat's pane-header toggle. */
 export function StructuredAgentSessionHandoffButton({
   status,
   isWorking,
@@ -34,20 +35,20 @@ export function StructuredAgentSessionHandoffButton({
     <Button
       type="button"
       variant="ghost"
-      size="icon-sm"
+      size="icon-xs"
       aria-label={label}
       // A submitted turn can reach the host before isWorking updates; after-turn is immediate when idle.
       onClick={isWorking ? undefined : () => onRequest('to-tui', 'after-turn')}
       className="pointer-coarse:size-11"
     >
-      <SquareTerminal className="size-4" />
+      <SquareTerminal className="size-3" />
     </Button>
   )
   if (!isWorking) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
+        <TooltipContent side="bottom" sideOffset={4}>
           {label}
         </TooltipContent>
       </Tooltip>
@@ -56,7 +57,7 @@ export function StructuredAgentSessionHandoffButton({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start">
+      <DropdownMenuContent side="bottom" align="end">
         <DropdownMenuItem onSelect={() => onRequest('to-tui', 'after-turn')}>
           {translate('components.native-chat.handoff.switchAfterTurn', 'Switch after this turn')}
         </DropdownMenuItem>

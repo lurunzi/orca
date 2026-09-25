@@ -24,7 +24,6 @@ export type NativeChatComposerActionsProps = {
   isDictationHoldMode: boolean
   onAttach: () => void
   coordinatorLaunch?: ReactNode
-  handoffControl?: ReactNode
   onDictationToggle: () => void
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
@@ -49,7 +48,6 @@ export function NativeChatComposerActions({
   isDictationHoldMode,
   onAttach,
   coordinatorLaunch,
-  handoffControl,
   onDictationToggle,
   onDictationHoldStart,
   onDictationHoldEnd,
@@ -99,7 +97,6 @@ export function NativeChatComposerActions({
         </Tooltip>
         {onExitGoalMode ? <NativeChatComposerGoalChip onExit={onExitGoalMode} /> : null}
         {coordinatorLaunch}
-        {handoffControl}
       </div>
       <div className="ml-auto flex items-center gap-1.5">
         {/* Why: keep session controls beside the actions they affect; the
