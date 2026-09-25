@@ -26,6 +26,10 @@ vi.mock('./NativeChatComposer', () => moduleFactories.nativeChatComposer())
 vi.mock('./NativeChatEmptyState', () => moduleFactories.nativeChatEmptyState())
 vi.mock('./NativeChatApprovalCard', () => moduleFactories.nativeChatApprovalCard())
 vi.mock('./NativeChatQuestionCard', () => moduleFactories.nativeChatQuestionCard())
+// Header tooltips need the app-root TooltipProvider these renders omit.
+vi.mock('./use-structured-chat-continuation', () => ({
+  useStructuredChatContinuation: () => ({ onContinue: undefined, dialog: null })
+}))
 
 import { NativeChatStructuredSession } from './NativeChatStructuredSession'
 

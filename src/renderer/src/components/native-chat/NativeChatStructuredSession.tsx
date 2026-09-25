@@ -30,6 +30,8 @@ import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-labe
 import { NativeChatThreadGoalBanner } from './NativeChatThreadGoalBanner'
 import { StructuredAgentSessionHeaderActions } from './StructuredAgentSessionHeaderActions'
 import { StructuredAgentSessionHandoffChrome } from './StructuredAgentSessionHandoffChrome'
+import { useStructuredChatContinuation } from './use-structured-chat-continuation'
+import { StructuredChatContinueMenuItem } from './StructuredChatContinueMenuItem'
 
 function encodeQuestionAnswer(questionId: string, answer: string): string {
   return `${encodeURIComponent(questionId)}:${encodeURIComponent(answer)}`
@@ -67,6 +69,13 @@ export function NativeChatStructuredSession(
     () => structuredAgentSessionPaneKey(props.tabId, props.sessionId),
     [props.sessionId, props.tabId]
   )
+  const continuation = useStructuredChatContinuation({
+    fileLinkContext,
+    groupId: props.groupId,
+    paneKey,
+    agent: props.agent,
+    messages: controller.messages
+  })
   const rootRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<NativeChatComposerHandle>(null)
   const paneCommands = useStructuredNativeChatPaneCommands({
@@ -77,7 +86,16 @@ export function NativeChatStructuredSession(
     composerRef,
     terminalPaneActions: props.contextMenuActions,
     sessionMenuItems: (
-      <NativeChatOrchestrationIdentityMenuItem sessionId={props.sessionId} target={props.target} />
+      <>
+        {/* Terminal-pane actions already carry their own Continue item. */}
+        {continuation.onContinue && !props.contextMenuActions ? (
+          <StructuredChatContinueMenuItem onSelect={continuation.onContinue} />
+        ) : null}
+        <NativeChatOrchestrationIdentityMenuItem
+          sessionId={props.sessionId}
+          target={props.target}
+        />
+      </>
     )
   })
   const session = useMemo(
@@ -220,7 +238,9 @@ export function NativeChatStructuredSession(
         handoffStatus={controller.handoff.status}
         isWorking={controller.isWorking}
         onHandoffRequest={controller.handoff.request}
+        onContinueInNewSession={continuation.onContinue}
       />
+      {continuation.dialog}
       <div className="flex min-h-0 flex-1 flex-col">
         {viewState.kind === 'loading' ? (
           <NativeChatEmptyState kind="loading" />
