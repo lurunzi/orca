@@ -17432,9 +17432,7 @@
         "label": "编排身份"
       },
       "coordinator": {
-        "insert": "用 Orca 编排协调",
-        "identityFailed": "未取得协调者权限",
-        "prompt": "使用 Orca 编排协调以下任务："
+        "toggle": "协调者模式"
       },
       "taskList": {
         "title": "任务",
