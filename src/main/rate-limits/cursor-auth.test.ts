@@ -1,78 +1,230 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
-import SyncDatabase from '../sqlite/sync-database'
-import { cursorAuthPaths, parseCursorAccessToken, readCursorAuth } from './cursor-auth'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const jwt = (sub = 'auth0|user_test', exp = Date.now() / 1000 + 3600): string =>
-  `e30.${Buffer.from(JSON.stringify({ sub, exp })).toString('base64url')}.signature`
-const directories: string[] = []
-afterEach(() => {
-  for (const directory of directories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true })
-  }
+const keychainState = vi.hoisted<{ token: string | null; error: Error | null }>(() => ({
+  token: null,
+  error: null
+}))
+const files = vi.hoisted<() => Map<string, string | Error>>(() => {
+  const map = new Map<string, string | Error>()
+  return () => map
 })
+const desktopState = vi.hoisted<{
+  result: { status: string; profile?: unknown; error?: string }
+}>(() => ({ result: { status: 'missing' } }))
 
-function fixture(): { cli: string; database: string } {
-  const directory = mkdtempSync(join(tmpdir(), 'orca-cursor-auth-'))
-  directories.push(directory)
-  return { cli: join(directory, 'auth.json'), database: join(directory, 'state.vscdb') }
+vi.mock('../macos-keychain/generic-password', () => ({
+  readKeychainPassword: async () => {
+    if (keychainState.error) {
+      throw keychainState.error
+    }
+    return keychainState.token
+  }
+}))
+
+vi.mock('node:fs', () => ({
+  existsSync: (path: string) => files().has(path),
+  readFileSync: (path: string) => {
+    const entry = files().get(path)
+    if (entry instanceof Error) {
+      throw entry
+    }
+    if (entry === undefined) {
+      throw new Error('ENOENT')
+    }
+    return entry
+  }
+}))
+
+vi.mock('./cursor-desktop-state-db', () => ({
+  readCursorDesktopProfile: () => desktopState.result
+}))
+
+import { readCursorAuthSession, readCursorCliIdentity } from './cursor-auth'
+
+type JwtSegment = Record<string, unknown>
+
+function expiredJwt(sub: string): string {
+  const encode = (value: JwtSegment): string =>
+    Buffer.from(JSON.stringify(value)).toString('base64url')
+  return `${encode({ alg: 'RS256' })}.${encode({ sub, exp: 1_000 })}.signature`
 }
 
-describe('Cursor host credentials', () => {
-  it('uses host-specific app and CLI paths, including spaces and absolute XDG overrides', () => {
-    expect(cursorAuthPaths('win32', 'C:/User Name', { APPDATA: 'D:/Roaming' }).cli).toBe(
-      'D:\\Roaming\\Cursor\\auth.json'
-    )
-    expect(cursorAuthPaths('darwin', '/User Name', {}).database).toBe(
-      '/User Name/Library/Application Support/Cursor/User/globalStorage/state.vscdb'
-    )
-    expect(cursorAuthPaths('linux', '/home/user', { XDG_CONFIG_HOME: '/config' }).cli).toBe(
-      '/config/cursor/auth.json'
-    )
-    expect(cursorAuthPaths('linux', '/home/user', { XDG_CONFIG_HOME: 'relative' }).cli).toBe(
-      '/home/user/.config/cursor/auth.json'
-    )
-  })
-  it('derives only a cookie and opaque provenance, without returning the user ID', () => {
-    const token = jwt()
-    const result = parseCursorAccessToken(token)
+function jwt(sub: string): string {
+  const encode = (value: JwtSegment): string =>
+    Buffer.from(JSON.stringify(value)).toString('base64url')
+  return `${encode({ alg: 'RS256' })}.${encode({ sub, exp: 2_000_000_000 })}.signature`
+}
+
+const CLI_AUTH = '/cli/auth.json'
+const CLI_CONFIG = '/cli/cli-config.json'
+const DESKTOP_DB = '/desktop/state.vscdb'
+const options = {
+  cliAuthPath: CLI_AUTH,
+  cliConfigPath: CLI_CONFIG,
+  desktopStateDbPath: DESKTOP_DB
+}
+
+const originalPlatform = process.platform
+
+function setPlatform(platform: NodeJS.Platform): void {
+  Object.defineProperty(process, 'platform', { value: platform, configurable: true })
+}
+
+beforeEach(() => {
+  // Why: the keychain source is macOS-only by an explicit platform check, so
+  // these cases must pin the platform rather than inherit the CI runner's.
+  setPlatform('darwin')
+  keychainState.token = null
+  keychainState.error = null
+  files().clear()
+  desktopState.result = { status: 'missing' }
+})
+
+afterEach(() => {
+  setPlatform(originalPlatform)
+  vi.restoreAllMocks()
+})
+
+describe('readCursorAuthSession', () => {
+  it('prefers the keychain session cursor-agent 2026.06+ writes', async () => {
+    keychainState.token = jwt('auth0|user_keychain')
+    files().set(CLI_AUTH, JSON.stringify({ accessToken: jwt('auth0|user_file') }))
+    const result = await readCursorAuthSession(options)
     expect(result.status).toBe('ok')
-    if (result.status !== 'ok') {
-      throw new Error('Expected valid fixture')
+    expect(result.status === 'ok' && result.session.source).toBe('keychain')
+    expect(result.status === 'ok' && result.session.token.subject).toBe('auth0|user_keychain')
+  })
+
+  it('names the signed-in account from cli-config.json, which holds no token', async () => {
+    keychainState.token = jwt('auth0|user_1')
+    files().set(
+      CLI_CONFIG,
+      JSON.stringify({ authInfo: { email: 'dev@example.com', displayName: 'Dev' } })
+    )
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.email).toBe('dev@example.com')
+    expect(result.status === 'ok' && result.session.displayName).toBe('Dev')
+  })
+
+  it('falls back to the legacy CLI auth file when the keychain holds nothing', async () => {
+    files().set(CLI_AUTH, JSON.stringify({ accessToken: jwt('auth0|user_file') }))
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.source).toBe('cli')
+  })
+
+  it('falls back to Cursor IDE when no CLI session exists', async () => {
+    desktopState.result = {
+      status: 'ok',
+      profile: {
+        accessToken: jwt('auth0|user_ide'),
+        email: 'ide@example.com',
+        membershipType: 'pro',
+        subscriptionStatus: 'active'
+      }
     }
-    expect(result.cookie).toBe(`WorkosCursorSessionToken=user_test%3A%3A${token}`)
-    expect(result.fingerprint).toMatch(/^[a-f0-9]{64}$/)
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.source).toBe('desktop')
+    expect(result.status === 'ok' && result.session.membershipType).toBe('pro')
   })
-  it('rejects expired, malformed and header-injection tokens', () => {
-    expect(parseCursorAccessToken(jwt('user', 1)).status).toBe('expired')
-    expect(parseCursorAccessToken(jwt('bad;value')).status).toBe('invalid')
-    expect(parseCursorAccessToken('invalid\r\nCookie: leak').status).toBe('invalid')
+
+  it('does not let a locked keychain hide a readable CLI session', async () => {
+    keychainState.error = new Error('User interaction is not allowed')
+    files().set(CLI_AUTH, JSON.stringify({ accessToken: jwt('auth0|user_file') }))
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.source).toBe('cli')
   })
-  it('keeps a present invalid CLI identity instead of falling back to the app', () => {
-    const paths = fixture()
-    writeFileSync(paths.cli, JSON.stringify({ accessToken: jwt('user', 1) }))
-    expect(readCursorAuth(paths).status).toBe('expired')
-    writeFileSync(paths.cli, '{')
-    expect(readCursorAuth(paths).status).toBe('unreadable')
+
+  it('reports the first read failure when no source yields a session', async () => {
+    keychainState.error = new Error('User interaction is not allowed')
+    const result = await readCursorAuthSession(options)
+    expect(result).toEqual({
+      status: 'error',
+      error: 'Unable to read the Cursor login from the macOS Keychain'
+    })
   })
-  it('does not create missing credential files', () => {
-    expect(readCursorAuth(fixture()).status).toBe('missing')
+
+  it('reports signed out when nothing is stored anywhere', async () => {
+    expect(await readCursorAuthSession(options)).toEqual({ status: 'missing' })
   })
-  it.each(['text', 'utf8', 'utf16le'] as const)(
-    'reads %s app tokens with a read-only SQLite connection',
-    (encoding) => {
-      const paths = fixture()
-      const db = new SyncDatabase(paths.database)
-      const token = jwt()
-      db.exec('CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value BLOB)')
-      db.prepare('INSERT INTO ItemTable VALUES (?, ?)').run(
-        'cursorAuth/accessToken',
-        encoding === 'text' ? token : Buffer.from(token, encoding)
-      )
-      db.close()
-      expect(readCursorAuth(paths)).toEqual(parseCursorAccessToken(token))
+
+  it('treats a signed-out CLI auth file as missing, not as an error', async () => {
+    files().set(CLI_AUTH, JSON.stringify({}))
+    expect(await readCursorAuthSession(options)).toEqual({ status: 'missing' })
+  })
+
+  it('keeps the local auth path out of the surfaced error', async () => {
+    files().set(
+      CLI_AUTH,
+      new Error('EACCES: permission denied, open /Users/someone/.cursor/auth.json')
+    )
+    const result = await readCursorAuthSession(options)
+    expect(result).toEqual({ status: 'error', error: 'Unable to read the Cursor CLI auth file' })
+  })
+
+  it('reports invalid JSON distinctly from an unreadable file', async () => {
+    files().set(CLI_AUTH, '{ not json')
+    const result = await readCursorAuthSession(options)
+    expect(result).toEqual({ status: 'error', error: 'Cursor CLI auth file is invalid' })
+  })
+
+  it('prefers a live desktop session over an expired keychain one', async () => {
+    // Why: a user who signed the CLI in once and now works only in the IDE would
+    // otherwise be told "sign-in expired" forever while a usable session sat below.
+    keychainState.token = expiredJwt('auth0|user_stale')
+    desktopState.result = {
+      status: 'ok',
+      profile: {
+        accessToken: jwt('auth0|user_ide'),
+        email: 'ide@example.com',
+        membershipType: 'pro',
+        subscriptionStatus: 'active'
+      }
     }
-  )
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.source).toBe('desktop')
+    expect(result.status === 'ok' && result.session.token.subject).toBe('auth0|user_ide')
+  })
+
+  it('still returns the expired session when no live one exists anywhere', async () => {
+    // Why: the expiry message is the actionable answer in that case.
+    keychainState.token = expiredJwt('auth0|user_stale')
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.source).toBe('keychain')
+  })
+
+  it('never reads the keychain off macOS and falls through to the CLI file', async () => {
+    setPlatform('linux')
+    keychainState.token = jwt('auth0|user_keychain')
+    files().set(CLI_AUTH, JSON.stringify({ accessToken: jwt('auth0|user_file') }))
+    const result = await readCursorAuthSession(options)
+    expect(result.status === 'ok' && result.session.source).toBe('cli')
+  })
+
+  it('reports signed out off macOS when only a keychain session exists', async () => {
+    setPlatform('win32')
+    keychainState.token = jwt('auth0|user_keychain')
+    expect(await readCursorAuthSession(options)).toEqual({ status: 'missing' })
+  })
+
+  it('skips a stored token that carries no subject', async () => {
+    keychainState.token = 'not-a-jwt'
+    expect(await readCursorAuthSession(options)).toEqual({ status: 'missing' })
+  })
+})
+
+describe('readCursorCliIdentity', () => {
+  it('returns empty identity for a config with no authInfo', () => {
+    files().set(CLI_CONFIG, JSON.stringify({ version: 1 }))
+    expect(readCursorCliIdentity(CLI_CONFIG)).toEqual({
+      email: null,
+      displayName: null,
+      membershipType: null,
+      subscriptionStatus: null
+    })
+  })
+
+  it('survives a corrupt config file', () => {
+    files().set(CLI_CONFIG, '{{{')
+    expect(readCursorCliIdentity(CLI_CONFIG).email).toBeNull()
+  })
 })

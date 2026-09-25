@@ -16,6 +16,7 @@ export function createEmptyRateLimitState(overrides: Partial<RateLimitState> = {
     minimaxApiKeyConfigured: false,
     opencodeGoApiKeyConfigured: false,
     grokAuthConfigured: false,
+    cursorAuthConfigured: false,
     claudeTarget: { runtime: 'host', wslDistro: null },
     codexTarget: { runtime: 'host', wslDistro: null },
     inactiveClaudeAccounts: [],

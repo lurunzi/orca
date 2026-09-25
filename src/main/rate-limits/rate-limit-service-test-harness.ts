@@ -1,4 +1,3 @@
-import { fetchCursorRateLimits } from './cursor-fetcher'
 import { EventEmitter } from 'node:events'
 import { vi, type Mock } from 'vitest'
 import type { ProviderRateLimits } from '../../shared/rate-limit-types'
@@ -9,6 +8,8 @@ import { fetchKimiRateLimits } from './kimi-fetcher'
 import { fetchMiniMaxRateLimits } from './minimax/minimax-fetcher'
 import { fetchGrokRateLimits } from './grok-fetcher'
 import { readGrokAuthSession } from './grok-auth'
+import { fetchCursorRateLimits } from './cursor-fetcher'
+import { readCursorAuthSession } from './cursor-auth'
 import { fetchOpenCodeGoUsage } from './opencode-go-usage-source-selection'
 import { probeLocalAntigravityLanguageServer } from './antigravity-local-probe'
 import { hasMiniMaxSessionCookie } from '../minimax/minimax-cookie-store'
@@ -91,12 +92,12 @@ export function mockFreshBackgroundProviderFetches(): void {
   vi.mocked(fetchKimiRateLimits).mockImplementation(async () => okProvider('kimi', 0))
   vi.mocked(fetchMiniMaxRateLimits).mockImplementation(async () => okProvider('minimax', 0))
   vi.mocked(fetchGrokRateLimits).mockImplementation(async () => unavailableProvider('grok'))
+  vi.mocked(fetchCursorRateLimits).mockImplementation(async () => unavailableProvider('cursor'))
 }
 
 /** Shared `beforeEach` body: healthy stubs for every provider the service polls. */
 export function resetRateLimitProviderMocks(): void {
   vi.clearAllMocks()
-  vi.mocked(fetchCursorRateLimits).mockImplementation(async () => unavailableProvider('cursor'))
   vi.mocked(fetchGeminiRateLimits).mockResolvedValue(okProvider('gemini', 0, Date.now()))
   vi.mocked(fetchOpenCodeGoUsage).mockResolvedValue(okProvider('opencode-go', 0, Date.now()))
   vi.mocked(fetchKimiRateLimits).mockResolvedValue(okProvider('kimi', 0, Date.now()))
@@ -109,9 +110,13 @@ export function resetRateLimitProviderMocks(): void {
     error: null,
     status: 'unavailable'
   })
+  vi.mocked(fetchCursorRateLimits).mockResolvedValue(unavailableProvider('cursor'))
   vi.mocked(hasMiniMaxSessionCookie).mockReturnValue(false)
   vi.mocked(readGrokAuthSession).mockReturnValue({ status: 'missing' })
-  vi.mocked(probeLocalAntigravityLanguageServer).mockResolvedValue(null)
+  if (vi.isMockFunction(probeLocalAntigravityLanguageServer)) {
+    vi.mocked(probeLocalAntigravityLanguageServer).mockResolvedValue(null)
+  }
+  vi.mocked(readCursorAuthSession).mockResolvedValue({ status: 'missing' })
 }
 
 type RateLimitWindow = Parameters<RateLimitService['attach']>[0]

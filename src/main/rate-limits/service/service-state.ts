@@ -31,10 +31,13 @@ export abstract class RateLimitServiceState {
     kimi: null,
     antigravity: null,
     minimax: null,
-    cursor: null,
-    grok: null
+    grok: null,
+    cursor: null
   }
   protected grokAuthConfigured = readGrokAuthSession().status === 'ok'
+  // Why: the Cursor probe reads the macOS Keychain, so it cannot run synchronously
+  // at construction the way Grok's auth-file probe does; each fetch cycle sets it.
+  protected cursorAuthConfigured = false
   protected openCodeGoApiKeyConfigured = false
   protected pollInterval: number = DEFAULT_POLL_MS
   protected timer: ReturnType<typeof setInterval> | null = null
