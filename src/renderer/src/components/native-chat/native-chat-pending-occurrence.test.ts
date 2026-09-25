@@ -98,6 +98,20 @@ describe('countLeadingPendingTextsGluedToUserText', () => {
   })
 })
 
+describe('countLeadingPendingTextsGluedToUserText line continuation', () => {
+  it('glues a send whose trailing backslash the TUI ate as a line continuation', () => {
+    expect(countLeadingPendingTextsGluedToUserText(['a\\', 'b'], 'a b')).toBe(2)
+    expect(countLeadingPendingTextsGluedToUserText(['a\\', 'b'], 'ab')).toBe(2)
+    expect(countLeadingPendingTextsGluedToUserText(['a\\', 'b'], 'a\\ b')).toBe(2)
+    expect(countLeadingPendingTextsGluedToUserText(['x', 'C:\\dir\\', 'y'], 'x C:\\dir y')).toBe(3)
+  })
+
+  it('never drops the backslash of the send that ends the row', () => {
+    expect(countLeadingPendingTextsGluedToUserText(['a', 'b\\'], 'a b')).toBe(0)
+    expect(countLeadingPendingTextsGluedToUserText(['\\', 'b'], ' b')).toBe(0)
+  })
+})
+
 describe('countPendingTextsGluedAfterTruncatedLead', () => {
   it('counts a truncated lead followed by whole later sends', () => {
     expect(

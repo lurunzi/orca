@@ -442,6 +442,69 @@ describe('a send glued onto a truncated earlier send', () => {
   })
 })
 
+// docs/bug-reproductions/native-chat-multiline-pending-ghost: Antigravity folded
+// three queued sends into one turn, and the unmatched echoes then floated below
+// every later turn.
+describe('queued sends the agent coalesced into one turn', () => {
+  const path = 'C:\\Users\\ABSCOND\\.gemini\\antigravity-cli\\brain\\187a120b\\screenshots'
+  const queued = (): NativeChatPendingSend[] => [
+    gluePending('p1', '哦对图挪走了'),
+    gluePending('p2', `${path}\\`),
+    gluePending('p3', '我本来想让你清理，发错对话了')
+  ]
+
+  it('retires all three when the continuation ate the trailing backslash', () => {
+    const row = `哦对图挪走了\n${path}我本来想让你清理，发错对话了`
+
+    expect(pendingSendsAsMessages(queued(), glueTranscript(row))).toEqual([])
+    expect(prunePendingSends(queued(), advancedGlueTranscript(row))).toEqual([])
+  })
+
+  const unmatchableTurn = (): NativeChatMessage[] =>
+    advancedGlueTranscript('哦对图挪走了 C:\\Users\\ABSCOND.gemini 我本来想让你清理')
+  const followUp: NativeChatPendingSend = {
+    id: 'p4',
+    text: '发出去了吗',
+    sentAt: 7000,
+    afterMessageId: 'glue-answer',
+    afterMessageTimestamp: 6100
+  }
+
+  it('keeps unmatched echoes until a newer send is confirmed', () => {
+    const pending = queued()
+
+    expect(prunePendingSends(pending, unmatchableTurn())).toEqual(pending)
+  })
+
+  it('hides older unmatched echoes once a newer send lands', () => {
+    const messages = [...unmatchableTurn(), userMessage('u2', '发出去了吗', 7100)]
+
+    expect(pendingSendsAsMessages([...queued(), followUp], messages)).toEqual([])
+  })
+
+  it('retires older unmatched echoes once a newer send advances', () => {
+    const messages = [
+      ...unmatchableTurn(),
+      userMessage('u2', '发出去了吗', 7100),
+      assistantMessage('a2', 'Ran 1 command', 7200)
+    ]
+
+    expect(prunePendingSends([...queued(), followUp], messages)).toEqual([])
+  })
+
+  it('keeps sends queued after the newest confirmed one', () => {
+    const later = { ...followUp, id: 'p5', text: 'still queued', sentAt: 7050 }
+    const messages = [
+      ...unmatchableTurn(),
+      userMessage('u2', '发出去了吗', 7100),
+      assistantMessage('a2', 'Ran 1 command', 7200)
+    ]
+
+    expect(prunePendingSends([...queued(), followUp, later], messages)).toEqual([later])
+    expect(pendingSendsAsMessages([...queued(), followUp, later], messages)).toHaveLength(1)
+  })
+})
+
 describe('pendingSendsAsMessages', () => {
   it('returns the empty input without reading existing history', () => {
     const pending: NativeChatPendingSend[] = []

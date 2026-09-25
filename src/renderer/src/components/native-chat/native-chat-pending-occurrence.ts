@@ -123,8 +123,8 @@ export function matchingNativeChatUserRows(
  * ("joke"+"continue" → "joke continue") while still requiring the whole row to
  * be consumed, so unrelated prefixes never match ("hi" ↛ "history").
  *
- * Greedy is exact here: both sides are whitespace-normalized, so a piece never
- * starts with a space and at most one of the two boundary forms can apply.
+ * Both sides are whitespace-normalized, so a piece never starts with a space and
+ * the boundary space is unambiguous; only the line-continuation form branches.
  */
 export function countLeadingPendingTextsGluedToUserText(
   pendingTexts: readonly string[],
@@ -133,21 +133,37 @@ export function countLeadingPendingTextsGluedToUserText(
   if (pendingTexts.length === 0 || userText.length === 0) {
     return 0
   }
-  let cursor = 0
-  for (let index = 0; index < pendingTexts.length; index += 1) {
-    const piece = pendingTexts[index]
-    if (!piece) {
-      return 0
+  return countGluedPendingTextsFrom(pendingTexts, userText, 0, 0)
+}
+
+function countGluedPendingTextsFrom(
+  pendingTexts: readonly string[],
+  userText: string,
+  index: number,
+  cursor: number
+): number {
+  const piece = pendingTexts[index]
+  if (!piece) {
+    return 0
+  }
+  const start = index > 0 && userText[cursor] === ' ' ? cursor + 1 : cursor
+  // Why: a send ending in `\` turns the TUI's Enter into a line continuation, so
+  // the agent eats the backslash and the next send lands on the same turn.
+  const forms = piece.length > 1 && piece.endsWith('\\') ? [piece, piece.slice(0, -1)] : [piece]
+  for (const form of forms) {
+    if (!userText.startsWith(form, start)) {
+      continue
     }
-    if (userText.startsWith(piece, cursor)) {
-      cursor += piece.length
-    } else if (index > 0 && userText.startsWith(` ${piece}`, cursor)) {
-      cursor += piece.length + 1
-    } else {
-      return 0
+    const end = start + form.length
+    if (end === userText.length) {
+      if (form === piece) {
+        return index + 1
+      }
+      continue
     }
-    if (cursor === userText.length) {
-      return index + 1
+    const count = countGluedPendingTextsFrom(pendingTexts, userText, index + 1, end)
+    if (count > 0) {
+      return count
     }
   }
   return 0

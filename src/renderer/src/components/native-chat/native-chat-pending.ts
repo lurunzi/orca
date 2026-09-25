@@ -174,6 +174,17 @@ function gluedCandidateRows(
 }
 
 /**
+ * Sends reach the agent in order, so once a newer send's turn is in the
+ * transcript an older still-open echo was merged or rewritten beyond text
+ * matching (e.g. Antigravity coalescing queued prompts) and can never land.
+ * Left open it floats below every later turn as a ghost bubble.
+ */
+function retireOpenSendsBeforeNewestMatch(open: readonly boolean[]): boolean[] {
+  const newestMatched = open.lastIndexOf(false)
+  return open.map((isOpen, index) => isOpen && index > newestMatched)
+}
+
+/**
  * Drop any pending send only after the transcript has advanced beyond its real
  * user turn. Keeping the echo through the user-only transcript phase prevents a
  * first-turn empty-state flash if the live transcript briefly reports [] before
@@ -207,13 +218,12 @@ export function prunePendingSends(
     stillOpen,
     gluedCandidateRows(messages, stillOpen, advancedNativeChatUserRows)
   )
-  const next = pending.filter((entry, index) => {
-    if (!exactKeep[index]) {
-      return false
-    }
-    const openIndex = stillOpen.indexOf(entry)
-    return openIndex === -1 || !gluedRepresented.has(openIndex)
-  })
+  const keep = retireOpenSendsBeforeNewestMatch(
+    pending.map(
+      (entry, index) => exactKeep[index] && !gluedRepresented.has(stillOpen.indexOf(entry))
+    )
+  )
+  const next = pending.filter((_, index) => keep[index])
   return next.length === pending.length ? pending : next
 }
 
@@ -250,14 +260,13 @@ export function pendingSendsAsMessages(
     stillVisible,
     gluedCandidateRows(existingMessages, stillVisible, matchingNativeChatUserRows)
   )
+  const visible = retireOpenSendsBeforeNewestMatch(
+    pending.map(
+      (entry, index) => exactVisible[index] && !gluedRepresented.has(stillVisible.indexOf(entry))
+    )
+  )
   return pending
-    .filter((entry, index) => {
-      if (!exactVisible[index]) {
-        return false
-      }
-      const openIndex = stillVisible.indexOf(entry)
-      return openIndex === -1 || !gluedRepresented.has(openIndex)
-    })
+    .filter((_, index) => visible[index])
     .map((entry) => ({
       id: `pending:${entry.id}`,
       role: 'user' as const,
