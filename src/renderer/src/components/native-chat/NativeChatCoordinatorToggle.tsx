@@ -23,7 +23,10 @@ export function NativeChatCoordinatorToggle({
   const api = window.api.orchestrationIdentity
   const [status, setStatus] = useState<StructuredSessionOrchestrationIdentityStatus | null>(null)
   const [pending, setPending] = useState(false)
+  const [readRequest, setReadRequest] = useState(0)
 
+  // Why re-read on turn edges and hover: `missing` is transient (the durable record or host
+  // may not exist yet when the composer mounts), so one mount-time read can go stale.
   useEffect(() => {
     if (!api) {
       return
@@ -36,7 +39,7 @@ export function NativeChatCoordinatorToggle({
     return () => {
       live = false
     }
-  }, [api, sessionId])
+  }, [api, sessionId, isWorking, readRequest])
 
   const apply = useCallback(
     (enabled: boolean): void => {
@@ -85,17 +88,17 @@ export function NativeChatCoordinatorToggle({
   const { queued, queue } = useQueuedSessionOptions({ isWorking, flush })
   const queuedValue = queued.get(COORDINATOR_KEY)
 
-  // Why: remote/SSH sessions and dispatched workers cannot hold a user-granted identity.
+  // Why: remote/SSH sessions and dispatched workers can never hold a user-granted identity.
   if (
     !api ||
-    status === null ||
-    status.state === 'worker' ||
-    (status.state === 'unavailable' && status.reason !== 'busy')
+    status?.state === 'worker' ||
+    (status?.state === 'unavailable' && status.reason === 'not-local')
   ) {
     return null
   }
 
-  const enabled = typeof queuedValue === 'boolean' ? queuedValue : status.state === 'enabled'
+  const ready = status !== null && (status.state !== 'unavailable' || status.reason === 'busy')
+  const enabled = typeof queuedValue === 'boolean' ? queuedValue : status?.state === 'enabled'
   const label = translate('components.native-chat.coordinator.toggle', 'Coordinator mode')
   const onPressedChange = (next: boolean): void => {
     if (isWorking) {
@@ -108,20 +111,26 @@ export function NativeChatCoordinatorToggle({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Toggle
-          size="sm"
-          aria-label={label}
-          pressed={enabled}
-          disabled={pending}
-          onPressedChange={onPressedChange}
-          className="pointer-coarse:size-11"
+        {/* Why a wrapper: a disabled toggle drops pointer events, and hovering is the re-read cue. */}
+        <span
+          className="inline-flex"
+          onPointerEnter={ready ? undefined : () => setReadRequest((count) => count + 1)}
         >
-          <Network className="size-4" />
-        </Toggle>
+          <Toggle
+            size="sm"
+            aria-label={label}
+            pressed={enabled}
+            disabled={pending || !ready}
+            onPressedChange={onPressedChange}
+            className="pointer-coarse:size-11"
+          >
+            <Network className="size-4" />
+          </Toggle>
+        </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <div>{label}</div>
-        {queuedValue !== undefined && queuedValue !== (status.state === 'enabled') ? (
+        {queuedValue !== undefined && queuedValue !== (status?.state === 'enabled') ? (
           <div>
             {translate(
               'components.native-chat.composer.appliesNextTurn',

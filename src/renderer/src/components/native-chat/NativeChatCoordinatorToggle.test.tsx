@@ -78,7 +78,7 @@ describe('NativeChatCoordinatorToggle', () => {
     await waitFor(() => expect(set).toHaveBeenCalledExactlyOnceWith('session-1', false))
   })
 
-  it('is hidden for a dispatched worker or a session that cannot hold identity', async () => {
+  it('is hidden for a dispatched worker or a remote session', async () => {
     const get = vi
       .fn()
       .mockResolvedValueOnce({ state: 'worker' })
@@ -93,6 +93,22 @@ describe('NativeChatCoordinatorToggle', () => {
     rerender(<NativeChatCoordinatorToggle sessionId="remote" isWorking={false} />)
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2))
     expect(screen.queryByRole('button', { name: 'Coordinator mode' })).toBeNull()
+  })
+
+  it('stays visible while the session record is missing and re-reads on the next turn edge', async () => {
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({ state: 'unavailable', reason: 'missing' })
+      .mockResolvedValue({ state: 'disabled' })
+    stubIdentity(get)
+    const { rerender } = render(<NativeChatCoordinatorToggle sessionId="fresh" isWorking={false} />)
+
+    const toggle = await screen.findByRole('button', { name: 'Coordinator mode' })
+    await waitFor(() => expect(toggle.hasAttribute('disabled')).toBe(true))
+
+    rerender(<NativeChatCoordinatorToggle sessionId="fresh" isWorking />)
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(toggle.hasAttribute('disabled')).toBe(false))
   })
 
   it('reports a grant the host refused', async () => {
