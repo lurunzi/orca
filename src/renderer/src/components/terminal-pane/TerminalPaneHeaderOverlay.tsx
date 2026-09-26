@@ -50,8 +50,6 @@ type TerminalPaneHeaderOverlayProps = {
   canToggleNativeChat?: boolean
   /** True when the active pane is currently showing the native chat view. */
   isChatViewMode?: boolean
-  /** The active pane owns a structured Chat's session: the toggle hands it back to that Chat. */
-  returnsToStructuredChat?: boolean
   /** Flip the active pane between the terminal and the native chat view. */
   onToggleNativeChat?: () => void
   canContinueAgentSessionInNewSession?: boolean
@@ -91,7 +89,6 @@ export default function TerminalPaneHeaderOverlay({
   paneTransportsRef,
   canToggleNativeChat,
   isChatViewMode,
-  returnsToStructuredChat = false,
   onToggleNativeChat,
   canContinueAgentSessionInNewSession,
   onContinueAgentSessionInNewSession,
@@ -111,11 +108,6 @@ export default function TerminalPaneHeaderOverlay({
     'auto.components.terminal.pane.TerminalContextMenu.20e565d865',
     'Split Terminal Right'
   )
-  const chatToggleLabel = isChatViewMode
-    ? translate('components.native-chat.toggle.showTerminal', 'Show terminal')
-    : returnsToStructuredChat
-      ? translate('components.native-chat.handoff.returnToChat', 'Return to chat')
-      : translate('components.native-chat.toggle.showChat', 'Show chat view')
 
   return (
     <div
@@ -292,7 +284,17 @@ export default function TerminalPaneHeaderOverlay({
                           // Same class as split so it shares the hover/active reveal
                           // and sits as a peer in the [chat][split][×] cluster.
                           className="pane-title-split-trigger"
-                          aria-label={chatToggleLabel}
+                          aria-label={
+                            isChatViewMode
+                              ? translate(
+                                  'components.native-chat.toggle.showTerminal',
+                                  'Show terminal'
+                                )
+                              : translate(
+                                  'components.native-chat.toggle.showChat',
+                                  'Show chat view'
+                                )
+                          }
                           aria-pressed={isChatViewMode}
                           onClick={(event) => {
                             event.stopPropagation()
@@ -307,7 +309,9 @@ export default function TerminalPaneHeaderOverlay({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" sideOffset={4}>
-                        {chatToggleLabel}
+                        {isChatViewMode
+                          ? translate('components.native-chat.toggle.showTerminal', 'Show terminal')
+                          : translate('components.native-chat.toggle.showChat', 'Show chat view')}
                       </TooltipContent>
                     </Tooltip>
                   ) : null}

@@ -17,21 +17,7 @@ export class StructuredAgentSessionHandoffState {
 
   status = (sessionId: string): AgentSessionHandoffStatus => {
     const value = this.statuses.get(sessionId)
-    const record = this.deps.requireRecord(sessionId)
-    if (
-      value &&
-      record.lease.claimStatus === 'live' &&
-      record.lease.ownerProcess &&
-      !record.lease.unreconciled &&
-      record.lease.handoffStage === null &&
-      ((value.phase === 'idle' && value.owner !== record.lease.runtimeKind) ||
-        (value.phase === 'failed' && value.error?.recoverableOwner === 'none'))
-    ) {
-      const status = idleStructuredHandoffStatus(record)
-      this.setStatus(sessionId, status)
-      return status
-    }
-    return value ?? idleStructuredHandoffStatus(record)
+    return value ?? idleStructuredHandoffStatus(this.deps.requireRecord(sessionId))
   }
 
   cachedStatus = (sessionId: string): AgentSessionHandoffStatus | undefined =>

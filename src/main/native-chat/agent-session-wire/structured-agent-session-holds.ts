@@ -172,17 +172,6 @@ export class StructuredAgentSessionHolds {
     return this.clock.isArmed(sessionId)
   }
 
-  /** Re-acquires a child for a session still on screen after its lease was freed out of band. */
-  async resumeHeld(sessionId: string): Promise<void> {
-    if (
-      !this.disposed &&
-      this.holders.hasResumeCapableHolder(sessionId) &&
-      !this.deps.hasProviderChild(sessionId)
-    ) {
-      await this.deps.resume(sessionId)
-    }
-  }
-
   dispose(): void {
     this.disposed = true
     this.clock.dispose()

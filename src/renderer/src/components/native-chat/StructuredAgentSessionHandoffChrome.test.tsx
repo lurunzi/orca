@@ -16,37 +16,19 @@ const IDLE_NATIVE: AgentSessionHandoffStatus = {
 afterEach(cleanup)
 
 describe('StructuredAgentSessionHandoffChrome', () => {
-  it('leaves a chat-owned idle session to the composer toolbar entry', () => {
-    const { container } = render(
-      <StructuredAgentSessionHandoffChrome status={IDLE_NATIVE} onRequest={vi.fn()} />
-    )
-
-    expect(container.childElementCount).toBe(0)
-  })
-
-  it('keeps the terminal-owned row as text; the top-right toggle carries the return', () => {
-    render(
-      <StructuredAgentSessionHandoffChrome
-        status={{ ...IDLE_NATIVE, owner: 'tui', hostLabel: 'workstation' }}
-        onRequest={vi.fn()}
-      />
-    )
-
-    expect(screen.getByText('Agent is open in terminal on workstation.')).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
-  })
-
-  it('cancels a queued switch in the direction it was queued', () => {
+  it('uses queued-safe admission when the native view still appears idle', () => {
     const onRequest = vi.fn()
     render(
       <StructuredAgentSessionHandoffChrome
-        status={{ ...IDLE_NATIVE, direction: 'to-tui', phase: 'queued' }}
+        status={IDLE_NATIVE}
+        isWorking={false}
         onRequest={onRequest}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(onRequest).toHaveBeenCalledWith('to-tui', 'after-turn', 'cancel-queued')
+    fireEvent.click(screen.getByRole('button', { name: 'Open agent TUI' }))
+
+    expect(onRequest).toHaveBeenCalledWith('to-tui', 'after-turn')
   })
 
   it('offers one Retry action for a recoverable dead TUI owner', () => {
@@ -64,6 +46,7 @@ describe('StructuredAgentSessionHandoffChrome', () => {
             recoverableOwner: 'tui'
           }
         }}
+        isWorking={false}
         onRequest={onRequest}
       />
     )

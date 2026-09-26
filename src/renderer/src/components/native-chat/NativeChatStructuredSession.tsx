@@ -29,7 +29,6 @@ import { useStructuredAgentSessionHostExecutionPhase } from './StructuredAgentSe
 import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-label'
 import { NativeChatThreadGoalBanner } from './NativeChatThreadGoalBanner'
 import { StructuredAgentSessionHeaderActions } from './StructuredAgentSessionHeaderActions'
-import { StructuredAgentSessionHandoffChrome } from './StructuredAgentSessionHandoffChrome'
 import { useStructuredChatContinuation } from './use-structured-chat-continuation'
 import { StructuredChatContinueMenuItem } from './StructuredChatContinueMenuItem'
 
@@ -230,14 +229,11 @@ export function NativeChatStructuredSession(
       onKeyUpCapture={paneCommands.onSelectionCapture}
       onKeyDownCapture={paneCommands.onKeyDownCapture}
       onContextMenuCapture={paneCommands.onContextMenuCapture}
-      className="relative flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
+      className="flex h-full min-h-0 w-full flex-col bg-background focus:outline-none"
     >
       <StructuredAgentSessionHeaderActions
         tabId={props.tabId}
         groupId={props.groupId}
-        handoffStatus={controller.handoff.status}
-        isWorking={controller.isWorking}
-        onHandoffRequest={controller.handoff.request}
         onContinueInNewSession={continuation.onContinue}
       />
       {continuation.dialog}
@@ -345,11 +341,6 @@ export function NativeChatStructuredSession(
         lifecycle={provisionalLaunch.lifecycle}
         failureReason={provisionalLaunch.failureReason}
         onRetry={provisionalLaunch.retry}
-      />
-      <StructuredAgentSessionHandoffChrome
-        status={controller.handoff.status}
-        onRequest={controller.handoff.request}
-        onRelease={controller.handoff.release}
       />
       <NativeChatStructuredSessionStatus
         sessionId={props.sessionId}

@@ -3,49 +3,56 @@ import type { AgentSessionOwnerProbe } from '../../../shared/agent-session-lease
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
 import type { LegacyImportOptions } from '../agent-session-journal/journal-legacy-import'
 import { importLegacyTranscriptIntoJournal } from '../agent-session-journal/journal-legacy-import'
-import type { StructuredAgentSessionAdapter } from './structured-agent-session-adapter'
+import { journalIdentityFor } from './structured-agent-session-attach'
+import {
+  rethrowAfterAgentSessionAcquisitionCleanup,
+  type StructuredAgentSessionAdapter
+} from './structured-agent-session-adapter'
+import { canRestoreLiveTuiOwner } from './structured-agent-session-handoff-restart'
+import type { DeferredStructuredAgentSessionEventSink } from './structured-agent-session-event-sink'
 import type { StructuredAgentSessionHostDeps } from './structured-agent-session-host'
-import type { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
 import type { StructuredAgentSessionHostSession } from './structured-agent-session-host-types'
 import { StructuredAgentSessionHandoffCoordinator } from './structured-agent-session-handoff'
 import { recoverDeadTuiHandoffStatus } from './structured-agent-session-dead-tui-recovery'
-import { acquireNativeHandoffOwner } from './structured-agent-session-native-handoff-acquisition'
+import { readNativeSessionOptions } from './structured-agent-session-option-restoration'
 import type { AgentSessionSubscribers } from './structured-agent-session-subscribers'
 import { StructuredTuiTranscriptCatchup } from './structured-tui-transcript-catchup'
+import { adapterSupportsCreateIfDeclared } from './structured-agent-session-provider-support'
 import { retryLoadedStructuredAgentSessionSettlement } from './structured-agent-session-settlement-retry'
 import { latestJournalDispatchObservation } from '../agent-session-journal/journal-dispatch-observation'
-import {
-  createStructuredAgentSessionHostHandoffRecoverySurface,
-  type StructuredAgentSessionHostHandoffRecoverySurface
-} from './structured-agent-session-host-handoff-recovery-surface'
 
-export type HostHandoffAccess = {
+type HostHandoffAccess = {
   session: (sessionId: string) => StructuredAgentSessionHostSession
   /** Non-throwing lookup, for the paths that only observe a detached session. */
   findSession: (sessionId: string) => StructuredAgentSessionHostSession | undefined
-  eventSinks: Pick<
-    StructuredAgentSessionHostRuntimeState,
-    'eventSinkFor' | 'mintEventSink' | 'adoptEventSink'
-  >
+  eventSink: (sessionId: string) => DeferredStructuredAgentSessionEventSink
   flush: (sessionId: string) => Promise<void>
-  serialize: <T>(sessionId: string, task: () => Promise<T>) => Promise<T>
+  serialize: (sessionId: string, task: () => Promise<void>) => Promise<void>
   subscribers: AgentSessionSubscribers
   publishStatus?: (sessionId: string) => void
   now: () => number
-  /** Both absent only in isolated handoff tests; a release then reports the lease still latched. */
-  resolveRecovery?: (sessionId: string) => Promise<'resolved' | 'unresolved' | 'not-applicable'>
-  resumeHeld?: (sessionId: string) => Promise<void>
 }
 
-export type StructuredAgentSessionHostHandoff = StructuredAgentSessionHandoffCoordinator &
-  StructuredAgentSessionHostHandoffRecoverySurface & {
-    stopTuiHistoryCatchup: () => void
-    recoverDeadTuiOwner: (
-      sessionId: string,
-      expectedFence: number,
-      probe: AgentSessionOwnerProbe
-    ) => Promise<void>
+export type StructuredAgentSessionHostHandoff = StructuredAgentSessionHandoffCoordinator & {
+  stopTuiHistoryCatchup: () => void
+  recoverDeadTuiOwner: (
+    sessionId: string,
+    expectedFence: number,
+    probe: AgentSessionOwnerProbe
+  ) => Promise<void>
+}
+
+export async function refreshRecoverableStructuredHandoffStatus(
+  handoff: StructuredAgentSessionHostHandoff,
+  store: StructuredAgentSessionHostDeps['store'],
+  sessionId: string
+) {
+  const record = store.getRecord(sessionId)
+  if (record && canRestoreLiveTuiOwner(record)) {
+    await handoff.restore(sessionId)
   }
+  return handoff.status(sessionId)
+}
 
 export function createStructuredAgentSessionHostHandoff(
   deps: StructuredAgentSessionHostDeps,
@@ -90,7 +97,7 @@ export function createStructuredAgentSessionHostHandoff(
         )
         host.subscribers.publish(sessionId, session.journal)
         host.publishStatus?.(sessionId)
-        host.eventSinks.eventSinkFor(sessionId).unbind()
+        host.eventSink(sessionId).unbind()
         return { state: 'stopped' }
       } catch (error) {
         return { state: 'stopped-cleanup-failed', error }
@@ -150,8 +157,7 @@ export function createStructuredAgentSessionHostHandoff(
       if (status) {
         coordinator.setStatus(sessionId, status)
       }
-    },
-    ...createStructuredAgentSessionHostHandoffRecoverySurface(coordinator, deps.store, host)
+    }
   })
 }
 
@@ -210,4 +216,77 @@ export function structuredTuiTranscriptImportOptions(
   return record.provider === 'claude'
     ? { claudeProjectsDir: join(record.accountHome.path, 'projects') }
     : { codexSessionsDirs: [join(record.accountHome.path, 'sessions')] }
+}
+
+export async function acquireNativeHandoffOwner(
+  deps: StructuredAgentSessionHostDeps,
+  host: HostHandoffAccess,
+  input: { sessionId: string; fence: number; spawnToken: string }
+): Promise<AgentSessionRecord> {
+  const session = host.session(input.sessionId)
+  const record = deps.store.getRecord(input.sessionId)
+  if (!record) {
+    throw new Error('agent_session_identity_required')
+  }
+  // Native handoff bypasses attach admission; reject before unbinding TUI ownership.
+  if (!adapterSupportsCreateIfDeclared(deps.adapter, record.location, record.provider)) {
+    throw new Error('structured_agent_session_unsupported')
+  }
+  const eventSink = host.eventSink(input.sessionId)
+  const priorBarrier = await eventSink.drained()
+  if (!priorBarrier.ok) {
+    throw priorBarrier.error
+  }
+  eventSink.unbind()
+  // Recheck immediately before acquisition; capability probes may drift while
+  // the old TUI event sink is draining.
+  if (!adapterSupportsCreateIfDeclared(deps.adapter, record.location, record.provider)) {
+    throw new Error('structured_agent_session_unsupported')
+  }
+  const acquired = await deps.adapter.acquire({
+    identity: journalIdentityFor(record, session.params),
+    fence: input.fence,
+    spawnToken: input.spawnToken,
+    ...(record.options ? { options: record.options } : {}),
+    events: eventSink.sink
+  })
+  let proved: AgentSessionRecord
+  try {
+    const options = await readNativeSessionOptions({
+      adapter: deps.adapter,
+      sessionId: input.sessionId,
+      fence: input.fence,
+      ...(record.options ? { priorOptions: record.options } : {})
+    })
+    await deps.store.commitProcessIdentity({
+      sessionId: input.sessionId,
+      fence: input.fence,
+      process: acquired.process,
+      now: host.now()
+    })
+    proved = await deps.store.proveOwner({
+      sessionId: input.sessionId,
+      fence: input.fence,
+      link: acquired.link,
+      now: host.now(),
+      ...(options ? { options } : {})
+    })
+  } catch (error) {
+    return rethrowAfterAgentSessionAcquisitionCleanup(deps.adapter, input.sessionId, error)
+  }
+  session.hasProviderChild = true
+  host.publishStatus?.(input.sessionId)
+  session.fence = proved.lease.runtimeFence
+  session.acquisitionGeneration = acquired.acquisitionGeneration ?? null
+  eventSink.bind({
+    journal: session.journal,
+    fence: proved.lease.runtimeFence,
+    publish: (activity) => host.subscribers.publish(input.sessionId, session.journal, activity)
+  })
+  const acquiredBarrier = await eventSink.drained()
+  if (!acquiredBarrier.ok) {
+    throw acquiredBarrier.error
+  }
+  host.subscribers.snapshot(input.sessionId, session.journal, proved.lease.runtimeFence)
+  return proved
 }

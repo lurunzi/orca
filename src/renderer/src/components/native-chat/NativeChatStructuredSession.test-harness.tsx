@@ -1,10 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { vi } from 'vitest'
 import type { AgentJournalRenderItem } from '../../../../shared/agent-session-journal-types'
-import type {
-  AgentSessionBackgroundTask,
-  AgentSessionHandoffStatus
-} from '../../../../shared/agent-session-wire'
+import type { AgentSessionBackgroundTask } from '../../../../shared/agent-session-wire'
 import type { NativeChatApprovalCardProps } from './NativeChatApprovalCard'
 import type { NativeChatQuestionCardProps } from './NativeChatQuestionCard'
 import type { NativeChatLaunchSeed } from './native-chat-composer-types'
@@ -75,9 +72,6 @@ export function createStructuredSessionMocks() {
     backgroundTasks: [] as AgentSessionBackgroundTask[],
     settledBackgroundTasks: [] as AgentSessionBackgroundTask[],
     threadGoal: nullable<StructuredAgentSessionThreadGoal>(),
-    handoffStatus: nullable<AgentSessionHandoffStatus>(),
-    requestHandoff: vi.fn<(...args: never[]) => unknown>(),
-    releaseReservation: vi.fn<() => Promise<string | null>>(async () => null),
     stopBackgroundTask: vi.fn<StopBackgroundTaskSpy>(),
     hasOlder: false,
     loadingOlder: false,
@@ -139,11 +133,6 @@ export function createStructuredSessionMocks() {
             send: outbox.send,
             retry: outbox.retry,
             isWorking: mocks.isWorking,
-            handoff: {
-              status: mocks.handoffStatus,
-              request: mocks.requestHandoff,
-              release: mocks.releaseReservation
-            },
             backgroundTasks: {
               show: mocks.showBackgroundTasks || mocks.monitoringBackgroundTasks,
               isMonitoring: mocks.monitoringBackgroundTasks,
@@ -271,10 +260,6 @@ export function createStructuredSessionMocks() {
     mocks.backgroundTasks = []
     mocks.settledBackgroundTasks = []
     mocks.threadGoal = null
-    mocks.handoffStatus = null
-    mocks.requestHandoff.mockReset()
-    mocks.releaseReservation.mockReset()
-    mocks.releaseReservation.mockResolvedValue(null)
     mocks.hasOlder = false
     mocks.loadingOlder = false
     mocks.olderHistoryGeneration = 0

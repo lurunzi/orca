@@ -1,9 +1,4 @@
 import { MessageSquarePlus, SquareSplitVertical } from 'lucide-react'
-import type {
-  AgentSessionHandoffDirection,
-  AgentSessionHandoffMode,
-  AgentSessionHandoffStatus
-} from '../../../../shared/agent-session-wire'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -12,26 +7,19 @@ import {
   canMoveTabToNewPaneColumnFromState,
   moveTabToNewPaneColumn
 } from '@/components/tab-bar/tab-move-to-pane-column'
-import { StructuredAgentSessionHandoffButton } from './StructuredAgentSessionHandoffButton'
 
 type Props = {
   tabId: string
   groupId?: string
-  handoffStatus: AgentSessionHandoffStatus | null
-  isWorking: boolean
-  onHandoffRequest: (direction: AgentSessionHandoffDirection, mode: AgentSessionHandoffMode) => void
   /** Absent when there is no session context to continue from. */
   onContinueInNewSession?: () => void
 }
 
 /** Top-right cluster of a standalone structured Chat, mirroring the terminal pane header's
- *  [continue][chat/terminal][split] order. */
+ *  [continue][split] order. */
 export function StructuredAgentSessionHeaderActions({
   tabId,
   groupId,
-  handoffStatus,
-  isWorking,
-  onHandoffRequest,
   onContinueInNewSession
 }: Props): React.JSX.Element {
   const canSplit = useAppStore((state) =>
@@ -66,11 +54,6 @@ export function StructuredAgentSessionHeaderActions({
           </TooltipContent>
         </Tooltip>
       ) : null}
-      <StructuredAgentSessionHandoffButton
-        status={handoffStatus}
-        isWorking={isWorking}
-        onRequest={onHandoffRequest}
-      />
       {canSplit && groupId ? (
         <Tooltip>
           <TooltipTrigger asChild>

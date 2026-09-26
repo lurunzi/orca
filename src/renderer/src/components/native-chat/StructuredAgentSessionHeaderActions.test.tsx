@@ -22,13 +22,7 @@ import { StructuredAgentSessionHeaderActions } from './StructuredAgentSessionHea
 function renderActions(groupId: string | null = 'group-1'): void {
   render(
     <TooltipProvider>
-      <StructuredAgentSessionHeaderActions
-        tabId="tab-1"
-        groupId={groupId ?? undefined}
-        handoffStatus={null}
-        isWorking={false}
-        onHandoffRequest={vi.fn()}
-      />
+      <StructuredAgentSessionHeaderActions tabId="tab-1" groupId={groupId ?? undefined} />
     </TooltipProvider>
   )
 }
