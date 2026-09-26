@@ -42,6 +42,8 @@ export type CatalogOption = {
         type: 'select'
         choices: SessionOptionSelectChoice[]
         defaultValue: string
+        /** The provider's listing states `defaultValue` is what its CLI runs when no value is sent. */
+        defaultIsCliDefault?: true
       }
     | { type: 'boolean'; defaultValue: boolean }
   apply: CatalogOptionApply

@@ -16,13 +16,10 @@ import {
 const CLAUDE_ID = 'provider-session-alpha-1'
 const THREAD = '019a2b3c-4d5e-7f60-8a9b-0c1d2e3f4a5b'
 
-function reservation(
-  overrides: Partial<AgentSessionRecord> = {},
-  runtimeKind: 'native' | 'tui' = 'native'
-): AgentSessionRecord {
+function reservation(overrides: Partial<AgentSessionRecord> = {}): AgentSessionRecord {
   const base = agentSessionRecordFixture(
     agentSessionLeaseFixture({
-      runtimeKind,
+      runtimeKind: 'native',
       claimStatus: 'reserved',
       ownerProcess: null,
       reservedSpawnToken: 'spawn-1'
@@ -31,23 +28,20 @@ function reservation(
   return { ...base, ...overrides }
 }
 
-function codexReservation(runtimeKind: 'native' | 'tui'): AgentSessionRecord {
-  return reservation(
-    {
-      provider: 'codex',
-      accountHome: { variable: 'CODEX_HOME', path: 'C:\\codex' },
-      providerHandleChain: [
-        {
-          linkId: 'link-1',
-          origin: 'created',
-          mintedAtFence: 7,
-          observedAt: 1_000,
-          handle: { provider: 'codex', threadId: THREAD }
-        }
-      ]
-    },
-    runtimeKind
-  )
+function codexReservation(): AgentSessionRecord {
+  return reservation({
+    provider: 'codex',
+    accountHome: { variable: 'CODEX_HOME', path: 'C:\\codex' },
+    providerHandleChain: [
+      {
+        linkId: 'link-1',
+        origin: 'created',
+        mintedAtFence: 7,
+        observedAt: 1_000,
+        handle: { provider: 'codex', threadId: THREAD }
+      }
+    ]
+  })
 }
 
 function row(pid: number, command: string): WindowsProcessRow {
@@ -96,9 +90,8 @@ describe('agentSessionReservationCommandLineIds', () => {
     ])
   })
 
-  it('covers a Codex TUI thread but refuses Codex app-server, whose argv names none', () => {
-    expect(agentSessionReservationCommandLineIds(codexReservation('tui'))).toEqual([THREAD])
-    expect(agentSessionReservationCommandLineIds(codexReservation('native'))).toBeNull()
+  it('refuses Codex app-server, whose argv names no thread', () => {
+    expect(agentSessionReservationCommandLineIds(codexReservation())).toBeNull()
   })
 
   it('refuses WSL and remote locations, which this process table cannot see', () => {
@@ -152,7 +145,7 @@ describe('findAgentSessionReservationCommandLineProcesses', () => {
       })
     ).resolves.toBeNull()
     await expect(
-      findAgentSessionReservationCommandLineProcesses(codexReservation('native'), {
+      findAgentSessionReservationCommandLineProcesses(codexReservation(), {
         platform: 'win32',
         readProcessTable
       })

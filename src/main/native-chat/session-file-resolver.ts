@@ -22,9 +22,8 @@ import {
   wslCursorProjectsDirs
 } from './host-readable-transcript-path'
 import { findWslCodexSessionPath } from './wsl-codex-session-path-scan'
-import { wslGatedReaddir } from './wsl-transcript-fs-access'
+import { resolveCursorSessionFile } from './cursor-session-file-resolver'
 import { wslTranscriptFsRefusal, type WslTranscriptFsError } from './wsl-transcript-fs-gate'
-import { proveClaudeTranscriptBranch } from '../claude/claude-transcript-branch-proof'
 
 // Why: these mirror the path constants in ai-vault/session-scanner.ts. Reads
 // run in the main process against the runtime's own home directory; over SSH
@@ -160,21 +159,6 @@ export async function resolveSessionFilePath(
     throw unavailable
   }
   return resolved
-}
-
-/** Read and validate Claude's authoritative transcript branch marker. */
-export async function readClaudeTranscriptLeafUuid(
-  transcriptPath: string,
-  providerSessionId: string,
-  previousLeafUuid: string | null = null
-): Promise<string> {
-  return (
-    await proveClaudeTranscriptBranch({
-      transcriptPath,
-      providerSessionId,
-      previousLeafUuid
-    })
-  ).leafUuid
 }
 
 async function resolveSessionFileById(
@@ -351,57 +335,6 @@ async function resolveGrokSessionFile(
   const history = await findGrokChatHistoryBySessionId(sessionsDir, sessionId)
   signal?.throwIfAborted()
   return history
-}
-
-async function resolveCursorSessionFile(
-  sessionId: string,
-  projectsDirs: string[],
-  loadFallbackDirs?: () => Promise<string[]>,
-  signal?: AbortSignal
-): Promise<string | null> {
-  const hit = await findCursorTranscriptInDirs(sessionId, projectsDirs, signal)
-  if (hit || !loadFallbackDirs) {
-    return hit
-  }
-  signal?.throwIfAborted()
-  const fallbackDirs = (await loadFallbackDirs()).filter((dir) => !projectsDirs.includes(dir))
-  signal?.throwIfAborted()
-  return findCursorTranscriptInDirs(sessionId, fallbackDirs, signal)
-}
-
-async function findCursorTranscriptInDirs(
-  sessionId: string,
-  projectsDirs: string[],
-  signal?: AbortSignal
-): Promise<string | null> {
-  const source = AI_VAULT_AGENT_SOURCES.cursor
-  const targetName = `${sessionId}.jsonl`
-  let unavailable: WslTranscriptFsError | undefined
-  for (const rootDir of projectsDirs) {
-    const isWslRoot = isWslUncPath(rootDir)
-    try {
-      const files = await walkSessionFiles(rootDir, 'cursor', [], {
-        extensions: new Set(source.extensions),
-        directoryPredicate: source.directoryPredicate,
-        filePredicate: (path) =>
-          basename(path) === targetName && (source.filePredicate?.(path) ?? true),
-        ...(isWslRoot
-          ? { readDirectory: (dirPath: string) => wslGatedReaddir(dirPath, 'scan', signal) }
-          : {}),
-        signal
-      })
-      if (files[0]) {
-        return files[0]
-      }
-    } catch (error) {
-      signal?.throwIfAborted()
-      unavailable = wslTranscriptFsRefusal(error)
-    }
-  }
-  if (unavailable) {
-    throw unavailable
-  }
-  return null
 }
 
 // omp keeps one directory per working directory (`-Documents-dog-app`) with the

@@ -6,7 +6,6 @@ import type {
 import type {
   AgentSessionBackgroundTaskState,
   AgentSessionSlashCommand,
-  AgentSessionHandoffStatus,
   AgentSessionHistoryPage,
   AgentSessionSubscribeEvent,
   AgentSessionTurnActivity
@@ -33,7 +32,6 @@ export type StructuredAgentSessionState = {
   hasOlder: boolean
   status: 'idle' | 'loading' | 'ready' | 'error'
   error?: string
-  handoff: AgentSessionHandoffStatus | null
   backgroundTasks?: AgentSessionBackgroundTaskState | null
   commands?: AgentSessionSlashCommand[] | null
   promptSuggestion?: string | null
@@ -48,7 +46,6 @@ export type StructuredAgentSessionState = {
 export type StructuredAgentSessionAction =
   | { type: 'loading' }
   | { type: 'error'; message: string }
-  | { type: 'handoff'; handoff: AgentSessionHandoffStatus }
   | { type: 'event'; event: AgentSessionSubscribeEvent }
   | { type: 'history-page'; page: AgentSessionHistoryPage }
   | { type: 'older-page'; requestedCursor: AgentJournalCursor; page: AgentSessionHistoryPage }
@@ -66,8 +63,7 @@ export const EMPTY_STRUCTURED_AGENT_SESSION: StructuredAgentSessionState = {
   submissions: [],
   retainedItemLimit: MAX_RETAINED_ITEMS,
   hasOlder: false,
-  status: 'idle',
-  handoff: null
+  status: 'idle'
 }
 
 /** A frame without `hostNow` (older host) leaves the previous sample in place. */
@@ -83,7 +79,6 @@ function hostClockField(
 function replacePage(
   page: AgentSessionHistoryPage,
   fence: number | null,
-  handoff?: AgentSessionHandoffStatus,
   backgroundTasks?: AgentSessionBackgroundTaskState | null,
   activity?: AgentSessionTurnActivity | null
 ): StructuredAgentSessionState {
@@ -96,7 +91,6 @@ function replacePage(
     retainedItemLimit: Math.max(MAX_RETAINED_ITEMS, page.items.length),
     hasOlder: page.hasOlder,
     status: 'ready',
-    handoff: handoff ?? null,
     activity: activity ?? null,
     ...(backgroundTasks !== undefined
       ? { backgroundTasks }
@@ -187,18 +181,9 @@ export function reduceStructuredAgentSession(
   if (action.type === 'error') {
     return { ...state, status: 'error', error: action.message }
   }
-  if (action.type === 'handoff') {
-    return { ...state, handoff: action.handoff }
-  }
   if (action.type === 'history-page') {
     return {
-      ...replacePage(
-        action.page,
-        action.page.fence ?? null,
-        state.handoff ?? undefined,
-        state.backgroundTasks,
-        state.activity
-      ),
+      ...replacePage(action.page, action.page.fence ?? null, state.backgroundTasks, state.activity),
       commands: state.commands,
       promptSuggestion: state.promptSuggestion,
       ...hostClockField(action.page.hostNow, receivedAt, state.hostClock)
@@ -232,7 +217,7 @@ export function reduceStructuredAgentSession(
   }
   if (event.type === 'snapshot' || event.type === 'reset') {
     return {
-      ...replacePage(event.page, event.fence, event.handoff, event.backgroundTasks, event.activity),
+      ...replacePage(event.page, event.fence, event.backgroundTasks, event.activity),
       commands: event.commands,
       promptSuggestion: event.promptSuggestion,
       ...hostClockField(event.hostNow, receivedAt, state.hostClock)
@@ -256,7 +241,6 @@ export function reduceStructuredAgentSession(
     event.batch.cursor.sequence === state.cursor?.sequence &&
     journalUnchanged &&
     (event.fence === undefined || event.fence === state.fence) &&
-    (event.handoff === undefined || event.handoff === state.handoff) &&
     (event.commands === undefined || event.commands === state.commands) &&
     (event.promptSuggestion === undefined || event.promptSuggestion === state.promptSuggestion) &&
     backgroundTaskStatesEqual(backgroundTasks, state.backgroundTasks) &&
@@ -291,7 +275,6 @@ export function reduceStructuredAgentSession(
         : mergeSubmissions(state.submissions, event.batch.submissions, items),
     status: 'ready',
     error: undefined,
-    handoff: event.handoff ?? state.handoff,
     commands: event.commands !== undefined ? event.commands : state.commands,
     promptSuggestion:
       event.promptSuggestion !== undefined ? event.promptSuggestion : state.promptSuggestion,

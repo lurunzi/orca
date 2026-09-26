@@ -50,16 +50,6 @@ export function StatusBarVisibilityMenu({
             {translate('auto.components.status.bar.StatusBar.3885eb74d8', 'Claude Usage')}
           </DropdownMenuCheckboxItem>
         )}
-        <DropdownMenuCheckboxItem
-          checked={statusBarItems.includes('cursor')}
-          onCheckedChange={() => {
-            recordFeatureInteraction('usage-tracking')
-            toggleStatusBarItem('cursor')
-          }}
-        >
-          <AgentIcon agent="cursor" size={14} />
-          {translate('cursorUsage.usage', 'Cursor Usage')}
-        </DropdownMenuCheckboxItem>
         {isStatusBarItemAvailable('codex', detectedAgentIds) && (
           <DropdownMenuCheckboxItem
             checked={statusBarItems.includes('codex')}

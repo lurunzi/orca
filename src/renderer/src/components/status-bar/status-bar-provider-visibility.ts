@@ -25,7 +25,6 @@ export type UsageProviderSettings = Pick<
 }
 
 type UsageProviderSnapshots = {
-  cursor?: ProviderRateLimits | null
   claude: ProviderRateLimits | null | undefined
   codex: ProviderRateLimits | null | undefined
   gemini: ProviderRateLimits | null | undefined
@@ -34,6 +33,7 @@ type UsageProviderSnapshots = {
   antigravity: ProviderRateLimits | null | undefined
   minimax: ProviderRateLimits | null | undefined
   grok: ProviderRateLimits | null | undefined
+  cursor: ProviderRateLimits | null | undefined
 }
 
 type UsageProviderId = ProviderRateLimits['provider']

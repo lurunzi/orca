@@ -2,9 +2,6 @@ import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { translate } from '@/i18n/i18n'
 
 export function getProviderDisplayName(provider: ProviderRateLimits['provider']): string {
-  if (provider === 'cursor') {
-    return 'Cursor'
-  }
   if (provider === 'claude') {
     return 'Claude'
   }
@@ -143,26 +140,6 @@ export function getProviderUsageStatusLabel(p: ProviderRateLimits): string {
 }
 
 export function getProviderUsageErrorMessage(p: ProviderRateLimits): string {
-  if (p.provider === 'cursor') {
-    const kind = p.usageMetadata?.failureKind
-    if (
-      kind === 'missing-credentials' ||
-      kind === 'stale-token' ||
-      kind === 'keychain-unavailable'
-    ) {
-      return translate(
-        'cursorUsage.signIn',
-        'Open Cursor or run agent login on the computer running Orca, then refresh usage.'
-      )
-    }
-    if (kind === 'usage-unavailable') {
-      return translate(
-        'cursorUsage.noAllowance',
-        'Cursor did not report a supported monthly allowance.'
-      )
-    }
-    return translate('cursorUsage.refreshFailed', 'Could not refresh Cursor usage.')
-  }
   const fallback = translate(
     'auto.components.status.bar.tooltip.2c35eca8d4',
     'Unable to fetch usage'
@@ -181,6 +158,12 @@ export function getProviderUsageErrorMessage(p: ProviderRateLimits): string {
     return translate(
       'auto.components.status.bar.tooltip.a37e8c15d4',
       'Run kimi in a terminal on the computer running Orca and wait for it to start, then retry usage.'
+    )
+  }
+  if (p.provider === 'cursor' && p.usageMetadata?.failureKind === 'stale-token') {
+    return translate(
+      'auto.components.status.bar.tooltip.cursor.expired.message',
+      'Run cursor-agent login in a terminal on the computer running Orca, then retry usage.'
     )
   }
   if (p.provider === 'claude') {

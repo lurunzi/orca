@@ -69,8 +69,6 @@ export function ProviderLetterBadge({ p }: { p: ProviderRateLimits }): React.JSX
 
 function getProviderLetter(provider: ProviderRateLimits['provider']): string {
   switch (provider) {
-    case 'cursor':
-      return 'Cu'
     case 'claude':
       return 'C'
     case 'gemini':
@@ -85,6 +83,8 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
       return 'M'
     case 'grok':
       return 'R'
+    case 'cursor':
+      return 'U'
     case 'codex':
       return 'X'
   }

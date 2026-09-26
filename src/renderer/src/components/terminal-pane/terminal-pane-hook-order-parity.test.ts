@@ -24,9 +24,11 @@ const TERMINAL_PANE_HOOK_SOURCE_PATTERN =
 // (the confirmed-close continuation) (212 hooks, still 8 useMemo).
 // Then the dead adopted-structured-session portal went with its local target `useMemo`
 // in projection (211 hooks, 7 useMemo).
-// Then the Claude prompt-suggestion reader added a `useCallback` in chat-state (212 hooks, 7 useMemo).
+// Then chat ownership through toggles and restore (#23049) added a `useRef`, a `useLayoutEffect`
+// and a `useEffect` across chat-state, layout-persistence and title-effects (214 hooks, still 7 useMemo).
+// Then the fork's Claude prompt-suggestion reader added a `useCallback` in chat-state (215 hooks).
 const PRE_REFACTOR_HOOK_ORDER_SHA256 =
-  '709bc5dc3a03284f9134c3683f5470f043793884caaed2b70e9729402cafbaab'
+  'b2cd972d37d917311d1d6319179f8485933a8d70698d5a711ebc730974b19523'
 
 const sourceFiles = readdirSync(__dirname)
   .filter((name) => TERMINAL_PANE_HOOK_SOURCE_PATTERN.test(name))
@@ -91,7 +93,7 @@ function readFlattenedHookOrder(): string[] {
 describe('TerminalPane refactor hook parity', () => {
   it('preserves the recursively flattened render hook order', () => {
     const hooks = readFlattenedHookOrder()
-    expect(hooks).toHaveLength(212)
+    expect(hooks).toHaveLength(215)
     expect(hooks.filter((hook) => hook === 'useMemo')).toHaveLength(7)
     expect(createHash('sha256').update(hooks.join('\n')).digest('hex')).toBe(
       PRE_REFACTOR_HOOK_ORDER_SHA256

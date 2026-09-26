@@ -19,7 +19,8 @@ export const RESUMABLE_TUI_AGENTS = [
   'prime-agent',
   'copilot',
   'kimi',
-  'muse'
+  'muse',
+  'zcode'
 ] as const satisfies readonly TuiAgent[]
 
 export type ResumableTuiAgent = (typeof RESUMABLE_TUI_AGENTS)[number]
@@ -206,6 +207,12 @@ export function extractAgentProviderSession(
       const id = readSessionId(payload, ['session_id'])
       return id ? withTranscriptPath({ key: 'session_id', id }, payload) : null
     }
+    // Why: ZCode's `transcript_path` is a per-invocation temp file it deletes when the hook
+    // returns (`createCompatibleHookStdin` mkdtemp + cleanup), so only the id is durable.
+    case 'zcode': {
+      const id = readSessionId(payload, ['session_id'])
+      return id ? { key: 'session_id', id } : null
+    }
     case 'antigravity': {
       const id = readSessionId(payload, ['conversationId'])
       return id ? withTranscriptPath({ key: 'conversation_id', id }, payload) : null
@@ -311,5 +318,7 @@ export function getAgentResumeArgv(
       return providerSession.key === 'session_id' ? ['kimi', '--session', id] : null
     case 'muse':
       return providerSession.key === 'session_id' ? ['muse', 'resume', id] : null
+    case 'zcode':
+      return providerSession.key === 'session_id' ? ['zcode', '--resume', id] : null
   }
 }

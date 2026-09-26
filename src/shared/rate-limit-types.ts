@@ -56,8 +56,8 @@ export type ProviderRateLimits = {
     | 'kimi'
     | 'minimax'
     | 'grok'
-    | 'cursor'
     | 'antigravity'
+    | 'cursor'
   /** 5-hour session window, null if not available. */
   session: RateLimitWindow | null
   /** 7-day weekly window, null if not available. */
@@ -130,8 +130,6 @@ export type CursorAccountStatus = {
 }
 
 export type RateLimitState = {
-  /** Optional for older remote hosts. Credentials belong to the usage service host. */
-  cursor?: ProviderRateLimits | null
   claude: ProviderRateLimits | null
   codex: ProviderRateLimits | null
   gemini: ProviderRateLimits | null
@@ -140,6 +138,7 @@ export type RateLimitState = {
   antigravity: ProviderRateLimits | null
   minimax: ProviderRateLimits | null
   grok: ProviderRateLimits | null
+  cursor: ProviderRateLimits | null
   /**
    * True when a MiniMax session cookie is persisted on disk. The cookie lives
    * outside GlobalSettings, so this flag is the durable signal that the

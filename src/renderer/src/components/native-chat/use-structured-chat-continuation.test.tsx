@@ -65,9 +65,6 @@ function Harness(props: {
       <StructuredAgentSessionHeaderActions
         tabId="tab-1"
         groupId="group-1"
-        handoffStatus={null}
-        isWorking={false}
-        onHandoffRequest={vi.fn()}
         onContinueInNewSession={continuation.onContinue}
       />
       {continuation.dialog}

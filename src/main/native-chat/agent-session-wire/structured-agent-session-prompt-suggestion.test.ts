@@ -39,13 +39,6 @@ it('carries suggestions through idle checkpoints, coalescing, clearing and recon
     expect(state.promptSuggestion).toBe('Add tests')
     promptSuggestion = 'Run tests'
     subscribers.publish(sessionId, journal)
-    subscribers.handoff(sessionId, 7, {
-      owner: 'none',
-      direction: null,
-      phase: 'idle',
-      stage: null,
-      operationId: null
-    })
     coalescer.flush()
     expect(state.promptSuggestion).toBe('Run tests')
     promptSuggestion = null

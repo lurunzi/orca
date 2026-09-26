@@ -3,7 +3,7 @@
  *
  * The spawn-token scan reads child environments, which only Linux exposes, so on Windows every
  * reservation latched into manual recovery. The children a reservation can launch carry the
- * provider session id in argv instead (Claude `--session-id=`/`--resume`, Codex TUI `resume`),
+ * provider session id in argv instead (Claude `--session-id=`/`--resume`),
  * and the kernel hands out command lines. A readable table with no mention of any id the
  * reservation could have launched is the same "absent" answer the Linux scan gives.
  */
@@ -64,12 +64,6 @@ export function agentSessionReservationCommandLineIds(record: AgentSessionRecord
     for (const link of record.providerHandleChain) {
       if (link.handle.provider === 'claude') {
         ids.add(link.handle.sessionId)
-      }
-    }
-  } else if (record.lease.runtimeKind === 'tui') {
-    for (const link of record.providerHandleChain) {
-      if (link.handle.provider === 'codex') {
-        ids.add(link.handle.threadId)
       }
     }
   }
