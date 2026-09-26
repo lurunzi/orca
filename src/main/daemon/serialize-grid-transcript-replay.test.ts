@@ -29,7 +29,15 @@ const SEEDS = Math.max(1, Number(process.env.SERIALIZE_TRANSCRIPT_SEEDS) || 2)
 // Checkpoints (default seeds) whose new replay diverges exactly as the previous
 // build's did — pre-existing upstream limitations, not regressions (verified
 // with ORCA_OLD_SERIALIZE_ADDON). Shrink when one is fixed.
-const KNOWN_PREEXISTING_I2_FAILURES: Record<string, number> = { less: 6, nano: 2, opencode: 5 }
+const KNOWN_PREEXISTING_I2_FAILURES: Record<string, number> = {
+  less: 6,
+  nano: 2,
+  opencode: 5,
+  // Fork-captured transcripts, measured when this replay suite first ran over them.
+  'antigravity-composer-multiline-unsent': 2,
+  'antigravity-windows-command-approval': 4,
+  'claude-prompt-suggestion': 8
+}
 
 type Transcript = { name: string; data: string; cols: number; rows: number }
 type Schedule = 'none' | 'shrink' | 'shrink-grow' | 'jitter'

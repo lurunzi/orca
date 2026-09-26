@@ -74,7 +74,11 @@ describe('native temporary directory normalization', () => {
 })
 
 describe.each(['local', 'daemon'] as const)('%s native shell environment', (route) => {
-  function spawn(shellPath: string, env: Record<string, string>, fallback = false): void {
+  async function spawn(
+    shellPath: string,
+    env: Record<string, string>,
+    fallback = false
+  ): Promise<void> {
     const attempts = [shellPath, CMD].map((path) => ({
       shellPath: path,
       shellArgs: [],
@@ -93,16 +97,16 @@ describe.each(['local', 'daemon'] as const)('%s native shell environment', (rout
     if (route === 'local') {
       spawnShellWithFallback({ ...args, cwd: 'C:\\repo', ptySpawn: pty.spawn })
     } else {
-      spawnNativeDaemonPty({ ...args, spawnCwd: 'C:\\repo' })
+      await spawnNativeDaemonPty({ ...args, spawnCwd: 'C:\\repo' })
     }
   }
 
   it.each([POWERSHELL, CMD])(
     'does not advertise the parent Git Bash to children of %s',
-    (shell) => {
+    async (shell) => {
       Object.defineProperty(process, 'platform', { value: 'win32' })
       const env = inheritedEnvironment()
-      spawn(shell, env)
+      await spawn(shell, env)
       expect(pty.spawn).toHaveBeenLastCalledWith(
         shell,
         [],
@@ -121,32 +125,32 @@ describe.each(['local', 'daemon'] as const)('%s native shell environment', (rout
     }
   )
 
-  it('normalizes each fallback using the shell that actually starts', () => {
+  it('normalizes each fallback using the shell that actually starts', async () => {
     Object.defineProperty(process, 'platform', { value: 'win32' })
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.mocked(pty.spawn).mockImplementationOnce(() => {
       throw new Error('spawn failed')
     })
     const env = inheritedEnvironment()
-    spawn(POWERSHELL, env, true)
+    await spawn(POWERSHELL, env, true)
     expect(env.SHELL).toBe(CMD)
     expect(env.TEMP).toBe(TEMP)
   })
 
   it.each(['C:\\Program Files\\Git\\bin\\bash.exe', 'wsl.exe'])(
     'preserves intentional %s environments',
-    (shell) => {
+    async (shell) => {
       Object.defineProperty(process, 'platform', { value: 'win32' })
       const env = inheritedEnvironment()
-      spawn(shell, env)
+      await spawn(shell, env)
       expect(env).toEqual(inheritedEnvironment())
     }
   )
 
-  it('leaves a POSIX execution host untouched', () => {
+  it('leaves a POSIX execution host untouched', async () => {
     Object.defineProperty(process, 'platform', { value: 'linux' })
     const env = inheritedEnvironment()
-    spawn(process.execPath, env)
+    await spawn(process.execPath, env)
     expect(env).toEqual(inheritedEnvironment())
   })
 })
