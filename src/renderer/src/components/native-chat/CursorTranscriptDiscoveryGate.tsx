@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
+import { createBrowserUuid } from '@/lib/browser-uuid'
 import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault-session-launch-target'
 import { cursorSessionMatchesWorkspace, openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
@@ -32,7 +33,7 @@ export function CursorTranscriptDiscoveryGate(): null {
     }
     let disposed = false
     let inFlight = false
-    const requestToken = crypto.randomUUID()
+    const requestToken = createBrowserUuid()
     const discover = async (): Promise<void> => {
       if (disposed || inFlight || document.visibilityState === 'hidden') {
         return
