@@ -11,9 +11,6 @@ import {
 } from './rate-limit-service-test-harness'
 
 vi.mock('./cursor-fetcher', () => ({ fetchCursorRateLimits: vi.fn() }))
-vi.mock('./antigravity-local-probe', () => ({
-  probeLocalAntigravityLanguageServer: vi.fn().mockResolvedValue(null)
-}))
 
 vi.mock('./claude-fetcher', () => ({
   fetchClaudeRateLimits: vi.fn(),
@@ -23,6 +20,10 @@ vi.mock('./claude-fetcher', () => ({
 vi.mock('./codex-fetcher', () => ({
   consumeCodexRateLimitResetCredit: vi.fn(),
   fetchCodexRateLimits: vi.fn()
+}))
+
+vi.mock('./antigravity-usage-fetcher', () => ({
+  fetchAntigravityRateLimits: vi.fn()
 }))
 
 vi.mock('./gemini-usage-fetcher', () => ({

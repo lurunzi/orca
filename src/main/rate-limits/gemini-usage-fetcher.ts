@@ -14,7 +14,6 @@ import {
   deduplicateBuckets,
   deriveSessionSummary
 } from './gemini-bucket-formatting'
-import { parseAntigravityQuotaSummary } from './antigravity-local-probe'
 
 const API_TIMEOUT_MS = 10_000
 const RETRIEVE_QUOTA_URL = 'https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota'
@@ -65,14 +64,13 @@ async function fetchQuota(accessToken: string, projectId: string): Promise<Provi
       }
     }
     const data = (await res.json()) as unknown
-    const quotaSummary = parseAntigravityQuotaSummary(data)
     const buckets = deduplicateBuckets(
       parseQuotaResponse(data).map((b) => ({ ...buildRateLimitBucket(b), modelId: b.modelId }))
     )
     return {
       provider: 'gemini',
-      session: quotaSummary.session ?? deriveSessionSummary(buckets),
-      weekly: quotaSummary.weekly ?? null,
+      session: deriveSessionSummary(buckets),
+      weekly: null,
       buckets,
       updatedAt: Date.now(),
       error: null,

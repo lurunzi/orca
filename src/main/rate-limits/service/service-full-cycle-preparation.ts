@@ -1,5 +1,6 @@
 import { fetchClaudeRateLimits } from '../claude-fetcher'
 import { fetchCodexRateLimits } from '../codex-fetcher'
+import { fetchAntigravityRateLimits } from '../antigravity-usage-fetcher'
 import { fetchGeminiRateLimits } from '../gemini-usage-fetcher'
 import { fetchGrokRateLimits } from '../grok-fetcher'
 import { readGrokAuthSession } from '../grok-auth'
@@ -8,7 +9,6 @@ import { readCursorAuthSession } from '../cursor-auth'
 import { fetchMiniMaxRateLimits } from '../minimax/minimax-fetcher'
 import { createHash } from 'node:crypto'
 import { fetchOpenCodeGoUsage } from '../opencode-go-usage-source-selection'
-import { probeLocalAntigravityLanguageServer } from '../antigravity-local-probe'
 import { RateLimitServiceFetchPolicy } from './service-fetch-policy'
 import type { SettledProviderResult } from './service-sibling-provider-result'
 import type {
@@ -20,6 +20,8 @@ import type {
 } from './service-types'
 
 export type FetchAllCyclePrepared = {
+  antigravityCommand: string
+  antigravityCommandChanged: boolean
   claudeTarget: NormalizedClaudeAccountSelectionTarget
   claudeGeneration: number
   claudeAuthPreparation: ClaudeRuntimeAuthPreparation | undefined
@@ -42,7 +44,7 @@ export type FetchAllCyclePrepared = {
     PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
-    PromiseSettledResult<ProviderRateLimits | null>
+    PromiseSettledResult<ProviderRateLimits>
   ]
   grokResultPromise: Promise<SettledProviderResult>
   cursorResultPromise: Promise<SettledProviderResult>
@@ -89,6 +91,9 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
     const miniMaxEndpoint = miniMaxConfigResult.config.endpoint
     const miniMaxApiKey = miniMaxConfigResult.config.apiKey
     const geminiCliOAuthEnabled = this.geminiCliOAuthEnabledResolver?.() ?? false
+    const antigravityCommand = this.antigravityCommandResolver?.()?.trim() ?? ''
+    const antigravityCommandChanged = antigravityCommand !== this.lastAntigravityCommand
+    this.lastAntigravityCommand = antigravityCommand
     // Why: getState() is hot (renderer pushes + mobile snapshots); keep Grok's sync auth-file probe on fetch cycles instead.
     const grokAuthReadResult = readGrokAuthSession()
     this.grokAuthConfigured = grokAuthReadResult.status === 'ok'
@@ -127,7 +132,10 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         ? this.withFetchingStatus(null, 'opencode-go')
         : this.withFetchingStatus(previousState.opencodeGo, 'opencode-go'),
       kimi: this.withFetchingStatus(previousState.kimi, 'kimi'),
-      antigravity: this.withFetchingStatus(previousState.antigravity, 'antigravity'),
+      antigravity: this.withFetchingStatus(
+        antigravityCommandChanged ? null : previousState.antigravity,
+        'antigravity'
+      ),
       minimax: miniMaxConfigChanged
         ? this.withFetchingStatus(null, 'minimax')
         : this.withFetchingStatus(previousState.minimax, 'minimax'),
@@ -165,10 +173,10 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
       claudeResult,
       codexResult,
       geminiResult,
+      antigravityResult,
       opencodeGoResult,
       kimiResult,
-      miniMaxResult,
-      antigravityResult
+      miniMaxResult
     ] = await Promise.allSettled([
       claudeFetchGated
         ? Promise.resolve(previousState.claude as ProviderRateLimits)
@@ -188,6 +196,7 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
             signal
           })),
       fetchGeminiRateLimits(geminiCliOAuthEnabled),
+      fetchAntigravityRateLimits(signal, antigravityCommand),
       fetchOpenCodeGoUsage({
         settingsApiKey: openCodeGoApiKey,
         // Why here: the key can also come from the environment or OpenCode's
@@ -209,14 +218,15 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
             models: miniMaxModels,
             endpointMode: miniMaxEndpoint,
             apiKey: miniMaxApiKey
-          }),
-      probeLocalAntigravityLanguageServer({ signal })
+          })
     ])
 
     if (signal.aborted) {
       return null
     }
     return {
+      antigravityCommand,
+      antigravityCommandChanged,
       claudeTarget,
       claudeGeneration,
       claudeAuthPreparation,
@@ -236,10 +246,10 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         claudeResult,
         codexResult,
         geminiResult,
+        antigravityResult,
         opencodeGoResult,
         kimiResult,
-        miniMaxResult,
-        antigravityResult
+        miniMaxResult
       ],
       grokResultPromise,
       cursorResultPromise
