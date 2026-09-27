@@ -1,9 +1,22 @@
 import type { ClaudeSession, ClaudeStructuredSessionEvent } from './claude-structured-session-state'
 
-export function clearClaudePromptSuggestion(session: ClaudeSession): void {
+/** `retire` drops the saved copy too; an ended session keeps it for the next resume. */
+export function clearClaudePromptSuggestion(session: ClaudeSession, retire = true): void {
   session.promptSuggestionResultSequence = undefined
+  if (retire) {
+    session.promptSuggestionMemory?.forget()
+  }
   if (session.promptSuggestion) {
     session.promptSuggestion = null
+    session.events?.publish()
+  }
+}
+
+/** The suggestion saved for the leaf this session resumed at, if no turn ran since. */
+export function restoreClaudePromptSuggestion(session: ClaudeSession): void {
+  const restored = session.promptSuggestionMemory?.restore(session.turnEndLeafUuid) ?? null
+  if (restored) {
+    session.promptSuggestion = restored
     session.events?.publish()
   }
 }
@@ -13,7 +26,7 @@ export function observeClaudePromptSuggestion(
   event: ClaudeStructuredSessionEvent
 ): void {
   if (event.type === 'ended') {
-    clearClaudePromptSuggestion(session)
+    clearClaudePromptSuggestion(session, false)
     return
   }
   if (event.type !== 'message') {
@@ -38,6 +51,7 @@ export function observeClaudePromptSuggestion(
     message.suggestion !== session.promptSuggestion
   ) {
     session.promptSuggestion = message.suggestion
+    session.promptSuggestionMemory?.save(message.suggestion, session.turnEndLeafUuid)
     session.events?.publish()
   }
 }

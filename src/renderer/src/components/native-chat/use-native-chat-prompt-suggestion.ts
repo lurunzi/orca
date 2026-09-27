@@ -37,22 +37,20 @@ export function useNativeChatPromptSuggestion({
     return () => clearInterval(timer)
   }, [enabled, readTerminalSuggestion, scopeKey])
   const candidate = suggestion ?? (terminal?.scope === scopeKey ? terminal.text : null)
-  const [seen, setSeen] = useState({ scope: scopeKey, text: candidate, dismissed: draft !== '' })
-  if (seen.scope !== scopeKey || seen.text !== candidate || (!seen.dismissed && draft !== '')) {
-    setSeen({ scope: scopeKey, text: candidate, dismissed: draft !== '' })
-  }
+  // Only Escape or acceptance retires a suggestion; typing just hides it until the draft is empty again.
+  const [dismissed, setDismissed] = useState<{ scope: string; text: string } | null>(null)
   const promptSuggestion =
     enabled &&
     draft === '' &&
     candidate &&
-    !(seen.scope === scopeKey && seen.text === candidate && seen.dismissed)
+    !(dismissed?.scope === scopeKey && dismissed.text === candidate)
       ? candidate
       : null
   const dismiss = useCallback(() => {
     if (!promptSuggestion) {
       return false
     }
-    setSeen({ scope: scopeKey, text: promptSuggestion, dismissed: true })
+    setDismissed({ scope: scopeKey, text: promptSuggestion })
     return true
   }, [promptSuggestion, scopeKey])
   const accept = useCallback(() => {

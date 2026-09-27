@@ -50,6 +50,10 @@ import { createStructuredClaudeRuntimeAdapter } from './structured-claude-runtim
 import { createStructuredAgentSessionLifecycleDelivery } from './structured-agent-session-lifecycle-delivery'
 import { agentModelCatalogStore } from '../native-chat/agent-model-catalog/agent-model-catalog-store'
 import {
+  loadClaudePromptSuggestionStore,
+  type ClaudePromptSuggestionStore
+} from '../claude/claude-prompt-suggestion-store'
+import {
   modelCatalogHostDeps,
   type RuntimeAgentAccountHomeResolver
 } from './structured-agent-model-catalog-wiring'
@@ -124,6 +128,7 @@ export const CLAUDE_STRUCTURED_AUTH_POLICY_REQUIRED =
  * same runtime can reach those entries again.
  */
 const pendingTeardown = new Set<InstalledRuntime>()
+let claudePromptSuggestionStore: ClaudePromptSuggestionStore | null = null
 
 export function ensureStructuredAgentSessionHost(
   deps: StructuredAgentSessionRuntimeDeps
@@ -176,6 +181,7 @@ export async function stopStructuredAgentSessionRuntime(options?: {
     }
   }
   await agentModelCatalogStore.flushPersistence()
+  await claudePromptSuggestionStore?.flush()
   if (failures.length === 1) {
     throw failures[0]
   }
@@ -289,7 +295,10 @@ async function install(deps: StructuredAgentSessionRuntimeDeps): Promise<Install
     onDispatchSettledLate,
     ...(deps.openClaudeConnection ? { openClaudeConnection: deps.openClaudeConnection } : {}),
     ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
-    modelCatalog: agentModelCatalogStore
+    modelCatalog: agentModelCatalogStore,
+    promptSuggestionStore: (claudePromptSuggestionStore = await loadClaudePromptSuggestionStore(
+      deps.stateDirectory
+    ))
   })
   const adapter = new StructuredAgentSessionAdapterRouter({ codex, claude }, async () => {
     await Promise.all([codex.closeAll(), claude.closeAll()])

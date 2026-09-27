@@ -1,4 +1,8 @@
 import type {
+  ClaudePromptSuggestionMemory,
+  ClaudePromptSuggestionStore
+} from './claude-prompt-suggestion-store'
+import type {
   AgentJournalItemIdentity,
   AgentSessionJournalIdentity
 } from '../../shared/agent-session-journal-types'
@@ -117,6 +121,8 @@ export type ClaudeStructuredSessionAdapterDeps = {
   }) => Promise<void>
   /** Host model catalog; sessions write their listings through. */
   modelCatalog?: AgentModelCatalogStore
+  /** Keeps the last suggestion across app restarts. */
+  promptSuggestionStore?: ClaudePromptSuggestionStore
 }
 
 export type ClaudeDispatchWaiter = {
@@ -181,6 +187,7 @@ export type ClaudeSession = {
   dispatchSequence: number
   promptSuggestion?: string | null
   promptSuggestionResultSequence?: number
+  promptSuggestionMemory?: ClaudePromptSuggestionMemory
   /** Fences overlapping option writes so a late completion cannot restore stale state. */
   optionMutationSequence: number
   /** Latest resume point written at a turn end; close and exit persist after it settles. */

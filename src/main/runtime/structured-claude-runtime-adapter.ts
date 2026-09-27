@@ -34,6 +34,7 @@ export type StructuredClaudeRuntimeAdapterDeps = {
   openClaudeConnection?: ClaudeStructuredSessionAdapterDeps['openConnection']
   readProcessStartTime?: ClaudeStructuredSessionAdapterDeps['readProcessStartTime']
   modelCatalog?: ClaudeStructuredSessionAdapterDeps['modelCatalog']
+  promptSuggestionStore?: ClaudeStructuredSessionAdapterDeps['promptSuggestionStore']
   onLifecycleEvent: (event: StructuredAgentSessionLifecycleEvent) => void
   onBackgroundTasksChanged?: (
     sessionId: string,
@@ -132,6 +133,7 @@ export function createStructuredClaudeRuntimeAdapter(
     ...(deps.onChildWorkEvidence ? { onChildWorkEvidence: deps.onChildWorkEvidence } : {}),
     ...(deps.openClaudeConnection ? { openConnection: deps.openClaudeConnection } : {}),
     ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
-    ...(deps.modelCatalog ? { modelCatalog: deps.modelCatalog } : {})
+    ...(deps.modelCatalog ? { modelCatalog: deps.modelCatalog } : {}),
+    ...(deps.promptSuggestionStore ? { promptSuggestionStore: deps.promptSuggestionStore } : {})
   })
 }

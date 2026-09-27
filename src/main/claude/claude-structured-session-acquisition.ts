@@ -32,6 +32,7 @@ import {
 import { resolveClaudeAcquisitionError } from './claude-structured-session-close'
 import { readClaudeTranscriptEntryUuid } from './claude-transcript-entry-uuid'
 import { persistClaudeTurnResumePoint } from './claude-structured-resume-point'
+import { restoreClaudePromptSuggestion } from './claude-prompt-suggestion'
 import { withAgentSessionCreatePhase } from '../observability/agent-session-instrumentation'
 import { resolveClaudeAcquisitionLaunch } from './claude-structured-acquisition-launch'
 import { agentModelCatalogSessionAccess } from '../native-chat/agent-model-catalog/agent-model-catalog-fingerprint'
@@ -248,6 +249,9 @@ export async function acquireClaudeSession({
         event()
       }
     })
+    // After the pre-publish frames, which are not a new turn and must not retire it.
+    session.promptSuggestionMemory = deps.promptSuggestionStore?.memory(sessionId)
+    restoreClaudePromptSuggestion(session)
     session.startup.settled = settleClaudeSessionStartup({
       session,
       facts: readClaudeStartupFacts({

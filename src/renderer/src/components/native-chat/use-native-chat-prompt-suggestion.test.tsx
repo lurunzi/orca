@@ -105,8 +105,27 @@ it('preserves Tab navigation, IME text and the user draft', () => {
   fireEvent.compositionEnd(input)
   fireEvent.keyDown(input, { key: 'Tab' })
   expect(input).toHaveProperty('value', 'my own prompt')
+  expect(input.getAttribute('placeholder')).toBe('')
+  fireEvent.change(input, { target: { value: '' } })
+  expect(input.getAttribute('placeholder')).toBe('Add tests')
+})
+
+it('keeps a suggestion retired after Escape or acceptance even once the draft is cleared', () => {
+  render(<Composer sent={vi.fn()} />)
+  const input = screen.getByRole('textbox')
+  fireEvent.keyDown(input, { key: 'Tab' })
+  expect(input).toHaveProperty('value', 'Add tests')
   fireEvent.change(input, { target: { value: '' } })
   expect(input.getAttribute('placeholder')).toBe('')
+  cleanup()
+  render(<Composer sent={vi.fn()} />)
+  const next = screen.getByRole('textbox')
+  fireEvent.change(next, { target: { value: 'x' } })
+  fireEvent.change(next, { target: { value: '' } })
+  fireEvent.keyDown(next, { key: 'Escape' })
+  fireEvent.change(next, { target: { value: 'y' } })
+  fireEvent.change(next, { target: { value: '' } })
+  expect(next.getAttribute('placeholder')).toBe('')
 })
 
 it('dismisses suggestions, hides while working and resets for a different session', () => {
