@@ -187,7 +187,7 @@ async function isPathAllowedIncludingRegisteredWorktrees(
     return true
   }
 
-  if (isRegisteredWorktreePath(targetPath)) {
+  if (isRegisteredWorktreePath(targetPath, store)) {
     return true
   }
 
@@ -202,7 +202,9 @@ async function isPathAllowedIncludingRegisteredWorktrees(
     return true
   }
 
-  if (await isPathAllowedByCanonicalRegisteredRoot(targetPath, options.canonicalSourcePath)) {
+  if (
+    await isPathAllowedByCanonicalRegisteredRoot(targetPath, options.canonicalSourcePath, store)
+  ) {
     return true
   }
 
@@ -210,8 +212,8 @@ async function isPathAllowedIncludingRegisteredWorktrees(
 
   // Why: linked worktrees are already git-trusted; reuse the cached root index so reads don't spawn `git worktree list` each time.
   return (
-    isRegisteredWorktreePath(targetPath) ||
-    (await isPathAllowedByCanonicalRegisteredRoot(targetPath, options.canonicalSourcePath))
+    isRegisteredWorktreePath(targetPath, store) ||
+    (await isPathAllowedByCanonicalRegisteredRoot(targetPath, options.canonicalSourcePath, store))
   )
 }
 
