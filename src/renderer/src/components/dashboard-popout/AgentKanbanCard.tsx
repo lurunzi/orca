@@ -215,6 +215,10 @@ export const AgentKanbanCard = memo(
     // twice.
     const heading = card.conversationName ?? card.worktreeName
     const worktreeInFooter = card.conversationName !== undefined
+    const workspaceLabel =
+      worktreeInFooter && card.worktreeName !== card.repoName
+        ? `${card.repoName} / ${card.worktreeName}`
+        : card.repoName
 
     return (
       <div
@@ -321,15 +325,18 @@ export const AgentKanbanCard = memo(
         >
           <Tooltip>
             <TooltipTrigger asChild>
-              <span
-                className="inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] bg-muted-foreground/10 text-muted-foreground transition-colors group-hover:text-foreground"
-                aria-label={card.repoName}
-              >
-                <RepoIconGlyph repoIcon={repoIcon} className="size-3" iconClassName="size-3" />
+              <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] bg-muted-foreground/10 text-muted-foreground transition-colors group-hover:text-foreground"
+                >
+                  <RepoIconGlyph repoIcon={repoIcon} className="size-3" iconClassName="size-3" />
+                </span>
+                <span className="truncate">{workspaceLabel}</span>
               </span>
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={4}>
-              {card.repoName}
+              {workspaceLabel}
             </TooltipContent>
           </Tooltip>
           <DashboardHostBadge
@@ -338,7 +345,6 @@ export const AgentKanbanCard = memo(
             hostLabel={card.hostLabel}
             className="size-[18px] rounded-[5px] bg-muted-foreground/10 transition-colors group-hover:text-foreground"
           />
-          {worktreeInFooter ? <span className="truncate">{card.worktreeName}</span> : null}
           <ReviewPill card={card} />
           {displayTimestamp(card) > 0 ? (
             <span className="ml-auto shrink-0 pl-1 tabular-nums">

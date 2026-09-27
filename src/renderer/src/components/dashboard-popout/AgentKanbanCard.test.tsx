@@ -230,15 +230,41 @@ describe('AgentKanbanCard', () => {
     )
   })
 
-  it('shows the repo as an icon labelled with its name instead of inline text', () => {
+  it('shows the project name beside its icon without requiring hover', () => {
     renderCard({
       card: card(),
       now: 2_000,
       repoIcon: { type: 'emoji', emoji: '🐳' }
     })
 
-    expect(screen.getByLabelText('Orca')).toBeInTheDocument()
+    expect(screen.getByText('Orca')).toBeVisible()
     expect(screen.getByText('🐳')).toBeInTheDocument()
+  })
+
+  it('shows the project group and folder name for a remote folder card', () => {
+    renderCard({
+      card: card({
+        repoName: 'Documentation',
+        worktreeName: 'Docs workspace',
+        conversationName: 'Review docs',
+        workspaceKind: 'folder',
+        hostKind: 'ssh'
+      }),
+      now: 2_000
+    })
+
+    expect(screen.getByText('Documentation / Docs workspace')).toBeVisible()
+    expect(screen.getByText('Review docs')).toBeVisible()
+  })
+
+  it('does not repeat matching project and workspace names in the footer', () => {
+    renderCard({
+      card: card({ repoName: 'Orca', worktreeName: 'Orca', conversationName: 'Review' }),
+      now: 2_000
+    })
+
+    expect(screen.getByText('Orca')).toBeVisible()
+    expect(screen.queryByText('Orca / Orca')).not.toBeInTheDocument()
   })
 
   it('skips structured-clone rerenders until visible card data or its age changes', () => {
