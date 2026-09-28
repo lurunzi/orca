@@ -14859,7 +14859,12 @@
         "updateFailed": "无法更改编排身份",
         "busy": "忙碌中，本轮结束后再试",
         "unavailable": "不可用",
-        "label": "编排身份"
+        "label": "编排身份",
+        "toggleLabel": "协调者",
+        "enableTooltip": "编排身份：未启用 — 点击开启",
+        "disableTooltip": "编排身份：已启用 — 点击关闭",
+        "activeAccessibleName": "编排身份已启用",
+        "inactiveAccessibleName": "编排身份未启用"
       }
     },
     "tab": {

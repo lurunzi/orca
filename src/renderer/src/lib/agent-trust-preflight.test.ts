@@ -51,11 +51,25 @@ describe('preflightAgentTrust', () => {
     ).resolves.toBeUndefined()
   })
 
+  it('marks antigravity with its preset', async () => {
+    await preflightAgentTrust({ agent: 'antigravity', workspacePath: '/repo/wt' })
+
+    expect(markTrusted).toHaveBeenCalledWith({ preset: 'antigravity', workspacePath: '/repo/wt' })
+  })
+
   it('is a no-op when the bridge is unavailable', async () => {
     vi.stubGlobal('window', { api: {} })
 
     await expect(
       preflightAgentTrust({ agent: 'codex', workspacePath: '/repo/wt' })
+    ).resolves.toBeUndefined()
+  })
+
+  it('is a no-op when window has no api property', async () => {
+    vi.stubGlobal('window', {})
+
+    await expect(
+      preflightAgentTrust({ agent: 'antigravity', workspacePath: '/repo/wt' })
     ).resolves.toBeUndefined()
   })
 })

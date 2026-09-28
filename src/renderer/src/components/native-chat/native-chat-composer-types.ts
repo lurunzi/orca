@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { AgentSessionConversationCommand } from '../../../../shared/agent-session-conversation-command'
 import type { AgentSessionSlashCommand } from '../../../../shared/agent-session-wire'
 import type { AgentType } from '../../../../shared/agent-status-types'
@@ -63,6 +64,8 @@ export type NativeChatComposerProps = {
   launchSeed?: NativeChatLaunchSeed
   /** Structured journal transport; absent keeps the existing PTY path unchanged. */
   structuredTransport?: NativeChatStructuredComposerTransport
+  /** Optional orchestration identity toggle button node rendered in the actions toolbar. */
+  orchestrationIdentityToggle?: ReactNode
 }
 
 /** Launch context prefilled into the TUI input as an unsent draft, plus the two

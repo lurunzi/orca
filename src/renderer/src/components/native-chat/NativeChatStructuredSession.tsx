@@ -24,6 +24,8 @@ import { NativeChatLaunchRetry } from './NativeChatLaunchRetry'
 import { useNativeChatProvisionalLaunch } from './use-native-chat-provisional-launch'
 import { NativeChatDeliveryRetry } from './NativeChatDeliveryRetry'
 import { NativeChatOrchestrationIdentityMenuItem } from './NativeChatOrchestrationIdentityMenuItem'
+import { useNativeChatOrchestrationIdentity } from './use-native-chat-orchestration-identity'
+import { NativeChatOrchestrationIdentityToggle } from './NativeChatOrchestrationIdentityToggle'
 
 function encodeQuestionAnswer(questionId: string, answer: string): string {
   return `${encodeURIComponent(questionId)}:${encodeURIComponent(answer)}`
@@ -60,6 +62,11 @@ export function NativeChatStructuredSession(
   )
   const rootRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<NativeChatComposerHandle>(null)
+  const orchestrationIdentity = useNativeChatOrchestrationIdentity({
+    sessionId: props.sessionId,
+    target: props.target,
+    isWorking: controller.isWorking
+  })
   const paneCommands = useStructuredNativeChatPaneCommands({
     tabId: props.tabId,
     groupId: props.groupId,
@@ -68,7 +75,11 @@ export function NativeChatStructuredSession(
     composerRef,
     terminalPaneActions: props.contextMenuActions,
     sessionMenuItems: (
-      <NativeChatOrchestrationIdentityMenuItem sessionId={props.sessionId} target={props.target} />
+      <NativeChatOrchestrationIdentityMenuItem
+        sessionId={props.sessionId}
+        target={props.target}
+        identity={orchestrationIdentity}
+      />
     )
   })
   const session = useMemo<NativeChatLiveSession>(
@@ -340,6 +351,9 @@ export function NativeChatStructuredSession(
           }}
           structuredTransport={structuredTransport}
           launchSeed={{ ...launchDraftSignal, ownsTabWideLaunchDraft: true }}
+          orchestrationIdentityToggle={
+            <NativeChatOrchestrationIdentityToggle identity={orchestrationIdentity} />
+          }
         />
       )}
       {paneCommands.menu}

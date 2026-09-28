@@ -67,7 +67,8 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       readTerminalScreen,
       readTerminalPromptSuggestion,
       launchSeed,
-      structuredTransport
+      structuredTransport,
+      orchestrationIdentityToggle
     },
     ref
   ): React.JSX.Element {
@@ -102,10 +103,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
     const voiceSettings = useAppStore((store) => store.settings?.voice)
     const dictationDisabled = voiceSettings?.enabled !== true || !voiceSettings.sttModel
     const isDictating =
-      dictationPressed ||
-      dictationState === 'starting' ||
-      dictationState === 'listening' ||
-      dictationState === 'stopping'
+      dictationPressed || ['starting', 'listening', 'stopping'].includes(dictationState)
 
     const { agentCommands, sessionSkillNames } = useNativeChatComposerCatalog(
       agent,
@@ -427,6 +425,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         sessionOptionsSurface={sessionOptionsSurface}
         sessionOptionsSnapshot={sessionOptionsSnapshot}
         sessionOptionsPickerRequest={structuredTransport?.optionPickerRequest ?? null}
+        orchestrationIdentityToggle={orchestrationIdentityToggle}
       />
     )
   }

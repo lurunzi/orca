@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ArrowUp, Mic, Plus, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -25,6 +26,7 @@ export type NativeChatComposerActionsProps = {
   sessionOptionsSurface: SessionOptionsSurface | null
   sessionOptionsSnapshot: SessionOptionDescriptor[]
   sessionOptionsPickerRequest?: NativeChatOptionPickerRequest | null
+  orchestrationIdentityToggle?: ReactNode
 }
 
 export function NativeChatComposerActions({
@@ -42,7 +44,8 @@ export function NativeChatComposerActions({
   onStop,
   sessionOptionsSurface,
   sessionOptionsSnapshot,
-  sessionOptionsPickerRequest
+  sessionOptionsPickerRequest,
+  orchestrationIdentityToggle
 }: NativeChatComposerActionsProps): React.JSX.Element {
   const handleCriticalAction = (event: React.MouseEvent<HTMLButtonElement>): void => {
     // A double-click commonly lands after the first send has started and the button has
@@ -82,6 +85,7 @@ export function NativeChatComposerActions({
         </Tooltip>
       </div>
       <div className="ml-auto flex items-center gap-1.5">
+        {orchestrationIdentityToggle}
         {/* Why: keep session controls beside the actions they affect; the
         model trigger is ordered last so it sits directly next to dictation. */}
         <NativeChatSessionOptionPickers

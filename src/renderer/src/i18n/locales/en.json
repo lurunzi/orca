@@ -17578,7 +17578,12 @@
         "updateFailed": "Could not change orchestration identity",
         "busy": "Busy — try after the turn",
         "unavailable": "Unavailable",
-        "label": "Orchestration identity"
+        "label": "Orchestration identity",
+        "toggleLabel": "Coordinator",
+        "enableTooltip": "Orchestration identity: Disabled — click to enable",
+        "disableTooltip": "Orchestration identity: Active — click to disable",
+        "activeAccessibleName": "Orchestration identity active",
+        "inactiveAccessibleName": "Orchestration identity disabled"
       }
     },
     "tab": {

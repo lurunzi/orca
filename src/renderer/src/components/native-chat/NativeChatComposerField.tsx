@@ -1,7 +1,7 @@
 import { NativeChatPromptEditor } from './NativeChatPromptEditor'
 import { NativeChatPromptSuggestion } from './NativeChatPromptSuggestion'
 import type { NativeChatComposerInput } from './native-chat-composer-input'
-import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
+import type { ClipboardEventHandler, KeyboardEventHandler, ReactNode, RefObject } from 'react'
 import { useLayoutEffect, useRef } from 'react'
 import { ImageOff } from 'lucide-react'
 import type { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
@@ -59,6 +59,7 @@ export type NativeChatComposerFieldProps = {
   sessionOptionsSurface: SessionOptionsSurface | null
   sessionOptionsSnapshot: SessionOptionDescriptor[]
   sessionOptionsPickerRequest?: NativeChatOptionPickerRequest | null
+  orchestrationIdentityToggle?: ReactNode
 }
 
 export type NativeChatComposerImageAttachment = {
@@ -132,7 +133,8 @@ export function NativeChatComposerField({
   onStop,
   sessionOptionsSurface,
   sessionOptionsSnapshot,
-  sessionOptionsPickerRequest
+  sessionOptionsPickerRequest,
+  orchestrationIdentityToggle
 }: NativeChatComposerFieldProps): React.JSX.Element {
   // Value the IME started from, and whether a programmatic clear was dropped on top of it.
   const compositionBaseRef = useRef('')
@@ -297,6 +299,7 @@ export function NativeChatComposerField({
                 sessionOptionsSurface={sessionOptionsSurface}
                 sessionOptionsSnapshot={sessionOptionsSnapshot}
                 sessionOptionsPickerRequest={sessionOptionsPickerRequest}
+                orchestrationIdentityToggle={orchestrationIdentityToggle}
               />
             </div>
           </div>

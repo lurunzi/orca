@@ -1,5 +1,6 @@
 import type { AgentStartupShell } from '../../../shared/tui-agent-startup-shell'
 import { resolveLocalWindowsAgentStartupShell } from '../../../shared/windows-terminal-shell'
+import { parseWorkspaceKey } from '../../../shared/workspace-scope'
 import { CLIENT_PLATFORM } from '@/lib/new-workspace'
 import { getAgentLaunchPlatformForRepo } from '@/lib/agent-launch-platform'
 import { getConnectionIdFromState } from '@/lib/connection-context'
@@ -14,16 +15,29 @@ export type AgentLaunchExecutionContext = {
   isRemote: boolean
   /** Only set for a local Windows launch; remote targets need their own shell signal. */
   queuedShell: AgentStartupShell | undefined
+  workspacePath: string | null
 }
 
 export function resolveAgentLaunchExecutionContext(
   store: ReturnType<typeof useAppStore.getState>,
   args: { worktreeId: string; launchPlatform?: NodeJS.Platform }
 ): AgentLaunchExecutionContext {
-  const worktree = store
-    .allWorktrees?.()
-    .find((entry: { id: string }) => entry.id === args.worktreeId)
-  const repo = worktree ? store.repos?.find((entry) => entry.id === worktree.repoId) : null
+  const parsed = parseWorkspaceKey(args.worktreeId)
+  const effectiveWorktreeId = parsed?.type === 'worktree' ? parsed.worktreeId : args.worktreeId
+  const folderWorkspace =
+    parsed?.type === 'folder'
+      ? store.folderWorkspaces?.find((entry) => entry.id === parsed.folderWorkspaceId)
+      : store.folderWorkspaces?.find((entry) => entry.id === args.worktreeId)
+  const worktree = folderWorkspace
+    ? null
+    : (store.getKnownWorktreeById?.(args.worktreeId) ??
+      store.allWorktrees?.()?.find((entry: { id: string }) => entry.id === effectiveWorktreeId) ??
+      Object.values(store.worktreesByRepo ?? {})
+        .flat()
+        .find((entry) => entry.id === effectiveWorktreeId))
+  const workspacePath = folderWorkspace?.folderPath ?? worktree?.path ?? null
+  const repoId = worktree && 'repoId' in worktree ? worktree.repoId : undefined
+  const repo = repoId ? store.repos?.find((entry) => entry.id === repoId) : null
   // Why: `store.repos.find` is host-blind and the same repo id can exist on local, SSH and runtime
   // hosts, so the row it returns can belong to a different host than the worktree names (#11163).
   // The shared resolver answers from the worktree's own host; `undefined` (rival rows disagree) is
@@ -49,6 +63,7 @@ export function resolveAgentLaunchExecutionContext(
       platform: resolvedLaunchPlatform,
       isRemote,
       terminalWindowsShell: store.settings?.terminalWindowsShell
-    })
+    }),
+    workspacePath
   }
 }

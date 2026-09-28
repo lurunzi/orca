@@ -18,7 +18,6 @@ were edited and no production readiness condition was relaxed.
 The transcript suite now asserts the intended verdict directly, including rejecting
 the model picker, instead of preserving historical defects as inverted expectations.
 
-
 ## 2026-09-19: host contact and live prompt submission
 
 A regression marked an SSH terminal `unverifiable` after caching a ready screen.
@@ -339,7 +338,7 @@ What the captures support and the shipped detector now does:
   API-key users.
 - **Veto an active model picker.** `Switch Model` followed by a labeled selection row means the
   bare caret belongs to the composer behind the picker; readiness resumes after `Exited /model
-  command`.
+command`.
 - **Do not anchor on `headerIndex`.** The banner is printed once and never reprinted.
 - **The blocked-signal path already works** for the trust dialog: `antigravity-dialog-trust-workspace.txt`
   is correctly refused today, by wording, not by structure.

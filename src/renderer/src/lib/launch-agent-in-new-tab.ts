@@ -21,6 +21,7 @@ import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { seedCommandCodeSubmittedPromptStatus } from '@/lib/command-code-prompt-status-seed'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import type { LaunchSource } from '../../../shared/telemetry-events'
+import { preflightAgentTrust } from '@/lib/agent-trust-preflight'
 import { resolveAgentLaunchExecutionContext } from '@/lib/launch-agent-execution-context'
 import { resolveInitialNativeChatSessionOptions } from '@/components/native-chat/native-chat-launch-session-options'
 import { seedNativeChatAppliedSessionOptions } from '@/components/native-chat/native-chat-session-option-cache'
@@ -118,7 +119,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
     activate
   } = args
   const store = useAppStore.getState()
-  const { worktreeSshConnectionId, resolvedLaunchPlatform, isRemote, queuedShell } =
+  const { worktreeSshConnectionId, resolvedLaunchPlatform, isRemote, queuedShell, workspacePath } =
     resolveAgentLaunchExecutionContext(store, {
       worktreeId,
       ...(launchPlatform ? { launchPlatform } : {})
@@ -164,6 +165,20 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
 
   if (!startupPlan) {
     return null
+  }
+
+  const resolvedWorkspacePath = workspacePath ?? initialCwd ?? null
+  void preflightAgentTrust({
+    agent,
+    workspacePath: resolvedWorkspacePath,
+    connectionId: worktreeSshConnectionId
+  })
+  if (initialCwd && resolvedWorkspacePath && initialCwd !== resolvedWorkspacePath) {
+    void preflightAgentTrust({
+      agent,
+      workspacePath: initialCwd,
+      connectionId: worktreeSshConnectionId
+    })
   }
 
   const runtimeEnvironmentId = getRuntimeEnvironmentIdForWorktree(store, worktreeId)

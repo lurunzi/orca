@@ -9,7 +9,12 @@ export async function preflightAgentTrust(args: {
   workspacePath: string | null | undefined
   connectionId?: string | null
 }): Promise<void> {
-  if (!args.agent || !args.workspacePath || !window.api.agentTrust?.markTrusted) {
+  if (
+    !args.agent ||
+    !args.workspacePath ||
+    typeof window === 'undefined' ||
+    !window.api?.agentTrust?.markTrusted
+  ) {
     return
   }
   const preset = TUI_AGENT_CONFIG[args.agent].preflightTrust
