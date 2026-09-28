@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Network } from 'lucide-react'
+import { Check, Clock3, Network } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { Toggle } from '@/components/ui/toggle'
@@ -138,6 +138,7 @@ export function NativeChatCoordinatorToggle({
   const reason = unavailableReasonLabel(unavailableReason, status)
   const ready = reason === null
   const enabled = typeof queuedValue === 'boolean' ? queuedValue : status?.state === 'enabled'
+  const hasQueuedChange = queuedValue !== undefined && queuedValue !== (status?.state === 'enabled')
   const label = translate('components.native-chat.coordinator.toggle', 'Coordinator mode')
   const onPressedChange = (next: boolean): void => {
     if (isWorking) {
@@ -156,21 +157,31 @@ export function NativeChatCoordinatorToggle({
           onPointerEnter={ready ? undefined : () => setReadRequest((count) => count + 1)}
         >
           <Toggle
+            variant="contrast"
             size="sm"
             aria-label={label}
             pressed={enabled}
             disabled={pending || !ready}
             onPressedChange={onPressedChange}
-            className="pointer-coarse:size-11"
+            className="relative pointer-coarse:size-11"
           >
             <Network className="size-4" />
+            {hasQueuedChange || enabled ? (
+              <span className="absolute -right-1 -top-1 rounded-full bg-background text-foreground ring-1 ring-border">
+                {hasQueuedChange ? (
+                  <Clock3 className="size-3" aria-hidden="true" />
+                ) : (
+                  <Check className="size-3" aria-hidden="true" />
+                )}
+              </span>
+            ) : null}
           </Toggle>
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <div>{label}</div>
         {reason ? <div>{reason}</div> : null}
-        {queuedValue !== undefined && queuedValue !== (status?.state === 'enabled') ? (
+        {hasQueuedChange ? (
           <div>
             {translate(
               'components.native-chat.composer.appliesNextTurn',
