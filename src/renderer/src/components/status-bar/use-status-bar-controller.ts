@@ -96,10 +96,10 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
 
   // Why: a bar is earned by a live snapshot or durable Settings setup; detection-gating hides per-CLI bars when the agent isn't on PATH.
   // Why: Antigravity has no persisted credential, so a checked status item + detected CLI is the durable "show its slot" signal.
-  // Why: Antigravity visibility is based on its own detected CLI and snapshot.
+  // Why: Antigravity visibility also requires geminiCliOAuthEnabled because its usage snapshot mirrors the Gemini fetch.
   const antigravityUsageConfigured =
     statusBarItems.includes('antigravity') &&
-    isStatusBarItemAvailable('antigravity', detectedAgentIds, settings)
+    isStatusBarItemAvailable('antigravity', detectedAgentIds)
   // Why: thread non-GlobalSettings durability flags so bars stay visible across reloads and snapshot refreshes.
   const usageSettings = {
     ...settings,
@@ -138,7 +138,7 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
   const showAntigravity =
     visibleAntigravity !== null &&
     statusBarItems.includes('antigravity') &&
-    isStatusBarItemAvailable('antigravity', detectedAgentIds, settings)
+    isStatusBarItemAvailable('antigravity', detectedAgentIds)
   // Why: MiniMax is cookie-auth, not a CLI on PATH, so detection-gating doesn't apply.
   const showMiniMax = visibleMiniMax !== null && statusBarItems.includes('minimax')
   const showGrok =
@@ -268,7 +268,6 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     setMenuOpen,
     setMenuPoint,
     setStatusBarUsageMode,
-    settings,
     showEmptyUsageCta,
     showFloatingTerminalToggle,
     showFloatingWorkspaceAttentionDot,

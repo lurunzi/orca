@@ -3,7 +3,6 @@ import { vi, type Mock } from 'vitest'
 import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import type { RateLimitService } from './service'
 import { fetchCodexRateLimits } from './codex-fetcher'
-import { fetchAntigravityRateLimits } from './antigravity-usage-fetcher'
 import { fetchGeminiRateLimits } from './gemini-usage-fetcher'
 import { fetchKimiRateLimits } from './kimi-fetcher'
 import { fetchMiniMaxRateLimits } from './minimax/minimax-fetcher'
@@ -13,6 +12,7 @@ import { fetchCursorRateLimits } from './cursor-fetcher'
 import { readCursorAuthSession } from './cursor-auth'
 import { fetchOpenCodeGoUsage } from './opencode-go-usage-source-selection'
 import { fetchZcodeRateLimits } from './zcode-usage-fetcher'
+import { fetchAntigravityRateLimits } from './antigravity-usage-fetcher'
 import { hasMiniMaxSessionCookie } from '../minimax/minimax-cookie-store'
 
 export type Deferred<T> = {
@@ -88,7 +88,6 @@ export function unavailableProvider(
 // individual retry lane need healthy providers minted fresh at fetch time.
 export function mockFreshBackgroundProviderFetches(): void {
   vi.mocked(fetchCodexRateLimits).mockImplementation(async () => okProvider('codex', 24))
-  vi.mocked(fetchAntigravityRateLimits).mockImplementation(async () => okProvider('antigravity', 0))
   vi.mocked(fetchGeminiRateLimits).mockImplementation(async () => okProvider('gemini', 0))
   vi.mocked(fetchOpenCodeGoUsage).mockImplementation(async () => okProvider('opencode-go', 0))
   vi.mocked(fetchKimiRateLimits).mockImplementation(async () => okProvider('kimi', 0))
@@ -96,12 +95,14 @@ export function mockFreshBackgroundProviderFetches(): void {
   vi.mocked(fetchGrokRateLimits).mockImplementation(async () => unavailableProvider('grok'))
   vi.mocked(fetchCursorRateLimits).mockImplementation(async () => unavailableProvider('cursor'))
   vi.mocked(fetchZcodeRateLimits).mockImplementation(async () => unavailableProvider('zcode'))
+  vi.mocked(fetchAntigravityRateLimits).mockImplementation(async () =>
+    unavailableProvider('antigravity')
+  )
 }
 
 /** Shared `beforeEach` body: healthy stubs for every provider the service polls. */
 export function resetRateLimitProviderMocks(): void {
   vi.clearAllMocks()
-  vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 0, Date.now()))
   vi.mocked(fetchGeminiRateLimits).mockResolvedValue(okProvider('gemini', 0, Date.now()))
   vi.mocked(fetchOpenCodeGoUsage).mockResolvedValue(okProvider('opencode-go', 0, Date.now()))
   vi.mocked(fetchKimiRateLimits).mockResolvedValue(okProvider('kimi', 0, Date.now()))
@@ -116,6 +117,7 @@ export function resetRateLimitProviderMocks(): void {
   })
   vi.mocked(fetchCursorRateLimits).mockResolvedValue(unavailableProvider('cursor'))
   vi.mocked(fetchZcodeRateLimits).mockResolvedValue(unavailableProvider('zcode'))
+  vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(unavailableProvider('antigravity'))
   vi.mocked(hasMiniMaxSessionCookie).mockReturnValue(false)
   vi.mocked(readGrokAuthSession).mockReturnValue({ status: 'missing' })
   vi.mocked(readCursorAuthSession).mockResolvedValue({ status: 'missing' })

@@ -7,7 +7,7 @@ import type { RuntimePtyWorktreeRecord } from './runtime-terminal-state-records'
 import { hasCompatibleAgentTitleIdentity } from '../../shared/agent-title-owner'
 import type { PtyForegroundProcessRead } from './runtime-terminal-contracts'
 import { recognizeAgentProcess } from '../../shared/agent-process-recognition'
-import { isShellProcess } from '../../shared/shell-process-detection'
+import { settleForegroundShellExit } from './windows-shell-exit-proof'
 import type {
   AgentPromptActivity,
   AgentPromptWaitTextCache
@@ -71,7 +71,81 @@ export class OrcaRuntimeWithSerializeAgentPromptSubmission extends OrcaRuntimeWi
     return this.ptyForegroundAgent.read(ptyId, afterTitleObservation)
   }
 
+  protected async recheckHookAgentPresenceForPty(
+    ptyId: string
+  ): Promise<'live' | 'unverifiable' | 'exited' | null> {
+    if (!this.checkHookAgentPresenceFn) {
+      return null
+    }
+    const verdicts = await Promise.all(
+      Array.from(this.collectAgentStatusPaneKeysForPty(ptyId), (paneKey) =>
+        this.checkHookAgentPresenceFn(paneKey)
+      )
+    )
+    if (verdicts.includes('live')) {
+      return 'live'
+    }
+    if (verdicts.includes('unverifiable')) {
+      return 'unverifiable'
+    }
+    return verdicts.includes('exited') ? 'exited' : null
+  }
+
   protected confirmPtyAgentExit(ptyId: string, recoverCompletedHook = false): void {
+    const current = this.ptysById.get(ptyId)
+    const incarnation = current?.incarnationId
+    void this.recheckHookAgentPresenceForPty(ptyId).then((verdict) => {
+      if (this.ptysById.get(ptyId) !== current || current?.incarnationId !== incarnation) {
+        return
+      }
+      // Why: without an identified owner (null) the foreground read keeps today's rules; with one
+      // whose process cannot be checked right now, silence from that read is never an exit.
+      if (verdict === null || verdict === 'unverifiable') {
+        this.confirmLegacyPtyAgentExit(ptyId, recoverCompletedHook, verdict === 'unverifiable')
+      } else if (verdict === 'exited' && !recoverCompletedHook) {
+        this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
+      } else if (verdict === 'live') {
+        this.restoreDisprovedAgentExit(ptyId)
+      } else {
+        this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
+      }
+    })
+  }
+
+  private restoreDisprovedAgentExit(ptyId: string, confirmedStatus?: 'idle'): void {
+    const current = this.ptysById.get(ptyId)
+    const restoredStatus = this.ptyTitleTrackersByPtyId
+      .get(ptyId)
+      ?.tracker.restoreLastAgentExit(confirmedStatus)
+    if (!current || restoredStatus === null || restoredStatus === undefined) {
+      return
+    }
+    current.lastAgentStatus = restoredStatus
+    if (restoredStatus === 'idle') {
+      this.resolvePtyTuiIdleWaiters(current, ptyId)
+    }
+    for (const leaf of this.getLeavesForPty(ptyId)) {
+      if (leaf.lastAgentStatus !== null) {
+        continue
+      }
+      // Why: the live agent disproved the neutral title's exit signal; keep runtime delivery state aligned with the restored tracker.
+      leaf.lastAgentStatus = restoredStatus
+      if (restoredStatus === 'idle') {
+        this.resolveTuiIdleWaiters(leaf)
+        // Why gated like every other delivery edge: a neutral-title restoration can
+        // reinstate `idle` from a name-only title, which is not evidence a turn ended.
+        if (this.checkDeliverySettledAndArmRecheck(leaf)) {
+          this.deliverPendingMessagesForLeaf(leaf)
+        }
+      }
+    }
+  }
+
+  private confirmLegacyPtyAgentExit(
+    ptyId: string,
+    recoverCompletedHook: boolean,
+    _keepOnSilence: boolean
+  ): void {
     const pty = this.ptysById.get(ptyId)
     const handle = this.handleByPtyId.get(ptyId)
     if (
@@ -85,6 +159,7 @@ export class OrcaRuntimeWithSerializeAgentPromptSubmission extends OrcaRuntimeWi
     const titleObservedAt = pty?.lastOscTitleAt ?? null
     const foregroundRead = this.readPtyForegroundProcessFromController(ptyId, titleObservedAt ?? 0)
     if (!pty?.connected || !foregroundRead) {
+      // Fork: unverifiable foreground evidence never closes chat, owner or not (07da011304).
       this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
       return
     }
@@ -122,69 +197,27 @@ export class OrcaRuntimeWithSerializeAgentPromptSubmission extends OrcaRuntimeWi
           recoverCompletedHook && recognizeAgentProcess(result.process)?.agent === 'codex'
             ? 'idle'
             : undefined
-        const restoredStatus = this.ptyTitleTrackersByPtyId
-          .get(ptyId)
-          ?.tracker.restoreLastAgentExit(confirmedStatus)
-        if (restoredStatus !== null && restoredStatus !== undefined) {
-          current.lastAgentStatus = restoredStatus
-          if (restoredStatus === 'idle') {
-            this.resolvePtyTuiIdleWaiters(current, ptyId)
-          }
-          for (const leaf of this.getLeavesForPty(ptyId)) {
-            if (leaf.lastAgentStatus !== null) {
-              continue
-            }
-            // Why: the foreground agent disproved the neutral title's exit signal; keep runtime delivery state aligned with the restored tracker.
-            leaf.lastAgentStatus = restoredStatus
-            if (restoredStatus === 'idle') {
-              this.resolveTuiIdleWaiters(leaf)
-              // Why gated like every other delivery edge: a neutral-title restoration can
-              // reinstate `idle` from a name-only title, which is not evidence a turn ended.
-              if (this.checkDeliverySettledAndArmRecheck(leaf)) {
-                this.deliverPendingMessagesForLeaf(leaf)
-              }
-            }
-          }
-        }
+        this.restoreDisprovedAgentExit(ptyId, confirmedStatus)
         return
       }
-      if (
-        !recoverCompletedHook &&
-        result.controller === this.ptyController &&
-        result.available &&
-        result.process?.trim() &&
-        isShellProcess(result.process)
-      ) {
-        const confirmShell = result.controller.confirmShellForeground
-        // Why: local ConPTY names the spawned shell whenever it cannot see the foreground, so on
-        // Windows that name is only a candidate until the PTY job proves the shell is alone.
-        if (
-          process.platform !== 'win32' ||
-          current.connectionId ||
-          current.isWsl === true ||
-          !confirmShell
-        ) {
-          this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
-          return
-        }
-        void confirmShell
-          .call(result.controller, ptyId)
-          .catch(() => false)
-          .then((confirmed) => {
-            const latest = this.ptysById.get(ptyId)
-            if (latest !== pty || !latest.connected || latest.incarnationId !== incarnationId) {
-              return
-            }
-            if (confirmed) {
-              this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
-            } else {
-              this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
-            }
-          })
-      } else {
-        // Unverifiable foreground evidence must not close chat or consume the next exit candidate.
+      const keep = (): void =>
         this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
-      }
+      const confirmShell = result.controller.confirmShellForeground
+      settleForegroundShellExit({
+        process:
+          !recoverCompletedHook && result.controller === this.ptyController && result.available
+            ? result.process
+            : undefined,
+        isLocalWindowsPty:
+          process.platform === 'win32' && !current.connectionId && current.isWsl !== true,
+        confirmShell: confirmShell && (() => confirmShell.call(result.controller, ptyId)),
+        isCurrent: () =>
+          this.ptysById.get(ptyId) === pty &&
+          pty?.connected === true &&
+          pty.incarnationId === incarnationId,
+        exit: () => this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' }),
+        keep
+      })
     })
   }
 

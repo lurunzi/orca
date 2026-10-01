@@ -170,12 +170,13 @@ function revoke(deps: StructuredSessionCoordinatorIdentityDeps, sessionId: strin
 
 /**
  * Lets a child spawned after restart find its grant. Install BEFORE the host: host install can
- * resume sessions, and a spawn that misses the loader launches without its identity.
+ * resume sessions, and a spawn that misses the loader launches without its identity. Never creates
+ * the database: every session's idle edge asks, and a grant can only live in an existing one.
  */
-export function installStructuredSessionIdentityLoader(getDb: () => OrchestrationDb): void {
+export function installStructuredSessionIdentityLoader(getDb: () => OrchestrationDb | null): void {
   structuredWorkerIdentities.setSessionIdentityLoader((sessionId) => {
     try {
-      const row = getDb().getActiveStructuredSessionIdentityBySessionId(sessionId)
+      const row = getDb()?.getActiveStructuredSessionIdentityBySessionId(sessionId)
       if (!row) {
         return null
       }
@@ -194,6 +195,7 @@ export function installStructuredSessionIdentityLoader(getDb: () => Orchestratio
  */
 export function bindStructuredSessionCoordinatorIdentities(args: {
   getDb: () => OrchestrationDb
+  getExistingDb?: () => OrchestrationDb | null
   host: StructuredAgentSessionHost
   onSessionActivity: (sessionId: string) => void
 }): void {
@@ -201,7 +203,7 @@ export function bindStructuredSessionCoordinatorIdentities(args: {
     return
   }
   watchedHosts.add(args.host)
-  installStructuredSessionIdentityLoader(args.getDb)
+  installStructuredSessionIdentityLoader(args.getExistingDb ?? args.getDb)
   const onStatus = (sessionId: string) => {
     if (grantedSessionIds.has(sessionId)) {
       args.onSessionActivity(sessionId)

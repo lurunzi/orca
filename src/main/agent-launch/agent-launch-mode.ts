@@ -24,7 +24,7 @@ import type {
   AgentLaunchModeReceipt
 } from '../../shared/agent-launch-intent'
 import type { GlobalSettings } from '../../shared/global-settings-types'
-import { RUNTIME_CAPABILITIES } from '../../shared/protocol-version'
+import { ADVERTISED_RUNTIME_CAPABILITIES } from '../../shared/agent-provider-runtime-capabilities'
 import {
   prefersStructuredNativeChatByDefault,
   resolveStructuredNativeChatSupport,
@@ -144,7 +144,7 @@ export function decideAgentLaunchMode(args: {
     agent,
     executionHostId: placement.on ? `runtime:${placement.on}` : 'local',
     reusesTerminal: Boolean(placement.terminal),
-    hostCapabilities: RUNTIME_CAPABILITIES,
+    hostCapabilities: ADVERTISED_RUNTIME_CAPABILITIES,
     // The floating workspace has nowhere to keep a session, so it is decided here rather than left
     // to the host probe below, which cannot answer for a workspace with no record. WSL still is:
     // the create-support probe reads the resolved workspace rather than guessing from a

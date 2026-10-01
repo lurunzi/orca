@@ -281,8 +281,6 @@ async function installOnJournal(
     ...(deps.openCodexConnection ? { openConnection: deps.openCodexConnection } : {}),
     ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
     modelCatalog: agentModelCatalogStore,
-    onBackgroundTasksChanged: (sessionId, state) =>
-      host?.publishBackgroundTaskState(sessionId, state),
     onChildWorkEvidence: (sessionId, evidence) =>
       host?.publishChildWorkEvidence(sessionId, evidence),
     onDispatchSettledLate,
@@ -310,8 +308,6 @@ async function installOnJournal(
         }
       : {}),
     onLifecycleEvent: (event) => lifecycle.deliver(event),
-    onBackgroundTasksChanged: (sessionId, state) =>
-      host?.publishBackgroundTaskState(sessionId, state),
     onChildWorkEvidence: (sessionId, evidence) =>
       host?.publishChildWorkEvidence(sessionId, evidence),
     onDispatchSettledLate,

@@ -1,218 +1,191 @@
-import { hasReachedAppVersion } from '../../shared/app-version'
-import type { ProviderRateLimits, RateLimitBucket } from '../../shared/rate-limit-types'
-import { resolveAntigravityUsageCommand } from './antigravity-usage-command'
-import { execFileCaptureToTermination } from '../git/command-runner/exec-file-capture'
+import { runProcess } from '../../shared/child-process/run-process'
+import { resolveCommandOnLocalPath } from '../ipc/command-path-resolver'
+import { resolveLoginShellEnvironment } from '../startup/login-shell-environment'
+import type { ProviderRateLimits, UsageRateLimitFailureKind } from '../../shared/rate-limit-types'
+import {
+  ANTIGRAVITY_USAGE_ARGS,
+  ANTIGRAVITY_USAGE_MAX_OUTPUT_BYTES,
+  ANTIGRAVITY_USAGE_TIMEOUT_MS,
+  antigravityCommandName
+} from './antigravity-usage-command'
+import { parseAntigravityUsageStdout, stdoutShowsModelTurn } from './antigravity-usage-response'
 
-const AGY_USAGE_ARGS = ['--print', '/usage', '--output-format', 'json']
-const AGY_USAGE_TIMEOUT_MS = 10_000
-const AGY_USAGE_MAX_BUFFER = 1024 * 1024
+/**
+ * Observed verbatim in agy's own log when the keyring holds no session. agy exits 0 and prints this
+ * instead of a usage envelope, so the text is the only thing that separates "signed out" from
+ * "answered nothing".
+ */
+const NOT_SIGNED_IN_MARKER = 'not logged into antigravity'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object'
+const UNSUPPORTED_USAGE_COMMAND_REASON =
+  'Antigravity usage is not available. This version of the Antigravity CLI answers `/usage` as a prompt instead of a command, so Orca stopped asking rather than spend quota on it. Update `agy` and restart Orca.'
+
+/**
+ * Latched once agy answers the quota read with a model turn.
+ *
+ * Why latch instead of retrying: the evidence that this agy cannot answer `/usage` is the same
+ * event that spends a turn of the user's quota. Retrying on a cadence would keep paying for the
+ * same discovery, so the probe is abandoned for the rest of the process's life.
+ */
+let usageCommandUnsupported = false
+
+/** Clears the unsupported latch. Tests only — a live process has no way back. */
+export function resetAntigravityUsageSupportForTests(): void {
+  usageCommandUnsupported = false
 }
 
-function emptyAntigravityResult(
-  status: 'error' | 'unavailable',
-  error: string,
-  now: number,
-  failureKind: 'cli-unavailable' | 'usage-unavailable' | 'parse' | 'unknown'
+export type AntigravityUsageDependencies = {
+  /** Injected so tests exercise the classification without spawning agy. */
+  runCommand?: typeof runProcess
+  resolveCommand?: typeof resolveCommandOnLocalPath
+  resolveEnvironment?: () => Promise<NodeJS.ProcessEnv>
+  platform?: NodeJS.Platform
+  now?: () => number
+}
+
+export type FetchAntigravityRateLimitsOptions = AntigravityUsageDependencies & {
+  signal?: AbortSignal
+}
+
+function unavailable(
+  message: string,
+  failureKind: UsageRateLimitFailureKind,
+  now: number
 ): ProviderRateLimits {
   return {
     provider: 'antigravity',
     session: null,
     weekly: null,
-    buckets: [],
     updatedAt: now,
-    error,
-    status,
-    usageMetadata: { source: 'cli', failureKind }
+    error: message,
+    // Why 'unavailable' and not 'error' for every failure: an absent CLI or a signed-out account is
+    // a state the user can act on, and the status bar renders it as guidance rather than as a
+    // refresh that keeps failing (#7809, #14227).
+    status: 'unavailable',
+    usageMetadata: { source: 'cli', attemptedSources: ['cli'], failureKind }
   }
 }
 
-function parseWindowMinutes(window: unknown): number {
-  if (window === '5h') {
-    return 300
-  }
-  if (window === 'weekly') {
-    return 10080
-  }
-  return 0
-}
-
-function createAgyTimeoutError(): Error {
-  return Object.assign(new Error('The agy CLI timed out.'), { code: 'ETIMEDOUT' })
-}
-
-function parseResetAt(value: unknown): number | null {
-  if (typeof value !== 'string') {
-    return null
-  }
-  const parsed = Date.parse(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function parseAgyUsageResponse(value: unknown, now = Date.now()): ProviderRateLimits {
-  const root = isRecord(value) ? value : {}
-  const command = isRecord(root.command) ? root.command : {}
-  const data = isRecord(command.data) ? command.data : {}
-  const groups = data.groups
-  const buckets: RateLimitBucket[] = []
-  if (Array.isArray(groups)) {
-    for (const groupValue of groups) {
-      if (!groupValue || typeof groupValue !== 'object') {
-        continue
-      }
-      const group = groupValue
-      const groupName = typeof group.name === 'string' ? group.name.trim() : ''
-      if (!groupName || !Array.isArray(group.buckets)) {
-        continue
-      }
-      const groupDescription =
-        typeof group.description === 'string' ? group.description.trim() || null : null
-      for (const bucketValue of group.buckets) {
-        if (!bucketValue || typeof bucketValue !== 'object') {
-          continue
-        }
-        const bucket = bucketValue
-        const name = typeof bucket.name === 'string' ? bucket.name.trim() : ''
-        const remaining = bucket.remaining_fraction
-        if (
-          !name ||
-          typeof remaining !== 'number' ||
-          !Number.isFinite(remaining) ||
-          remaining < 0 ||
-          remaining > 1
-        ) {
-          continue
-        }
-        const sourceWindow = typeof bucket.window === 'string' ? bucket.window.trim() : ''
-        buckets.push({
-          ...(typeof bucket.id === 'string' && bucket.id.trim() ? { id: bucket.id.trim() } : {}),
-          // Older clients ignore groupName, so keep each quota pool identifiable.
-          name: `${groupName}: ${name}`,
-          groupName,
-          groupDescription,
-          windowMinutes: parseWindowMinutes(sourceWindow),
-          ...(sourceWindow ? { windowLabel: sourceWindow } : {}),
-          usedPercent: (1 - remaining) * 100,
-          resetsAt: parseResetAt(bucket.reset_time),
-          resetDescription: null
-        })
-      }
-    }
-  }
-  if (buckets.length === 0) {
-    return emptyAntigravityResult(
-      'unavailable',
-      'Antigravity usage is not available. The agy CLI returned no quota buckets.',
-      now,
-      'usage-unavailable'
-    )
-  }
+function failed(
+  message: string,
+  failureKind: UsageRateLimitFailureKind,
+  now: number
+): ProviderRateLimits {
   return {
     provider: 'antigravity',
     session: null,
     weekly: null,
-    buckets,
     updatedAt: now,
+    error: message,
+    status: 'error',
+    usageMetadata: { source: 'cli', attemptedSources: ['cli'], failureKind }
+  }
+}
+
+/**
+ * Reads Antigravity quota from the Antigravity CLI itself.
+ *
+ * Why the CLI and not the Gemini mirror it replaces: Orca used to publish a *successful* Gemini
+ * `retrieveUserQuota` read under the Antigravity provider id. That reported Gemini CLI per-model
+ * buckets on a 60-minute window, so Antigravity's real pools ("Gemini Models" and "Claude and GPT
+ * models", each weekly) were never shown and the weekly limit was always null (#9122, #22511). It
+ * also made the segment depend on an installed `@google/gemini-cli` for token refresh, which an
+ * Antigravity user has no reason to have.
+ *
+ * This runs on whichever machine owns execution; the caller is responsible for not asking a local
+ * agy about a remote workspace's quota.
+ */
+export async function fetchAntigravityRateLimits(
+  options: FetchAntigravityRateLimitsOptions = {}
+): Promise<ProviderRateLimits> {
+  const now = options.now ?? Date.now
+  if (usageCommandUnsupported) {
+    return unavailable(UNSUPPORTED_USAGE_COMMAND_REASON, 'usage-unavailable', now())
+  }
+  const run = options.runCommand ?? runProcess
+  const resolve = options.resolveCommand ?? resolveCommandOnLocalPath
+  const platform = options.platform ?? process.platform
+  const resolveEnvironment = options.resolveEnvironment ?? (() => resolveLoginShellEnvironment())
+
+  // Why the login shell's env: agy installs to ~/.local/bin, which is on the user's PATH but not on
+  // the PATH an Electron app inherits from the window server or a desktop launcher.
+  const env = await resolveEnvironment()
+  const command = antigravityCommandName()
+  const program = await resolve(command, { platform, env })
+  if (!program) {
+    return unavailable(
+      `Antigravity usage is not available. The Antigravity CLI (\`${command}\`) was not found on this machine.`,
+      'cli-unavailable',
+      now()
+    )
+  }
+
+  let result: Awaited<ReturnType<typeof runProcess>>
+  try {
+    result = await run({
+      program,
+      args: ANTIGRAVITY_USAGE_ARGS,
+      env,
+      timeoutMs: ANTIGRAVITY_USAGE_TIMEOUT_MS,
+      maxOutputBytes: ANTIGRAVITY_USAGE_MAX_OUTPUT_BYTES,
+      signal: options.signal
+    })
+  } catch (error) {
+    return failed(
+      `Antigravity usage is not available. The Antigravity CLI could not be started: ${error instanceof Error ? error.message : 'unknown error'}.`,
+      'cli-unavailable',
+      now()
+    )
+  }
+
+  if (result.timedOut) {
+    return failed(
+      'Antigravity usage is not available. The Antigravity CLI did not answer in time.',
+      'usage-unavailable',
+      now()
+    )
+  }
+
+  const output = `${result.stdout}\n${result.stderr}`
+  if (output.toLowerCase().includes(NOT_SIGNED_IN_MARKER)) {
+    return unavailable(
+      'Antigravity usage is not available. Sign in with `agy` to report this account’s quota.',
+      'missing-credentials',
+      now()
+    )
+  }
+
+  const reading = parseAntigravityUsageStdout(result.stdout)
+  // Why the successful read is checked first: a real reading can never be evidence of a prompt, so
+  // ordering it ahead of the turn check makes a false latch impossible.
+  if (!reading && stdoutShowsModelTurn(result.stdout)) {
+    usageCommandUnsupported = true
+    return unavailable(UNSUPPORTED_USAGE_COMMAND_REASON, 'usage-unavailable', now())
+  }
+  if (!reading) {
+    // Why a non-zero exit is reported only here: `runProcess` treats the exit code as data, and agy
+    // exits 0 for a signed-out read, so the code only adds detail once the payload is missing.
+    const exitDetail = result.code === 0 || result.code === null ? '' : ` (exit ${result.code})`
+    return failed(
+      `Antigravity usage is not available. The Antigravity CLI did not report a quota${exitDetail}.`,
+      'parse',
+      now()
+    )
+  }
+
+  return {
+    provider: 'antigravity',
+    session: reading.session,
+    weekly: reading.weekly,
+    buckets: reading.buckets.map(({ id: _id, ...bucket }) => bucket),
+    updatedAt: now(),
     error: null,
     status: 'ok',
-    usageMetadata: { source: 'cli', lastSuccessfulSource: 'cli' }
+    usageMetadata: {
+      source: 'cli',
+      attemptedSources: ['cli'],
+      lastSuccessfulSource: 'cli',
+      credentialSource: 'antigravity-cli'
+    }
   }
 }
-
-function classifyAgyFailure(error: unknown): {
-  message: string
-  status: 'error' | 'unavailable'
-  failureKind: 'cli-unavailable' | 'usage-unavailable' | 'parse' | 'unknown'
-} {
-  const record = isRecord(error) ? error : {}
-  const stderr = typeof record.stderr === 'string' ? record.stderr.trim() : ''
-  if (record.code === 'ENOENT') {
-    return {
-      message: 'Antigravity usage is unavailable because the agy CLI was not found.',
-      status: 'unavailable',
-      failureKind: 'cli-unavailable'
-    }
-  }
-  if (
-    record.code === 'ETIMEDOUT' ||
-    record.code === 'ERR_CHILD_PROCESS_TIMEOUT' ||
-    record.killed === true ||
-    record.signal === 'SIGTERM'
-  ) {
-    return {
-      message: 'Antigravity usage could not be refreshed before the agy CLI timed out.',
-      status: 'error',
-      failureKind: 'unknown'
-    }
-  }
-  if (/auth|login|sign.?in|credential/i.test(stderr)) {
-    return {
-      message: 'Antigravity usage is unavailable because the agy CLI is not authenticated.',
-      status: 'unavailable',
-      failureKind: 'usage-unavailable'
-    }
-  }
-  return {
-    message: 'Antigravity usage could not be read from the agy CLI.',
-    status: 'error',
-    failureKind: 'unknown'
-  }
-}
-
-export async function fetchAntigravityRateLimits(
-  signal?: AbortSignal,
-  commandOverride?: string
-): Promise<ProviderRateLimits> {
-  const now = Date.now()
-  const resolved = resolveAntigravityUsageCommand(commandOverride)
-  if (!resolved.ok) {
-    return emptyAntigravityResult('unavailable', resolved.error, now, 'cli-unavailable')
-  }
-  const command = resolved.command
-  try {
-    // Before 1.1.11, print /usage starts a model turn instead of reading quota.
-    const versionResult = await execFileCaptureToTermination(command, ['--version'], {
-      encoding: 'utf8',
-      timeout: 5_000,
-      maxBuffer: 4_096,
-      signal,
-      createTimeoutError: createAgyTimeoutError
-    })
-    const version = String(versionResult.stdout).trim()
-    if (!hasReachedAppVersion(version, '1.1.11')) {
-      return emptyAntigravityResult(
-        'unavailable',
-        'Antigravity usage requires agy 1.1.11 or newer. Update agy and refresh usage.',
-        now,
-        'cli-unavailable'
-      )
-    }
-    const { stdout } = await execFileCaptureToTermination(command, AGY_USAGE_ARGS, {
-      encoding: 'utf8',
-      timeout: AGY_USAGE_TIMEOUT_MS,
-      maxBuffer: AGY_USAGE_MAX_BUFFER,
-      signal,
-      createTimeoutError: createAgyTimeoutError
-    })
-    try {
-      return parseAgyUsageResponse(JSON.parse(String(stdout)), now)
-    } catch {
-      return emptyAntigravityResult(
-        'error',
-        'Antigravity usage returned malformed JSON from the agy CLI.',
-        now,
-        'parse'
-      )
-    }
-  } catch (error) {
-    if (signal?.aborted || (isRecord(error) && error.name === 'AbortError')) {
-      throw error
-    }
-    const failure = classifyAgyFailure(error)
-    return emptyAntigravityResult(failure.status, failure.message, now, failure.failureKind)
-  }
-}
-
-export { AGY_USAGE_ARGS, parseAgyUsageResponse }

@@ -9,7 +9,9 @@ export function observeClaudeSessionFrame(
   observeClaudePromptSuggestion(session, event)
   if (event.type === 'ended') {
     session?.childWork.clear()
+    session?.backgroundTasks.clear()
   } else if (event.type === 'message') {
     session?.childWork.observe(event.message)
+    session?.backgroundTasks.observe(event.message, event.startsTurn === true)
   }
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { RESUMABLE_TUI_AGENTS } from '../../../shared/agent-session-resume'
-import { AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY } from '../../../shared/agent-provider-runtime-capabilities'
+import {
+  ADVERTISED_RUNTIME_CAPABILITIES,
+  AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY
+} from '../../../shared/agent-provider-runtime-capabilities'
 import {
   AGENT_SESSION_QODER_RESUME_RUNTIME_CAPABILITY,
   AGENT_SESSION_CODEBUDDY_RESUME_RUNTIME_CAPABILITY,
@@ -18,7 +21,9 @@ describe('agentResumeHostAuthorityCapability', () => {
     expect(agentResumeHostAuthorityCapability('cursor')).toBe(
       AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY
     )
-    expect(RUNTIME_CAPABILITIES).toContain(AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY)
+    expect(ADVERTISED_RUNTIME_CAPABILITIES).toContain(
+      AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY
+    )
   })
 
   it('gates Muse resume behind its own advertised capability', () => {

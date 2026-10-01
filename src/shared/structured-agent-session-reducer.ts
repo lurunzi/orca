@@ -14,6 +14,7 @@ import type {
 } from './agent-session-wire'
 import type { AgentSessionRefusalReference } from './agent-session-wire-refusals'
 import { backgroundTaskStatesEqual } from './agent-session-background-task-state-equality'
+import { admitAgentSessionBackgroundTaskState } from './agent-session-background-task-state-admission'
 import { agentJournalSubmissionKey } from './agent-session-journal-item-key'
 import {
   MAX_RETAINED_ITEMS,
@@ -137,7 +138,7 @@ function replacePage(
     ...(backgroundTasks !== undefined
       ? { backgroundTasks }
       : page.backgroundTasks !== undefined
-        ? { backgroundTasks: page.backgroundTasks }
+        ? { backgroundTasks: admitAgentSessionBackgroundTaskState(page.backgroundTasks) }
         : {})
   }
 }
@@ -220,7 +221,6 @@ export function reduceStructuredAgentSession(
     return {
       ...replacePage(action.page, action.page.fence ?? null, state.backgroundTasks, state.activity),
       commands: state.commands,
-      promptSuggestion: state.promptSuggestion,
       // Live subscription state stays authoritative over a possibly stale history answer.
       ...queuePublicationField(state, action.page),
       ...hostClockField(action.page.hostNow, receivedAt, state.hostClock)
@@ -256,9 +256,13 @@ export function reduceStructuredAgentSession(
   }
   if (event.type === 'snapshot' || event.type === 'reset') {
     return {
-      ...replacePage(event.page, event.fence, event.backgroundTasks, event.activity),
+      ...replacePage(
+        event.page,
+        event.fence,
+        admitAgentSessionBackgroundTaskState(event.backgroundTasks),
+        event.activity
+      ),
       commands: event.commands,
-      promptSuggestion: event.promptSuggestion,
       // A snapshot omits the list when unchanged since the last frame sent to this subscriber.
       ...queuePublicationField(event, event.page, state),
       ...hostClockField(event.hostNow, receivedAt, state.hostClock)
@@ -271,7 +275,9 @@ export function reduceStructuredAgentSession(
     return state
   }
   const backgroundTasks =
-    event.backgroundTasks !== undefined ? event.backgroundTasks : state.backgroundTasks
+    event.backgroundTasks !== undefined
+      ? admitAgentSessionBackgroundTaskState(event.backgroundTasks, state.backgroundTasks)
+      : state.backgroundTasks
   const activity = event.activity !== undefined ? event.activity : state.activity
   const liveItems = liveItemsWithinWindow(state, event.batch.items)
   // Every roster revision, the window's or not: a trimmed roster row keeps its sequence.
@@ -290,7 +296,6 @@ export function reduceStructuredAgentSession(
     subagentRoster === (state.subagentRoster ?? NO_STRUCTURED_AGENT_SUBAGENT_ROSTER) &&
     (event.fence === undefined || event.fence === state.fence) &&
     (event.commands === undefined || event.commands === state.commands) &&
-    (event.promptSuggestion === undefined || event.promptSuggestion === state.promptSuggestion) &&
     (event.queuedMessages === undefined || event.queuedMessages === state.queuedMessages) &&
     (event.queuePause === undefined || event.queuePause === state.queuePause) &&
     backgroundTaskStatesEqual(backgroundTasks, state.backgroundTasks) &&
@@ -328,8 +333,6 @@ export function reduceStructuredAgentSession(
     error: undefined,
     readRefusal: undefined,
     commands: event.commands !== undefined ? event.commands : state.commands,
-    promptSuggestion:
-      event.promptSuggestion !== undefined ? event.promptSuggestion : state.promptSuggestion,
     ...queuePublicationField(event, state),
     ...(backgroundTasks !== undefined ? { backgroundTasks } : {}),
     ...(activity !== undefined ? { activity } : {}),

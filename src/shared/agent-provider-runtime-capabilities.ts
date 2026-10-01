@@ -1,4 +1,6 @@
-// Fork-added capabilities for the Cursor and Antigravity integrations; listed in RUNTIME_CAPABILITIES.
+import { RUNTIME_CAPABILITIES } from './protocol-version'
+
+// Fork-added capabilities for the Cursor and Antigravity integrations.
 export const AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY =
   'agent-session.cursor-resume.v1' as const
 
@@ -16,4 +18,10 @@ export const AGENT_PROVIDER_RUNTIME_CAPABILITIES = [
   CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY,
   ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY,
   AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY
+] as const
+
+/** Everything this host advertises: upstream's list plus the fork's own capabilities. */
+export const ADVERTISED_RUNTIME_CAPABILITIES = [
+  ...RUNTIME_CAPABILITIES,
+  ...AGENT_PROVIDER_RUNTIME_CAPABILITIES
 ] as const

@@ -143,7 +143,7 @@ export class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithStartTuiIdleVis
    * should never open the record store.
    */
   async ensureStructuredAgentSessionHost(): Promise<void> {
-    installStructuredSessionIdentityLoader(() => this.getOrchestrationDb())
+    installStructuredSessionIdentityLoader(() => this.getExistingOrchestrationDb())
     await installStructuredAgentSessionHost({
       stateDirectory: getProfileUserDataPath(),
       hostId: LOCAL_EXECUTION_HOST_ID,
@@ -189,6 +189,7 @@ export class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithStartTuiIdleVis
     if (host) {
       bindStructuredSessionCoordinatorIdentities({
         getDb: () => this.getOrchestrationDb(),
+        getExistingDb: () => this.getExistingOrchestrationDb(),
         host,
         onSessionActivity: (sessionId) => this.notifyStructuredSessionJournalActivity(sessionId)
       })
