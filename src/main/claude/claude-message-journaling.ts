@@ -16,6 +16,7 @@ import type { StructuredAgentSessionEventSink } from '../native-chat/agent-sessi
 import type { ClaudeBackgroundTaskRows } from './claude-background-task-rows'
 import type { ClaudeToolOriginRegistry } from './claude-tool-origin-registry'
 import {
+  claudeDeliveryBody,
   claudeRecord,
   claudeMessageBody,
   claudeMessageIdentity,
@@ -95,7 +96,7 @@ export function journalClaudeMessage(
       : envelope.parentToolUseId
   const stamp = ctx.corrections.stampFor(producerRef)
   const outputEnvelope = claudeOutputEnvelope(envelope)
-  const body = claudeMessageBody(outputEnvelope)
+  const body = claudeMessageBody(outputEnvelope) ?? claudeDeliveryBody(envelope)
   const identity =
     (body && envelope.role === 'assistant' ? ctx.streamedBlocks.reconcile(envelope) : null) ??
     claudeMessageIdentity(envelope)
