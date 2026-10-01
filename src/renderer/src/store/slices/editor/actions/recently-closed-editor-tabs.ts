@@ -123,7 +123,10 @@ export function createRecentlyClosedEditorTabs(
         newActiveTabTypeByWorktree[activeWorktreeId] =
           browserTabsForWorktree.length > 0 ? 'browser' : 'terminal'
         const shouldDeactivateWorktree =
-          browserTabsForWorktree.length === 0 && terminalTabsForWorktree.length === 0
+          // Let the unified close loop select surviving tabs or the landing page.
+          (s.unifiedTabsByWorktree?.[activeWorktreeId] ?? []).length === 0 &&
+          browserTabsForWorktree.length === 0 &&
+          terminalTabsForWorktree.length === 0
 
         // Why: mirrored tabs use host tab ids in tab order while local entries use file ids; remove both shapes.
         const closedFileIds = new Set(
