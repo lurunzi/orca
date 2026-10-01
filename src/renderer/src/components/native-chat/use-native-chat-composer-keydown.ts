@@ -6,11 +6,14 @@ import {
   type HistoryState,
   type NativeChatPickerItem
 } from './native-chat-composer-state'
+import { isMacPlatform } from './native-chat-shortcut'
 
 export type UseNativeChatComposerKeyDownArgs = {
   autocomplete: ComposerAutocomplete
   activeSuggestion: number
   draft: string
+  /** Image chips count as composer content, like typed text. */
+  hasAttachments?: boolean
   history: HistoryState
   isComposing: () => boolean
   completePickerItem: (item: NativeChatPickerItem) => void
@@ -20,6 +23,9 @@ export type UseNativeChatComposerKeyDownArgs = {
   send: () => void
   acceptPromptSuggestion?: () => boolean
   dismissPromptSuggestion?: () => boolean
+  /** Cmd/Ctrl+Enter from an empty composer: send the newest queued draft now; false falls
+   *  through to send. */
+  steerQueued?: (() => boolean) | undefined
   setActiveSuggestion: Dispatch<SetStateAction<number>>
   setDraft: Dispatch<SetStateAction<string>>
   setCaret: Dispatch<SetStateAction<number>>
@@ -30,6 +36,7 @@ export function useNativeChatComposerKeyDown({
   autocomplete,
   activeSuggestion,
   draft,
+  hasAttachments = false,
   history,
   isComposing,
   completePickerItem,
@@ -39,6 +46,7 @@ export function useNativeChatComposerKeyDown({
   send,
   acceptPromptSuggestion,
   dismissPromptSuggestion,
+  steerQueued,
   setActiveSuggestion,
   setDraft,
   setCaret,
@@ -110,6 +118,14 @@ export function useNativeChatComposerKeyDown({
         return
       }
       if (event.key === 'Enter' && !event.shiftKey) {
+        // Platform primary modifier only (AGENTS.md): ⌘ on Mac, Ctrl elsewhere.
+        const steerChord = isMacPlatform() ? event.metaKey : event.ctrlKey
+        // Only from an empty composer: the chord never sends a card past what the user just wrote.
+        const composerEmpty = draft.trim() === '' && !hasAttachments
+        if (steerChord && composerEmpty && steerQueued?.()) {
+          event.preventDefault()
+          return
+        }
         event.preventDefault()
         send()
         return
@@ -141,12 +157,14 @@ export function useNativeChatComposerKeyDown({
       dismissPicker,
       dispatchPickerCommand,
       draft,
+      hasAttachments,
       history,
       interrupt,
       isComposing,
       send,
       acceptPromptSuggestion,
       dismissPromptSuggestion,
+      steerQueued,
       setActiveSuggestion,
       setCaret,
       setDraft,

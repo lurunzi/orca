@@ -58,6 +58,9 @@ function shortLabel(
   if (section.window === p.fableWeekly) {
     return 'Fable'
   }
+  if (p.provider === 'zcode' && section.window === p.monthly) {
+    return section.label
+  }
   return useRemainingDuration
     ? formatRateLimitWindowChipLabel(section.window)
     : formatWindowLabel(section.window.windowMinutes)

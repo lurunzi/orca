@@ -1,10 +1,10 @@
 // Which rows a settled turn folds behind its "Worked for N" status row.
 //
-// A turn's answer is its last assistant row that renders prose; everything the
-// agent said before it is the work that produced it. The journal carries no
-// "this one is the answer" marker on a message, so the answer is derived rather
-// than read — last prose row wins. A provider that starts publishing one can
-// override this derivation without moving the fold.
+// A turn's answer is its last assistant row that renders prose, or its last
+// failure report; everything before it is the work that produced it. The journal
+// carries no "this one is the answer" marker on a message, so the answer is
+// derived rather than read — last candidate wins. So a failed turn ends on its
+// error, and an error the agent recovered from folds behind the answer after it.
 //
 // A hidden delivery (another session's message, a task notification) splits a
 // turn into replies, and each reply keeps its own answer, so a later reply never
@@ -28,6 +28,12 @@ export type NativeChatTurnFoldRow = {
    *  spawn roster or a background task. That row is the durable report of how
    *  the work ended — often the only one — so it never folds. */
   outlivesTurn: boolean
+  /** Whether a system row reports a failure. It competes with prose to be the
+   *  turn's answer, so a turn that failed shows the error as its end. */
+  reportsFailure: boolean
+  /** Whether the row reports a compaction's result. It never folds: hiding it
+   *  would leave the turn's status as the only trace the context was rewritten. */
+  reportsCompaction: boolean
   /** The row follows a hidden delivery, so it opens a new reply in its turn. */
   startsReply?: boolean
 }
@@ -45,28 +51,35 @@ export const NATIVE_CHAT_EMPTY_TURN_FOLD: NativeChatTurnFold = {
   foldableTurnKeys: new Set()
 }
 
-/** The index of each reply's answer: its last assistant row that renders prose.
- *  A turn with no such row has no answer, and folds whole. */
+/** The index of each reply's answer: its last assistant row that renders prose,
+ *  or its last system row reporting a failure. A reply with neither has no
+ *  answer, and folds whole. */
 export function nativeChatTurnAnswerRows(
   rows: readonly NativeChatTurnFoldRow[]
 ): ReadonlySet<number> {
   const answers = new Set<number>()
-  let replyTurnKey: string | undefined
-  let replyAnswer: number | undefined
+  // Each turn's latest candidate in its current reply; a reply start commits it.
+  const replyAnswers = new Map<string, number>()
   for (const [index, row] of rows.entries()) {
-    if (row.turnKey !== replyTurnKey || row.startsReply) {
-      if (replyAnswer !== undefined) {
-        answers.add(replyAnswer)
-      }
-      replyTurnKey = row.turnKey
-      replyAnswer = undefined
+    if (row.turnKey === undefined) {
+      continue
     }
-    if (row.turnKey !== undefined && row.role === 'assistant' && row.rendersProse) {
-      replyAnswer = index
+    if (row.startsReply) {
+      const previous = replyAnswers.get(row.turnKey)
+      if (previous !== undefined) {
+        answers.add(previous)
+      }
+      replyAnswers.delete(row.turnKey)
+    }
+    const isCandidate =
+      row.rendersProse &&
+      (row.role === 'assistant' || (row.role === 'system' && row.reportsFailure))
+    if (isCandidate) {
+      replyAnswers.set(row.turnKey, index)
     }
   }
-  if (replyAnswer !== undefined) {
-    answers.add(replyAnswer)
+  for (const index of replyAnswers.values()) {
+    answers.add(index)
   }
   return answers
 }
@@ -95,11 +108,12 @@ export function nativeChatTurnFold({
   for (const [index, row] of rows.entries()) {
     const { turnKey } = row
     // Outside the fold by construction: the reader's own message anchors the
-    // turn, and a roster or background-task row outlives it.
+    // turn, a roster or background-task row outlives it, and a compaction report explains it.
     if (
       turnKey === undefined ||
       row.role === 'user' ||
       row.outlivesTurn ||
+      row.reportsCompaction ||
       !settledTurnKeys.has(turnKey)
     ) {
       continue

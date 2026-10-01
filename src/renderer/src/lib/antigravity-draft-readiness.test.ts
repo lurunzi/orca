@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY as capability } from '../../../shared/protocol-version'
+import { ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY as capability } from '../../../shared/agent-provider-runtime-capabilities'
 import type * as RuntimeRpcClient from '@/runtime/runtime-rpc-client'
 import { waitForAntigravityDraftReady } from './antigravity-draft-readiness'
 

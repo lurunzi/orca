@@ -2,6 +2,7 @@ import { waitForAntigravityDraftReady } from './antigravity-draft-readiness'
 import { waitForAgentDraftInputReadyOnTab, waitForExpectedAgentOnPty } from './agent-draft-pty-wait'
 import type { GlobalSettings } from '../../../shared/global-settings-types'
 import type { TuiAgent } from '../../../shared/tui-agent'
+import type { TerminalInputKind } from '../../../shared/terminal-input-kind'
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { resolveDraftPasteReadyTimeoutMs } from '../../../shared/draft-paste-ready-timeout'
 import { useAppStore } from '@/store'
@@ -141,7 +142,9 @@ export async function pasteDraftWhenAgentReady(args: {
     content,
     submit: submit === true,
     agent,
-    hostPlatform: args.hostPlatform
+    hostPlatform: args.hostPlatform,
+    // Why launch: this delivers the prompt or draft an agent is started with.
+    inputKind: 'launch'
   })
 }
 
@@ -200,7 +203,9 @@ export async function pasteDraftToAgentPtyWhenReady(args: {
     ptyId,
     content,
     submit: submit === true,
-    agent
+    agent,
+    // Why launch: this delivers the prompt or draft an agent is started with.
+    inputKind: 'launch'
   })
 }
 
@@ -213,7 +218,8 @@ export async function submitPromptToAgentPty(args: {
     settings: getSettingsForAgentTabRuntimeOwner(args.tabId),
     ptyId: args.ptyId,
     content: args.content,
-    submit: true
+    submit: true,
+    inputKind: 'driving'
   })
 }
 
@@ -221,7 +227,7 @@ export async function sendBracketedPasteToRunningAgent(args: {
   ptyId: string
   content: string
 }): Promise<boolean> {
-  return await sendBracketedPasteToAgent({ ptyId: args.ptyId, content: args.content, submit: true })
+  return await sendBracketedPasteToAgent({ ...args, submit: true, inputKind: 'driving' })
 }
 
 async function sendBracketedPasteToAgent(args: {
@@ -231,8 +237,10 @@ async function sendBracketedPasteToAgent(args: {
   submit: boolean
   agent?: TuiAgent
   hostPlatform?: NodeJS.Platform
+  inputKind: TerminalInputKind
 }): Promise<boolean> {
   const { settings = useAppStore.getState().settings, ptyId, content, submit, agent } = args
+  const { inputKind } = args
   const submitRetryDelayMs = agent ? TUI_AGENT_CONFIG[agent]?.submitRetryDelayMs : undefined
   try {
     // Why: paste + Enter (+ retry Enter) must be one transaction, or a concurrent
@@ -242,23 +250,30 @@ async function sendBracketedPasteToAgent(args: {
         args.hostPlatform === 'win32' && agent
           ? TUI_AGENT_CONFIG[agent].windowsInputRecordPasteNewline
           : undefined
-      const sent = await sendAgentDraftPasteContentNow(settings, ptyId, content, undefined, newline)
-      if (!sent || !submit) {
-        return sent
+      const pasted = await sendAgentDraftPasteContentNow(
+        settings,
+        ptyId,
+        content,
+        inputKind,
+        undefined,
+        newline
+      )
+      if (!pasted || !submit) {
+        return pasted
       }
 
       // Why: Claude Code can leave a prompt as editable text when paste-end and
       // Enter arrive in the same PTY write. Split the submit into the next turn so
       // the TUI processes bracketed-paste termination before handling Enter.
       await new Promise<void>((resolve) => window.setTimeout(resolve, POST_PASTE_SUBMIT_DELAY_MS))
-      const submitted = await sendRuntimePtyInputVerified(settings, ptyId, '\r')
+      const submitted = await sendRuntimePtyInputVerified(settings, ptyId, '\r', inputKind)
 
       if (submitRetryDelayMs !== undefined) {
         // Why: agents that render their composer before Enter is live silently eat
         // the first Enter; the retry is best-effort and never downgrades `submitted`.
         await new Promise<void>((resolve) => window.setTimeout(resolve, submitRetryDelayMs))
         try {
-          await sendRuntimePtyInputVerified(settings, ptyId, '\r')
+          await sendRuntimePtyInputVerified(settings, ptyId, '\r', inputKind)
         } catch {
           // Why: a rejected retry leaves the first Enter's verdict untouched.
         }

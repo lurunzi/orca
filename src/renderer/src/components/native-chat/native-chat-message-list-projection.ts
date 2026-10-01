@@ -1,8 +1,10 @@
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import {
   projectNativeChatTranscript,
+  type NativeChatSubagentRow,
   type NativeChatTranscriptProjection
 } from '../../../../shared/native-chat-transcript-projection'
+import type { NativeChatTurnJournal } from '../../../../shared/native-chat-turn-membership'
 import { compareMessages } from './native-chat-session-assembler'
 
 function sameMessage(left: NativeChatMessage, right: NativeChatMessage): boolean {
@@ -22,34 +24,75 @@ function sameMessage(left: NativeChatMessage, right: NativeChatMessage): boolean
   )
 }
 
+function sameRows<T>(
+  left: readonly T[] | undefined,
+  right: readonly T[],
+  same: (a: T, b: T) => boolean
+): boolean {
+  return (
+    left !== undefined &&
+    left.length === right.length &&
+    left.every((item, index) => same(item, right[index]!))
+  )
+}
+
 function sameIds(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
   return left.size === right.size && [...left].every((id) => right.has(id))
 }
 
+const sameSubagentRow = (a: NativeChatSubagentRow, b: NativeChatSubagentRow): boolean =>
+  a.message === b.message && a.turnKey === b.turnKey
+
 export function createNativeChatMessageListProjection(): (
-  messages: NativeChatMessage[]
+  messages: NativeChatMessage[],
+  journal?: NativeChatTurnJournal | null
 ) => NativeChatTranscriptProjection {
-  let previous: NativeChatTranscriptProjection = { messages: [], replyStartIds: new Set() }
+  let previous: NativeChatTranscriptProjection = {
+    conversation: [],
+    subagentRows: new Map(),
+    replyStartIds: new Set()
+  }
   let byId = new Map<string, NativeChatMessage>()
-  return (messages) => {
-    const projection = projectNativeChatTranscript(messages, compareMessages)
-    const replyStartIds = sameIds(previous.replyStartIds, projection.replyStartIds)
-      ? previous.replyStartIds
-      : projection.replyStartIds
-    const next = projection.messages.map((message) => {
+  return (messages, journal) => {
+    const projected = projectNativeChatTranscript(messages, compareMessages, journal)
+    // Folding clones historical tool runs even when every contributing block is unchanged.
+    const settle = (message: NativeChatMessage): NativeChatMessage => {
       const prior = byId.get(message.id)
-      // Folding clones historical tool runs even when every contributing block is unchanged.
       return prior && sameMessage(prior, message) ? prior : message
-    })
-    if (
-      replyStartIds === previous.replyStartIds &&
-      next.length === previous.messages.length &&
-      next.every((message, index) => message === previous.messages[index])
-    ) {
+    }
+    const conversation = projected.conversation.map(settle)
+    const subagentRows = new Map<string, readonly NativeChatSubagentRow[]>()
+    for (const [agentId, rows] of projected.subagentRows) {
+      const settled = rows.map((row) => ({ ...row, message: settle(row.message) }))
+      const prior = previous.subagentRows.get(agentId)
+      subagentRows.set(
+        agentId,
+        prior && sameRows(prior, settled, sameSubagentRow) ? prior : settled
+      )
+    }
+    const sameConversation = sameRows(previous.conversation, conversation, Object.is)
+    const sameSubagents =
+      subagentRows.size === previous.subagentRows.size &&
+      Array.from(subagentRows).every(
+        ([agentId, rows]) => previous.subagentRows.get(agentId) === rows
+      )
+    const sameReplyStarts = sameIds(previous.replyStartIds, projected.replyStartIds)
+    if (sameConversation && sameSubagents && sameReplyStarts) {
       return previous
     }
-    previous = { messages: next, replyStartIds }
-    byId = new Map(next.map((message) => [message.id, message]))
+    previous = {
+      conversation: sameConversation ? previous.conversation : conversation,
+      subagentRows: sameSubagents ? previous.subagentRows : subagentRows,
+      replyStartIds: sameReplyStarts ? previous.replyStartIds : projected.replyStartIds
+    }
+    byId = new Map(
+      [
+        ...conversation,
+        ...Array.from(subagentRows.values())
+          .flat()
+          .map((row) => row.message)
+      ].map((message) => [message.id, message])
+    )
     return previous
   }
 }

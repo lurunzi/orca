@@ -1,6 +1,4 @@
 import type { ClaudeDispatchWaiter, ClaudeSession } from './claude-structured-session-state'
-import type { ClaudeLateDispatchSettlement } from './claude-structured-dispatch'
-import { DISPATCH_REJECTED_CANCELLED } from '../../shared/structured-agent-session-dispatch-rejection'
 
 const MAX_RETIRED_DISPATCH_WAITERS = 64
 
@@ -12,11 +10,13 @@ export function forgetRetiredWaiter(session: ClaudeSession, waiter: ClaudeDispat
 }
 
 /**
- * A waiter with no deadline. The echo Claude sends is emitted when the provider
- * STARTS the turn, so a message queued behind a running turn cannot be echoed
- * until that turn ends — an interval bounded only by the previous turn. Elapsed
- * time is therefore not evidence about delivery, and nothing here expires.
- * Waiters are retired by process facts instead: a failed write, or child exit.
+ * A waiter with no deadline. A mid-turn send Claude folds into the running turn
+ * is replayed mid-turn; one it runs later is replayed only when its own turn
+ * starts — an interval bounded only by the previous turn. Elapsed time is
+ * therefore not evidence about delivery, and nothing here expires. Waiters end
+ * by provider and process facts instead: an echo, a `command_lifecycle` frame,
+ * the CLI's idle after `started` (`claude-command-lifecycle.ts`), a failed
+ * write, or child exit.
  */
 export function waitForReplay(
   session: ClaudeSession,
@@ -60,34 +60,6 @@ export function retireWaiter(session: ClaudeSession, waiter: ClaudeDispatchWaite
         0,
         session.retiredDispatchWaiters.length - MAX_RETIRED_DISPATCH_WAITERS
       )
-    }
-  }
-}
-
-export function settleCancelledClaudeDispatchWaiters(
-  session: ClaudeSession,
-  cancelledUuids: readonly string[],
-  onSettledLate?: ClaudeLateDispatchSettlement
-): void {
-  const cancelled = new Set(cancelledUuids)
-  const activeWaiters = session.dispatchWaiters.filter((waiter) => cancelled.has(waiter.sentUuid))
-  const retiredWaiters = session.retiredDispatchWaiters.filter((waiter) =>
-    cancelled.has(waiter.sentUuid)
-  )
-  for (const waiter of activeWaiters) {
-    forgetWaiter(session, waiter)
-    waiter.resolve(null)
-  }
-  for (const waiter of retiredWaiters) {
-    forgetRetiredWaiter(session, waiter)
-  }
-  for (const waiter of [...activeWaiters, ...retiredWaiters]) {
-    if (waiter.clientMessageId) {
-      onSettledLate?.({
-        clientMessageId: waiter.clientMessageId,
-        state: 'rejected',
-        reason: DISPATCH_REJECTED_CANCELLED
-      })
     }
   }
 }

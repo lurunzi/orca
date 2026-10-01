@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('@/store', () => {
-  const useAppStore = (selector: (state: object) => unknown) => selector(mocks.state)
+  const useAppStore = (selector: (state: unknown) => unknown) => selector(mocks.state)
   useAppStore.getState = () => mocks.state
   return { useAppStore }
 })

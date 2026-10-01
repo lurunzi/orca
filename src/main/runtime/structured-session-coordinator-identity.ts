@@ -19,13 +19,13 @@ import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire
 import type { OrchestrationDb } from './orchestration/db'
 import { readStructuredSessionGateFacts } from './orchestration/structured-mailbox-pointer-host'
 import { structuredSessionIdentityRegistryRow } from './structured-worker-authority'
+import { structuredWorkerOwned } from './structured-worker-custody'
 import {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerHostScope,
   structuredWorkerIdentities,
-  structuredWorkerProcessIncarnation,
-  structuredWorkerRecordIsCurrent
+  structuredWorkerProcessIncarnation
 } from './structured-worker-identity'
 
 export type StructuredSessionCoordinatorIdentityDeps = {
@@ -60,7 +60,9 @@ async function resolveSession(
   if (!structuredWorkerHostScope(record.location)) {
     return { state: 'unavailable', reason: 'not-local' }
   }
-  if (!structuredWorkerRecordIsCurrent(record)) {
+  // Why custody's answer: a chat at rest (released lease, tab still listed) is still the user's
+  // open chat, and authority resolves its granted handle by the same rule.
+  if (structuredWorkerOwned(sessionId) !== true) {
     return { state: 'unavailable', reason: 'missing' }
   }
   return { host, record }
@@ -122,7 +124,7 @@ export async function setStructuredSessionCoordinatorIdentity(
   const attached = host.hasSession(sessionId)
   if (attached) {
     // The restart below would settle a running turn as interrupted.
-    const facts = readStructuredSessionGateFacts(sessionId)
+    const facts = await readStructuredSessionGateFacts(sessionId)
     if (!facts || facts.turnRunning || facts.awaitingHuman) {
       return { state: 'unavailable', reason: 'busy' }
     }

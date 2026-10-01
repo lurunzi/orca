@@ -174,7 +174,7 @@ export function renderTabBarItems({
           onCloseToLeft={() => onCloseToLeft(item.id)}
           onDuplicate={
             runtime.managedBrowserCreationEnabled
-              ? () => onDuplicateBrowserTab?.(item.id)
+              ? () => onDuplicateBrowserTab?.(item.id, item.unifiedTabId)
               : undefined
           }
           onTogglePin={() => togglePinned(item)}

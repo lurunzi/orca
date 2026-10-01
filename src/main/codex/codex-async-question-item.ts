@@ -31,3 +31,11 @@ export function codexAsyncQuestionBlocks(item: CodexThreadItem): NativeChatBlock
     { type: 'tool-result', output: '{"accepted":true}' }
   ]
 }
+
+/** Async questions only ride on a message that carries prose. */
+export function withCodexAsyncQuestionBlocks(
+  blocks: NativeChatBlock[],
+  item: CodexThreadItem
+): NativeChatBlock[] {
+  return blocks.length > 0 ? [...blocks, ...codexAsyncQuestionBlocks(item)] : blocks
+}

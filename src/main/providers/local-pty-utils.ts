@@ -2,6 +2,7 @@ import { basename, isAbsolute, join } from 'node:path'
 import { existsSync, accessSync, statSync, chmodSync, constants as fsConstants } from 'node:fs'
 import type * as pty from 'node-pty'
 import { usesNodePtySpawnHelper } from '../../shared/node-pty-spawn-helper'
+import { TERMINAL_SPAWN_ISSUE_REQUEST } from '../../shared/terminal-spawn-error-copy'
 import {
   hostReportsChildExitStatus,
   wrapShellSpawnForMacosTccAttribution
@@ -310,7 +311,6 @@ export function spawnShellWithFallback(params: ShellSpawnParams): ShellSpawnResu
 
   const diag = formatLocalPtyEnvironmentDiag({ shell: shellPath, cwd })
   throw new Error(
-    `Failed to spawn shell "${shellPath}": ${primaryError ?? 'unknown error'} (${diag}). ` +
-      `If this persists, please file an issue.`
+    `Failed to spawn shell "${shellPath}": ${primaryError ?? 'unknown error'} (${diag}). ${TERMINAL_SPAWN_ISSUE_REQUEST}`
   )
 }

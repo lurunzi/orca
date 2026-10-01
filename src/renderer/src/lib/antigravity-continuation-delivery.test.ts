@@ -83,7 +83,7 @@ describe('Antigravity continuation delivery', () => {
     await expect(waiting).resolves.toBe(true)
     expect(onTimeout).not.toHaveBeenCalled()
     expect(mocks.hostReady).toHaveBeenCalledOnce()
-    expect(mocks.send).toHaveBeenLastCalledWith({}, 'pty', '\r')
+    expect(mocks.send).toHaveBeenLastCalledWith({}, 'pty', '\r', 'launch')
     expect(mocks.subscribers.size).toBe(0)
   })
 
@@ -128,7 +128,7 @@ describe('Antigravity continuation delivery', () => {
     await vi.advanceTimersByTimeAsync(2100)
     await expect(waiting).resolves.toBe(true)
     expect(mocks.hostReady).toHaveBeenCalledWith('tab', 'pty', 60000, {})
-    expect(mocks.send).toHaveBeenLastCalledWith({}, 'pty', '\r')
+    expect(mocks.send).toHaveBeenLastCalledWith({}, 'pty', '\r', 'launch')
   })
 
   it.each(['tab', 'pty'] as const)('rejects process-only fallback on the %s path', async (path) => {

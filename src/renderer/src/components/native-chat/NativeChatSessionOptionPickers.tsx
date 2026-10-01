@@ -35,6 +35,9 @@ import {
   useQueuedSessionOptions,
   withQueuedSessionOption
 } from './native-chat-queued-session-options'
+import { agentSessionThrownFailure } from '../../../../shared/agent-session-write-failure'
+import { RuntimeRpcCallError } from '@/runtime/runtime-rpc-result'
+import { agentSessionWriteFailureText } from './agent-session-write-notice-text'
 
 export type NativeChatSessionOptionPickersProps = {
   surface: SessionOptionsSurface | null
@@ -136,6 +139,15 @@ function DescriptorMenuRows(props: {
   )
 }
 
+/** A host's error is words for its log, so it gets the table's; a local surface's error is
+ *  already written for the person. */
+function optionUpdateFailureDescription(error: unknown): string {
+  if (error instanceof RuntimeRpcCallError) {
+    return agentSessionWriteFailureText(agentSessionThrownFailure(error, error.code), 'option')
+  }
+  return error instanceof Error ? error.message : String(error)
+}
+
 function runSurfaceCall(
   pendingKey: string,
   setPendingId: (id: string | null) => void,
@@ -146,7 +158,7 @@ function runSurfaceCall(
     .catch((error) => {
       toast.error(
         translate('components.native-chat.composer.optionUpdateFailed', 'Could not update option'),
-        { description: error instanceof Error ? error.message : String(error) }
+        { description: optionUpdateFailureDescription(error) }
       )
     })
     .finally(() => setPendingId(null))

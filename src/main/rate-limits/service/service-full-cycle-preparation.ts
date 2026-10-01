@@ -6,6 +6,7 @@ import { fetchGrokRateLimits } from '../grok-fetcher'
 import { readGrokAuthSession } from '../grok-auth'
 import { fetchCursorRateLimits } from '../cursor-fetcher'
 import { readCursorAuthSession } from '../cursor-auth'
+import { fetchZcodeRateLimits } from '../zcode-usage-fetcher'
 import { fetchMiniMaxRateLimits } from '../minimax/minimax-fetcher'
 import { createHash } from 'node:crypto'
 import { fetchOpenCodeGoUsage } from '../opencode-go-usage-source-selection'
@@ -48,6 +49,7 @@ export type FetchAllCyclePrepared = {
   ]
   grokResultPromise: Promise<SettledProviderResult>
   cursorResultPromise: Promise<SettledProviderResult>
+  zcodeResultPromise: Promise<SettledProviderResult>
 }
 
 export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServiceFetchPolicy {
@@ -140,7 +142,8 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         ? this.withFetchingStatus(null, 'minimax')
         : this.withFetchingStatus(previousState.minimax, 'minimax'),
       grok: this.withFetchingStatus(previousState.grok, 'grok'),
-      cursor: this.withFetchingStatus(previousState.cursor, 'cursor')
+      cursor: this.withFetchingStatus(previousState.cursor, 'cursor'),
+      zcode: this.withFetchingStatus(previousState.zcode, 'zcode')
     })
 
     // Why: the Cursor probe reads the macOS Keychain, so it is awaited inside the
@@ -154,6 +157,11 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         (value) => ({ status: 'fulfilled', value }) as const,
         (reason) => ({ status: 'rejected', reason }) as const
       )
+
+    const zcodeResultPromise = fetchZcodeRateLimits({ signal }).then(
+      (value) => ({ status: 'fulfilled', value }) as const,
+      (reason) => ({ status: 'rejected', reason }) as const
+    )
 
     const missingWslCodexHome =
       codexFetchGated || codexHomePath ? null : this.getMissingWslCodexHomeResult(codexTarget)
@@ -192,7 +200,6 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         : (missingWslCodexHome ??
           fetchCodexRateLimits({
             codexHomePath,
-            allowPtyFallback: this.shouldAllowCodexPtyFallback(),
             signal
           })),
       fetchGeminiRateLimits(geminiCliOAuthEnabled),
@@ -252,7 +259,8 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         miniMaxResult
       ],
       grokResultPromise,
-      cursorResultPromise
+      cursorResultPromise,
+      zcodeResultPromise
     }
   }
 }

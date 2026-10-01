@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { prepareHostUiUpdates } from './web-status-bar-host-updates'
 import { getRemoteRuntimeStatus } from './web-runtime-calls'
-import { STATUS_BAR_CURSOR_ITEM_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
+import { STATUS_BAR_CURSOR_ITEM_RUNTIME_CAPABILITY } from '../../../../shared/agent-provider-runtime-capabilities'
 
 vi.mock('./web-runtime-calls', () => ({ getRemoteRuntimeStatus: vi.fn() }))
 const status = {

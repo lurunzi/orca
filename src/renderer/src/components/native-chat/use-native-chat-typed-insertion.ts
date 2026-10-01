@@ -1,6 +1,13 @@
-import type { NativeChatComposerInput } from './native-chat-composer-input'
+import {
+  insertNativeChatPastedText,
+  type NativeChatComposerInput
+} from './native-chat-composer-input'
 import { useCallback, type Dispatch, type RefObject, type SetStateAction } from 'react'
-import { applyMentionSuggestion, type HistoryState } from './native-chat-composer-state'
+import {
+  applyMentionSuggestion,
+  type ComposerAutocomplete,
+  type HistoryState
+} from './native-chat-composer-state'
 
 /** Imperative text insertion and focus for the composer textarea, used by the
  *  paste pipeline and the composer's imperative handle. */
@@ -12,13 +19,11 @@ export function useNativeChatTypedInsertion(args: {
   setCaret: Dispatch<SetStateAction<number>>
   setHistory: Dispatch<SetStateAction<HistoryState>>
   setActiveSuggestion: Dispatch<SetStateAction<number>>
-  onDraftOrCaretChange: (value: string, caret: number) => void
 }): {
   insertTypedText: (text: string) => boolean
+  insertPastedText: (text: string) => boolean
   focus: () => boolean
-  handleDraftChange: (value: string, input: NativeChatComposerInput) => void
-  handleSelect: (input: NativeChatComposerInput) => void
-  acceptMention: (query: string) => void
+  contains: (node: Node | null) => boolean
 } {
   const { textareaRef, caret, draft, setDraft, setCaret, setHistory, setActiveSuggestion } = args
 
@@ -45,6 +50,12 @@ export function useNativeChatTypedInsertion(args: {
     [caret, draft, setActiveSuggestion, setCaret, setDraft, setHistory, textareaRef]
   )
 
+  // Reads the live input when a delayed clipboard read settles.
+  const insertPastedText = useCallback(
+    (text: string): boolean => insertNativeChatPastedText(textareaRef.current, text),
+    [textareaRef]
+  )
+
   const focus = useCallback((): boolean => {
     const textarea = textareaRef.current
     if (!textarea || textarea.disabled) {
@@ -54,6 +65,29 @@ export function useNativeChatTypedInsertion(args: {
     return true
   }, [textareaRef])
 
+  const contains = useCallback(
+    (node: Node | null): boolean => textareaRef.current?.contains?.(node) === true,
+    [textareaRef]
+  )
+
+  return { insertTypedText, insertPastedText, focus, contains }
+}
+
+/** Draft, caret and `@mention` handlers for the composer field; kept here so the
+ *  composer stays within its line budget. Also returns typed insertion for the
+ *  prompt-suggestion accept path, which the imperative handle does not expose. */
+export function useNativeChatComposerTextHandlers(
+  args: Parameters<typeof useNativeChatTypedInsertion>[0] & {
+    onDraftOrCaretChange: (value: string, caret: number) => void
+  }
+): {
+  insertTypedText: (text: string) => boolean
+  handleDraftChange: (value: string, input: NativeChatComposerInput) => void
+  handleSelect: (input: NativeChatComposerInput) => void
+  acceptMention: (autocomplete: ComposerAutocomplete) => void
+} {
+  const { textareaRef, caret, draft, setDraft, setCaret, setHistory, setActiveSuggestion } = args
+  const { insertTypedText } = useNativeChatTypedInsertion(args)
   const handleSelect = (input: NativeChatComposerInput): void => {
     const position = input.selectionStart ?? input.value.length
     setCaret(position)
@@ -65,13 +99,16 @@ export function useNativeChatTypedInsertion(args: {
     setHistory((previous) => ({ entries: previous.entries, index: null }))
     handleSelect(input)
   }
-  const acceptMention = (query: string): void => {
-    const result = applyMentionSuggestion(draft, caret, query)
+  const acceptMention = (autocomplete: ComposerAutocomplete): void => {
+    if (autocomplete.mode !== 'mention') {
+      return
+    }
+    const result = applyMentionSuggestion(draft, caret, autocomplete.query)
     setDraft(result.draft)
     setCaret(result.caret)
     const input = textareaRef.current
     input?.focus()
     requestAnimationFrame(() => input?.setSelectionRange(result.caret, result.caret))
   }
-  return { insertTypedText, focus, handleDraftChange, handleSelect, acceptMention }
+  return { insertTypedText, handleDraftChange, handleSelect, acceptMention }
 }

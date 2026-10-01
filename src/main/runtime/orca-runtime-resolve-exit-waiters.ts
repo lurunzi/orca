@@ -2,15 +2,23 @@
 // @ts-nocheck -- mechanically split from OrcaRuntimeService; behavior is covered by AST equivalence and characterization tests.
 import { OrcaRuntimeWithBindPtyIncarnationHandle } from './orca-runtime-bind-pty-incarnation-handle'
 import type { RuntimeLeafRecord, RuntimePtyWorktreeRecord } from './runtime-terminal-state-records'
-import { buildPtyTerminalWaitResult, buildTerminalWaitResult } from './terminal-wait-results'
-import type { AgentStatus } from '../../shared/agent-detection'
 import {
-  detectExplicitIdleStatusFromTitle,
-  isKnownReadyPromptPreview,
-  isMuseReadyPromptPreview
-} from './terminal-wait-detection'
+  buildPtyTerminalWaitBlockedResult,
+  buildPtyTerminalWaitResult,
+  buildTerminalWaitBlockedResult,
+  buildTerminalWaitResult
+} from './terminal-wait-results'
+import type { AgentStatus } from '../../shared/agent-detection'
+import { detectExplicitIdleStatusFromTitle } from './terminal-wait-detection'
 import { buildTerminalWaitText } from './terminal-wait-tail-state'
-import { isTuiIdleSatisfied } from './tui-idle-evidence'
+import { screenReadinessVerdict } from './runtime-terminal-idle-polls'
+import {
+  evaluateTuiIdle,
+  isTuiIdleReadyVerdict,
+  leafTuiIdleEvidence,
+  ptyTuiIdleEvidence,
+  type TuiIdleVerdict
+} from './tui-idle-evidence'
 import { TUI_IDLE_QUIESCENCE_MS } from './orca-runtime-postlude'
 
 export class OrcaRuntimeWithResolveExitWaiters extends OrcaRuntimeWithBindPtyIncarnationHandle {
@@ -50,14 +58,20 @@ export class OrcaRuntimeWithResolveExitWaiters extends OrcaRuntimeWithBindPtyInc
     if (!waiters || waiters.size === 0) {
       return
     }
-    // Why re-rank rather than resolve outright: the transition that brought us here is
-    // only a title sample, and a name-only title arriving mid-turn is the weakest tier
-    // there is (#6011). Leave such a waiter on its poll to be corroborated instead.
-    if (!this.isTuiIdleSatisfiedForLeaf(leaf)) {
-      return
-    }
+    // Why re-rank rather than resolve outright: the transition that brought us here is only a
+    // title sample. Weak ready (a name-only title, #6011) cannot see a dialog the tail lost,
+    // so it is left to the poll, which settles it only after a rendered-screen read.
+    const verdict = this.evaluateTuiIdleForLeaf(leaf)
     for (const waiter of [...waiters]) {
-      if (waiter.condition === 'tui-idle') {
+      if (waiter.condition !== 'tui-idle') {
+        continue
+      }
+      if (verdict.kind === 'blocked') {
+        this.resolveWaiter(
+          waiter,
+          buildTerminalWaitBlockedResult(handle, 'tui-idle', leaf, verdict.reason)
+        )
+      } else if (verdict.kind === 'ready-strong') {
         this.resolveWaiter(waiter, buildTerminalWaitResult(handle, 'tui-idle', leaf))
       }
     }
@@ -92,41 +106,28 @@ export class OrcaRuntimeWithResolveExitWaiters extends OrcaRuntimeWithBindPtyInc
       return
     }
     // Why: same re-ranking as resolveTuiIdleWaiters above.
-    if (!this.isTuiIdleSatisfiedForPty(pty)) {
-      return
-    }
+    const verdict = this.evaluateTuiIdleForPty(pty)
     for (const waiter of [...waiters]) {
-      if (waiter.condition === 'tui-idle') {
+      if (waiter.condition !== 'tui-idle') {
+        continue
+      }
+      if (verdict.kind === 'blocked') {
+        this.resolveWaiter(
+          waiter,
+          buildPtyTerminalWaitBlockedResult(handle, 'tui-idle', pty, verdict.reason)
+        )
+      } else if (verdict.kind === 'ready-strong') {
         this.resolveWaiter(waiter, buildPtyTerminalWaitResult(handle, 'tui-idle', pty))
       }
     }
   }
 
-  // Why: the primary OSC-title signal can't fire for daemon-hosted terminals (no PTY data through the runtime), so this fallback polls the renderer-synced tab title + foreground-process quiescence; self-cancels when the OSC path fires.
-  protected isTuiIdleSatisfiedForLeaf(leaf: RuntimeLeafRecord): boolean {
-    const screen = this.getTerminalScreenReadiness(
-      leaf.ptyId,
-      buildTerminalWaitText(leaf.tailBuffer, leaf.tailPartialLine, leaf.preview)
+  protected evaluateTuiIdleForLeaf(leaf: RuntimeLeafRecord): TuiIdleVerdict {
+    const waitText = buildTerminalWaitText(leaf.tailBuffer, leaf.tailPartialLine, leaf.preview)
+    return (
+      screenReadinessVerdict(this.getTerminalScreenReadiness(leaf.ptyId, waitText)) ??
+      evaluateTuiIdle(leafTuiIdleEvidence(this.tuiIdleEvidenceSource, leaf, () => waitText))
     )
-    if (screen) {
-      return screen.ready
-    }
-    return isTuiIdleSatisfied({
-      record: leaf,
-      rendererTitle: leaf.paneTitle ?? this.tabs.get(leaf.tabId)?.title ?? null,
-      readPositiveBodyEvidence: () =>
-        isKnownReadyPromptPreview(
-          buildTerminalWaitText(leaf.tailBuffer, leaf.tailPartialLine, leaf.preview)
-        ),
-      readMuseReadyBodyEvidence: () =>
-        isMuseReadyPromptPreview(
-          buildTerminalWaitText(leaf.tailBuffer, leaf.tailPartialLine, leaf.preview)
-        ),
-      agent: this.getPaneAgentForTuiIdle(leaf.ptyId),
-      firstPartyStatus:
-        (leaf.ptyId ? this.ptysById.get(leaf.ptyId)?.lastExplicitAgentStatus : null) ?? null,
-      quiescenceMs: TUI_IDLE_QUIESCENCE_MS
-    })
   }
 
   /**
@@ -196,32 +197,29 @@ export class OrcaRuntimeWithResolveExitWaiters extends OrcaRuntimeWithBindPtyInc
    */
   protected isAgentSettledForDelivery(leaf: { tabId: string; leafId: string }): boolean {
     const live = this.leaves.get(this.getLeafKey(leaf.tabId, leaf.leafId))
-    return live ? this.isTuiIdleSatisfiedForLeaf(live) : false
-  }
-
-  protected isTuiIdleSatisfiedForPty(pty: RuntimePtyWorktreeRecord): boolean {
-    const screen = this.getTerminalScreenReadiness(
-      pty.ptyId,
-      buildTerminalWaitText(pty.tailBuffer, pty.tailPartialLine, pty.preview)
-    )
+    if (!live) {
+      return false
+    }
+    const waitText = buildTerminalWaitText(live.tailBuffer, live.tailPartialLine, live.preview)
+    // Why the screen first: an Antigravity composer is ready only on its current screen.
+    const screen = this.getTerminalScreenReadiness(live.ptyId, waitText)
     if (screen) {
       return screen.ready
     }
-    return isTuiIdleSatisfied({
-      record: pty,
-      readPositiveBodyEvidence: () =>
-        this.getAdoptedPtyExplicitIdleStatus(pty) === 'idle' ||
-        isKnownReadyPromptPreview(
-          buildTerminalWaitText(pty.tailBuffer, pty.tailPartialLine, pty.preview)
-        ),
-      readMuseReadyBodyEvidence: () =>
-        isMuseReadyPromptPreview(
-          buildTerminalWaitText(pty.tailBuffer, pty.tailPartialLine, pty.preview)
-        ),
-      agent: this.getPaneAgentForTuiIdle(pty.ptyId),
-      firstPartyStatus: pty.lastExplicitAgentStatus ?? null,
-      quiescenceMs: TUI_IDLE_QUIESCENCE_MS
-    })
+    const evidence = leafTuiIdleEvidence(this.tuiIdleEvidenceSource, live, () => waitText)
+    // Why no blocked reader: a refusal here re-arms a recheck that a lingering tail prompt
+    // would spin, so delivery keeps its own, blocked-blind, reading of the same ranking.
+    return isTuiIdleReadyVerdict(
+      evaluateTuiIdle({ ...evidence, readTailBlockedReason: () => null })
+    )
+  }
+
+  protected evaluateTuiIdleForPty(pty: RuntimePtyWorktreeRecord): TuiIdleVerdict {
+    const waitText = buildTerminalWaitText(pty.tailBuffer, pty.tailPartialLine, pty.preview)
+    return (
+      screenReadinessVerdict(this.getTerminalScreenReadiness(pty.ptyId, waitText)) ??
+      evaluateTuiIdle(ptyTuiIdleEvidence(this.tuiIdleEvidenceSource, pty, () => waitText))
+    )
   }
 
   protected getAdoptedPtyExplicitIdleStatus(pty: RuntimePtyWorktreeRecord): AgentStatus | null {

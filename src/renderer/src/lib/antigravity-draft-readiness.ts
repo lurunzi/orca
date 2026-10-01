@@ -1,5 +1,5 @@
 import type { GlobalSettings } from '../../../shared/global-settings-types'
-import { ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY } from '../../../shared/protocol-version'
+import { ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY } from '../../../shared/agent-provider-runtime-capabilities'
 import type {
   RuntimeTerminalResolvePane,
   RuntimeTerminalShow,
