@@ -11,10 +11,8 @@ import type {
 } from '../../shared/agent-session-journal-types'
 import { agentJournalItemKey } from '../../shared/agent-session-journal-item-key'
 import { projectNativeChatTranscript } from '../../shared/native-chat-transcript-projection'
-import {
-  latestStructuredAgentSessionUserItem,
-  projectStructuredItemsToNativeChat
-} from '../../shared/structured-agent-session-projection'
+import { latestStructuredAgentSessionUserItem } from '../../shared/structured-agent-session-latest-request'
+import { projectStructuredItemsToNativeChat } from '../../shared/structured-agent-session-projection'
 import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
 import { createClaudeJournalTranslator } from './claude-structured-journal-translation'
 
@@ -81,9 +79,9 @@ describe('Claude structured delivery replies', () => {
     })
 
     const projection = projectNativeChatTranscript(projectStructuredItemsToNativeChat(items()))
-    const answers = projection.messages.map((message) => message.id)
+    const answers = projection.conversation.map((message) => message.id)
     expect(answers).not.toContain(delivery?.itemId)
-    const second = projection.messages.find((message) =>
+    const second = projection.conversation.find((message) =>
       message.blocks.some((block) => block.type === 'text' && block.text === 'Second answer')
     )
     expect(second && projection.replyStartIds.has(second.id)).toBe(true)
