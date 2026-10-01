@@ -8,10 +8,10 @@ import {
 import {
   EMPTY_STRUCTURED_AGENT_SESSION,
   oldestStructuredAgentSessionCursor,
-  reduceStructuredAgentSession,
   type StructuredAgentSessionAction,
   type StructuredAgentSessionState
 } from '../../../../shared/structured-agent-session-reducer'
+import { reduceWithPromptSuggestion } from '../../../../shared/structured-agent-session-prompt-suggestion-reducer'
 import type { RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
 import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
 import { NATIVE_CHAT_INITIAL_LIMIT, type NativeChatOlderPageResult } from './native-chat-pagination'
@@ -76,7 +76,7 @@ function createReadOwner(
     emit()
   }
   const apply = (action: StructuredAgentSessionAction): void => {
-    const state = reduceStructuredAgentSession(snapshot.state, action, Date.now())
+    const state = reduceWithPromptSuggestion(snapshot.state, action, Date.now())
     if (state !== snapshot.state) {
       setSnapshot({ ...snapshot, state })
     }
@@ -223,7 +223,7 @@ function createReadOwner(
     }
     const transport = startStructuredAgentSessionReadTransport({
       applyEvent: (event) => apply({ type: 'event', event }),
-      applyError: (message) => apply({ type: 'error', message }),
+      applyError: (message, refusal) => apply({ type: 'error', message, refusal }),
       getCursor: () => snapshot.state.cursor,
       onHistoryReadInvalidated: invalidateOlderPages,
       hydrate: snapshot.state.epoch === null ? hydrate : undefined,

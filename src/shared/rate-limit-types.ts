@@ -7,19 +7,12 @@ export type RateLimitWindow = {
   resetsAt: number | null
   /** Human-readable reset description, e.g. "2:30 PM" or "Thu". */
   resetDescription: string | null
-  /** Provider-specific source window name when no standard duration exists. */
-  windowLabel?: string
 }
 
 export type ProviderRateLimitStatus = 'idle' | 'fetching' | 'ok' | 'error' | 'unavailable'
 
 export type RateLimitBucket = RateLimitWindow & {
   name: string
-  /** Stable provider/source identifier when available. */
-  id?: string
-  /** Optional provider-defined quota group metadata. */
-  groupName?: string
-  groupDescription?: string | null
 }
 
 export type UsageRateLimitSource = 'oauth' | 'cli' | 'web' | 'live-session'
@@ -65,6 +58,7 @@ export type ProviderRateLimits = {
     | 'grok'
     | 'antigravity'
     | 'cursor'
+    | 'zcode'
   /** 5-hour session window, null if not available. */
   session: RateLimitWindow | null
   /** 7-day weekly window, null if not available. */
@@ -146,6 +140,7 @@ export type RateLimitState = {
   minimax: ProviderRateLimits | null
   grok: ProviderRateLimits | null
   cursor: ProviderRateLimits | null
+  zcode: ProviderRateLimits | null
   /**
    * True when a MiniMax session cookie is persisted on disk. The cookie lives
    * outside GlobalSettings, so this flag is the durable signal that the

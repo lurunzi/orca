@@ -1,6 +1,4 @@
 import type { TuiAgent } from '../../../../shared/tui-agent'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import { hasExplicitTuiLaunchCommand } from '../../../../shared/tui-agent-launch-command-override'
 import type { StatusBarItem } from '../../../../shared/ui-chrome-types'
 
 // Why: CLI-backed usage bars are surface noise when the underlying
@@ -15,17 +13,14 @@ const CLI_GATED_ITEMS: ReadonlySet<StatusBarItem> = new Set([
   'gemini',
   'kimi',
   'antigravity',
-  'grok'
+  'grok',
+  'zcode'
 ])
 
 export function isStatusBarItemAvailable(
   id: StatusBarItem,
-  detectedAgentIds: TuiAgent[] | null,
-  settings?: Pick<GlobalSettings, 'agentCmdOverrides'> | null
+  detectedAgentIds: TuiAgent[] | null
 ): boolean {
-  if (id === 'antigravity' && hasExplicitTuiLaunchCommand(settings, 'antigravity')) {
-    return true
-  }
   if (!CLI_GATED_ITEMS.has(id)) {
     return true
   }

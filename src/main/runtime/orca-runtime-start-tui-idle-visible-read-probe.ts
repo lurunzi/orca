@@ -9,7 +9,10 @@ import {
   VISIBLE_TERMINAL_SNAPSHOT_TIMEOUT_MS
 } from './orca-runtime-postlude'
 import { withTimeout } from './runtime-async-boundaries'
-import { detectTerminalWaitBlockedReason } from './terminal-wait-detection'
+import {
+  detectTerminalWaitBlockedReason,
+  isKnownReadyPromptSettled
+} from './terminal-wait-detection'
 import { isKnownReadyTerminalScreen } from './terminal-screen-readiness'
 import type {
   RuntimeTerminalWait,
@@ -80,7 +83,11 @@ export class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRuntimeWith
             ? [...projection.tail, projection.draft ?? ''].join('\n')
             : projection.tail.join('\n')
         const blockedReason = detectTerminalWaitBlockedReason(snapshotText)
-        if (!blockedReason && !isKnownReadyTerminalScreen(projection)) {
+        // Why split: Antigravity is ready only at its empty composer; others use the settled rule.
+        const ready = projection.tail.join('\n').toLowerCase().includes('antigravity cli')
+          ? isKnownReadyTerminalScreen(projection)
+          : !projection.draft?.trim() && isKnownReadyPromptSettled(snapshotText)
+        if (!blockedReason && !ready) {
           return
         }
         const result = this.buildTuiIdleProbeResult(waiter.handle, blockedReason)

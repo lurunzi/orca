@@ -18,6 +18,7 @@ vi.mock('../../store', () => ({
 }))
 
 import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
+import { useNativeChatInteractivePromptCard } from './use-native-chat-interactive-prompt-card'
 
 const send = {
   sendAnswer: vi.fn<NativeChatInteractiveSend['sendAnswer']>(),
@@ -48,17 +49,31 @@ function asyncAsk(questions: unknown[]): NativeChatMessage[] {
 
 const WITH_OPTIONS = asyncAsk([{ title: QUESTION, options: ['Moved', 'Not moved'] }])
 
-function card(messages: readonly NativeChatMessage[], onShowing?: (showing: boolean) => void) {
+// The pane derives the card with the hook, then renders it; test that pair end to end.
+function Pane({
+  messages,
+  onShowing
+}: {
+  messages: readonly NativeChatMessage[]
+  onShowing?: (showing: boolean) => void
+}): React.JSX.Element | null {
+  const prompt = useNativeChatInteractivePromptCard({
+    paneKey: 'tab-1:leaf-1',
+    messages,
+    transcriptSettled: true
+  })
   return (
     <NativeChatInteractiveCard
-      paneKey="tab-1:leaf-1"
+      card={prompt}
       canSend
-      messages={messages}
-      transcriptSettled
       onShowingQuestionChange={onShowing}
       send={send}
     />
   )
+}
+
+function card(messages: readonly NativeChatMessage[], onShowing?: (showing: boolean) => void) {
+  return <Pane messages={messages} onShowing={onShowing} />
 }
 
 describe('NativeChatInteractiveCard async Codex questions', () => {

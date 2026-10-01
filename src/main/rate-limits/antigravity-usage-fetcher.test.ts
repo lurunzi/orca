@@ -1,280 +1,250 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { execFileCaptureToTermination } from '../git/command-runner/exec-file-capture'
-import { resolveCliCommand } from '../../shared/node-cli-command-resolution'
 import {
-  AGY_USAGE_ARGS,
   fetchAntigravityRateLimits,
-  parseAgyUsageResponse
+  resetAntigravityUsageSupportForTests
 } from './antigravity-usage-fetcher'
+import { ANTIGRAVITY_USAGE_ARGS } from './antigravity-usage-command'
+import type { ProcessResult } from '../../shared/child-process/process-spec'
 
-vi.mock('../git/command-runner/exec-file-capture', () => ({
-  execFileCaptureToTermination: vi.fn()
-}))
-
-vi.mock('../../shared/node-cli-command-resolution', () => ({
-  resolveCliCommand: vi.fn()
-}))
-
-const sample = {
+const USAGE_ENVELOPE = JSON.stringify({
+  conversation_id: '',
+  status: 'SUCCESS',
   command: {
+    name: 'usage',
     data: {
+      description: 'Within each group, models share a weekly limit.',
       groups: [
         {
           name: 'Gemini Models',
-          description: 'Gemini quota',
           buckets: [
             {
               id: 'gemini-weekly',
               name: 'Weekly Limit Remaining',
               window: 'weekly',
-              remaining_fraction: 0.994,
-              reset_time: '2026-09-18T20:00:00Z'
-            },
-            {
-              id: 'gemini-5h',
-              name: 'Five Hour Limit Remaining',
-              window: '5h',
-              remaining_fraction: 1,
-              reset_time: '2026-09-14T18:08:00Z'
-            }
-          ]
-        },
-        {
-          name: 'Claude and GPT models',
-          buckets: [
-            {
-              id: '3p-weekly',
-              name: 'Weekly Limit Remaining',
-              window: 'weekly',
-              remaining_fraction: 1,
-              reset_time: null
-            },
-            {
-              id: '3p-5h',
-              name: 'Five Hour Limit Remaining',
-              window: '5h',
-              remaining_fraction: 1,
-              reset_time: '2026-09-14T18:08:00Z'
+              remaining_fraction: 0.4,
+              reset_time: '2026-10-07T08:08:35Z'
             }
           ]
         }
       ]
     }
   }
+})
+
+function processResult(overrides: Partial<ProcessResult> = {}): ProcessResult {
+  return { code: 0, signal: null, stdout: '', stderr: '', timedOut: false, ...overrides }
 }
 
-beforeEach(() => {
-  vi.resetAllMocks()
-  vi.mocked(execFileCaptureToTermination).mockResolvedValueOnce({ stdout: '1.2.7\n', stderr: '' })
-})
-
-describe('parseAgyUsageResponse', () => {
-  it('preserves two groups and two windows with independent values', () => {
-    const result = parseAgyUsageResponse(sample, 1_700_000_000_000)
-    expect(result.status).toBe('ok')
-    expect(result.buckets).toHaveLength(4)
-    expect(
-      result.buckets?.map((bucket) => [bucket.id, bucket.groupName, bucket.windowMinutes])
-    ).toEqual([
-      ['gemini-weekly', 'Gemini Models', 10080],
-      ['gemini-5h', 'Gemini Models', 300],
-      ['3p-weekly', 'Claude and GPT models', 10080],
-      ['3p-5h', 'Claude and GPT models', 300]
-    ])
-    expect(result.buckets?.[0]?.usedPercent).toBeCloseTo(0.6)
-    expect(result.buckets?.[1]?.usedPercent).toBe(0)
-    expect(result.buckets?.[2]?.resetsAt).toBeNull()
-    expect(result.buckets?.[0]?.name).toBe('Gemini Models: Weekly Limit Remaining')
-    expect(result.buckets?.[2]?.name).toBe('Claude and GPT models: Weekly Limit Remaining')
-  })
-
-  it('keeps unknown groups and windows instead of dropping them', () => {
-    const result = parseAgyUsageResponse({
-      command: {
-        data: {
-          groups: [
-            {
-              name: 'New pool',
-              buckets: [{ id: 'daily', name: 'Daily', window: 'daily', remaining_fraction: 0.5 }]
-            }
-          ]
-        }
-      }
-    })
-    expect(result.buckets?.[0]).toMatchObject({
-      id: 'daily',
-      groupName: 'New pool',
-      windowLabel: 'daily',
-      windowMinutes: 0,
-      usedPercent: 50
-    })
-  })
-
-  it.each([
-    { name: 'missing groups', value: {} },
-    { name: 'empty groups', value: { command: { data: { groups: [] } } } },
-    {
-      name: 'partial bucket',
-      value: { command: { data: { groups: [{ name: 'x', buckets: [{}] }] } } }
-    }
-  ])('returns unavailable for $name', ({ value }) => {
-    expect(parseAgyUsageResponse(value).status).toBe('unavailable')
-  })
-})
+function harness(
+  options: {
+    result?: ProcessResult
+    runCommand?: ReturnType<typeof vi.fn>
+    program?: string | null
+    env?: NodeJS.ProcessEnv
+  } = {}
+) {
+  const runCommand =
+    options.runCommand ?? vi.fn().mockResolvedValue(options.result ?? processResult())
+  // Why the `in` check and not `??`: an explicit `program: null` is the absent-CLI case.
+  const resolveCommand = vi
+    .fn()
+    .mockResolvedValue('program' in options ? options.program : '/Users/x/.local/bin/agy')
+  const resolveEnvironment = vi
+    .fn()
+    .mockResolvedValue(options.env ?? { PATH: '/Users/x/.local/bin:/usr/bin' })
+  return {
+    runCommand,
+    resolveCommand,
+    resolveEnvironment,
+    fetch: () =>
+      fetchAntigravityRateLimits({
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mock returns a ProcessResult, which is the whole contract runProcess exposes to this fetcher.
+        runCommand: runCommand as never,
+        resolveCommand,
+        resolveEnvironment,
+        platform: 'darwin',
+        now: () => 1_700_000_000_000
+      })
+  }
+}
 
 describe('fetchAntigravityRateLimits', () => {
-  it('checks the configured executable version and reads quota from that same executable', async () => {
-    vi.mocked(execFileCaptureToTermination)
-      .mockReset()
-      .mockResolvedValueOnce({ stdout: '1.2.7', stderr: '' })
-    await fetchAntigravityRateLimits(undefined, '"/custom tools/agy"')
-    expect(execFileCaptureToTermination).toHaveBeenNthCalledWith(
-      1,
-      '/custom tools/agy',
-      ['--version'],
-      expect.any(Object)
-    )
-    expect(execFileCaptureToTermination).toHaveBeenNthCalledWith(
-      2,
-      '/custom tools/agy',
-      AGY_USAGE_ARGS,
-      expect.any(Object)
-    )
+  beforeEach(() => {
+    resetAntigravityUsageSupportForTests()
   })
 
-  it('does not spawn for an override whose arguments could change the quota operation', async () => {
-    const result = await fetchAntigravityRateLimits(undefined, 'agy --print another-prompt')
-    expect(result.status).toBe('unavailable')
-    expect(result.error).toContain('only the executable path')
-    expect(execFileCaptureToTermination).not.toHaveBeenCalled()
-  })
+  it('publishes the CLI reading as Antigravity usage', async () => {
+    const result = await harness({ result: processResult({ stdout: USAGE_ENVELOPE }) }).fetch()
 
-  it.each(['1.1.10', '1.1.11-rc.1', '', 'unknown', 'warning: 1.2.7'])(
-    'never invokes usage when version %j does not establish support',
-    async (version) => {
-      vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-      vi.mocked(execFileCaptureToTermination).mockReset().mockResolvedValue({
-        stdout: version,
-        stderr: ''
-      })
-      const result = await fetchAntigravityRateLimits()
-      expect(result.status).toBe('unavailable')
-      expect(result.error).toContain('1.1.11')
-      expect(execFileCaptureToTermination).toHaveBeenCalledTimes(1)
-      expect(execFileCaptureToTermination).toHaveBeenCalledWith(
-        '/mock/bin/agy',
-        ['--version'],
-        expect.any(Object)
-      )
-    }
-  )
-
-  it.each(['1.1.11', '1.1.21', '1.2.7'])(
-    'reads usage after supported version %s',
-    async (version) => {
-      vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-      vi.mocked(execFileCaptureToTermination)
-        .mockReset()
-        .mockResolvedValueOnce({ stdout: version, stderr: '' })
-        .mockResolvedValueOnce({ stdout: JSON.stringify(sample), stderr: '' })
-      expect((await fetchAntigravityRateLimits()).status).toBe('ok')
-      expect(execFileCaptureToTermination).toHaveBeenNthCalledWith(
-        2,
-        '/mock/bin/agy',
-        AGY_USAGE_ARGS,
-        expect.any(Object)
-      )
-    }
-  )
-
-  it('resolves agy outside PATH and uses the exact argv without a shell', async () => {
-    vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-    vi.mocked(execFileCaptureToTermination).mockResolvedValue({
-      stdout: JSON.stringify(sample),
-      stderr: ''
+    expect(result.status).toBe('ok')
+    expect(result.provider).toBe('antigravity')
+    expect(result.error).toBeNull()
+    expect(result.weekly).toMatchObject({ usedPercent: 60, windowMinutes: 10_080 })
+    expect(result.buckets).toEqual([
+      {
+        name: 'Gemini Models',
+        usedPercent: 60,
+        windowMinutes: 10_080,
+        resetsAt: new Date('2026-10-07T08:08:35Z').getTime(),
+        resetDescription: null
+      }
+    ])
+    expect(result.usageMetadata).toMatchObject({
+      source: 'cli',
+      credentialSource: 'antigravity-cli'
     })
-    await fetchAntigravityRateLimits()
-    expect(execFileCaptureToTermination).toHaveBeenCalledWith(
-      '/mock/bin/agy',
-      AGY_USAGE_ARGS,
-      expect.objectContaining({
-        timeout: 10_000,
-        maxBuffer: 1024 * 1024,
-        signal: undefined,
-        createTimeoutError: expect.any(Function)
-      })
-    )
   })
 
-  it('distinguishes an unresolved executable', async () => {
-    vi.mocked(resolveCliCommand).mockReturnValue('agy')
-    const result = await fetchAntigravityRateLimits()
+  it('never publishes the agy bucket id to the renderer', async () => {
+    const result = await harness({ result: processResult({ stdout: USAGE_ENVELOPE }) }).fetch()
+
+    for (const bucket of result.buckets ?? []) {
+      expect(bucket).not.toHaveProperty('id')
+    }
+  })
+
+  it('runs the resolved absolute path with the quota arguments and the login-shell env', async () => {
+    const h = harness({ result: processResult({ stdout: USAGE_ENVELOPE }) })
+    await h.fetch()
+
+    expect(h.runCommand).toHaveBeenCalledTimes(1)
+    const spec = h.runCommand.mock.calls[0]![0]
+    expect(spec.program).toBe('/Users/x/.local/bin/agy')
+    expect(spec.args).toEqual(ANTIGRAVITY_USAGE_ARGS)
+    // Why the login-shell PATH: agy installs to ~/.local/bin, which Electron's inherited PATH omits.
+    expect(spec.env).toEqual({ PATH: '/Users/x/.local/bin:/usr/bin' })
+    expect(spec.timeoutMs).toBeGreaterThan(0)
+    expect(h.resolveCommand).toHaveBeenCalledWith('agy', {
+      platform: 'darwin',
+      env: { PATH: '/Users/x/.local/bin:/usr/bin' }
+    })
+  })
+
+  it('reports an absent CLI as unavailable and never spawns', async () => {
+    const h = harness({ program: null })
+    const result = await h.fetch()
+
     expect(result.status).toBe('unavailable')
     expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
-    expect(execFileCaptureToTermination).not.toHaveBeenCalled()
+    expect(result.error).toContain('was not found on this machine')
+    expect(h.runCommand).not.toHaveBeenCalled()
   })
 
-  it('reports malformed stdout as a parse failure', async () => {
-    vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-    vi.mocked(execFileCaptureToTermination).mockResolvedValue({ stdout: '{', stderr: '' })
-    const result = await fetchAntigravityRateLimits()
+  it('reports a signed-out account as unavailable, not as a failed refresh', async () => {
+    const result = await harness({
+      // agy exits 0 and prints this rather than an envelope.
+      result: processResult({ stderr: 'You are not logged into Antigravity.' })
+    }).fetch()
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('missing-credentials')
+    expect(result.error).toContain('Sign in with `agy`')
+  })
+
+  it('reports a timeout as its own failure kind', async () => {
+    const result = await harness({ result: processResult({ timedOut: true }) }).fetch()
+
+    expect(result.status).toBe('error')
+    expect(result.usageMetadata?.failureKind).toBe('usage-unavailable')
+    expect(result.error).toContain('did not answer in time')
+  })
+
+  it('reports an unreadable payload as a parse failure carrying the exit code', async () => {
+    const result = await harness({
+      result: processResult({ code: 2, stdout: 'unknown command /usage' })
+    }).fetch()
+
     expect(result.status).toBe('error')
     expect(result.usageMetadata?.failureKind).toBe('parse')
+    expect(result.error).toContain('exit 2')
   })
 
-  it('passes the refresh AbortSignal to the agy process', async () => {
-    vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-    vi.mocked(execFileCaptureToTermination).mockResolvedValue({
-      stdout: JSON.stringify(sample),
-      stderr: ''
-    })
-    const controller = new AbortController()
-    await fetchAntigravityRateLimits(controller.signal)
-    expect(execFileCaptureToTermination).toHaveBeenCalledWith(
-      '/mock/bin/agy',
-      AGY_USAGE_ARGS,
-      expect.objectContaining({ signal: controller.signal })
-    )
+  it('does not blame the exit code when agy exited cleanly with no payload', async () => {
+    const result = await harness({ result: processResult({ code: 0, stdout: '' }) }).fetch()
+
+    expect(result.status).toBe('error')
+    expect(result.error).not.toContain('exit')
   })
 
-  it('classifies the shared runner timeout separately from a generic read failure', async () => {
-    vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-    vi.mocked(execFileCaptureToTermination).mockRejectedValue(
-      Object.assign(new Error('The agy CLI timed out.'), {
-        code: null,
-        killed: true,
-        signal: 'SIGTERM'
-      })
-    )
-    const result = await fetchAntigravityRateLimits()
-    expect(result.error).toContain('timed out')
-    expect(result.usageMetadata?.failureKind).toBe('unknown')
+  it('reports a spawn failure instead of rejecting the cycle', async () => {
+    const runCommand = vi.fn().mockRejectedValue(new Error('EACCES'))
+    const result = await harness({ runCommand }).fetch()
+
+    expect(result.status).toBe('error')
+    expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
+    expect(result.error).toContain('EACCES')
   })
 
-  it('propagates refresh cancellation instead of converting it to a provider error', async () => {
-    vi.mocked(resolveCliCommand).mockReturnValue('/mock/bin/agy')
-    const abortError = Object.assign(new Error('The operation was aborted.'), {
-      name: 'AbortError'
-    })
-    vi.mocked(execFileCaptureToTermination).mockRejectedValue(abortError)
-    await expect(fetchAntigravityRateLimits(new AbortController().signal)).rejects.toMatchObject({
-      name: 'AbortError'
-    })
+  it('never reports quota from a successful read as stale session data', async () => {
+    const result = await harness({ result: processResult({ stdout: USAGE_ENVELOPE }) }).fetch()
+
+    // Why: this tier meters no 5h pool. The Gemini mirror it replaces filled `session` from a
+    // 60-minute per-model window and left `weekly` null — exactly backwards (#22511).
+    expect(result.session).toBeNull()
+    expect(result.weekly).not.toBeNull()
+  })
+})
+
+/**
+ * Captured when agy treated `/usage` as a prompt instead of a command: a conversation was started,
+ * a turn was spent, and the account answered RESOURCE_EXHAUSTED. This is the exact shape the
+ * unsupported latch has to recognise.
+ */
+const MODEL_TURN_ENVELOPE = JSON.stringify({
+  conversation_id: '28a5ca91-301f-4050-8efc-9c82c4e64df3',
+  status: 'ERROR',
+  response: '',
+  error: 'Individual quota reached. Please upgrade your subscription to increase your limits.',
+  num_turns: 1
+})
+
+describe('agy versions that answer /usage as a prompt', () => {
+  beforeEach(() => {
+    resetAntigravityUsageSupportForTests()
   })
 
-  it.each([
-    { remaining: -0.1, label: 'below zero' },
-    { remaining: 1.1, label: 'above one' }
-  ])('rejects remaining_fraction $label', ({ remaining }) => {
-    const result = parseAgyUsageResponse({
-      command: {
-        data: {
-          groups: [
-            { name: 'x', buckets: [{ name: 'x', window: '5h', remaining_fraction: remaining }] }
-          ]
-        }
-      }
-    })
+  it('reports the quota read as unavailable instead of as a parse failure', async () => {
+    const result = await harness({
+      result: processResult({ stdout: MODEL_TURN_ENVELOPE })
+    }).fetch()
+
     expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('usage-unavailable')
+    expect(result.error).toContain('answers `/usage` as a prompt')
+  })
+
+  it('never spawns agy again once a turn was spent', async () => {
+    const h = harness({ result: processResult({ stdout: MODEL_TURN_ENVELOPE }) })
+    await h.fetch()
+    expect(h.runCommand).toHaveBeenCalledTimes(1)
+
+    // Why: the evidence costs a turn of the user's quota, so rediscovering it on a 15-minute
+    // cadence would keep paying for the same answer.
+    await h.fetch()
+    await h.fetch()
+    expect(h.runCommand).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not latch when the usage payload parsed, whatever else the envelope says', async () => {
+    const h = harness({
+      result: processResult({ stdout: `${USAGE_ENVELOPE}\n${MODEL_TURN_ENVELOPE}` })
+    })
+    const first = await h.fetch()
+    const second = await h.fetch()
+
+    expect(first.status).toBe('ok')
+    expect(second.status).toBe('ok')
+    expect(h.runCommand).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not latch on an empty or unparsable answer', async () => {
+    const h = harness({ result: processResult({ code: 2, stdout: 'unknown flag' }) })
+    const first = await h.fetch()
+    const second = await h.fetch()
+
+    // Why: a transient failure is not evidence that the command is unsupported.
+    expect(first.status).toBe('error')
+    expect(second.status).toBe('error')
+    expect(h.runCommand).toHaveBeenCalledTimes(2)
   })
 })

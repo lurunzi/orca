@@ -36,8 +36,6 @@ export function NativeChatTranscriptView({
             isWorking={false}
             expandSignal={false}
             fontScale={fontScale.scale}
-            showTurnStatus={false}
-            showLiveTurnActivity={false}
             runtimeContext={runtimeContext}
           />
         ) : (

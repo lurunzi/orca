@@ -47,7 +47,7 @@ export function writeNativeChatSubmit(
     markSubmitWritten: () => void
   }
 ): void {
-  sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
+  sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT, 'driving')
   const confirmation = options?.submitConfirmation
   if (!confirmation) {
     ctx.markSubmitted()
@@ -68,7 +68,7 @@ export function writeNativeChatSubmit(
       return
     }
     retries += 1
-    sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
+    sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT, 'driving')
     ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
   }
   ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)

@@ -1,5 +1,5 @@
 import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'
-import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
+import { forwardRef, useCallback, useState } from 'react'
 import { useAppStore } from '../../store'
 import { useNativeChatComposerInterrupt } from './use-native-chat-composer-interrupt'
 import { resolveComposerCriticalAction } from './native-chat-composer-critical-action'
@@ -12,7 +12,8 @@ import { coordinatorTargetFor } from './NativeChatCoordinatorToggle'
 import { NativeChatComposerField } from './NativeChatComposerField'
 import type { NativeChatResolvedTarget } from './native-chat-composer-target'
 import { useNativeChatComposerAttachments } from './use-native-chat-composer-attachments'
-import { useNativeChatComposerPaste } from './use-native-chat-composer-paste'
+import { useNativeChatComposerHandle } from './use-native-chat-composer-handle'
+import { useNativeChatComposerTextHandlers } from './use-native-chat-typed-insertion'
 import { useNativeChatExternalAttachments } from './use-native-chat-external-attachments'
 import { useNativeChatComposerKeyDown } from './use-native-chat-composer-keydown'
 import { useNativeChatSendLifecycle } from './use-native-chat-send-lifecycle'
@@ -23,7 +24,6 @@ import { useNativeChatSessionOptionCommand } from './use-native-chat-session-opt
 import { useNativeChatComposerCatalog } from './use-native-chat-composer-catalog'
 import { useNativeChatPickerState } from './use-native-chat-picker-state'
 import { useNativeChatPickerCommandDispatch } from './use-native-chat-picker-command-dispatch'
-import { useNativeChatTypedInsertion } from './use-native-chat-typed-insertion'
 import type {
   NativeChatComposerHandle,
   NativeChatComposerProps
@@ -60,13 +60,15 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       onStop,
       onStopBackgroundTasks,
       onOptimisticSend,
+      optimisticSendOutcome,
       onOptimisticSendCanceled,
       onSlashCommand,
       onSwitchToTerminal,
       readTerminalScreen,
       readTerminalPromptSuggestion,
       launchSeed,
-      structuredTransport
+      structuredTransport,
+      steerQueued
     },
     ref
   ): React.JSX.Element {
@@ -74,7 +76,11 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
     // images survive both TUI/GUI toggles and PTY replacement on reconnect.
     // Why: local, SSH, and runtime reconnects can replace or temporarily clear
     // the PTY id. Pane identity is the stable ownership key for unsent input.
-    const { draft, setDraft } = useNativeChatDraft(paneKey)
+    const imeEnterGesture = useImeEnterGestureOwnership()
+    const { draft, setDraft, flushDraftAppends } = useNativeChatDraft(
+      paneKey,
+      imeEnterGesture.isComposing
+    )
     const [caret, setCaret] = useState(draft.length)
     useNativeChatLaunchDraftAdoption({
       terminalTabId,
@@ -90,7 +96,6 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
     const [activeSuggestion, setActiveSuggestion] = useState(0)
     const [notice, setNotice] = useState<string | null>(null)
     const [dictationPressed, setDictationPressed] = useState(false)
-    const imeEnterGesture = useImeEnterGestureOwnership()
     const { textareaRef } = useNativeChatComposerAppMenuSelection(imeEnterGesture.isComposing)
     const { cancelPendingSends, trackPendingSend } = useNativeChatSendLifecycle(
       terminalTabId,
@@ -179,15 +184,18 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       { draft, imageAttachments }
     )
 
-    const { insertTypedText, focus, handleDraftChange, handleSelect, acceptMention } =
-      useNativeChatTypedInsertion({
-        textareaRef,
-        caret,
-        draft,
-        setDraft,
-        setCaret,
-        setHistory,
-        setActiveSuggestion,
+    const textInput = {
+      textareaRef,
+      caret,
+      draft,
+      setDraft,
+      setCaret,
+      setHistory,
+      setActiveSuggestion
+    }
+    const { insertTypedText, handleDraftChange, handleSelect, acceptMention } =
+      useNativeChatComposerTextHandlers({
+        ...textInput,
         onDraftOrCaretChange: handleDraftOrCaretChange
       })
 
@@ -199,25 +207,24 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       setNotice
     })
 
-    const { handlePaste, pasteFromClipboard } = useNativeChatComposerPaste({
+    const handlePasteEvent = useNativeChatComposerHandle(ref, {
+      ...textInput,
+      targetKey: JSON.stringify([
+        paneKey,
+        targetPtyId,
+        structuredTransport?.sessionId,
+        structuredTransport?.worktreeId,
+        structuredTransport?.runtimeEnvironmentId
+      ]),
       agent,
       disabled,
-      caret,
       resolveAttachmentOwner,
       attachResolvedPaths,
       beginPendingImageAttachment,
       resolvePendingImageAttachment,
       dropPendingImageAttachment,
-      insertTypedText,
-      setCaret,
       setNotice
     })
-
-    useImperativeHandle(
-      ref,
-      () => ({ focus, insertTypedText, handlePasteEvent: handlePaste, pasteFromClipboard }),
-      [focus, insertTypedText, handlePaste, pasteFromClipboard]
-    )
 
     const { pickAttachment } = useNativeChatFileAttachmentActions(paneKey, attachExternalPaths)
     const { toggleDictation, startHoldDictation, stopHoldDictation } =
@@ -269,6 +276,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       resolveTarget,
       classifySend,
       onOptimisticSend,
+      optimisticSendOutcome,
       onSlashCommand,
       sessionOptionsSurface: ptySessionOptionsSurface,
       terminalTabId,
@@ -352,6 +360,8 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       dismissPicker: dismiss,
       interrupt,
       send,
+      hasAttachments: imageAttachments.length > 0,
+      ...(steerQueued ? { steerQueued } : {}),
       setActiveSuggestion,
       setDraft,
       setCaret,
@@ -364,11 +374,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         textareaRef={textareaRef}
         draft={draft}
         promptSuggestion={promptSuggestion.promptSuggestion}
-        onAcceptPromptSuggestion={() => {
-          if (!imeEnterGesture.isComposing()) {
-            promptSuggestion.accept()
-          }
-        }}
+        onAcceptPromptSuggestion={() => imeEnterGesture.isComposing() || promptSuggestion.accept()}
         disabled={disabled}
         hasPty={hasPty}
         canSend={canSend}
@@ -391,19 +397,15 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
           if (element.value !== draft) {
             handleDraftChange(element.value, element)
           }
+          flushDraftAppends()
           attachments.flushPendingAttachments()
         }}
-        onPaste={handlePaste}
+        onPaste={handlePasteEvent}
         pickerListboxId={picker.listboxId}
         onChoosePickerItem={goalMode.interceptPick(completeItem)}
         goalMode={goalMode}
         onRetrySkills={picker.retrySkills}
-        onAcceptMention={() => {
-          if (autocomplete.mode !== 'mention') {
-            return
-          }
-          acceptMention(autocomplete.query)
-        }}
+        onAcceptMention={() => acceptMention(autocomplete)}
         onRemoveImageAttachment={(id) => removeImageAttachment(id)}
         onAttach={pickAttachment}
         coordinator={coordinatorTargetFor(structuredTransport)}

@@ -6,16 +6,19 @@ import {
   type UsagePercentageDisplay
 } from '../../../../shared/usage-percentage-display'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
-import { formatResetDuration } from '../../../../shared/rate-limit-reset-format'
-import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
-import { ProviderIcon, clampUsedPercent, getProviderUsageStatusLabel } from './tooltip'
+import {
+  ProviderIcon,
+  USAGE_URGENT_PERCENT,
+  USAGE_WARNING_PERCENT,
+  clampUsedPercent,
+  getProviderDisplayName,
+  getProviderUsageStatusLabel
+} from './tooltip'
 import { getTightestUsageSection } from './UsageRosterPanel'
-import { getTightestUsageSectionFromSections, type UsageSection } from './usage-section-selection'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
 import { isCursorUsageBucket } from '../../../../shared/cursor-usage-buckets'
-import { getAntigravityGroupShortLabel, sortAntigravityBuckets } from './antigravity-usage-format'
 
 function MiniBar({
   usedPct,
@@ -56,58 +59,6 @@ function WindowLabel({
   )
 }
 
-function AntigravityCompactSummary({
-  sections,
-  display,
-  now
-}: {
-  sections: UsageSection[]
-  display: UsagePercentageDisplay
-  now: number
-}): React.JSX.Element {
-  return (
-    <>
-      {sections.map((section, index) => {
-        const reset = section.window.resetsAt
-          ? formatResetDuration(section.window.resetsAt - now)
-          : null
-        return (
-          <React.Fragment key={`${section.groupName ?? 'other'}:${section.label}`}>
-            {index > 0 ? <span className="mx-1 text-muted-foreground">|</span> : null}
-            <span className="inline-flex items-center gap-1 tabular-nums">
-              <span className="text-muted-foreground">
-                {getAntigravityGroupShortLabel(section.groupName)}
-              </span>
-              <span>
-                {formatUsagePercentageLabel(section.window.usedPercent, display)}
-                {reset ? ` ${reset}` : ''}
-              </span>
-            </span>
-          </React.Fragment>
-        )
-      })}
-    </>
-  )
-}
-
-function getAntigravityCompactSections(p: ProviderRateLimits): UsageSection[] {
-  const groups = new Map<string, UsageSection[]>()
-  for (const bucket of p.buckets ?? []) {
-    const key = bucket.groupName ?? ''
-    const sections = groups.get(key) ?? []
-    sections.push({ label: bucket.name, window: bucket, groupName: bucket.groupName })
-    groups.set(key, sections)
-  }
-  return [...groups.values()]
-    .map((sections) =>
-      sortAntigravityBuckets(sections.map((section) => section.window)).map((window) =>
-        sections.find((section) => section.window === window)!
-      )
-    )
-    .map((sections) => getTightestUsageSectionFromSections(sections))
-    .filter((section): section is UsageSection => section !== null)
-}
-
 // Single-letter provider badge for the icon-only (narrow) status bar. Shared by
 // the roster trigger and ProviderDetailsMenu so the dot's has-data condition
 // and markup can't drift between the two.
@@ -119,6 +70,65 @@ export function ProviderLetterBadge({ p }: { p: ProviderRateLimits }): React.JSX
         className={`inline-block h-2 w-2 rounded-full ${hasData ? 'bg-muted-foreground/60' : 'bg-muted-foreground/30'}`}
       />
       {getProviderLetter(p.provider)}
+    </span>
+  )
+}
+
+export type UsageTone = 'urgent' | 'warning' | 'normal'
+
+/** Urgency by consumption, matching the usage bar colors, whatever % display the user chose. */
+export function getUsageTone(p: ProviderRateLimits): UsageTone {
+  const tightest = getTightestUsageSection(p)
+  const used = tightest ? clampUsedPercent(tightest.window.usedPercent) : 0
+  return used >= USAGE_URGENT_PERCENT
+    ? 'urgent'
+    : used >= USAGE_WARNING_PERCENT
+      ? 'warning'
+      : 'normal'
+}
+
+/**
+ * Stands in for usage chips a narrow bar can't fit. Always rendered at the collapsing
+ * density so its width is known before anything collapses; out of the row while empty.
+ */
+export function UsageOverflowChip({
+  hidden,
+  display
+}: {
+  hidden: readonly ProviderRateLimits[]
+  display: UsagePercentageDisplay
+}): React.JSX.Element {
+  const tones = hidden.map(getUsageTone)
+  const tone = tones.includes('urgent')
+    ? 'urgent'
+    : tones.includes('warning')
+      ? 'warning'
+      : 'normal'
+  const names = hidden
+    .map((p) => {
+      const tightest = getTightestUsageSection(p)
+      const name = getProviderDisplayName(p.provider)
+      return tightest
+        ? `${name} ${formatUsagePercentageLabel(tightest.window.usedPercent, display)}`
+        : name
+    })
+    .join(', ')
+  return (
+    <span
+      data-usage-more
+      data-usage-collapsed={hidden.length === 0}
+      data-tone={tone}
+      aria-hidden={hidden.length === 0}
+      title={translate(
+        'auto.components.status.bar.StatusBar.hiddenUsageProviders',
+        'Also: {{value0}}',
+        {
+          value0: names
+        }
+      )}
+      className="inline-flex h-4 items-center rounded-full border border-border px-1.5 text-[11px] font-medium tabular-nums text-foreground data-[tone=urgent]:border-destructive/40 data-[tone=urgent]:text-destructive data-[tone=warning]:border-status-warning-border data-[tone=warning]:text-status-warning data-[usage-collapsed=true]:invisible data-[usage-collapsed=true]:absolute"
+    >
+      +{Math.max(1, hidden.length)}
     </span>
   )
 }
@@ -141,6 +151,8 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
       return 'R'
     case 'cursor':
       return 'U'
+    case 'zcode':
+      return 'Z'
     case 'codex':
       return 'X'
   }
@@ -153,73 +165,36 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
 // Why: Gemini exposes extra experimental buckets that made the pre-existing verbose footer noisy.
 const STATUS_BAR_BUCKET_NAMES = new Set(['Flash', 'Pro', '1.5 Pro'])
 
-// Why: the allowlist above is Gemini's. Cursor's pools are its whole meter — filtering
-// them out leaves a signed-in account with an icon and no number at all.
-function isVisibleStatusBarBucket(name: string): boolean {
-  return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
-}
-
-function AntigravitySummary({
-  p,
-  display,
-  now
-}: {
-  p: ProviderRateLimits
-  display: UsagePercentageDisplay
-  now: number
-}): React.JSX.Element {
-  const groups = new Map<string, NonNullable<ProviderRateLimits['buckets']>>()
-  for (const bucket of p.buckets ?? []) {
-    const key = bucket.groupName ?? ''
-    const current = groups.get(key) ?? []
-    current.push(bucket)
-    groups.set(key, current)
+/**
+ * Why Antigravity is matched by provider and not by name: its pools are one per model group, and the
+ * group names come from the account's own tier ("Gemini Models", "Claude and GPT models" today), so
+ * there is no list to allow. Cursor stays name-matched on purpose — a pool Orca does not recognise
+ * is filtered so the segment can fall back to the plan total instead of showing an unlabelled row.
+ */
+function isVisibleStatusBarBucket(name: string, provider: ProviderRateLimits['provider']): boolean {
+  if (provider === 'antigravity') {
+    return true
   }
-  return (
-    <>
-      {[...groups.entries()].map(([groupName, buckets], groupIndex) => (
-        <React.Fragment key={groupName || 'other'}>
-          {groupIndex > 0 ? <span className="mx-1 text-muted-foreground">|</span> : null}
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <span className="text-muted-foreground">
-              {getAntigravityGroupShortLabel(groupName)}
-            </span>
-            {sortAntigravityBuckets(buckets).map((bucket, index) => (
-              <React.Fragment key={bucket.id ?? `${bucket.groupName}:${bucket.windowMinutes}`}>
-                {index > 0 ? <span className="text-muted-foreground">·</span> : null}
-                <span>
-                  {formatUsagePercentageLabel(bucket.usedPercent, display)}
-                  {bucket.resetsAt ? ` ${formatResetDuration(bucket.resetsAt - now)}` : ''}
-                </span>
-              </React.Fragment>
-            ))}
-          </span>
-        </React.Fragment>
-      ))}
-    </>
-  )
+  return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
 }
 
 function VerboseProviderUsage({
   p,
-  display,
-  now
+  display
 }: {
   p: ProviderRateLimits
   display: UsagePercentageDisplay
-  now: number
 }): React.JSX.Element {
-  if (p.provider === 'antigravity' && p.buckets?.length) {
-    return <AntigravitySummary p={p} display={display} now={now} />
-  }
   if (p.buckets && p.buckets.length > 0) {
-    const visibleBuckets =
-      p.provider === 'antigravity'
-        ? p.buckets
-        : p.buckets.filter((bucket) => isVisibleStatusBarBucket(bucket.name))
+    const visibleBuckets = p.buckets.filter((bucket) =>
+      isVisibleStatusBarBucket(bucket.name, p.provider)
+    )
     // Why: a provider whose buckets are all filtered out still has a headline
     // window worth showing rather than rendering an empty segment.
-    const fallbackWindow = p.session ?? p.monthly ?? null
+    // Why weekly is in the chain: a tier metered weekly only (Antigravity reports no 5h pool on
+    // some tiers) has no session window, and omitting weekly rendered an empty segment for an
+    // account that does have a limit worth showing.
+    const fallbackWindow = p.session ?? p.monthly ?? p.weekly ?? null
     return (
       <>
         {visibleBuckets.map((bucket, index) => (
@@ -300,7 +275,6 @@ export function ProviderSegment({
 }): React.JSX.Element {
   const provider = p?.provider ?? 'claude'
   const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
-  const now = useResetCountdownClock((p?.buckets ?? []).map((bucket) => bucket.resetsAt))
 
   // Idle / initial load
   if (!p || p.status === 'idle') {
@@ -355,14 +329,8 @@ export function ProviderSegment({
           {tightest && !compact ? (
             <MiniBar usedPct={clampUsedPercent(tightest.window.usedPercent)} display={display} />
           ) : null}
-          <VerboseProviderUsage p={p} display={display} now={now} />
+          <VerboseProviderUsage p={p} display={display} />
         </>
-      ) : p.provider === 'antigravity' ? (
-        <AntigravityCompactSummary
-          sections={getAntigravityCompactSections(p)}
-          display={display}
-          now={now}
-        />
       ) : tightest ? (
         <WindowLabel
           w={tightest.window}

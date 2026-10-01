@@ -10,6 +10,7 @@
  * build never claims a schema version upstream may later assign to something else.
  */
 
+import { z } from 'zod'
 import type { OrchestrationDb } from '../orchestration-db'
 
 export const STRUCTURED_SESSION_IDENTITIES_SQL = `
@@ -36,36 +37,24 @@ export type StructuredSessionIdentityRow = {
   revoked_at: string | null
 }
 
-function readText(value: object, key: string): string | null {
-  const field: unknown = Reflect.get(value, key)
-  return typeof field === 'string' ? field : null
-}
+const requiredText = z.string().min(1)
+const identityRowSchema = z.object({
+  terminal_handle: requiredText,
+  session_id: requiredText,
+  pane_key: requiredText,
+  worktree_id: requiredText,
+  host_scope: requiredText,
+  created_at: requiredText,
+  revoked_at: z
+    .unknown()
+    .optional()
+    .transform((value) => (typeof value === 'string' ? value : null))
+})
 
 /** Checked read: a row is a credential, so a malformed one is absent rather than trusted. */
 function readIdentityRow(value: unknown): StructuredSessionIdentityRow | undefined {
-  if (typeof value !== 'object' || value === null) {
-    return undefined
-  }
-  const [terminalHandle, sessionId, paneKey, worktreeId, hostScope, createdAt] = [
-    'terminal_handle',
-    'session_id',
-    'pane_key',
-    'worktree_id',
-    'host_scope',
-    'created_at'
-  ].map((key) => readText(value, key))
-  if (!terminalHandle || !sessionId || !paneKey || !worktreeId || !hostScope || !createdAt) {
-    return undefined
-  }
-  return {
-    terminal_handle: terminalHandle,
-    session_id: sessionId,
-    pane_key: paneKey,
-    worktree_id: worktreeId,
-    host_scope: hostScope,
-    created_at: createdAt,
-    revoked_at: readText(value, 'revoked_at')
-  }
+  const parsed = identityRowSchema.safeParse(value)
+  return parsed.success ? parsed.data : undefined
 }
 
 export function insertStructuredSessionIdentity(

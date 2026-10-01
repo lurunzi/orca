@@ -23,7 +23,6 @@ export function StatusBarVisibilityMenu({
     menuPoint,
     recordFeatureInteraction,
     setMenuOpen,
-    settings,
     statusBarItems,
     toggleStatusBarItem
   } = controller
@@ -75,7 +74,7 @@ export function StatusBarVisibilityMenu({
             {translate('auto.components.status.bar.StatusBar.c1df0d67ec', 'Gemini Usage')}
           </DropdownMenuCheckboxItem>
         )}
-        {isStatusBarItemAvailable('antigravity', detectedAgentIds, settings) && (
+        {isStatusBarItemAvailable('antigravity', detectedAgentIds) && (
           <DropdownMenuCheckboxItem
             checked={statusBarItems.includes('antigravity')}
             onCheckedChange={() => {
@@ -132,6 +131,18 @@ export function StatusBarVisibilityMenu({
           >
             <AgentIcon agent="grok" size={14} />
             {translate('auto.components.status.bar.StatusBar.grokUsageMenu', 'Grok Usage')}
+          </DropdownMenuCheckboxItem>
+        )}
+        {isStatusBarItemAvailable('zcode', detectedAgentIds) && (
+          <DropdownMenuCheckboxItem
+            checked={statusBarItems.includes('zcode')}
+            onCheckedChange={() => {
+              recordFeatureInteraction('usage-tracking')
+              toggleStatusBarItem('zcode')
+            }}
+          >
+            <AgentIcon agent="zcode" size={14} />
+            {translate('auto.components.status.bar.StatusBar.zcodeUsageMenu', 'ZCode Usage')}
           </DropdownMenuCheckboxItem>
         )}
         <DropdownMenuCheckboxItem

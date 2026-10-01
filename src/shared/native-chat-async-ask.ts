@@ -2,6 +2,7 @@
 // Its tool result (`{"accepted":true}`) only acknowledges delivery; the user's
 // reply arrives later as an ordinary user message, never as TUI keystrokes.
 
+import { z } from 'zod'
 import type { AskAnswerSelection, AskPrompt, AskQuestion } from './native-chat-ask-types'
 import { isInterruptedStatusMessage, type NativeChatMessage } from './native-chat-types'
 
@@ -11,11 +12,12 @@ export function isAsyncAskUserQuestionTool(toolName: string | undefined): boolea
   return toolName?.replaceAll(/[^a-z0-9]/gi, '').toLowerCase() === 'requestuserinputasync'
 }
 
-function readField(value: unknown, key: string): unknown {
-  return typeof value === 'object' && value !== null && key in value
-    ? Reflect.get(value, key)
-    : undefined
-}
+const asyncAskInputSchema = z.object({ questions: z.array(z.unknown()) })
+const asyncAskQuestionSchema = z.object({
+  title: z.unknown().optional(),
+  question: z.unknown().optional(),
+  options: z.unknown().optional()
+})
 
 /** `{questions:[{title, options?: string[]}]}`; arguments may arrive JSON-encoded. */
 export function parseAsyncAskInput(input: unknown): AskPrompt | null {
@@ -27,18 +29,19 @@ export function parseAsyncAskInput(input: unknown): AskPrompt | null {
       return null
     }
   }
-  const rawQuestions = readField(value, 'questions')
-  if (!Array.isArray(rawQuestions)) {
+  const parsedInput = asyncAskInputSchema.safeParse(value)
+  if (!parsedInput.success) {
     return null
   }
   const questions: AskQuestion[] = []
-  for (const raw of rawQuestions) {
-    const titleField = readField(raw, 'title')
-    const title = typeof titleField === 'string' ? titleField : readField(raw, 'question')
+  for (const raw of parsedInput.data.questions) {
+    const parsed = asyncAskQuestionSchema.safeParse(raw)
+    const fields = parsed.success ? parsed.data : null
+    const title = typeof fields?.title === 'string' ? fields.title : fields?.question
     if (typeof title !== 'string' || title.trim().length === 0) {
       continue
     }
-    const rawOptions = readField(raw, 'options')
+    const rawOptions = fields?.options
     const options = Array.isArray(rawOptions)
       ? rawOptions.filter((option): option is string => typeof option === 'string')
       : []

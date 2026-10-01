@@ -286,7 +286,7 @@ function getAiVaultResumeCodexHome(
   return parseWslUncPath(codexHome)?.linuxPath ?? codexHome
 }
 
-export function getAiVaultResumePlatform(
+function getAiVaultResumePlatform(
   state: Pick<
     AppState,
     | 'activeRepoId'

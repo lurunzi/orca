@@ -1,7 +1,7 @@
 import {
   ANTIGRAVITY_NATIVE_CHAT_RUNTIME_CAPABILITY,
   CURSOR_NATIVE_CHAT_RUNTIME_CAPABILITY
-} from '../../../../shared/protocol-version'
+} from '../../../../shared/agent-provider-runtime-capabilities'
 import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabilities'
 import { guardNativeChatAgentTransport } from './native-chat-provider-capability'
 import type { NativeChatApi, NativeChatAppendedMessages } from '../../../../preload/api-types'

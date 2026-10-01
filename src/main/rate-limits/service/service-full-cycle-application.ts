@@ -30,13 +30,14 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
         claudeResult,
         codexResult,
         geminiResult,
-        antigravityResult,
         opencodeGoResult,
         kimiResult,
         miniMaxResult
       ],
       grokResultPromise,
-      cursorResultPromise
+      cursorResultPromise,
+      zcodeResultPromise,
+      antigravityResultPromise
     } = prepared
     if (signal.aborted) {
       return
@@ -78,22 +79,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
             updatedAt: Date.now(),
             error:
               geminiResult.reason instanceof Error ? geminiResult.reason.message : 'Unknown error',
-            status: 'error'
-          } satisfies ProviderRateLimits)
-
-    const antigravity =
-      antigravityResult.status === 'fulfilled'
-        ? antigravityResult.value
-        : ({
-            provider: 'antigravity',
-            session: null,
-            weekly: null,
-            buckets: [],
-            updatedAt: Date.now(),
-            error:
-              antigravityResult.reason instanceof Error
-                ? antigravityResult.reason.message
-                : 'Antigravity usage could not be read.',
             status: 'error'
           } satisfies ProviderRateLimits)
 
@@ -171,7 +156,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       this.trackActiveFailureStreak('codex', codex)
     }
     this.trackActiveFailureStreak('gemini', gemini)
-    this.trackActiveFailureStreak('antigravity', antigravity)
     if (shouldApplyOpencode) {
       this.trackActiveFailureStreak('opencode-go', opencodeGo)
     }
@@ -198,12 +182,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
           : this.applyStalePolicy(opencodeGo, previousState.opencodeGo)
         : this.state.opencodeGo,
       kimi: this.applyStalePolicy(kimi, previousState.kimi),
-      antigravity:
-        prepared.antigravityCommand !== (this.antigravityCommandResolver?.()?.trim() ?? '')
-          ? null
-          : prepared.antigravityCommandChanged
-            ? antigravity
-            : this.applyStalePolicy(antigravity, previousState.antigravity),
       minimax: shouldApplyMiniMax
         ? miniMaxConfigChanged
           ? miniMax
@@ -211,12 +189,19 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
         : this.state.minimax
     })
 
-    const [grokSettled, cursorSettled] = await Promise.all([grokResultPromise, cursorResultPromise])
+    const [grokSettled, cursorSettled, zcodeSettled, antigravitySettled] = await Promise.all([
+      grokResultPromise,
+      cursorResultPromise,
+      zcodeResultPromise,
+      antigravityResultPromise
+    ])
     if (signal.aborted) {
       return
     }
     const grok = settleSiblingProviderResult('grok', grokSettled)
     const cursor = settleSiblingProviderResult('cursor', cursorSettled)
+    const zcode = settleSiblingProviderResult('zcode', zcodeSettled)
+    const antigravity = settleSiblingProviderResult('antigravity', antigravitySettled)
     // Why: the stale policy keeps a recent snapshot through a failed refresh, but
     // a snapshot belonging to a different Cursor account must not survive the
     // switch — the Accounts pane would name the new account beside the old
@@ -228,12 +213,25 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       previousCursorAccount !== undefined &&
       cursorAccount !== undefined &&
       previousCursorAccount !== cursorAccount
+    const previousZcodeAccount = previousState.zcode?.usageMetadata?.authProvenance
+    const zcodeAccount = zcode.usageMetadata?.authProvenance
+    const sameZcodeAccount =
+      previousZcodeAccount !== undefined &&
+      zcodeAccount !== undefined &&
+      previousZcodeAccount === zcodeAccount
     this.trackActiveFailureStreak('grok', grok)
     this.trackActiveFailureStreak('cursor', cursor)
+    this.trackActiveFailureStreak('zcode', zcode)
+    this.trackActiveFailureStreak('antigravity', antigravity)
     this.updateState({
       ...this.state,
       grok: this.applyStalePolicy(grok, previousState.grok),
-      cursor: cursorAccountChanged ? cursor : this.applyStalePolicy(cursor, previousState.cursor)
+      cursor: cursorAccountChanged ? cursor : this.applyStalePolicy(cursor, previousState.cursor),
+      zcode:
+        zcode.status === 'error' && !sameZcodeAccount
+          ? zcode
+          : this.applyStalePolicy(zcode, previousState.zcode),
+      antigravity: this.applyStalePolicy(antigravity, previousState.antigravity)
     })
   }
 }

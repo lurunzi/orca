@@ -3,7 +3,6 @@ import {
   formatResetCountdown,
   formatResetDuration
 } from '../../../../shared/rate-limit-reset-format'
-import { cn } from '@/lib/utils'
 import { AgentIcon } from '@/lib/agent-catalog'
 import { ClaudeIcon, GeminiIcon, MiniMaxIcon, OpenAIIcon, OpenCodeGoIcon } from './icons'
 import { translate } from '@/i18n/i18n'
@@ -19,8 +18,6 @@ import {
 } from '../../../../shared/usage-percentage-display'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
-import { formatWindowLabel } from '@/lib/window-label-formatter'
-import { sortAntigravityBuckets } from './antigravity-usage-format'
 
 // Re-exported from its shared home so status-bar callers keep a single import.
 export { clampUsedPercent }
@@ -100,6 +97,9 @@ export function ProviderIcon({ provider }: { provider: string }): React.JSX.Elem
   if (provider === 'grok') {
     return <AgentIcon agent="grok" size={13} />
   }
+  if (provider === 'zcode') {
+    return <AgentIcon agent="zcode" size={13} />
+  }
   if (provider === 'cursor') {
     return <AgentIcon agent="cursor" size={13} />
   }
@@ -145,26 +145,11 @@ function ErrorMessage({
 // Window section derivation
 // ---------------------------------------------------------------------------
 
-export function getWindowSections(p: ProviderRateLimits): {
-  label: string
-  window: RateLimitWindow | null
-  groupName?: string
-  groupDescription?: string | null
-}[] {
+export function getWindowSections(
+  p: ProviderRateLimits
+): { label: string; window: RateLimitWindow | null }[] {
   if (p.buckets?.length) {
-    const bucketSections = p.buckets.map((b) => ({
-      label:
-        p.provider === 'antigravity'
-          ? b.windowMinutes === 300
-            ? translate('auto.components.status.bar.tooltip.94038ad2fa', 'Session')
-            : b.windowMinutes === 10080
-              ? translate('auto.components.status.bar.tooltip.252c096536', 'Weekly')
-              : b.windowLabel || formatWindowLabel(b.windowMinutes)
-          : b.name,
-      window: b,
-      ...(b.groupName ? { groupName: b.groupName } : {}),
-      ...(b.groupDescription !== undefined ? { groupDescription: b.groupDescription } : {})
-    }))
+    const bucketSections = p.buckets.map((b) => ({ label: b.name, window: b as RateLimitWindow }))
     return [
       ...bucketSections,
       // Why: Cursor reports the plan total in `monthly` and its pools as buckets,
@@ -204,7 +189,10 @@ export function getWindowSections(p: ProviderRateLimits): {
   }
   if (p.monthly !== undefined && p.monthly !== null) {
     sections.push({
-      label: translate('auto.components.status.bar.tooltip.7f7f208060', 'Monthly'),
+      label:
+        p.provider === 'zcode'
+          ? translate('auto.components.status.bar.tooltip.zcode.mcp', 'MCP')
+          : translate('auto.components.status.bar.tooltip.7f7f208060', 'Monthly'),
       window: p.monthly
     })
   }
@@ -222,11 +210,14 @@ export function getWindowSections(p: ProviderRateLimits): {
 
 // Why: urgency color tracks % used even when fill represents % remaining;
 // low usage stays neutral so persistent chrome stays quiet.
+export const USAGE_WARNING_PERCENT = 60
+export const USAGE_URGENT_PERCENT = 80
+
 export function barColor(usedPct: number): string {
-  if (usedPct < 60) {
+  if (usedPct < USAGE_WARNING_PERCENT) {
     return 'bg-muted-foreground/40'
   }
-  if (usedPct < 80) {
+  if (usedPct < USAGE_URGENT_PERCENT) {
     return 'bg-yellow-500'
   }
   return 'bg-red-500'
@@ -319,14 +310,7 @@ export function ProviderPanel({
     )
   }
 
-  if (
-    p.status === 'error' &&
-    !p.session &&
-    !p.weekly &&
-    !p.fableWeekly &&
-    !p.monthly &&
-    !p.buckets?.length
-  ) {
+  if (p.status === 'error' && !p.session && !p.weekly && !p.fableWeekly && !p.monthly) {
     return (
       <div className={`text-xs ${className ?? 'w-full'}`}>
         <div className={`flex items-center gap-1.5 font-medium ${textClass}`}>
@@ -353,34 +337,6 @@ export function ProviderPanel({
     resetCreditCount != null
       ? formatResetCreditExpiry(p.rateLimitResetCredits?.nextExpiresAt, resetCreditCount)
       : null
-  const groupedAntigravitySections =
-    p.provider === 'antigravity'
-      ? [...new Set(windowSections.map((section) => section.groupName ?? ''))].map((groupName) => ({
-          groupName,
-          sections: sortAntigravityBuckets(
-            windowSections
-              .filter((section) => (section.groupName ?? '') === groupName)
-              .map((section) => ({
-                name: section.label,
-                windowMinutes: section.window?.windowMinutes ?? 0,
-                section
-              }))
-          ).map(({ section }) => section)
-        }))
-      : []
-
-  const renderWindowSection = (s: (typeof windowSections)[number]) => (
-    <ProviderRateLimitWindowSection
-      key={`${s.groupName ?? 'default'}:${s.label}`}
-      window={s.window}
-      label={s.label}
-      textClass={textClass}
-      mutedClass={mutedClass}
-      emptyBarClass={emptyBarClass}
-      usagePercentageDisplay={usagePercentageDisplay}
-      now={now}
-    />
-  )
 
   return (
     <div className={`${className ?? 'w-full'} space-y-3 text-xs`}>
@@ -409,19 +365,23 @@ export function ProviderPanel({
 
       <div className={`border-t ${dividerClass}`} />
 
-      {p.provider === 'antigravity'
-        ? groupedAntigravitySections.map(({ groupName, sections }) => (
-            <div key={groupName || 'default'} className="space-y-3">
-              {groupName ? <div className={cn('font-medium', textClass)}>{groupName}</div> : null}
-              {sections.map(renderWindowSection)}
-            </div>
-          ))
-        : windowSections.map(renderWindowSection)}
+      {windowSections.map((s) => (
+        <ProviderRateLimitWindowSection
+          key={s.label}
+          window={s.window}
+          label={s.label}
+          textClass={textClass}
+          mutedClass={mutedClass}
+          emptyBarClass={emptyBarClass}
+          usagePercentageDisplay={usagePercentageDisplay}
+          now={now}
+        />
+      ))}
 
       {p.error ? (
         <ErrorMessage
           message={p.error}
-          stale={!!(p.session || p.weekly || p.fableWeekly || p.monthly || p.buckets?.length)}
+          stale={!!(p.session || p.weekly || p.fableWeekly || p.monthly)}
           inverted={inverted}
         />
       ) : null}

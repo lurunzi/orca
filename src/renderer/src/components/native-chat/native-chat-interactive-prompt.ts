@@ -46,7 +46,8 @@ export type ChatApproval = {
 }
 
 export type InteractivePromptCard =
-  | { kind: 'question'; prompt: AskPrompt }
+  /** `async`: answered by an ordinary chat message, never selector keystrokes. */
+  | { kind: 'question'; prompt: AskPrompt; async?: boolean }
   | { kind: 'approval'; approval: ChatApproval }
   | null
 

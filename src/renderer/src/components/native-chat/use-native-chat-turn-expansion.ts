@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useAppStore } from '../../store'
-
-const MAX_TOGGLED_TURNS = 128
+import { toggleNativeChatExpandedKey } from './native-chat-expanded-keys'
 
 type TurnToggles = {
   /** The default the toggles were made against; flipping the setting drops them. */
@@ -31,20 +30,9 @@ export function useNativeChatTurnExpansion(turnKeys: readonly (string | undefine
   const toggleExpandedTurn = useCallback(
     (turnKey: string) => {
       setToggles((current) => {
-        const next = new Set(
-          current.expandByDefault === expandByDefault ? current.turnKeys : undefined
-        )
-        if (next.has(turnKey)) {
-          next.delete(turnKey)
-        } else {
-          if (next.size >= MAX_TOGGLED_TURNS) {
-            const oldest = next.values().next().value
-            if (oldest) {
-              next.delete(oldest)
-            }
-          }
-          next.add(turnKey)
-        }
+        const base =
+          current.expandByDefault === expandByDefault ? current.turnKeys : new Set<string>()
+        const next = toggleNativeChatExpandedKey(base, turnKey)
         return { expandByDefault, turnKeys: next }
       })
     },

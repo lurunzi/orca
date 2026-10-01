@@ -8,7 +8,11 @@ export type UsageProviderSettings = Pick<
   | 'opencodeSessionCookie'
   | 'geminiCliOAuthEnabled'
 > & {
-  // A checked item plus a detected or configured CLI keeps native quota visible while pending.
+  // Why: Antigravity has no separate persisted usage credential in Orca. The
+  // checked status-bar item is the durable user signal; StatusBar only sets
+  // this after PATH detection says the agent is available. Durability further
+  // requires geminiCliOAuthEnabled — the snapshot mirrors the Gemini fetch,
+  // which never yields data while that opt-in is off.
   antigravityUsageConfigured: boolean
   // Why: MiniMax/Grok sign-in live on disk, not in settings; main sets these each poll.
   minimaxCookieConfigured: boolean
@@ -30,6 +34,7 @@ type UsageProviderSnapshots = {
   minimax: ProviderRateLimits | null | undefined
   grok: ProviderRateLimits | null | undefined
   cursor: ProviderRateLimits | null | undefined
+  zcode?: ProviderRateLimits | null
 }
 
 type UsageProviderId = ProviderRateLimits['provider']
@@ -77,8 +82,8 @@ export function hasUsageProviderSettings(
     settings?.geminiCliOAuthEnabled === true ||
     Boolean(settings?.opencodeSessionCookie?.trim()) ||
     settings?.opencodeGoApiKeyConfigured === true ||
-    // Antigravity has its own CLI-backed usage source.
-    settings?.antigravityUsageConfigured === true ||
+    // Antigravity's durable signal requires geminiCliOAuthEnabled, so it is
+    // already covered by the gemini term above.
     settings?.minimaxCookieConfigured === true ||
     settings?.minimaxApiKeyConfigured === true ||
     settings?.grokAuthConfigured === true ||
@@ -109,7 +114,10 @@ export function hasUsageProviderSettingsForProvider(
     )
   }
   if (providerId === 'antigravity') {
-    return settings.antigravityUsageConfigured === true
+    // Why: the Antigravity snapshot mirrors the Gemini fetch, which stays
+    // 'unavailable' until the user opts into Gemini CLI OAuth. Without that
+    // gate the default-on checked item would pin a permanently dead bar.
+    return settings.antigravityUsageConfigured === true && settings.geminiCliOAuthEnabled === true
   }
   if (providerId === 'minimax') {
     return settings.minimaxCookieConfigured === true || settings.minimaxApiKeyConfigured === true
@@ -129,7 +137,11 @@ function createPendingProviderSnapshot(providerId: UsageProviderId): ProviderRat
     session: null,
     weekly: null,
     ...(providerId === 'opencode-go' ? { monthly: null } : {}),
-    ...(providerId === 'gemini' || providerId === 'cursor' ? { buckets: [] } : {}),
+    // Why antigravity joins these: it reports one pool per model group, so its pending skeleton
+    // has to be bucket-shaped too or the segment changes shape once the first reading lands.
+    ...(providerId === 'gemini' || providerId === 'cursor' || providerId === 'antigravity'
+      ? { buckets: [] }
+      : {}),
     updatedAt: 0,
     error: null,
     status: 'fetching'
@@ -174,7 +186,8 @@ export function isUsageEmptyState(
     antigravitySnapshotPending ||
     isProviderSnapshotPending(providers.minimax) ||
     isProviderSnapshotPending(providers.grok) ||
-    isProviderSnapshotPending(providers.cursor)
+    isProviderSnapshotPending(providers.cursor) ||
+    (providers.zcode !== undefined && isProviderSnapshotPending(providers.zcode))
   ) {
     return false
   }
@@ -188,6 +201,7 @@ export function isUsageEmptyState(
     !isProviderConfigured(providers.antigravity) &&
     !isProviderConfigured(providers.minimax) &&
     !isProviderConfigured(providers.grok) &&
-    !isProviderConfigured(providers.cursor)
+    !isProviderConfigured(providers.cursor) &&
+    !isProviderConfigured(providers.zcode)
   )
 }

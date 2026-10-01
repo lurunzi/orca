@@ -28,7 +28,8 @@ const {
   structuredWorkerIdentities,
   structuredWorkerProcessIncarnation
 } = await import('./structured-worker-identity')
-const { structuredWorkerChildIdentityEnv } = await import('./structured-worker-child-identity-env')
+const { structuredSessionChildIdentityEnv } =
+  await import('./structured-session-child-identity-env')
 
 const SESSION_ID = '0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0'
 
@@ -125,7 +126,7 @@ describe('granting a user-opened structured chat a coordinator identity', () => 
       origin: 'session'
     })
     // The restarted child is what carries it; an ordinary chat gets only the refusal marker.
-    expect(structuredWorkerChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBe(
+    expect(structuredSessionChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBe(
       row!.terminal_handle
     )
     expect(await readStructuredSessionCoordinatorIdentity(deps, SESSION_ID)).toEqual({
@@ -193,7 +194,7 @@ describe('granting a user-opened structured chat a coordinator identity', () => 
 
     expect(resolveStructuredWorkerAuthority(handle, db)).toBeNull()
     expect(deps.forgetSessionMail).toHaveBeenCalledWith(SESSION_ID)
-    expect(structuredWorkerChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBeUndefined()
+    expect(structuredSessionChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBeUndefined()
   })
 
   it('survives a restart: the grant reloads from the database for the next spawn', async () => {
@@ -209,7 +210,7 @@ describe('granting a user-opened structured chat a coordinator identity', () => 
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: fake exposes the three members bind reads.
     bindStructuredSessionCoordinatorIdentities({ ...deps, host: host as never })
 
-    expect(structuredWorkerChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBe(handle)
+    expect(structuredSessionChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBe(handle)
     expect(resolveStructuredWorkerAuthority(handle, db)?.identity.origin).toBe('session')
   })
 

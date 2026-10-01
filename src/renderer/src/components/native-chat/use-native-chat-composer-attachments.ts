@@ -1,6 +1,6 @@
 import type { NativeChatComposerInput } from './native-chat-composer-input'
 import { z } from 'zod'
-import { useCallback, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { translate } from '@/i18n/i18n'
 import {
   nativeChatComposerTargetIsRemote,
@@ -58,6 +58,14 @@ export function useNativeChatComposerAttachments({
     () => readNativeChatAttachmentCache(attachmentScopeKey)
   )
   const imageAttachmentCounter = useRef(0)
+
+  useEffect(
+    () =>
+      subscribeToNativeChatAttachmentAppend(attachmentScopeKey, (appended) =>
+        setImageAttachments((prev) => [...prev, ...appended])
+      ),
+    [attachmentScopeKey]
+  )
 
   const updateImageAttachments = useCallback(
     (
@@ -255,6 +263,42 @@ function writeNativeChatAttachmentCache(
   // LRU-bounded so pending attachments for permanently-removed panes can't accumulate.
   setBoundedScopeCacheEntry(attachmentCache, scopeKey, [...attachments])
   writeNativeChatComposerStorage('attachments', scopeKey, attachments)
+}
+
+// Only a write from outside the composer notifies; its own writes already hold the chips.
+const appendListeners = new Map<
+  string,
+  Set<(appended: readonly NativeChatComposerImageAttachment[]) => void>
+>()
+
+/** Puts settled images back after whatever is attached, and shows them in a mounted composer. */
+export function appendNativeChatAttachmentCache(
+  scopeKey: string,
+  appended: readonly NativeChatComposerImageAttachment[]
+): void {
+  if (appended.length === 0) {
+    return
+  }
+  writeNativeChatAttachmentCache(scopeKey, [
+    ...readNativeChatAttachmentCache(scopeKey),
+    ...appended
+  ])
+  appendListeners.get(scopeKey)?.forEach((listener) => listener(appended))
+}
+
+function subscribeToNativeChatAttachmentAppend(
+  scopeKey: string,
+  listener: (appended: readonly NativeChatComposerImageAttachment[]) => void
+): () => void {
+  const listeners = appendListeners.get(scopeKey) ?? new Set()
+  appendListeners.set(scopeKey, listeners)
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0 && appendListeners.get(scopeKey) === listeners) {
+      appendListeners.delete(scopeKey)
+    }
+  }
 }
 
 export function clearNativeChatAttachmentCacheForTests(preserveStorage = false): void {

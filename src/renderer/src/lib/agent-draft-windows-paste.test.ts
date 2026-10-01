@@ -29,7 +29,9 @@ describe('Windows launch prompt paste', () => {
       'focused'
     )!
     const write = vi.fn(async (_data: string) => true)
-    expect(await sendAgentDraftPasteContentNow({}, 'pty-1', text, write, 'alt-enter')).toBe(true)
+    expect(
+      await sendAgentDraftPasteContentNow({}, 'pty-1', text, 'launch', write, 'alt-enter')
+    ).toBe(true)
     const bytes = write.mock.calls.map(([data]) => data).join('')
     expect(bytes).toBe(text.replace(/\n/g, '\x1b\r'))
     const received = bytes.replaceAll('\x1b\r', '\n')
@@ -65,7 +67,9 @@ describe('Windows launch prompt paste', () => {
       )
       const newline = mode === 'alt-enter' ? '\x1b\r' : '\x1b[13;2u'
       const write = vi.fn(async (_data: string) => true)
-      expect(await sendAgentDraftPasteContentNow({}, 'pty-1', text, write, mode)).toBe(true)
+      expect(await sendAgentDraftPasteContentNow({}, 'pty-1', text, 'launch', write, mode)).toBe(
+        true
+      )
       const chunks = write.mock.calls.map(([data]) => data)
       expect(chunks.length).toBeGreaterThan(1)
       expect(chunks.join('')).toBe(text.replace(/\r\n|\r|\n/g, newline))
@@ -80,21 +84,32 @@ describe('Windows launch prompt paste', () => {
   it('counts expanded newlines when deciding to chunk', async () => {
     const write = vi.fn(async (_data: string) => true)
     const text = '\n'.repeat(AGENT_DRAFT_PASTE_DIRECT_MAX_BYTES / 2 + 1)
-    expect(await sendAgentDraftPasteContentNow({}, 'pty-1', text, write, 'alt-enter')).toBe(true)
+    expect(
+      await sendAgentDraftPasteContentNow({}, 'pty-1', text, 'launch', write, 'alt-enter')
+    ).toBe(true)
     expect(write.mock.calls.length).toBeGreaterThan(1)
   })
 
   it('rejects an expanded payload over the limit before writing', async () => {
     const write = vi.fn(async (_data: string) => true)
     const text = '\n'.repeat(AGENT_DRAFT_PASTE_MAX_BYTES / 2 + 1)
-    expect(await sendAgentDraftPasteContentNow({}, 'pty-1', text, write, 'alt-enter')).toBe(false)
+    expect(
+      await sendAgentDraftPasteContentNow({}, 'pty-1', text, 'launch', write, 'alt-enter')
+    ).toBe(false)
     expect(write).not.toHaveBeenCalled()
   })
 
   it('sanitizes embedded escapes without adding bracketed paste markers', async () => {
     const write = vi.fn(async (_data: string) => true)
     expect(
-      await sendAgentDraftPasteContentNow({}, 'pty-1', 'a\x1b[201~\nb', write, 'alt-enter')
+      await sendAgentDraftPasteContentNow(
+        {},
+        'pty-1',
+        'a\x1b[201~\nb',
+        'launch',
+        write,
+        'alt-enter'
+      )
     ).toBe(true)
     expect(write).toHaveBeenCalledWith('a\u241b[201~\x1b\rb')
     expect([...iterateAgentDraftPasteContentChunks('a\x1b[201~\nb', 4, 'alt-enter')].join('')).toBe(
@@ -105,7 +120,9 @@ describe('Windows launch prompt paste', () => {
   it('stops after a rejected chunk without sending a closing frame', async () => {
     const write = vi.fn(async (_data: string) => false)
     const text = 'x'.repeat(AGENT_DRAFT_PASTE_DIRECT_MAX_BYTES + 1)
-    expect(await sendAgentDraftPasteContentNow({}, 'pty-1', text, write, 'alt-enter')).toBe(false)
+    expect(
+      await sendAgentDraftPasteContentNow({}, 'pty-1', text, 'launch', write, 'alt-enter')
+    ).toBe(false)
     expect(write).toHaveBeenCalledTimes(1)
   })
 })

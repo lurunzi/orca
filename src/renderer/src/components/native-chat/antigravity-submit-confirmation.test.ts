@@ -13,8 +13,8 @@ import {
   antigravityComposerHoldsDraft,
   withAntigravitySubmitConfirmation
 } from './antigravity-submit-confirmation'
+import { NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT } from './native-chat-input-clear'
 import {
-  NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
   NATIVE_CHAT_SUBMIT_DELAY_MS,
   resetNativeChatPtySendQueuesForTests,
   sendNativeChatMessage

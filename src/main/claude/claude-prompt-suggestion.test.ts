@@ -82,7 +82,7 @@ async function acquireWith(store: ClaudePromptSuggestionStore, resumeLeafUuid: s
     spawnToken: `suggestion-${resumeLeafUuid}`,
     events: { appendItem: vi.fn(), appendTombstone: vi.fn(), publish: vi.fn() }
   })
-  await adapter.drainStartup(identityFor().sessionId)
+  await adapter.awaitStarted(identityFor().sessionId)
   const message = (body: Record<string, unknown>): void => {
     claude.connections[0].handlers.onMessage?.({ session_id: PROVIDER_SESSION_ID, ...body })
   }

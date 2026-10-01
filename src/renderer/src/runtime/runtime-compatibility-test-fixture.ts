@@ -2,9 +2,9 @@ import type { RuntimeRpcResponse } from '../../../shared/runtime-rpc-envelope'
 import type { RuntimeStatus } from '../../../shared/runtime-types'
 import {
   MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
-  RUNTIME_CAPABILITIES,
   RUNTIME_PROTOCOL_VERSION
 } from '../../../shared/protocol-version'
+import { ADVERTISED_RUNTIME_CAPABILITIES } from '../../../shared/agent-provider-runtime-capabilities'
 
 export type RuntimeEnvironmentCallRequest = {
   method: string
@@ -26,7 +26,7 @@ export function createCompatibleRuntimeStatusResponse(
       liveLeafCount: 0,
       runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
       minCompatibleRuntimeClientVersion: MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
-      capabilities: [...RUNTIME_CAPABILITIES]
+      capabilities: [...ADVERTISED_RUNTIME_CAPABILITIES]
     },
     _meta: { runtimeId }
   }

@@ -222,18 +222,6 @@ describe('Antigravity readiness, decided by captured transcripts', () => {
       expect(doc).toContain(`${transcript.name}.txt`)
     }
   })
-
-  it('reports how much evidence exists, so a fully skipped run is visible', () => {
-    const missing = TRANSCRIPTS.filter(
-      (transcript) => !existsSync(fixturePath(transcript.name))
-    ).map((transcript) => `${transcript.name}.txt`)
-    if (missing.length > 0) {
-      console.info(
-        `Antigravity transcripts: ${TRANSCRIPTS.length - missing.length}/${TRANSCRIPTS.length} captured. Missing: ${missing.join(', ')}`
-      )
-    }
-    expect(missing.length).toBeLessThanOrEqual(TRANSCRIPTS.length)
-  })
 })
 
 describe('scaffold self-check', () => {

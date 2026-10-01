@@ -3,11 +3,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
 import { createStructuredAgentSessionEventCoalescer } from '../../../shared/structured-agent-session-coalescer'
-import {
-  EMPTY_STRUCTURED_AGENT_SESSION,
-  reduceStructuredAgentSession
-} from '../../../shared/structured-agent-session-reducer'
-import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
+import { EMPTY_STRUCTURED_AGENT_SESSION } from '../../../shared/structured-agent-session-reducer'
+import { reduceWithPromptSuggestion } from '../../../shared/structured-agent-session-prompt-suggestion-reducer'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-host-database-test-support'
 import { AgentSessionSubscribers } from './structured-agent-session-subscribers'
 import { identityFor } from '../../claude/claude-structured-session-test-support'
 import type { AgentSessionSubscribeEvent } from '../../../shared/agent-session-wire'
@@ -19,10 +17,10 @@ it('carries suggestions through idle checkpoints, coalescing, clearing and recon
   const frames: AgentSessionSubscribeEvent[] = []
   const coalescer = createStructuredAgentSessionEventCoalescer((event) => {
     frames.push(event)
-    state = reduceStructuredAgentSession(state, { type: 'event', event })
+    state = reduceWithPromptSuggestion(state, { type: 'event', event })
   })
   try {
-    const journal = await journals.open({ identity: identityFor(), journalDir: root })
+    const journal = await journals.open({ identity: identityFor(), stateDirectory: root })
     const sessionId = identityFor().sessionId
     const originalCursor = journal.cursor()
     let promptSuggestion: string | null = 'Add tests'

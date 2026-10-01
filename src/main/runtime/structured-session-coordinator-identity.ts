@@ -19,13 +19,13 @@ import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire
 import type { OrchestrationDb } from './orchestration/db'
 import { readStructuredSessionGateFacts } from './orchestration/structured-mailbox-pointer-host'
 import { structuredSessionIdentityRegistryRow } from './structured-worker-authority'
+import { structuredWorkerOwned } from './structured-worker-custody'
 import {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerHostScope,
   structuredWorkerIdentities,
-  structuredWorkerProcessIncarnation,
-  structuredWorkerRecordIsCurrent
+  structuredWorkerProcessIncarnation
 } from './structured-worker-identity'
 
 export type StructuredSessionCoordinatorIdentityDeps = {
@@ -60,7 +60,9 @@ async function resolveSession(
   if (!structuredWorkerHostScope(record.location)) {
     return { state: 'unavailable', reason: 'not-local' }
   }
-  if (!structuredWorkerRecordIsCurrent(record)) {
+  // Why custody's answer: a chat at rest (released lease, tab still listed) is still the user's
+  // open chat, and authority resolves its granted handle by the same rule.
+  if (structuredWorkerOwned(sessionId) !== true) {
     return { state: 'unavailable', reason: 'missing' }
   }
   return { host, record }
@@ -122,7 +124,7 @@ export async function setStructuredSessionCoordinatorIdentity(
   const attached = host.hasSession(sessionId)
   if (attached) {
     // The restart below would settle a running turn as interrupted.
-    const facts = readStructuredSessionGateFacts(sessionId)
+    const facts = await readStructuredSessionGateFacts(sessionId)
     if (!facts || facts.turnRunning || facts.awaitingHuman) {
       return { state: 'unavailable', reason: 'busy' }
     }
@@ -168,12 +170,13 @@ function revoke(deps: StructuredSessionCoordinatorIdentityDeps, sessionId: strin
 
 /**
  * Lets a child spawned after restart find its grant. Install BEFORE the host: host install can
- * resume sessions, and a spawn that misses the loader launches without its identity.
+ * resume sessions, and a spawn that misses the loader launches without its identity. Never creates
+ * the database: every session's idle edge asks, and a grant can only live in an existing one.
  */
-export function installStructuredSessionIdentityLoader(getDb: () => OrchestrationDb): void {
+export function installStructuredSessionIdentityLoader(getDb: () => OrchestrationDb | null): void {
   structuredWorkerIdentities.setSessionIdentityLoader((sessionId) => {
     try {
-      const row = getDb().getActiveStructuredSessionIdentityBySessionId(sessionId)
+      const row = getDb()?.getActiveStructuredSessionIdentityBySessionId(sessionId)
       if (!row) {
         return null
       }
@@ -192,6 +195,7 @@ export function installStructuredSessionIdentityLoader(getDb: () => Orchestratio
  */
 export function bindStructuredSessionCoordinatorIdentities(args: {
   getDb: () => OrchestrationDb
+  getExistingDb?: () => OrchestrationDb | null
   host: StructuredAgentSessionHost
   onSessionActivity: (sessionId: string) => void
 }): void {
@@ -199,7 +203,7 @@ export function bindStructuredSessionCoordinatorIdentities(args: {
     return
   }
   watchedHosts.add(args.host)
-  installStructuredSessionIdentityLoader(args.getDb)
+  installStructuredSessionIdentityLoader(args.getExistingDb ?? args.getDb)
   const onStatus = (sessionId: string) => {
     if (grantedSessionIds.has(sessionId)) {
       args.onSessionActivity(sessionId)
