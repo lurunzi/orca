@@ -85,6 +85,7 @@ export function createCloseFileAction(
 
         // Why: editors share a mixed tab strip with browser tabs; closing the last editor should reveal a browser tab before falling back to a terminal.
         const activeWorktreeId = s.activeWorktreeId
+        const closingActiveWorktree = closedFile?.worktreeId === activeWorktreeId
         const remainingForWorktree = activeWorktreeId
           ? newFiles.filter((f) => f.worktreeId === activeWorktreeId)
           : newFiles
@@ -101,18 +102,21 @@ export function createCloseFileAction(
               null)
             : s.activeBrowserTabId
         const newActiveTabType =
-          remainingForWorktree.length > 0
+          !closingActiveWorktree || remainingForWorktree.length > 0
             ? s.activeTabType
             : browserTabsForWorktree.length > 0
               ? 'browser'
               : 'terminal'
         const newActiveTabTypeByWorktree = { ...s.activeTabTypeByWorktree }
-        if (activeWorktreeId && remainingForWorktree.length === 0) {
+        if (closingActiveWorktree && activeWorktreeId && remainingForWorktree.length === 0) {
           newActiveTabTypeByWorktree[activeWorktreeId] =
             browserTabsForWorktree.length > 0 ? 'browser' : 'terminal'
         }
         const shouldDeactivateWorktree =
+          closingActiveWorktree &&
           activeWorktreeId !== null &&
+          // Unified close owns the final selection, including chat and simulator tabs.
+          (s.unifiedTabsByWorktree?.[activeWorktreeId] ?? []).length === 0 &&
           remainingForWorktree.length === 0 &&
           browserTabsForWorktree.length === 0 &&
           terminalTabsForWorktree.length === 0
@@ -174,7 +178,7 @@ export function createCloseFileAction(
           activeWorktreeId: shouldDeactivateWorktree ? null : s.activeWorktreeId,
           activeBrowserTabId: shouldDeactivateWorktree
             ? null
-            : activeWorktreeId && remainingForWorktree.length === 0
+            : closingActiveWorktree && activeWorktreeId && remainingForWorktree.length === 0
               ? fallbackBrowserTabId
               : s.activeBrowserTabId,
           activeTabType: newActiveTabType,
