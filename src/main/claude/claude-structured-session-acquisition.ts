@@ -104,11 +104,11 @@ export async function acquireClaudeSession({
       // Every turn opens with an init frame naming the model the CLI is actually
       // running; set_model answers success for a model it never resolves, so this
       // report is the session's only adoption evidence.
-      if (liveSession && init.model) {
-        liveSession.reportedOptions.model = init.model
-        liveSession.reportedModelMutation = liveSession.optionMutationSequence
-      }
       if (liveSession) {
+        if (init.model) {
+          liveSession.reportedOptions.model = init.model
+          liveSession.reportedModelMutation = liveSession.optionMutationSequence
+        }
         liveSession.capabilities = readClaudeCapabilities(liveSession.capabilities, init.message)
       }
     }
@@ -258,14 +258,11 @@ export async function acquireClaudeSession({
     })
     const session = publication.session
     liveSession = session
-    const catalogAccess = agentModelCatalogSessionAccess(
+    session.catalogAccess = agentModelCatalogSessionAccess(
       deps.modelCatalog,
       'claude',
       launch.claudeConfigDir
     )
-    if (catalogAccess) {
-      session.catalogAccess = catalogAccess
-    }
     acquisitions.deleteIfCurrent(sessionId, attempt)
     await withAgentSessionCreatePhase('publish', input.recordPhase, async () => {
       sessions.set(sessionId, session)
