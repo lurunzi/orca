@@ -1,14 +1,20 @@
 // @ts-nocheck -- mechanically split from OrcaRuntimeService; behavior is covered by AST equivalence and characterization tests.
+import { isAntigravityCommandApprovalScreen } from './antigravity-command-approval-screen'
 import { AntigravityScreenPermissionPublisher } from './antigravity-screen-permission-publisher'
 import { OrcaRuntimeWithCaptureProviderTerminalBuffer } from './orca-runtime-capture-provider-terminal-buffer'
 import type { RuntimeTerminalProjection } from './orca-runtime-core'
 import { buildPreview } from './terminal-tail-state'
-import type { RuntimeVisibleTerminalState } from './runtime-terminal-state-records'
+import type {
+  RuntimeHeadlessTerminal,
+  RuntimeVisibleTerminalState
+} from './runtime-terminal-state-records'
 import {
   VISIBLE_TERMINAL_SNAPSHOT_RETRY_MS,
   VISIBLE_TERMINAL_SNAPSHOT_TIMEOUT_MS
 } from './orca-runtime-postlude'
 import { projectTerminalVisibleLines } from './orca-runtime-terminal-projection'
+import { visibleNonBlankTerminalLines } from './terminal-tail-read'
+import type { RuledScreen } from './screen-input-veto'
 import { HeadlessEmulator } from '../daemon/headless-emulator'
 import {
   classifyTerminalScreenReadiness,
@@ -55,6 +61,17 @@ export class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeWithCaptur
     }
     if (this.getPtyLivenessVerdict(ptyId)?.status === 'unverifiable') {
       return { ready: false, blockedReason: null }
+    }
+    // Measured local grids use the shared rules, including their quiet and reflow gates.
+    if (
+      agent === 'antigravity' &&
+      this.getTerminalSize(ptyId) &&
+      !this.providerSnapshotPreferredPtys.has(ptyId)
+    ) {
+      const screen = this.readRuledScreen(ptyId)
+      return screen && isAntigravityCommandApprovalScreen(screen.lines)
+        ? { ready: false, blockedReason: 'agent-approval-prompt' }
+        : null
     }
     const cached = this.providerVisibleStateByPtyId.get(ptyId)
     if (
@@ -217,6 +234,32 @@ export class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeWithCaptur
   /** Synchronous visible grid of the live emulator, for tui-idle body evidence. Null when the
    *  model is not the whole screen: a provider-restored partial suffix or a pending hydration. */
   protected readLiveTerminalScreenLines(ptyId: string | null | undefined): string[] | null {
+    const state = this.readWholeScreenModel(ptyId)
+    // Why unawaited writeChain: callers are synchronous; a grid one chunk behind is re-read next poll.
+    return state ? projectTerminalVisibleLines(state.emulator).lines : null
+  }
+
+  /** The grid a screen-ruled agent's rule reads: as painted, and only on the PTY's own size. */
+  protected readRuledScreen(ptyId: string | null | undefined): RuledScreen | null {
+    const state = this.readWholeScreenModel(ptyId)
+    if (!ptyId || !state || state.unrepaintedReflowGrid !== undefined) {
+      return null
+    }
+    // Why: a TUI painted for another grid garbles on this one, and a screen rule would refuse it.
+    const ptySize = this.getTerminalSize(ptyId)
+    const grid = state.emulator.getAppliedSize()
+    if (!ptySize || ptySize.cols !== grid.cols || ptySize.rows !== grid.rows) {
+      return null
+    }
+    // Why raw rows, not the read projection: it blanks a composer it takes for a draft, and Cline's
+    // placeholder reads as one, so a typed draft and an empty composer would look the same.
+    return {
+      lines: visibleNonBlankTerminalLines(state.emulator.getVisibleLines()),
+      alternateScreen: state.emulator.isAlternateScreen
+    }
+  }
+
+  protected readWholeScreenModel(ptyId: string | null | undefined): RuntimeHeadlessTerminal | null {
     if (!ptyId) {
       return null
     }
@@ -228,8 +271,7 @@ export class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeWithCaptur
     ) {
       return null
     }
-    // Why unawaited writeChain: callers are synchronous; a grid one chunk behind is re-read next poll.
-    return projectTerminalVisibleLines(state.emulator).lines
+    return state
   }
 
   protected async parseVisibleSnapshot(snapshot: {

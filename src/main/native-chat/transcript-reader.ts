@@ -1,3 +1,4 @@
+import { readOpenCodeNativeChatTranscriptFull } from './transcript-opencode'
 import type {
   AgentType,
   NativeChatMessage,
@@ -44,6 +45,9 @@ export async function readNativeChatTranscript(
   sessionId: string,
   options: ReadTranscriptOptions = {}
 ): Promise<ReadTranscriptResult> {
+  if (resolveNativeChatTranscriptAgent(agent) === 'opencode') {
+    return readOpenCodeNativeChatTranscriptFull(sessionId)
+  }
   let filePath: string | null
   try {
     filePath = options.filePath ?? (await resolveSessionFilePath(agent, sessionId, options))

@@ -34,8 +34,13 @@ export function useNativeChatInteractivePromptCard({
     const entry = s.agentStatusByPaneKey[paneKey]
     return entry?.interactivePrompt ? (entry.toolName ?? null) : null
   })
+  const agent = useAppStore((s) => s.agentStatusByPaneKey[paneKey]?.agentType)
   return useMemo(() => {
-    const statusCard = parseInteractivePrompt(interactivePrompt, interactiveToolName ?? undefined)
+    const statusCard = parseInteractivePrompt(
+      interactivePrompt,
+      interactiveToolName ?? undefined,
+      agent
+    )
     if (statusCard?.kind === 'approval') {
       return statusCard
     }
@@ -50,5 +55,5 @@ export function useNativeChatInteractivePromptCard({
     // A blocking question wins; an async one is answered by a chat message instead.
     const asyncPrompt = transcriptSettled ? extractPendingAsyncAsk(messages) : null
     return asyncPrompt ? { kind: 'question' as const, prompt: asyncPrompt, async: true } : null
-  }, [interactivePrompt, interactiveToolName, messages, transcriptSettled])
+  }, [interactivePrompt, interactiveToolName, agent, messages, transcriptSettled])
 }

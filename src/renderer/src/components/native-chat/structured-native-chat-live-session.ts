@@ -18,14 +18,15 @@ type StructuredSessionController = Pick<
 export function structuredNativeChatLiveSession(
   controller: StructuredSessionController,
   sessionId: string,
-  agent: AgentType
+  agent: AgentType,
+  historyPhase?: 'unread' | 'reading' | 'known'
 ): NativeChatLiveSession {
   return {
     messages: controller.messages,
     status:
       controller.status === 'error'
         ? 'error'
-        : controller.status === 'loading'
+        : (historyPhase ? historyPhase !== 'known' : controller.status === 'loading')
           ? 'loading'
           : controller.isWorking
             ? 'working'

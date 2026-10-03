@@ -32,6 +32,7 @@ import {
 import { translate } from '@/i18n/i18n'
 import { isMacPlatform, nativeChatToggleShortcutLabel } from './native-chat-shortcut'
 import { TabWorkspaceLayoutMenuSection } from '@/components/tab-bar/TabWorkspaceLayoutMenuSection'
+import { NativeChatCopyOrcaSessionIdMenuItem } from './NativeChatCopyOrcaSessionIdMenuItem'
 import type { TabSplitDirection } from '@/store/slices/tabs'
 
 type NativeChatContextMenuState = {
@@ -55,6 +56,8 @@ type UseNativeChatContextMenuArgs = {
   }
   /** Session-scoped items; rendered inside the menu content so they mount only while open. */
   sessionMenuItems?: ReactNode
+  /** A structured chat tab's Orca session ID; a chat in a terminal pane is that terminal's agent. */
+  resolveOrcaSessionId?: () => Promise<string | null>
 }
 
 export type NativeChatContextMenuActions = {
@@ -107,7 +110,8 @@ export function useNativeChatContextMenu({
   showTerminalPaneActions = true,
   splitShortcutLabels,
   workspaceLayout,
-  sessionMenuItems
+  sessionMenuItems,
+  resolveOrcaSessionId
 }: UseNativeChatContextMenuArgs): {
   onContextMenuCapture: MouseEventHandler<HTMLElement>
   onSelectionCapture: () => void
@@ -324,6 +328,11 @@ export function useNativeChatContextMenu({
                   </DropdownMenuItem>
                 </>
               ) : null}
+            </>
+          ) : resolveOrcaSessionId ? (
+            <>
+              <DropdownMenuSeparator />
+              <NativeChatCopyOrcaSessionIdMenuItem resolveOrcaSessionId={resolveOrcaSessionId} />
             </>
           ) : null}
         </DropdownMenuContent>

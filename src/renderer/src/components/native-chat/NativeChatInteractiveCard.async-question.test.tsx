@@ -25,6 +25,7 @@ const send = {
   sendMessage: vi.fn<NativeChatInteractiveSend['sendMessage']>(),
   sendRaw: vi.fn<NativeChatInteractiveSend['sendRaw']>(),
   cancelPending: vi.fn<NativeChatInteractiveSend['cancelPending']>(),
+  cancelAsk: vi.fn<NativeChatInteractiveSend['cancelAsk']>(),
   cancel: vi.fn<NativeChatInteractiveSend['cancel']>()
 }
 

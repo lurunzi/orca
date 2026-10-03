@@ -108,7 +108,7 @@ export async function resolveSessionFilePath(
 ): Promise<string | null> {
   signal?.throwIfAborted()
   const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
-  if (!transcriptAgent) {
+  if (!transcriptAgent || transcriptAgent === 'opencode') {
     return null
   }
   // Why: the hook's transcript_path is the exact file the agent is writing, so it
@@ -167,6 +167,9 @@ async function resolveSessionFileById(
   options: ResolveSessionFileOptions,
   signal?: AbortSignal
 ): Promise<string | null> {
+  if (transcriptAgent === 'opencode') {
+    return null
+  }
   const trimmedId = sessionId.trim()
   if (!trimmedId) {
     return null

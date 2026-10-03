@@ -1,3 +1,4 @@
+import type { TmuxManagedPty } from '../shared/tmux-agent-hook-owner'
 /* oxlint-disable max-lines */
 import { resolveSynchronizedOutputSafeSplit } from '../shared/terminal-synchronized-output-scan'
 import { createTerminalTitleTracker } from '../shared/terminal-output-side-effects'
@@ -128,7 +129,12 @@ import {
   injectRelayHistoryEnv
 } from './terminal-history'
 import { isFlattenedNodePtyLoaderMessage } from '../main/orcad/node-pty-loader-diagnosis'
-import { collectNodePtyUnavailableDiagnosis } from './node-pty-binding-survey'
+import {
+  collectNodePtyUnavailableDiagnosis,
+  resolveNodePtyInstallDir
+} from './node-pty-binding-survey'
+import { describeRelayRuntime } from './relay-runtime-identity'
+import { relayConptyDllSpawnOptions } from './relay-windows-conpty'
 import {
   formatNodePtyUnavailableMessage,
   toTerminalUnavailableCause
@@ -243,6 +249,7 @@ type ManagedPty = {
   wslDistro?: string
   shellCwd?: string
   shellPathEnv?: string
+  agentLaunchToken?: string
   envToDelete: string[]
   gitCredentialPromptGuarded: boolean
   historyIsolationEnabled?: boolean
@@ -644,6 +651,10 @@ export class PtyHandler {
     }
   }
 
+  private conptyDllSpawnOptions(): { useConptyDll: true } | Record<string, never> {
+    return relayConptyDllSpawnOptions(this.relayNodePtyDir(), describeRelayRuntime().kind)
+  }
+
   /** Where the relay's own node-pty lives — the deployed bundle dir, never cwd. */
   private relayNodePtyDir(): string {
     // Packaged relays live under Resources/relay while runtime dependencies are
@@ -664,9 +675,10 @@ export class PtyHandler {
    * healthy relay never pays for them.
    */
   private async nodePtyUnavailableError(spawnError?: unknown): Promise<Error> {
-    const nodePtyDir = this.relayNodePtyDir()
+    // Why: diagnose the install the bare import loaded; the bundle's own dir is only the fallback.
+    const nodePtyDir = resolveNodePtyInstallDir(__dirname) ?? this.relayNodePtyDir()
     const diagnosis = await collectNodePtyUnavailableDiagnosis({
-      nodePtyDir: existsSync(nodePtyDir) ? nodePtyDir : null,
+      nodePtyDir,
       error: spawnError ?? this.lastPtyLoadError
     })
     return Object.assign(new Error(formatNodePtyUnavailableMessage(diagnosis)), {
@@ -739,6 +751,39 @@ export class PtyHandler {
    *  paneKey since. Nothing this pane emits can belong to a surface any client still owns. */
   isPaneSurfaceRetired(paneKey: string): boolean {
     return this.retiredPaneSurfaces.isRetired(paneKey)
+  }
+
+  getTmuxManagedPty(paneKey: string): TmuxManagedPty | null {
+    if (process.platform === 'win32' || this.isPaneSurfaceRetired(paneKey)) {
+      return null
+    }
+    const root = this.getCurrentManagedPty(paneKey)
+    if (!root?.worktreeId || !root.pty.pid) {
+      return null
+    }
+    return {
+      pid: root.pty.pid,
+      incarnation: root.incarnationId,
+      scope: {
+        executionHostId: 'local',
+        wslDistro: null,
+        workspaceId: root.worktreeId,
+        workspaceKind: root.worktreeId.startsWith('folder:') ? 'folder' : 'git-worktree'
+      }
+    }
+  }
+
+  getAgentLaunchToken(paneKey: string): string | undefined {
+    return this.isPaneSurfaceRetired(paneKey)
+      ? undefined
+      : this.getCurrentManagedPty(paneKey)?.agentLaunchToken
+  }
+
+  private getCurrentManagedPty(paneKey: string): ManagedPty | undefined {
+    const candidates = [...this.ptys.values()].filter(
+      (pty) => !pty.disposed && (pty.paneKey ?? pty.attachIdentity?.paneKey) === paneKey
+    )
+    return candidates.length === 1 ? candidates[0] : undefined
   }
 
   /** Notified when the last PTY leaves the pool, so the relay can re-arm its idle grace. */
@@ -2029,6 +2074,11 @@ export class PtyHandler {
     // includes Homebrew, nvm, and user-installed CLIs (claude, codex, gh).
     // When overlays are injected, the launch wrapper keeps those paths after
     // user startup files re-export their defaults.
+    const ptyEnv: Record<string, string> = {
+      ...spawnEnv,
+      [SHELL_STARTUP_FEATURE_ENV]: '',
+      ...shellLaunch.env
+    }
     let term: IPty
     try {
       term = pty.spawn(shell, shellLaunch.args, {
@@ -2039,11 +2089,8 @@ export class PtyHandler {
         cwd,
         // Why the empty default: relay shells inherit process.env, and the launch
         // config is the only thing allowed to name features for this shell.
-        env: {
-          ...spawnEnv,
-          [SHELL_STARTUP_FEATURE_ENV]: '',
-          ...shellLaunch.env
-        }
+        env: ptyEnv,
+        ...this.conptyDllSpawnOptions()
       })
     } catch (error) {
       // Why: Windows loads conpty.node only on first spawn, so handle that late binding failure here.
@@ -2096,6 +2143,7 @@ export class PtyHandler {
       ...(terminalWindowsWslDistro ? { wslDistro: terminalWindowsWslDistro } : {}),
       shellCwd: cwd,
       shellPathEnv: spawnEnv.PATH,
+      agentLaunchToken: ptyEnv.ORCA_AGENT_LAUNCH_TOKEN?.trim() || undefined,
       ownerBackend: resolvePtyOwnerBackend({
         platform: process.platform,
         shellPath: shell,
@@ -3155,6 +3203,11 @@ export class PtyHandler {
     const shellLaunch = getRelayShellLaunchConfig(shell, spawnEnv, process.platform, {
       terminalWindowsWslDistro
     })
+    const ptyEnv: Record<string, string> = {
+      ...spawnEnv,
+      [SHELL_STARTUP_FEATURE_ENV]: '',
+      ...shellLaunch.env
+    }
     let term: IPty
     try {
       term = ptyMod.spawn(shell, shellLaunch.args, {
@@ -3163,11 +3216,8 @@ export class PtyHandler {
         rows: entry.rows,
         cwd: entry.cwd,
         // Why: no provider-delivered command is waiting for a ready marker.
-        env: {
-          ...spawnEnv,
-          [SHELL_STARTUP_FEATURE_ENV]: '',
-          ...shellLaunch.env
-        }
+        env: ptyEnv,
+        ...this.conptyDllSpawnOptions()
       })
     } catch (error) {
       // Why skip rather than retry the host default shell: the stored override
@@ -3197,6 +3247,7 @@ export class PtyHandler {
         limit: REPLAY_BUFFER_MAX
       }),
       paneKey: entry.paneKey,
+      agentLaunchToken: ptyEnv.ORCA_AGENT_LAUNCH_TOKEN?.trim() || undefined,
       tabId: entry.tabId,
       attachIdentity: entry.attachIdentity,
       worktreeId: entry.worktreeId,

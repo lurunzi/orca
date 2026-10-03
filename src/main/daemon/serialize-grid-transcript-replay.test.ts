@@ -72,7 +72,43 @@ const KNOWN_PREEXISTING_I2_FAILURES: Record<string, number> = {
   // Fork-captured transcripts, measured when this replay suite first ran over them.
   'antigravity-composer-multiline-unsent': 2,
   'antigravity-windows-command-approval': 4,
-  'claude-prompt-suggestion': 8
+  'claude-prompt-suggestion': 8,
+  // STA-8741 agy/Cline/Prime captures, serializer untouched: the same true-colour background
+  // left on restored cells as DSH, plus Prime's cursor row after its alternate-screen repaints.
+  'antigravity-1-2-14-busy-thinking': 2,
+  'antigravity-1-2-14-command-palette': 4,
+  'antigravity-1-2-14-draft': 4,
+  'antigravity-1-2-14-model-picker': 2,
+  'antigravity-1-2-14-picker-dismissed': 2,
+  'antigravity-1-2-14-ready': 12,
+  'antigravity-1-2-14-ready-80x24': 2,
+  'antigravity-1-2-14-ready-accept-edits': 4,
+  'antigravity-1-2-14-ready-plan': 4,
+  'antigravity-1-2-14-trust-dialog': 26,
+  'cline-3-0-66-busy-streaming': 6,
+  'cline-3-0-66-draft': 6,
+  'cline-3-0-66-permission': 6,
+  'cline-3-0-66-promo': 15,
+  'cline-3-0-66-ready': 11,
+  'cline-3-0-66-ready-80x24': 2,
+  'cline-3-0-66-slash-menu': 6,
+  'cline-3-0-66-turn-ended': 10,
+  'prime-agent-0-9-5-ready': 18,
+  'prime-agent-0-9-5-turn': 4,
+  'prime-agent-0-9-8-busy-streaming': 16,
+  'prime-agent-0-9-8-draft': 10,
+  'prime-agent-0-9-8-ready': 22,
+  'prime-agent-0-9-8-ready-80x24': 16,
+  'prime-agent-0-9-8-ready-after-question': 2,
+  'prime-agent-0-9-8-slash-menu': 34,
+  'prime-agent-0-9-8-tool-turn': 40,
+  'prime-agent-0-9-8-trace-question': 4,
+  'prime-agent-0-9-8-turn-ended': 24,
+  // OMP 18.4.5 captures, serializer untouched: after a shrink the restored cursor sits one column
+  // short, as for Qoder. The unscrubbed captures diverge identically, so the scrub is not the cause.
+  'omp-18-composer': 2,
+  'omp-18-composer-narrow': 7,
+  'omp-18-setup': 6
 }
 
 // Exact resize checkpoints and full GridDiff hashes from base 6835b9b4e3ea, not this branch.

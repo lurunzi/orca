@@ -2,10 +2,8 @@ import {
   agentSessionFailureFact,
   type SubmissionRejectionFact
 } from '../../../shared/agent-session-failure'
-import {
-  stopAgentSessionProviderRoot,
-  type StructuredAgentSessionLifecycleEvent
-} from './structured-agent-session-adapter'
+import type { StructuredAgentSessionLifecycleEvent } from './structured-agent-session-adapter'
+import { stopAgentSessionProviderRoot } from './structured-agent-session-provider-exit-proof'
 import type {
   StructuredAgentSessionHostDeps,
   StructuredAgentSessionHostSession
@@ -27,9 +25,12 @@ export class StructuredAgentSessionEventRecovery {
       publishStatus?: (sessionId: string) => void
       serialize: <T>(sessionId: string, task: () => Promise<T>) => Promise<T>
       now: () => number
-      onBarrierError: (sessionId: string, error: unknown) => void
     }
   ) {}
+
+  private get exitContext() {
+    return { ...this.context, logger: this.context.deps.logger }
+  }
 
   recoverAfterSinkFailure(sessionId: string, error: unknown): void {
     void this.restartProviderChild(
@@ -85,7 +86,10 @@ export class StructuredAgentSessionEventRecovery {
         return true
       })
       .catch((recoveryError) => {
-        this.context.onBarrierError(sessionId, recoveryError)
+        this.context.deps.logger.warn(
+          'stopping a provider after its journal failed did not finish',
+          { scope: 'sink-failure-recovery', sessionId, error: recoveryError }
+        )
         return false
       })
       .finally(() => this.restarting.delete(sessionId))
@@ -97,6 +101,6 @@ export class StructuredAgentSessionEventRecovery {
     if (event.type === 'started') {
       return settleStructuredAgentSessionProviderStarted(this.context, event)
     }
-    await settleUnexpectedStructuredAgentSessionExit(this.context, event)
+    await settleUnexpectedStructuredAgentSessionExit(this.exitContext, event)
   }
 }

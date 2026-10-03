@@ -11,6 +11,7 @@ import {
   deleteUntouchedUntitledFile,
   shouldDeleteUntouchedUntitledFile
 } from '../tabs/untitled-file-cleanup'
+import { unifiedTabsKeepWorktreeSelected } from './unified-tabs-keep-worktree-selected'
 
 export function createRecentlyClosedEditorTabs(
   set: EditorSet,
@@ -122,17 +123,18 @@ export function createRecentlyClosedEditorTabs(
         const terminalTabsForWorktree = s.tabsByWorktree[activeWorktreeId] ?? []
         newActiveTabTypeByWorktree[activeWorktreeId] =
           browserTabsForWorktree.length > 0 ? 'browser' : 'terminal'
-        const shouldDeactivateWorktree =
-          // Let the unified close loop select surviving tabs or the landing page.
-          (s.unifiedTabsByWorktree?.[activeWorktreeId] ?? []).length === 0 &&
-          browserTabsForWorktree.length === 0 &&
-          terminalTabsForWorktree.length === 0
-
         // Why: mirrored tabs use host tab ids in tab order while local entries use file ids; remove both shapes.
         const closedFileIds = new Set(
           s.openFiles.filter((f) => f.worktreeId === activeWorktreeId).map((f) => f.id)
         )
         const closedTabOrderIds = new Set([...closedFileIds, ...closingItemIds])
+        const shouldDeactivateWorktree =
+          browserTabsForWorktree.length === 0 &&
+          terminalTabsForWorktree.length === 0 &&
+          !unifiedTabsKeepWorktreeSelected(
+            s.unifiedTabsByWorktree?.[activeWorktreeId],
+            closedTabOrderIds
+          )
         const nextTabBarOrderByWorktree = s.tabBarOrderByWorktree
           ? {
               ...s.tabBarOrderByWorktree,

@@ -11,9 +11,12 @@ import {
 import { withTimeout } from './runtime-async-boundaries'
 import {
   detectTerminalWaitBlockedReason,
+  isKnownReadyPromptBody,
   isKnownReadyPromptSettled
 } from './terminal-wait-detection'
 import { isKnownReadyTerminalScreen } from './terminal-screen-readiness'
+import { readsTrustedScreen } from './agent-state-rules/agent-state-rules-engine'
+import { restoreProjectedComposerDraft } from './orca-runtime-terminal-projection'
 import type {
   RuntimeTerminalWait,
   RuntimeTerminalWaitBlockedReason
@@ -53,8 +56,9 @@ export class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRuntimeWith
     if (providerTimeoutMs < 1) {
       return
     }
+    const screenRule = readsTrustedScreen(agent)
     void withTimeout(
-      this.readTerminal(waiter.handle, agent === 'antigravity' ? { screen: true } : {}, {
+      this.readTerminal(waiter.handle, screenRule ? { screen: true } : {}, {
         timeoutMs: providerTimeoutMs,
         retireOnTimeout: true,
         // Why: the ready banner stays in scrollback for the whole session, so
@@ -78,15 +82,24 @@ export class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRuntimeWith
         if (ptyId && this.getPtyLivenessVerdict(ptyId)?.status === 'unverifiable') {
           return
         }
-        const snapshotText =
-          agent === 'antigravity'
-            ? [...projection.tail, projection.draft ?? ''].join('\n')
-            : projection.tail.join('\n')
+        const snapshotText = projection.tail.join('\n')
         const blockedReason = detectTerminalWaitBlockedReason(snapshotText)
-        // Why split: Antigravity is ready only at its empty composer; others use the settled rule.
-        const ready = projection.tail.join('\n').toLowerCase().includes('antigravity cli')
-          ? isKnownReadyTerminalScreen(projection)
-          : !projection.draft?.trim() && isKnownReadyPromptSettled(snapshotText)
+        // Why the shared tier-1 rule: a probe must not settle what the live screen would refuse.
+        const ready =
+          !agent && snapshotText.toLowerCase().includes('antigravity cli')
+            ? isKnownReadyTerminalScreen(projection)
+            : screenRule
+              ? isKnownReadyPromptBody(
+                  snapshotText,
+                  agent,
+                  () => restoreProjectedComposerDraft(projection.tail, projection.draft),
+                  // Why read now: output since the probe started makes the pane clocked.
+                  (
+                    this.getLivePtyForHandle(waiter.handle)?.pty ??
+                    this.getLiveLeafForHandle(waiter.handle).leaf
+                  ).lastOutputAt !== null
+                )
+              : isKnownReadyPromptSettled(snapshotText)
         if (!blockedReason && !ready) {
           return
         }
