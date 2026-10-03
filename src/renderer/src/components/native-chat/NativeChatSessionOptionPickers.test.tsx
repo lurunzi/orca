@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import type * as ReactModule from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionOptionDescriptor } from '../../../../shared/native-chat-session-options'
@@ -72,6 +72,11 @@ vi.mock('@/components/ui/dropdown-menu', () => {
       </div>
     ),
     DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuSubTrigger: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button {...props} />
+    ),
+    DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuSeparator: () => <hr />,
     // Forwards role/aria-* and hands onSelect an event: the switch rows set both,
     // and preventDefault is how a toggle keeps the menu open.
@@ -716,18 +721,73 @@ describe('NativeChatSessionOptionPickers', () => {
 
     expect(screen.getByRole('button', { name: 'Model Flash' })).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Effort Medium' })).not.toBeNull()
-    const models = screen.getByRole('radiogroup', { name: 'Model' })
+    expect(screen.getByRole('button', { name: 'Flash' })).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Pro' })).not.toBeNull()
+    expect(screen.getByRole('radio', { name: 'Sonnet (Thinking)' })).not.toBeNull()
     expect(
-      [...models.querySelectorAll('[role="radio"]')].map((radio) => radio.textContent)
-    ).toEqual(['Flash', 'Pro', 'Sonnet (Thinking)'])
+      within(screen.getByRole('radiogroup', { name: 'Flash' })).getByRole('radio', {
+        name: 'Medium',
+        checked: true
+      })
+    ).not.toBeNull()
     const tiers = screen.getByRole('radiogroup', { name: 'Effort' })
     expect([...tiers.querySelectorAll('[role="radio"]')].map((r) => r.textContent)).toEqual([
       'High',
       'Medium'
     ])
 
-    // Pro has no Medium tier, so switching to it falls back to its first listed tier.
-    screen.getByRole('radio', { name: 'Pro' }).click()
-    await waitFor(() => expect(setOption).toHaveBeenCalledWith('model', 'pro-high'))
+    const pro = within(screen.getByRole('radiogroup', { name: 'Pro' }))
+    expect(pro.queryByRole('radio', { name: 'Medium' })).toBeNull()
+    pro.getByRole('radio', { name: 'Low' }).click()
+    await waitFor(() => expect(setOption).toHaveBeenCalledWith('model', 'pro-low'))
   })
+
+  it.each([false, true])(
+    'selects a tier with an unknown model (working: %s)',
+    async (isWorking) => {
+      const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+      const liveSurface = { ...surface, setOption }
+      const unknown = model({
+        valueSource: 'unknown',
+        kind: {
+          type: 'select',
+          currentValue: 'account-high',
+          choices: [
+            { value: 'account-high', label: 'Flash (High)' },
+            { value: 'account-medium', label: 'Flash (Medium)' },
+            { value: 'account-low', label: 'Flash (Low)' }
+          ]
+        }
+      })
+      const { rerender } = render(
+        <NativeChatSessionOptionPickers
+          surface={liveSurface}
+          snapshot={[unknown]}
+          isWorking={isWorking}
+        />
+      )
+      expect(screen.getByRole('button', { name: 'Model' })).not.toBeNull()
+      expect(screen.queryByRole('button', { name: /^Effort/ })).toBeNull()
+      expect(screen.queryByRole('radio', { checked: true })).toBeNull()
+      const choices = within(screen.getByRole('radiogroup', { name: 'Flash' }))
+      expect(choices.getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
+        'High',
+        'Medium',
+        'Low'
+      ])
+      choices.getByRole('radio', { name: 'Low' }).click()
+      if (isWorking) {
+        expect(await screen.findByRole('button', { name: 'Effort Low' })).not.toBeNull()
+        expect(setOption).not.toHaveBeenCalled()
+        rerender(
+          <NativeChatSessionOptionPickers
+            surface={liveSurface}
+            snapshot={[unknown]}
+            isWorking={false}
+          />
+        )
+      }
+      await waitFor(() => expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'account-low'))
+    }
+  )
 })

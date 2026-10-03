@@ -9,6 +9,7 @@ import {
   antigravityCommandName
 } from './antigravity-usage-command'
 import { parseAntigravityUsageStdout, stdoutShowsModelTurn } from './antigravity-usage-response'
+import { resolveAntigravityCliPath } from './antigravity-cli-path'
 
 /**
  * Observed verbatim in agy's own log when the keyring holds no session. agy exits 0 and prints this
@@ -111,7 +112,7 @@ export async function fetchAntigravityRateLimits(
   // the PATH an Electron app inherits from the window server or a desktop launcher.
   const env = await resolveEnvironment()
   const command = antigravityCommandName()
-  const program = await resolve(command, { platform, env })
+  const program = await resolveAntigravityCliPath(env, platform, resolve)
   if (!program) {
     return unavailable(
       `Antigravity usage is not available. The Antigravity CLI (\`${command}\`) was not found on this machine.`,

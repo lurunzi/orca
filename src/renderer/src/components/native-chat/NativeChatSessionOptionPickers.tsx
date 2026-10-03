@@ -221,7 +221,6 @@ function NativeChatSessionOptionPickersInner({
   const modelRows = modelChoices ? buildModelPickerRows(modelChoices.choices) : []
   const currentModelId = model.valueSource === 'unknown' ? undefined : modelChoices?.currentValue
   const tieredRow = findTieredRow(modelRows, currentModelId)
-  const currentTier = tieredRow?.tiers.find((tier) => tier.value === currentModelId)?.tier ?? null
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -244,8 +243,7 @@ function NativeChatSessionOptionPickersInner({
           {modelChoices && modelRows.some((row) => row.kind === 'tiered') ? (
             <ModelTierMenuRows
               rows={modelRows}
-              currentValue={modelChoices.currentValue}
-              currentTier={currentTier}
+              currentValue={currentModelId}
               disabled={!model.settable || pendingId !== null}
               setValue={(value) => setOption(model, value)}
             />

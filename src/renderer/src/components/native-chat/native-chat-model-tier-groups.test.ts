@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildModelPickerRows,
-  findTieredRow,
-  tieredRowTargetValue
-} from './native-chat-model-tier-groups'
+import { buildModelPickerRows, findTieredRow } from './native-chat-model-tier-groups'
 
 // Shape of `agy models` output: each effort tier is its own model id.
 const AGY_CHOICES = [
@@ -35,19 +31,5 @@ describe('buildModelPickerRows', () => {
       { value: 'sonnet', label: 'Sonnet 5 (1M context)' }
     ]
     expect(buildModelPickerRows(choices).every((row) => row.kind === 'model')).toBe(true)
-  })
-})
-
-describe('tieredRowTargetValue', () => {
-  const rows = buildModelPickerRows(AGY_CHOICES)
-  const pro = findTieredRow(rows, 'gemini-3.1-pro-low')!
-
-  it('keeps the current tier when the target model offers it', () => {
-    expect(tieredRowTargetValue(pro, 'low')).toBe('gemini-3.1-pro-low')
-  })
-
-  it('falls back to the first listed tier otherwise', () => {
-    expect(tieredRowTargetValue(pro, 'medium')).toBe('gemini-3.1-pro-high')
-    expect(tieredRowTargetValue(pro, null)).toBe('gemini-3.1-pro-high')
   })
 })

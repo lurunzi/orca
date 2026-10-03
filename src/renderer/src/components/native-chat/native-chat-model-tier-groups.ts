@@ -61,12 +61,3 @@ export function findTieredRow(
   }
   return null
 }
-
-/** The model id a row switches to: the current id if it is in this row, else the
- *  sibling at the current tier, else the first tier the CLI listed. */
-export function tieredRowTargetValue(
-  row: Extract<ModelPickerRow, { kind: 'tiered' }>,
-  currentTier: string | null
-): string {
-  return row.tiers.find((tier) => tier.tier === currentTier)?.value ?? row.tiers[0]?.value ?? ''
-}
