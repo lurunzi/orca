@@ -210,9 +210,10 @@ export function structuredAgentSessionOptionSnapshot(
     return snapshot
   }
   return snapshot.map((descriptor) =>
-    descriptor.id === 'fastMode'
+    descriptor.id === 'fastMode' && descriptor.kind.type === 'boolean'
       ? {
           ...descriptor,
+          kind: { ...descriptor.kind, currentValue: false },
           settable: false,
           disabledReason:
             support.reason === 'extra_usage_disabled'

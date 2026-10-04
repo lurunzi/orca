@@ -19,7 +19,7 @@ function viewModel(...args: Parameters<typeof structuredAgentSessionOptionView>)
 
 describe('structured agent session options', () => {
   it.each(['extra_usage_disabled', 'rate_limit', 'insufficient_credits', 'future_limit'])(
-    'keeps the Fast preference visible through %s and recovery',
+    'shows Fast off during %s and follows the provider on recovery',
     (reason) => {
       const options = {
         models: [
@@ -40,7 +40,7 @@ describe('structured agent session options', () => {
       expect(structuredAgentSessionOptionSnapshot(state)).toContainEqual(
         expect.objectContaining({
           id: 'fastMode',
-          kind: { type: 'boolean', currentValue: true },
+          kind: { type: 'boolean', currentValue: false },
           settable: false,
           disabledReason:
             reason === 'extra_usage_disabled'

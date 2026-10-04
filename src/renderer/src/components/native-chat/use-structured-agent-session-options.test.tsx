@@ -191,6 +191,7 @@ describe('useStructuredAgentSessionOptions', () => {
       await waitFor(() =>
         expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
           settable: false,
+          kind: { currentValue: false },
           disabledReason: 'fast-mode-extra-usage-required'
         })
       )

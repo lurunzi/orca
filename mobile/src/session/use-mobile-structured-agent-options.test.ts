@@ -263,6 +263,7 @@ describe('useMobileStructuredAgentOptions fast mode', () => {
 
     expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toMatchObject({
       settable: false,
+      kind: { currentValue: false },
       disabledReason: 'fast-mode-unavailable'
     })
     await harness.unmount()
