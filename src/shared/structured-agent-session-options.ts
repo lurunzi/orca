@@ -57,7 +57,7 @@ function fastModeOption(): CatalogOption {
 
 function discoveredModel(
   model: AgentSessionOptionsResult['models'][number],
-  sessionSupportsFastMode: boolean
+  sessionSupportsFastMode: boolean | undefined
 ): CatalogModel {
   const effort = effortOption(model)
   return {
@@ -67,7 +67,10 @@ function discoveredModel(
     ...(model.isDefault ? { isDefault: true } : {}),
     options: [
       ...(effort ? [effort] : []),
-      ...(sessionSupportsFastMode && model.supportsFastMode === true ? [fastModeOption()] : [])
+      // A missing session verdict does not revoke the provider's positive model capability.
+      ...(sessionSupportsFastMode !== false && model.supportsFastMode === true
+        ? [fastModeOption()]
+        : [])
     ]
   }
 }
@@ -77,7 +80,7 @@ export function structuredAgentSessionOptionCatalog(
   result: AgentSessionOptionsResult
 ): AgentSessionOptionCatalog {
   const models: CatalogModel[] = result.models.map((model) =>
-    discoveredModel(model, result.fastModeSupport?.supported === true)
+    discoveredModel(model, result.fastModeSupport?.supported)
   )
   if (!models.some((model) => model.id === result.current.model)) {
     models.push({
@@ -152,7 +155,7 @@ export function applyStructuredAgentSessionModelCatalog(
     return state
   }
   const models = catalog.models.map((model) =>
-    discoveredModel(model, catalog.fastModeSupport?.supported === true)
+    discoveredModel(model, catalog.fastModeSupport?.supported)
   )
   if (models.length === 0) {
     return state

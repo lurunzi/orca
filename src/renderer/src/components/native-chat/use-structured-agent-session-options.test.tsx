@@ -180,6 +180,55 @@ describe('useStructuredAgentSessionOptions', () => {
     unmount()
   })
 
+  it.each([
+    { agent: 'claude', paired: false },
+    { agent: 'codex', paired: false },
+    { agent: 'claude', paired: true },
+    { agent: 'codex', paired: true }
+  ] as const)(
+    'keeps $agent Fast mode after startup (paired: $paired)',
+    async ({ agent, paired }) => {
+      const model = agent === 'claude' ? 'opus' : 'gpt-6-astra'
+      const models = [
+        { id: model, label: model, isDefault: true, efforts: [], supportsFastMode: true }
+      ]
+      answer({
+        modelCatalog: async () => ({ origin: 'probe', models, fetchedAt: 1_000 }),
+        options: async () => ({
+          models,
+          current: { model, fastMode: false, confirmed: ['fastMode'] }
+        })
+      })
+      const mutation = mutateWith(async () => ({
+        key: 'fastMode',
+        value: 'true',
+        options: { model, fastMode: 'true' }
+      }))
+      const initial = { ...PROVISIONAL, agent, paired, launchSeedOptions: { model } }
+      const { result, rerender, unmount } = renderOptions(initial, mutation.mutate)
+      await waitFor(() =>
+        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toBeDefined()
+      )
+
+      rerender({ ...initial, ...ATTACHED, providerStarting: true })
+      await tick()
+      expect(descriptor(result.current.optionSnapshot, 'fastMode')).toBeDefined()
+      rerender({ ...initial, ...ATTACHED, providerStarting: false, turnId: 'turn-1' })
+      await waitFor(() =>
+        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
+          kind: { type: 'boolean', currentValue: false },
+          valueSource: 'reported',
+          settable: true
+        })
+      )
+      await act(async () =>
+        expect(await result.current.setStructuredOption('fastMode', true)).toBe(true)
+      )
+      expect(setOptionCalls(mutation.calls)).toEqual([{ key: 'fastMode', value: 'true' }])
+      unmount()
+    }
+  )
+
   it('reads no host catalog for a hidden retained tab until it is shown', async () => {
     answer({ modelCatalog: () => Promise.resolve(HOST_CATALOG) })
     const { rerender, unmount } = renderOptions(

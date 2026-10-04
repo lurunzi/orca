@@ -119,7 +119,7 @@ describe('structured agent session options', () => {
     expect(snapshot.every((descriptor) => descriptor.action === undefined)).toBe(true)
   })
 
-  it('projects Fast mode only from positive session and model capability', () => {
+  it('keeps advertised Fast mode when session support is temporarily unknown', () => {
     const supported = applyStructuredAgentSessionOptions(
       createStructuredAgentSessionOptionState('codex'),
       CODEX_SESSION_OPTION_CATALOG,
@@ -158,9 +158,44 @@ describe('structured agent session options', () => {
       ],
       current: { model: 'account-model' }
     })
-    expect(structuredAgentSessionOptionSnapshot(absent).map(({ id }) => id)).toEqual(['model'])
+    expect(structuredAgentSessionOptionSnapshot(absent)).toContainEqual(
+      expect.objectContaining({ id: 'fastMode', valueSource: 'unknown', settable: true })
+    )
     expect(absent.record.valuesByModel['account-model']?.fastMode).toBeUndefined()
   })
+
+  it.each([
+    { modelSupport: true, sessionSupport: false },
+    { modelSupport: false, sessionSupport: true },
+    { modelSupport: undefined, sessionSupport: true },
+    { modelSupport: undefined, sessionSupport: undefined }
+  ])(
+    'does not invent Fast support for $modelSupport / $sessionSupport',
+    ({ modelSupport, sessionSupport }) => {
+      const state = applyStructuredAgentSessionOptions(
+        createStructuredAgentSessionOptionState('codex'),
+        CODEX_SESSION_OPTION_CATALOG,
+        {
+          models: [
+            {
+              id: 'account-model',
+              label: 'Account Model',
+              isDefault: true,
+              efforts: [],
+              ...(modelSupport === undefined ? {} : { supportsFastMode: modelSupport })
+            }
+          ],
+          ...(sessionSupport === undefined
+            ? {}
+            : { fastModeSupport: { supported: sessionSupport } }),
+          current: { model: 'account-model' }
+        }
+      )
+      expect(structuredAgentSessionOptionSnapshot(state).some(({ id }) => id === 'fastMode')).toBe(
+        false
+      )
+    }
+  )
 
   it('renders Fast off but marked unreported when support is known and no value is', () => {
     const state = applyStructuredAgentSessionOptions(
