@@ -84,6 +84,7 @@ function fastModeSession(supportsFastMode: boolean | undefined) {
   })
   const session = sessionFor(vi.fn(async () => undefined))
   session.options.set('model', 'opus')
+  session.fastModeState = 'off'
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the literal supplies every connection member this fixture's code paths call, and the spread carries the rest from sessionFor.
   session.connection = {
     ...session.connection,
@@ -103,6 +104,39 @@ function fastModeSession(supportsFastMode: boolean | undefined) {
 }
 
 describe('Claude structured Fast mode', () => {
+  it('requires live availability before enabling but always permits turning Fast off', async () => {
+    const { session, applyFlagSettings } = fastModeSession(true)
+    session.fastModeState = undefined
+    await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+      fastModeSupport: { supported: false, reason: 'availability-unconfirmed' }
+    })
+    await expect(
+      setClaudeStructuredOption(session, { key: 'fastMode', value: 'true' }, undefined)
+    ).rejects.toThrow('availability has not been confirmed')
+    expect(applyFlagSettings).not.toHaveBeenCalled()
+    await expect(
+      setClaudeStructuredOption(session, { key: 'fastMode', value: 'false' }, undefined)
+    ).resolves.toMatchObject({ fastMode: 'false' })
+  })
+
+  it.each(['network_error', 'pending', 'unknown'])(
+    'keeps Fast unavailable during %s and recovers on a fresh provider frame',
+    async (reason) => {
+      const { session } = fastModeSession(true)
+      observeClaudeFastModeFacts(session, {
+        fast_mode_state: 'off',
+        fast_mode_disabled_reason: reason
+      })
+      await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+        fastModeSupport: { supported: false, reason: 'availability-unconfirmed' }
+      })
+      observeClaudeFastModeFacts(session, { fast_mode_state: 'off' })
+      await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+        fastModeSupport: { supported: true }
+      })
+    }
+  )
+
   it('applies absolute on and off values and confirms provider readback', async () => {
     const { session, applyFlagSettings } = fastModeSession(true)
 
@@ -431,6 +465,7 @@ describe('Claude Fast mode reported by the session frame alone', () => {
 
   it('stays unknown when neither settings nor a session frame report Fast', async () => {
     const { session } = fastModeSession(true)
+    session.fastModeState = undefined
     session.connection.getSettings = async () => ({ effective: { effortLevel: 'high' } })
 
     const result = await readClaudeStructuredSessionOptions(session, undefined)

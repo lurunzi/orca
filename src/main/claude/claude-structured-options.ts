@@ -141,6 +141,11 @@ export async function setClaudeStructuredOption(
         `claude Fast mode is unavailable (${session.fastModeDisabledReason})`
       )
     }
+    if (fastMode && session.fastModeState === undefined) {
+      throw new AgentSessionOptionRejectedError(
+        'Claude Fast mode availability has not been confirmed for this session.'
+      )
+    }
   }
   // set_model resolves for a model the provider never lists and the session then
   // fails every turn with zero tokens, so the acceptance proves nothing and only

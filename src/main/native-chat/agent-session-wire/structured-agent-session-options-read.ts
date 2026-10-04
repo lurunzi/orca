@@ -68,9 +68,11 @@ async function readStructuredAgentSessionOptionsAtRest(
       : undefined)
   return {
     models: listed ? structuredAgentSessionOptionModels(listed, model, (row) => row) : [],
-    ...(catalog.origin !== 'unknown' && catalog.fastModeSupport
-      ? { fastModeSupport: catalog.fastModeSupport }
-      : {}),
+    ...(record.provider === 'claude'
+      ? { fastModeSupport: { supported: false, reason: 'availability-unconfirmed' } }
+      : catalog.origin !== 'unknown' && catalog.fastModeSupport
+        ? { fastModeSupport: catalog.fastModeSupport }
+        : {}),
     current: {
       model,
       ...(effort ? { effort } : {}),
@@ -97,6 +99,16 @@ export async function recordStructuredAgentSessionOptionIntent(
         'agent_session_operation_invalid',
         { reason: 'optionRejected' },
         `${record?.provider ?? 'This session'} has no session option named ${input.key}`
+      )
+    }
+  }
+  if (record.provider === 'claude' && input.key === 'fastMode' && input.value !== 'false') {
+    return {
+      ok: false,
+      refusal: refuse(
+        'agent_session_operation_invalid',
+        { reason: 'optionRejected' },
+        'Claude Fast mode availability must be confirmed by a running session before enabling it.'
       )
     }
   }

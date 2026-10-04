@@ -176,10 +176,11 @@ const NON_BLOCKING_FAST_MODE_REASONS = new Set(['preference', 'sdk_opt_in_requir
 
 function claudeFastModeSupport(
   models: readonly ListedModel[],
-  disabledReason: string | undefined
+  session: ClaudeSession
 ): AgentSessionFastModeSupport | undefined {
+  const { fastModeDisabledReason: disabledReason, fastModeState: state } = session
   if (disabledReason && TRANSIENT_FAST_MODE_REASONS.has(disabledReason)) {
-    return undefined
+    return { supported: false, reason: 'availability-unconfirmed' }
   }
   if (disabledReason && !NON_BLOCKING_FAST_MODE_REASONS.has(disabledReason)) {
     return { supported: false, reason: disabledReason }
@@ -188,6 +189,9 @@ function claudeFastModeSupport(
     return models.length > 0 && models.every((model) => model.supportsFastMode === false)
       ? { supported: false, reason: 'model-not-supported' }
       : undefined
+  }
+  if (state === undefined) {
+    return { supported: false, reason: 'availability-unconfirmed' }
   }
   return { supported: true }
 }
@@ -270,10 +274,8 @@ function writeClaudeCatalogThrough(session: ClaudeSession, discovered: ListedMod
   if (discovered.length === 0 || !session.catalogAccess) {
     return
   }
-  const support = claudeFastModeSupport(discovered, undefined)
   session.catalogAccess.store.recordSuccess(session.catalogAccess.fingerprint, 'claude', {
     models: catalogClaudeModels(session, discovered),
-    ...(support ? { fastModeSupport: support } : {}),
     fastModeTierByModel: new Map(),
     origin: 'live-session'
   })
@@ -364,7 +366,7 @@ export function claudeStructuredSessionOptionsFrom(
     desiredFastMode ??
     session.reportedOptions.fastMode ??
     (session.fastModeState === undefined ? undefined : session.fastModeState !== 'off')
-  const support = claudeFastModeSupport(discovered, session.fastModeDisabledReason)
+  const support = claudeFastModeSupport(discovered, session)
   const confirmed = [
     ...(current.confirmed ? ['model'] : []),
     ...(effort && session.confirmedOptions.has('effort') ? ['effort'] : []),

@@ -71,12 +71,14 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
   const blocked = await screen.findByRole('switch', { name: 'Fast mode' })
   expect(blocked.getAttribute('aria-disabled')).toBe('true')
   expect(blocked.getAttribute('aria-checked')).toBe('false')
+  expect(screen.getByText('Fast mode').getAttribute('data-unavailable')).toBe('true')
   expect(screen.getByText('Fast mode requires paid usage credits.')).toBeDefined()
   await user.click(blocked)
   expect(setOption).not.toHaveBeenCalled()
   await user.keyboard('{Escape}')
   state = applyStructuredAgentSessionOptions(state, CLAUDE_SESSION_OPTION_CATALOG, {
     ...options,
+    current: { ...options.current, fastModeState: 'on' },
     fastModeSupport: { supported: true }
   })
   snapshot = structuredAgentSessionOptionSnapshot(state)
@@ -87,6 +89,7 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
   const recovered = await screen.findByRole('switch', { name: 'Fast mode' })
   expect(recovered.getAttribute('aria-disabled')).toBeNull()
   expect(recovered.getAttribute('aria-checked')).toBe('true')
+  expect(screen.getByText('Fast mode').getAttribute('data-unavailable')).toBe('false')
   await user.click(recovered)
   expect(setOption).toHaveBeenCalledWith('fastMode', false)
 })

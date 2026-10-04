@@ -59,6 +59,7 @@ export function fakeClaude(
     initCommands?: unknown
     /** The initialize result's `models`, which the SDK also answers `list_models` from. */
     initModels?: unknown[]
+    initFastModeState?: 'off' | 'on' | 'cooldown'
     /** What `get_context_usage` answers; defaults to an empty, unusable report. */
     contextUsage?: unknown
     exitBeforeInit?: string
@@ -145,6 +146,7 @@ export function fakeClaude(
         }
         return {
           models: options.initModels ?? [{ value: 'claude-sonnet', displayName: 'Sonnet' }],
+          ...(options.initFastModeState ? { fast_mode_state: options.initFastModeState } : {}),
           // Capabilities ride the initialize result, where startup facts read
           // them regardless of when the first init frame arrives.
           ...(options.capabilities ? { capabilities: options.capabilities } : {}),

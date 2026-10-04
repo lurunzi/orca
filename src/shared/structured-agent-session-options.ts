@@ -161,7 +161,10 @@ export function applyStructuredAgentSessionModelCatalog(
       ...(options.namesDefault ? { defaultModelIsCliDefault: true } : {})
     },
     catalogSource: 'host',
-    fastModeSupport: catalog.fastModeSupport
+    fastModeSupport:
+      state.record.agent === 'claude'
+        ? { supported: false, reason: 'availability-unconfirmed' }
+        : catalog.fastModeSupport
   }
 }
 
@@ -186,7 +189,12 @@ export function applyStructuredAgentSessionOptions(
     ...state,
     catalog: structuredAgentSessionOptionCatalog(seed, result),
     catalogSource: 'live',
-    fastModeSupport: result.fastModeSupport
+    fastModeSupport:
+      state.record.agent === 'claude' &&
+      result.fastModeSupport?.supported !== false &&
+      result.current.fastModeState === undefined
+        ? { supported: false, reason: 'availability-unconfirmed' }
+        : result.fastModeSupport
   }
 }
 
@@ -216,9 +224,11 @@ export function structuredAgentSessionOptionSnapshot(
           kind: { ...descriptor.kind, currentValue: false },
           settable: false,
           disabledReason:
-            support.reason === 'extra_usage_disabled'
-              ? 'fast-mode-extra-usage-required'
-              : 'fast-mode-unavailable'
+            support.reason === 'availability-unconfirmed'
+              ? 'fast-mode-availability-unconfirmed'
+              : support.reason === 'extra_usage_disabled'
+                ? 'fast-mode-extra-usage-required'
+                : 'fast-mode-unavailable'
         }
       : descriptor
   )

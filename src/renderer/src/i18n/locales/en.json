@@ -17792,6 +17792,7 @@
         "availableAfterSessionStarts": "Available after the session starts.",
         "fastModeExtraUsageRequired": "Fast mode requires paid usage credits.",
         "fastModeUnavailable": "Fast mode is currently unavailable for this session.",
+        "fastModeAvailabilityUnconfirmed": "Fast mode availability has not been confirmed for this session.",
         "optionUpdateFailed": "Could not update option",
         "optionValue": {
           "fast": "Fast",

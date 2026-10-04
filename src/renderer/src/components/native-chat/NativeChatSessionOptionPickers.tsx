@@ -94,7 +94,12 @@ function DescriptorMenuRows(props: {
         }}
         className="justify-between gap-2"
       >
-        <span>{label}</span>
+        <span
+          data-unavailable={!descriptor.settable}
+          className="data-[unavailable=true]:line-through"
+        >
+          {label}
+        </span>
         <SwitchIndicator checked={checked} />
       </DropdownMenuItem>
     )

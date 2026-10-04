@@ -173,7 +173,7 @@ describe('useStructuredAgentSessionOptions', () => {
           fastModeSupport: blocked
             ? { supported: false, reason: 'extra_usage_disabled' }
             : { supported: true },
-          current: { model: 'opus', fastMode: true, confirmed: ['fastMode'] }
+          current: { model: 'opus', fastMode: true, fastModeState: 'on', confirmed: ['fastMode'] }
         })
       })
       const mutation = mutateWith(async () => null)
@@ -245,7 +245,7 @@ describe('useStructuredAgentSessionOptions', () => {
         modelCatalog: async () => ({ origin: 'probe', models, fetchedAt: 1_000 }),
         options: async () => ({
           models,
-          current: { model, fastMode: false, confirmed: ['fastMode'] }
+          current: { model, fastMode: false, fastModeState: 'off', confirmed: ['fastMode'] }
         })
       })
       const mutation = mutateWith(async () => ({

@@ -29,6 +29,7 @@ export type SessionOptionDisabledReason =
   | 'set-when-session-starts'
   | 'fast-mode-extra-usage-required'
   | 'fast-mode-unavailable'
+  | 'fast-mode-availability-unconfirmed'
 
 export type SessionOptionDescriptor = {
   id: string

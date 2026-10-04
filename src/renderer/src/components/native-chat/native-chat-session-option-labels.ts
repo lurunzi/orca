@@ -57,6 +57,11 @@ export function nativeChatSessionOptionDisabledReason(
         'components.native-chat.composer.fastModeUnavailable',
         'Fast mode is currently unavailable for this session.'
       )
+    case 'fast-mode-availability-unconfirmed':
+      return translate(
+        'components.native-chat.composer.fastModeAvailabilityUnconfirmed',
+        'Fast mode availability has not been confirmed for this session.'
+      )
     case 'set-when-session-starts':
       return translate(
         'components.native-chat.composer.setWhenSessionStarts',
