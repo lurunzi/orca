@@ -132,6 +132,13 @@ export function buildMirroredAgentTabs(
         // Why: a manual rename lives only on the client; re-nulling it here made
         // every host snapshot silently discard the user's title.
         customLabel: existing?.customLabel ?? null,
+        // A fresh host snapshot must preserve a title resolved for this same conversation.
+        aiVaultTitle:
+          existing?.entityId === tab.sessionId &&
+          existing.executionHostId === executionHostId &&
+          existing.agentSessionAgent === tab.agent
+            ? existing.aiVaultTitle
+            : undefined,
         color: tab.color !== undefined ? tab.color : (existing?.color ?? null),
         sortOrder: sortOffset + index,
         createdAt: existing?.createdAt ?? now + sortOffset + index,

@@ -9,7 +9,7 @@ import {
   selectClientHostedBrowserRow
 } from '@/lib/pane-manager/client-hosted-browser-row-state'
 import { i18n } from '@/i18n/i18n'
-import type { TabBarItem } from './tab-bar-item-model'
+import { getTabDragLabel, type TabBarItem } from './tab-bar-item-model'
 import type { WorkspaceVisibleTabType } from '../../../../shared/tab-types'
 import {
   renderTabBarItems,
@@ -53,7 +53,12 @@ vi.mock('./EditorFileTab', () => ({
 }))
 
 /** Rebuilt on every call, like the strip's projections: equal content, never the same objects. */
-function buildItems({ terminalPinned = false, browserTitle = 'Example' } = {}): TabBarItem[] {
+function buildItems({
+  terminalPinned = false,
+  browserTitle = 'Example',
+  chatTitle = '',
+  chatCustomLabel = ''
+} = {}): TabBarItem[] {
   return [
     {
       type: 'terminal',
@@ -118,7 +123,10 @@ function buildItems({ terminalPinned = false, browserTitle = 'Example' } = {}): 
         worktreeId: 'wt-1',
         contentType: 'agent-session',
         label: 'Session',
-        customLabel: null,
+        aiVaultTitle: chatTitle
+          ? { agent: 'claude', sessionId: 'provider-1', title: chatTitle }
+          : null,
+        customLabel: chatCustomLabel || null,
         color: null,
         sortOrder: 3,
         createdAt: 0
@@ -133,6 +141,8 @@ type StripInputs = {
   managedBrowserCreationEnabled?: boolean
   terminalPinned?: boolean
   browserTitle?: string
+  chatTitle?: string
+  chatCustomLabel?: string
   activeTabType?: WorkspaceVisibleTabType
   activeClientHostedBrowserRowId?: string | null
   statusByRelativePath?: TabBarItemSurfaceRuntime['statusByRelativePath']
@@ -144,6 +154,8 @@ function Strip({
   managedBrowserCreationEnabled = false,
   terminalPinned,
   browserTitle,
+  chatTitle,
+  chatCustomLabel,
   activeTabType = 'terminal',
   activeClientHostedBrowserRowId = null,
   statusByRelativePath = STATUS_BY_RELATIVE_PATH
@@ -188,7 +200,7 @@ function Strip({
   return (
     <>
       {renderTabBarItems({
-        items: buildItems({ terminalPinned, browserTitle }),
+        items: buildItems({ terminalPinned, browserTitle, chatTitle, chatCustomLabel }),
         props,
         runtime,
         actions,
@@ -240,6 +252,23 @@ afterEach(() => {
 })
 
 describe('tab strip rows', () => {
+  it('updates a chat label and drag title from history, preserving a manual rename', () => {
+    renderStrip()
+    expect(lastRender('session-1').tab?.title).toBe('Session')
+    renderStrip({ chatTitle: 'Conversation title' })
+    expect(lastRender('session-1').tab?.title).toBe('Conversation title')
+    expect(tabRenders).toHaveLength(TAB_IDS.length + 1)
+    renderStrip({ chatTitle: 'Renamed conversation' })
+    expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
+    const inputs = { chatTitle: 'Renamed conversation', chatCustomLabel: 'My label' }
+    renderStrip(inputs)
+    expect(lastRender('session-1').tab?.title).toBe('My label')
+    const chat = buildItems(inputs).find((item) => item.type === 'agent-session')!
+    expect(getTabDragLabel(chat, false)).toBe('My label')
+    renderStrip({ chatTitle: 'Renamed conversation' })
+    expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
+  })
+
   it('skips every tab when the strip re-renders with equal tab content', () => {
     renderStrip()
     expect(tabRenders.map((render) => render.id)).toEqual(TAB_IDS)

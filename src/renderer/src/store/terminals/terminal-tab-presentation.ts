@@ -1,6 +1,7 @@
 import { isDecorativeAgentTitleFrameChange } from '../../../../shared/agent-decorative-title-signature'
 import { scheduleRuntimeGraphSync } from '@/runtime/sync-runtime-graph'
 import { classifyTitleActivity } from '@/lib/pane-agent-evidence'
+import { applyAgentSessionAiVaultTitle } from '../slices/agent-session-tab-ai-vault-title'
 import {
   applyGeneratedTabTitleUpdates,
   applyTerminalTabTitleUpdates
@@ -52,7 +53,16 @@ export function createTerminalTabPresentationActions(
       set((s) => {
         const ownerWorktreeId = getTerminalTabOwnerWorktreeId(s.tabsByWorktree, tabId)
         if (!ownerWorktreeId) {
-          return s
+          const unifiedTabsByWorktree = applyAgentSessionAiVaultTitle(
+            s.unifiedTabsByWorktree,
+            tabId,
+            aiVaultTitle
+          )
+          if (!unifiedTabsByWorktree) {
+            return s
+          }
+          scheduleRuntimeGraphSync()
+          return { unifiedTabsByWorktree }
         }
         const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
         const current = tabs.find((tab) => tab.id === tabId)

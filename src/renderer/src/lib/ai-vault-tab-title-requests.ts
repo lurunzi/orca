@@ -4,8 +4,11 @@ import type { AiVaultSessionTitle } from '../../../shared/ai-vault-session-title
 import { isAiVaultTitleAgent } from '../../../shared/ai-vault-session-title'
 import type { ExecutionHostId } from '../../../shared/execution-host'
 import { parsePaneKey } from '../../../shared/stable-pane-id'
+import { structuredAgentSessionPaneKey } from '../../../shared/structured-agent-session-projection'
+import type { Tab } from '../../../shared/tab-types'
 import type { TerminalTab } from '../../../shared/terminal-tab-types'
 import { getExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
+import { structuredAgentSessionOwnerForTab } from '@/runtime/structured-agent-session-owner'
 import type { AppState } from '@/store/types'
 
 export type AiVaultTitleRequest = {
@@ -30,7 +33,7 @@ function activePaneKey(state: AppState, tabId: string): string | null {
 
 function registerCandidate(
   state: AppState,
-  tabsById: ReadonlyMap<string, TerminalTab>,
+  tabsById: ReadonlyMap<string, TerminalTab | Tab>,
   candidates: Map<string, RequestCandidate>,
   args: {
     agent: AgentType | null | undefined
@@ -55,7 +58,20 @@ function registerCandidate(
   if ((candidates.get(tabId)?.priority ?? -1) >= priority) {
     return
   }
-  const executionHostId = getExecutionHostIdForWorktree(state, worktreeId)
+  const structuredTab = 'contentType' in tab && tab.contentType === 'agent-session' ? tab : null
+  if (
+    structuredTab &&
+    (structuredTab.agentSessionAgent !== args.agent ||
+      structuredAgentSessionPaneKey(structuredTab.id, structuredTab.entityId) !== args.paneKey)
+  ) {
+    return
+  }
+  const executionHostId = structuredTab
+    ? structuredAgentSessionOwnerForTab(state, structuredTab)
+    : getExecutionHostIdForWorktree(state, worktreeId)
+  if (!executionHostId) {
+    return
+  }
   candidates.set(tabId, {
     agent: args.agent,
     executionHostId,
@@ -67,11 +83,29 @@ function registerCandidate(
   })
 }
 
+export function structuredAgentSessionTitleTabs(state: AppState): Tab[] {
+  return Object.values(state.unifiedTabsByWorktree ?? {})
+    .flat()
+    .filter(
+      (tab) => tab.contentType === 'agent-session' && isAiVaultTitleAgent(tab.agentSessionAgent)
+    )
+}
+
+export function aiVaultTitleByTabId(
+  state: AppState
+): Map<string, AiVaultSessionTitle | null | undefined> {
+  return new Map(
+    [...Object.values(state.tabsByWorktree).flat(), ...structuredAgentSessionTitleTabs(state)].map(
+      (tab) => [tab.id, tab.aiVaultTitle]
+    )
+  )
+}
+
 export function collectAiVaultTitleRequests(state: AppState): AiVaultTitleRequest[] {
-  const tabsById = new Map(
-    Object.values(state.tabsByWorktree)
-      .flat()
-      .map((tab) => [tab.id, tab] as const)
+  const tabsById = new Map<string, TerminalTab | Tab>(
+    [...Object.values(state.tabsByWorktree).flat(), ...structuredAgentSessionTitleTabs(state)].map(
+      (tab) => [tab.id, tab] as const
+    )
   )
   const candidates = new Map<string, RequestCandidate>()
 

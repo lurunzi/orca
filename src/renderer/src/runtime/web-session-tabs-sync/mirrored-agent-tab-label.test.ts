@@ -44,6 +44,32 @@ function build(
 }
 
 describe('buildMirroredAgentTabs', () => {
+  it('preserves a resolved title only for the same host and conversation', () => {
+    const snapshot = snapshotWith('claude', 'Claude Chat')
+    const existing: Tab = {
+      ...build(snapshot),
+      aiVaultTitle: { agent: 'claude', sessionId: 'provider-1', title: 'Synced title' }
+    }
+    expect(build(snapshot, [existing]).aiVaultTitle).toEqual(existing.aiVaultTitle)
+    expect(
+      build(snapshot, [{ ...existing, executionHostId: 'local' }]).aiVaultTitle
+    ).toBeUndefined()
+    expect(
+      build(snapshot, [{ ...existing, agentSessionAgent: 'codex' }]).aiVaultTitle
+    ).toBeUndefined()
+    const hostTab = snapshot.tabs[0]
+    if (hostTab.type !== 'agent-session') {
+      throw new Error('Expected a chat')
+    }
+    const replacement = {
+      ...snapshot,
+      tabs: [{ ...hostTab, sessionId: 'replacement', replacesSessionId: 'claude-1' }]
+    }
+    const replaced = build(replacement, [existing])
+    expect(replaced.id).toBe(existing.id)
+    expect(replaced.aiVaultTitle).toBeUndefined()
+  })
+
   it('falls back to the agent-specific placeholder when the host publishes no title', () => {
     expect(build(snapshotWith('claude', '')).label).toBe('Claude Chat')
     expect(build(snapshotWith('codex', '   ')).label).toBe('Codex Chat')

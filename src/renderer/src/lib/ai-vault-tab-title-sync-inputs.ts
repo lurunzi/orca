@@ -3,7 +3,10 @@ import { isAiVaultTitleAgent } from '../../../shared/ai-vault-session-title'
 import type { TerminalTab } from '../../../shared/terminal-tab-types'
 import { getExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
 import type { AppState } from '@/store/types'
-import { collectAiVaultTitleRequests } from './ai-vault-tab-title-requests'
+import {
+  collectAiVaultTitleRequests,
+  structuredAgentSessionTitleTabs
+} from './ai-vault-tab-title-requests'
 
 function providerSessionEqual(
   left: AgentProviderSessionMetadata | undefined,
@@ -162,6 +165,26 @@ function requestOwnersEqual(current: AppState, previous: AppState): boolean {
 }
 
 export function aiVaultTitleSyncInputsChanged(current: AppState, previous: AppState): boolean {
+  if (current.unifiedTabsByWorktree !== previous.unifiedTabsByWorktree) {
+    const currentTabs = structuredAgentSessionTitleTabs(current)
+    const previousTabs = structuredAgentSessionTitleTabs(previous)
+    if (
+      currentTabs.length !== previousTabs.length ||
+      currentTabs.some((tab, index) => {
+        const before = previousTabs[index]
+        return (
+          tab.id !== before.id ||
+          tab.entityId !== before.entityId ||
+          tab.worktreeId !== before.worktreeId ||
+          tab.executionHostId !== before.executionHostId ||
+          tab.agentSessionAgent !== before.agentSessionAgent ||
+          !titleEqual(tab.aiVaultTitle, before.aiVaultTitle)
+        )
+      })
+    ) {
+      return true
+    }
+  }
   const agentRecordsChanged =
     current.agentStatusByPaneKey !== previous.agentStatusByPaneKey ||
     current.retainedAgentsByPaneKey !== previous.retainedAgentsByPaneKey ||
