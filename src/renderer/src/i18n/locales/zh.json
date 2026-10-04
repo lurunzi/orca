@@ -17562,6 +17562,8 @@
         "appliesNextTurn": "本轮结束后生效",
         "setWhenSessionStarts": "请在会话开始时设置。",
         "availableAfterSessionStarts": "会话开始后可用。",
+        "fastModeExtraUsageRequired": "Fast mode 需要启用额外付费额度。",
+        "fastModeUnavailable": "此会话目前无法使用 Fast mode。",
         "optionUpdateFailed": "无法更新选项",
         "optionValue": {
           "fast": "快速",

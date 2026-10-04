@@ -72,6 +72,7 @@ export function useStructuredAgentSessionOptions(args: {
     pendingOptionRef,
     optionMutationGeneration,
     updateOptionState,
+    refreshOptions,
     conversationSupport
   } = useStructuredAgentSessionOptionState({
     agent,
@@ -262,11 +263,12 @@ export function useStructuredAgentSessionOptions(args: {
   const optionSurface = useMemo<SessionOptionsSurface>(
     () => ({
       getSnapshot: () => optionSnapshot,
+      refresh: refreshOptions,
       setOption,
       invokeAction: async () => ({ snapshot: optionSnapshot }),
       subscribe: () => () => {}
     }),
-    [setOption, optionSnapshot]
+    [setOption, optionSnapshot, refreshOptions]
   )
 
   const support =

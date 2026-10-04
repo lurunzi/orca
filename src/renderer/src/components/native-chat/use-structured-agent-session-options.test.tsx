@@ -163,6 +163,54 @@ const SEED = { model: 'gpt-5.5' }
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('useStructuredAgentSessionOptions', () => {
+  it.each([false, true])(
+    'refreshes a limited session without a new turn (paired: %s)',
+    async (paired) => {
+      let blocked = false
+      answer({
+        options: async () => ({
+          models: [{ id: 'opus', label: 'Opus', efforts: [], supportsFastMode: true }],
+          fastModeSupport: blocked
+            ? { supported: false, reason: 'extra_usage_disabled' }
+            : { supported: true },
+          current: { model: 'opus', fastMode: true, confirmed: ['fastMode'] }
+        })
+      })
+      const mutation = mutateWith(async () => null)
+      const { result, unmount } = renderOptions(
+        { ...REOPENED, agent: 'claude', paired },
+        mutation.mutate
+      )
+      await waitFor(() =>
+        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
+          settable: true
+        })
+      )
+      blocked = true
+      act(() => result.current.optionSurface.refresh?.())
+      await waitFor(() =>
+        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
+          settable: false,
+          disabledReason: 'fast-mode-extra-usage-required'
+        })
+      )
+      await act(async () =>
+        expect(await result.current.setStructuredOption('fastMode', true)).toBe(false)
+      )
+      expect(mutation.calls).not.toHaveBeenCalled()
+      blocked = false
+      act(() => result.current.optionSurface.refresh?.())
+      await waitFor(() =>
+        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
+          settable: true,
+          kind: { currentValue: true }
+        })
+      )
+      expect(descriptor(result.current.optionSnapshot, 'fastMode')?.disabledReason).toBeUndefined()
+      unmount()
+    }
+  )
+
   beforeEach(() => {
     mocks.call.mockReset()
     mocks.enqueue.mockReset()

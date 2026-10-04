@@ -256,6 +256,11 @@ function NativeChatSessionOptionPickersInner({
         <DropdownMenu
           key={`options:${requestedOptionsSequence ?? 'idle'}`}
           defaultOpen={requestedOptionsSequence !== null}
+          onOpenChange={(open) => {
+            if (open) {
+              surface.refresh?.()
+            }
+          }}
         >
           <PickerTrigger
             label={nativeChatOptionsPillLabel(options)}

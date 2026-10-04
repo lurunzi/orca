@@ -254,14 +254,17 @@ describe('useMobileStructuredAgentOptions fast mode', () => {
     await harness.unmount()
   })
 
-  it('offers no Fast row when the session reports fast mode unsupported', async () => {
+  it('keeps a disabled Fast row when the session reports an account restriction', async () => {
     const client = optionsClient(
       queuedReads({ ...FAST_OPTIONS, fastModeSupport: { supported: false, reason: 'account' } })
     )
     const { mutate } = recordingMutate(async () => ({ status: 'rejected' }))
     const harness = await mountOptions({ ...BASE, client: client.client, mutate })
 
-    expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toBeUndefined()
+    expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toMatchObject({
+      settable: false,
+      disabledReason: 'fast-mode-unavailable'
+    })
     await harness.unmount()
   })
 

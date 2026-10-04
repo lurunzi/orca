@@ -27,6 +27,8 @@ export type NativeChatLiveOptionTransport = 'catalog' | 'agent-session'
 export type SessionOptionDisabledReason =
   | 'available-after-session-start'
   | 'set-when-session-starts'
+  | 'fast-mode-extra-usage-required'
+  | 'fast-mode-unavailable'
 
 export type SessionOptionDescriptor = {
   id: string
@@ -113,6 +115,8 @@ export type NativeChatSessionOptionSettingsMutation =
   | { type: 'clear-model-if-missing'; agent: AgentType; availableModelIds: readonly string[] }
 
 export type SessionOptionsSurface = {
+  /** Recheck provider availability when a reader opens the picker. */
+  refresh?: () => void
   getSnapshot(): SessionOptionDescriptor[]
   /** Apply an absolute target; known flip-only options use their tracked baseline. */
   setOption(id: string, value: SessionOptionValue): Promise<SessionOptionSetResult>

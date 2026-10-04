@@ -17790,6 +17790,8 @@
         "appliesNextTurn": "Applies after this turn",
         "setWhenSessionStarts": "Set when the session starts.",
         "availableAfterSessionStarts": "Available after the session starts.",
+        "fastModeExtraUsageRequired": "Fast mode requires paid usage credits.",
+        "fastModeUnavailable": "Fast mode is currently unavailable for this session.",
         "optionUpdateFailed": "Could not update option",
         "optionValue": {
           "fast": "Fast",

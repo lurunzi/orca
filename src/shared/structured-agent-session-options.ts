@@ -55,10 +55,7 @@ function fastModeOption(): CatalogOption {
   }
 }
 
-function discoveredModel(
-  model: AgentSessionOptionsResult['models'][number],
-  sessionSupportsFastMode: boolean | undefined
-): CatalogModel {
+function discoveredModel(model: AgentSessionOptionsResult['models'][number]): CatalogModel {
   const effort = effortOption(model)
   return {
     id: model.id,
@@ -67,10 +64,7 @@ function discoveredModel(
     ...(model.isDefault ? { isDefault: true } : {}),
     options: [
       ...(effort ? [effort] : []),
-      // A missing session verdict does not revoke the provider's positive model capability.
-      ...(sessionSupportsFastMode !== false && model.supportsFastMode === true
-        ? [fastModeOption()]
-        : [])
+      ...(model.supportsFastMode === true ? [fastModeOption()] : [])
     ]
   }
 }
@@ -79,9 +73,7 @@ export function structuredAgentSessionOptionCatalog(
   seed: AgentSessionOptionCatalog,
   result: AgentSessionOptionsResult
 ): AgentSessionOptionCatalog {
-  const models: CatalogModel[] = result.models.map((model) =>
-    discoveredModel(model, result.fastModeSupport?.supported)
-  )
+  const models: CatalogModel[] = result.models.map(discoveredModel)
   if (!models.some((model) => model.id === result.current.model)) {
     models.push({
       id: result.current.model,
@@ -98,6 +90,7 @@ export type StructuredAgentSessionOptionState = {
   catalogSource: 'seed' | 'host' | 'live' | null
   record: NativeChatSessionOptionRecord
   pendingId: string | null
+  fastModeSupport?: AgentSessionOptionsResult['fastModeSupport']
 }
 
 /** With `seedCatalog`, the picker renders (and accepts picks against) the
@@ -154,9 +147,7 @@ export function applyStructuredAgentSessionModelCatalog(
   if (state.catalogSource === 'live' || catalog.origin === 'unknown') {
     return state
   }
-  const models = catalog.models.map((model) =>
-    discoveredModel(model, catalog.fastModeSupport?.supported)
-  )
+  const models = catalog.models.map(discoveredModel)
   if (models.length === 0) {
     return state
   }
@@ -169,7 +160,8 @@ export function applyStructuredAgentSessionModelCatalog(
       models,
       ...(options.namesDefault ? { defaultModelIsCliDefault: true } : {})
     },
-    catalogSource: 'host'
+    catalogSource: 'host',
+    fastModeSupport: catalog.fastModeSupport
   }
 }
 
@@ -193,7 +185,8 @@ export function applyStructuredAgentSessionOptions(
   return {
     ...state,
     catalog: structuredAgentSessionOptionCatalog(seed, result),
-    catalogSource: 'live'
+    catalogSource: 'live',
+    fastModeSupport: result.fastModeSupport
   }
 }
 
@@ -203,7 +196,7 @@ export function structuredAgentSessionOptionSnapshot(
   if (!state.catalog) {
     return []
   }
-  return buildNativeChatSessionOptionSnapshot({
+  const snapshot = buildNativeChatSessionOptionSnapshot({
     catalog: state.catalog,
     // A seeded default can name a model the static seed does not list yet.
     models: withTrackedNativeChatModel(state.catalog, state.catalog.models, state.record),
@@ -212,6 +205,22 @@ export function structuredAgentSessionOptionSnapshot(
     modelLabel: 'Model',
     liveTransport: 'agent-session'
   })
+  const support = state.fastModeSupport
+  if (support?.supported !== false) {
+    return snapshot
+  }
+  return snapshot.map((descriptor) =>
+    descriptor.id === 'fastMode'
+      ? {
+          ...descriptor,
+          settable: false,
+          disabledReason:
+            support.reason === 'extra_usage_disabled'
+              ? 'fast-mode-extra-usage-required'
+              : 'fast-mode-unavailable'
+        }
+      : descriptor
+  )
 }
 
 /** No launch holds a pick and no fence can carry one yet, so the picker only shows. */
@@ -233,6 +242,7 @@ export function canSetStructuredAgentSessionOption(
   const descriptor = structuredAgentSessionOptionSnapshot(state).find((entry) => entry.id === id)
   return Boolean(
     state.catalog &&
+    descriptor?.settable &&
     state.pendingId === null &&
     ((typeof value === 'string' &&
       descriptor?.kind.type === 'select' &&

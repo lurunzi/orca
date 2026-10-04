@@ -47,6 +47,16 @@ export function nativeChatSessionOptionDisabledReason(
   // Exhaustive over SessionOptionDisabledReason: a new key is a compile error
   // here, so the localized label can never silently drift from the producer.
   switch (reason) {
+    case 'fast-mode-extra-usage-required':
+      return translate(
+        'components.native-chat.composer.fastModeExtraUsageRequired',
+        'Fast mode requires paid usage credits.'
+      )
+    case 'fast-mode-unavailable':
+      return translate(
+        'components.native-chat.composer.fastModeUnavailable',
+        'Fast mode is currently unavailable for this session.'
+      )
     case 'set-when-session-starts':
       return translate(
         'components.native-chat.composer.setWhenSessionStarts',

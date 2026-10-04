@@ -4,6 +4,7 @@ import { buildNativeChatSessionOptionSnapshot } from './native-chat-session-opti
 import { createNativeChatSessionOptionRecord } from './native-chat-session-option-state'
 import {
   applyStructuredAgentSessionOptions,
+  canSetStructuredAgentSessionOption,
   createStructuredAgentSessionOptionState,
   structuredAgentSessionOptionSnapshot,
   structuredAgentSessionOptionView
@@ -17,6 +18,49 @@ function viewModel(...args: Parameters<typeof structuredAgentSessionOptionView>)
 }
 
 describe('structured agent session options', () => {
+  it.each(['extra_usage_disabled', 'rate_limit', 'insufficient_credits', 'future_limit'])(
+    'keeps the Fast preference visible through %s and recovery',
+    (reason) => {
+      const options = {
+        models: [
+          { id: 'opus', label: 'Opus', isDefault: true, efforts: [], supportsFastMode: true }
+        ],
+        current: { model: 'opus', fastMode: true, confirmed: ['fastMode'] }
+      }
+      let state = applyStructuredAgentSessionOptions(
+        createStructuredAgentSessionOptionState('claude'),
+        CODEX_SESSION_OPTION_CATALOG,
+        options
+      )
+      state = applyStructuredAgentSessionOptions(state, CODEX_SESSION_OPTION_CATALOG, {
+        ...options,
+        fastModeSupport: { supported: false, reason },
+        current: { ...options.current, fastModeState: 'cooldown' }
+      })
+      expect(structuredAgentSessionOptionSnapshot(state)).toContainEqual(
+        expect.objectContaining({
+          id: 'fastMode',
+          kind: { type: 'boolean', currentValue: true },
+          settable: false,
+          disabledReason:
+            reason === 'extra_usage_disabled'
+              ? 'fast-mode-extra-usage-required'
+              : 'fast-mode-unavailable'
+        })
+      )
+      expect(canSetStructuredAgentSessionOption(state, 'fastMode', true)).toBe(false)
+      state = applyStructuredAgentSessionOptions(state, CODEX_SESSION_OPTION_CATALOG, {
+        ...options,
+        fastModeSupport: { supported: true },
+        current: { ...options.current, fastModeState: 'cooldown' }
+      })
+      const recovered = structuredAgentSessionOptionSnapshot(state).find((d) => d.id === 'fastMode')
+      expect(recovered).toMatchObject({ kind: { currentValue: true }, settable: true })
+      expect(recovered?.disabledReason).toBeUndefined()
+      expect(canSetStructuredAgentSessionOption(state, 'fastMode', false)).toBe(true)
+    }
+  )
+
   it('projects native Codex selects while bridge Codex keeps its agent picker', () => {
     const state = applyStructuredAgentSessionOptions(
       createStructuredAgentSessionOptionState('codex'),
@@ -165,7 +209,6 @@ describe('structured agent session options', () => {
   })
 
   it.each([
-    { modelSupport: true, sessionSupport: false },
     { modelSupport: false, sessionSupport: true },
     { modelSupport: undefined, sessionSupport: true },
     { modelSupport: undefined, sessionSupport: undefined }

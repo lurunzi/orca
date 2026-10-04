@@ -81,7 +81,12 @@ export function useStructuredAgentSessionOptionState(args: {
     // A host catalog is the account's, not the fence's: keep it rather than blank the default.
     const next =
       sameSession && previous.catalogSource === 'host'
-        ? { ...seeded, catalog: previous.catalog, catalogSource: previous.catalogSource }
+        ? {
+            ...seeded,
+            catalog: previous.catalog,
+            catalogSource: previous.catalogSource,
+            fastModeSupport: previous.fastModeSupport
+          }
         : seeded
     optionMutationGeneration.current += 1
     pendingOptionRef.current = null
@@ -147,6 +152,8 @@ export function useStructuredAgentSessionOptionState(args: {
     }
   }, [contextRefresh])
 
+  const refreshOptions = useCallback(() => optionsReadRef.current?.run(), [])
+
   return {
     conversationSupport,
     optionState,
@@ -154,6 +161,7 @@ export function useStructuredAgentSessionOptionState(args: {
     activeOptionRecordRef,
     pendingOptionRef,
     optionMutationGeneration,
-    updateOptionState
+    updateOptionState,
+    refreshOptions
   }
 }

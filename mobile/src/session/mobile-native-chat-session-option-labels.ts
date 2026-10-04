@@ -13,6 +13,10 @@ export function mobileSessionOptionDisabledReason(
 ): string | null {
   // Exhaustive over SessionOptionDisabledReason so new keys are a compile error.
   switch (reason) {
+    case 'fast-mode-extra-usage-required':
+      return 'Fast mode requires paid usage credits.'
+    case 'fast-mode-unavailable':
+      return 'Fast mode is currently unavailable for this session.'
     case 'set-when-session-starts':
       return 'Set when the session starts.'
     case 'available-after-session-start':
