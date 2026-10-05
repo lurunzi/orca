@@ -4,7 +4,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { SettingsSegmentedControl } from '@/components/settings/SettingsFormControls'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { translate } from '@/i18n/i18n'
-import { formatRateLimitWindowChipLabel, formatWindowLabel } from '@/lib/window-label-formatter'
+import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { CURSOR_MODELS_BUCKET_NAME } from '../../../../shared/cursor-usage-buckets'
 import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
 import {
@@ -37,12 +37,11 @@ function providerMaxUsed(sections: UsageSection[]): number {
 }
 
 // Buckets (Gemini Flash/Pro) keep their model name; windows use their duration.
-function shortLabel(
-  p: ProviderRateLimits,
-  section: UsageSection,
-  useRemainingDuration = false
-): string {
-  if (p.buckets?.some((b) => b.name === section.label)) {
+function shortLabel(p: ProviderRateLimits, section: UsageSection, now = Date.now()): string {
+  if (
+    p.buckets?.some((b) => b.name === section.label) &&
+    !(p.provider === 'cursor' && section.label === CURSOR_MODELS_BUCKET_NAME)
+  ) {
     return section.label
   }
   // fableWeekly shares the 7d window with weekly; label it distinctly so the two
@@ -53,34 +52,45 @@ function shortLabel(
   if (p.provider === 'zcode' && section.window === p.monthly) {
     return section.label
   }
-  return useRemainingDuration
-    ? formatRateLimitWindowChipLabel(section.window)
-    : formatWindowLabel(section.window.windowMinutes)
+  return formatRateLimitWindowChipLabel(section.window, now)
 }
 
-export function getTightestUsageSection(p: ProviderRateLimits): UsageSection | null {
+export function getTightestUsageSection(
+  p: ProviderRateLimits,
+  now = Date.now()
+): UsageSection | null {
   const sections = usedSections(p)
   if (sections.length === 0) {
     return null
   }
   // Why: the footer promises one quiet summary per provider; choose urgency by
   // consumption even when the user displays the complementary “% left” value.
-  const tightest = sections.reduce((current, candidate) =>
-    clampUsedPercent(candidate.window.usedPercent) > clampUsedPercent(current.window.usedPercent)
+  const tightest = sections.reduce((current, candidate) => {
+    const difference =
+      clampUsedPercent(candidate.window.usedPercent) - clampUsedPercent(current.window.usedPercent)
+    return difference > 0 ||
+      (difference === 0 &&
+        candidate.window.windowMinutes === 10_080 &&
+        current.window.windowMinutes !== 10_080)
       ? candidate
       : current
-  )
-  return { ...tightest, label: shortLabel(p, tightest, true) }
+  })
+  return { ...tightest, label: shortLabel(p, tightest, now) }
 }
 
-export function getUsageHeadlineSection(p: ProviderRateLimits): UsageSection | null {
+export function getUsageHeadlineSection(
+  p: ProviderRateLimits,
+  now = Date.now()
+): UsageSection | null {
   if (p.provider === 'cursor') {
-    const primary = usedSections(p).find((section) => section.label === CURSOR_MODELS_BUCKET_NAME)
+    const primary =
+      usedSections(p).find((section) => section.label === CURSOR_MODELS_BUCKET_NAME) ??
+      getTightestUsageSection(p, now)
     if (primary) {
-      return { ...primary, label: shortLabel(p, primary, true) }
+      return { ...primary, label: formatRateLimitWindowChipLabel(primary.window, now) }
     }
   }
-  return getTightestUsageSection(p)
+  return getTightestUsageSection(p, now)
 }
 
 // The soonest-resetting window summarizes the agent's next reset in one line.
@@ -144,7 +154,7 @@ export function UsageRow({
   const name = getProviderDisplayName(p.provider)
   const plan = formatPlanLabel(p.planType)
   const reset = hasUsage ? soonestResetLabel(sections, now) : null
-  const tightest = mode === 'compact' ? getUsageHeadlineSection(p) : null
+  const tightest = mode === 'compact' ? getUsageHeadlineSection(p, now) : null
 
   return (
     <div data-usage-mode={mode} className="flex min-w-0 flex-1 flex-col gap-1">
@@ -186,7 +196,7 @@ export function UsageRow({
             <UsageMetric
               key={section.label}
               section={section}
-              label={shortLabel(p, section)}
+              label={shortLabel(p, section, now)}
               display={display}
             />
           ))}

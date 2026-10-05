@@ -30,6 +30,8 @@ import { ProviderSegment, UsageOverflowChip, getUsageTone } from './StatusBarPro
 import { useStatusBarController } from './use-status-bar-controller'
 import { StatusBarVisibilityMenu } from './StatusBarVisibilityMenu'
 import { isPairedWebClientWindow } from '@/lib/desktop-window-chrome'
+import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
+import { getWindowSections } from './tooltip'
 
 const PetStatusSegment = lazyWithRetry(() =>
   import('./PetStatusSegment').then((module) => ({ default: module.PetStatusSegment }))
@@ -54,6 +56,11 @@ export function StatusBarSurface({
   floatingTerminalOpen
 }: StatusBarProps): React.JSX.Element | null {
   const controller = useStatusBarController(floatingTerminalOpen)
+  const usageNow = useResetCountdownClock(
+    controller?.rosterProviders.flatMap((provider) =>
+      getWindowSections(provider).map((section) => section.window?.resetsAt)
+    ) ?? []
+  )
   if (!controller) {
     return null
   }
@@ -155,6 +162,7 @@ export function StatusBarSurface({
                           compact={compact}
                           display={usagePercentageDisplay}
                           mode={usageTightestOnly ? 'compact' : statusBarUsageMode}
+                          now={usageNow}
                         />
                       </span>
                     ))}

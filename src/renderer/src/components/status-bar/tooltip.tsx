@@ -18,6 +18,8 @@ import {
 } from '../../../../shared/usage-percentage-display'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
+import { formatWindowLabel } from '@/lib/window-label-formatter'
+import { CURSOR_MODELS_BUCKET_NAME } from '../../../../shared/cursor-usage-buckets'
 
 // Re-exported from its shared home so status-bar callers keep a single import.
 export { clampUsedPercent }
@@ -149,6 +151,11 @@ export function getWindowSections(
   p: ProviderRateLimits
 ): { label: string; window: RateLimitWindow | null }[] {
   if (p.buckets?.length) {
+    if (p.provider === 'antigravity') {
+      return p.buckets
+        .filter((bucket) => /^Gemini Models(?: ·|$)/i.test(bucket.name))
+        .map((bucket) => ({ label: formatWindowLabel(bucket.windowMinutes), window: bucket }))
+    }
     const bucketSections = p.buckets.map((b) => ({ label: b.name, window: b as RateLimitWindow }))
     return [
       ...bucketSections,
@@ -369,7 +376,11 @@ export function ProviderPanel({
         <ProviderRateLimitWindowSection
           key={s.label}
           window={s.window}
-          label={s.label}
+          label={
+            p.provider === 'cursor' && s.label === CURSOR_MODELS_BUCKET_NAME && s.window
+              ? formatWindowLabel(s.window.windowMinutes)
+              : s.label
+          }
           textClass={textClass}
           mutedClass={mutedClass}
           emptyBarClass={emptyBarClass}

@@ -129,10 +129,51 @@ describe('UsageRow', () => {
     expect(mocks.useResetCountdownClock).toHaveBeenCalledOnce()
     expect(mocks.useResetCountdownClock).toHaveBeenCalledWith([sessionReset, weeklyReset])
     expect(markup).toContain('Resets in 2m')
-    expect(markup).toContain('5h')
+    expect(markup).toContain('>2m<')
     expect(markup).toContain('25%')
-    expect(markup).toContain('wk')
+    expect(markup).toContain('>7d<')
     expect(markup).toContain('10%')
+  })
+
+  it('shows concise Gemini countdowns in the detailed Antigravity roster', () => {
+    const weekly = {
+      usedPercent: 10,
+      windowMinutes: 10080,
+      resetsAt: mocks.now + 3 * 24 * 60 * 60_000,
+      resetDescription: null
+    }
+    const markup = renderToStaticMarkup(
+      <UsageRow
+        p={{
+          ...signedOutCodex,
+          provider: 'antigravity',
+          status: 'ok',
+          error: null,
+          weekly,
+          buckets: [
+            { ...weekly, name: 'Gemini Models · Weekly Limit Remaining' },
+            {
+              ...weekly,
+              name: 'Gemini Models · Five Hour Limit Remaining',
+              windowMinutes: 300,
+              usedPercent: 1,
+              resetsAt: mocks.now + 97 * 60_000
+            },
+            { ...weekly, name: 'Claude and GPT models · Weekly Limit Remaining' }
+          ]
+        }}
+        display="used"
+        state={{ kind: 'usage', statusLabel: null }}
+        showSignInAction={false}
+        now={mocks.now}
+      />
+    )
+    expect(markup).toContain('>3d<')
+    expect(markup).toContain('>1h 37m<')
+    expect(markup).not.toContain('Models')
+    expect(markup).not.toContain('Limit Remaining')
+    expect(markup).not.toContain('Claude and GPT')
+    expect(markup.match(/data-usage-window=/g)).toHaveLength(2)
   })
 
   it('renders the tightest window inline in compact mode', () => {

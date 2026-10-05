@@ -56,7 +56,8 @@ describe('Cursor status-bar segment', () => {
     const markup = renderToStaticMarkup(
       <ProviderSegment p={cursorLimits()} compact={false} display="used" mode="verbose" />
     )
-    expect(markup).toContain(CURSOR_MODELS_BUCKET_NAME)
+    expect(markup).not.toContain(CURSOR_MODELS_BUCKET_NAME)
+    expect(markup).toContain('45% used 30d')
     expect(markup).toContain(CURSOR_OTHER_MODELS_BUCKET_NAME)
     expect(markup).toContain('45%')
     expect(markup).toContain('50%')

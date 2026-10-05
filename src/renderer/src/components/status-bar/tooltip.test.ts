@@ -295,6 +295,29 @@ describe('provider usage error copy', () => {
 })
 
 describe('getWindowSections', () => {
+  it('shows only Gemini windows in Antigravity details without duplicate weekly totals', () => {
+    const weekly = { usedPercent: 10, windowMinutes: 10080, resetsAt: null, resetDescription: null }
+    const session = { ...weekly, usedPercent: 1, windowMinutes: 300 }
+    const p = provider({
+      provider: 'antigravity',
+      status: 'ok',
+      weekly,
+      session,
+      buckets: [
+        { ...weekly, name: 'Gemini Models · Weekly Limit Remaining' },
+        { ...session, name: 'Gemini Models · Five Hour Limit Remaining' },
+        { ...weekly, name: 'Claude and GPT models · Weekly Limit Remaining' }
+      ]
+    })
+    expect(getWindowSections(p).map((section) => section.label)).toEqual(['wk', '5h'])
+    const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
+    expect(markup).not.toContain('Limit Remaining')
+    expect(markup).not.toContain('Models')
+    expect(markup).not.toContain('Claude and GPT')
+    expect(markup).toContain('10% used')
+    expect(markup).toContain('1% used')
+  })
+
   it('keeps ZCode Coding Plan windows separate from MCP quota', () => {
     const session = { usedPercent: 25, windowMinutes: 300, resetsAt: null, resetDescription: null }
     const weekly = { usedPercent: 40, windowMinutes: 10080, resetsAt: null, resetDescription: null }

@@ -49,18 +49,84 @@ function antigravityLimits(overrides: Partial<ProviderRateLimits> = {}): Provide
 }
 
 describe('Antigravity status-bar segment', () => {
-  it('renders both model-group pools by name', async () => {
-    // Why: the verbose bucket allowlist was written for Gemini's experimental models, so
-    // Antigravity's pools — whose names come from the account's tier and cannot be enumerated
-    // ahead of time — were filtered out and the segment showed no number at all.
+  it.each([
+    [10, 5, 10, 'wk'],
+    [10, 10, 10, 'wk'],
+    [10, 25, 25, '5h'],
+    [0, 0, 0, 'wk']
+  ] as const)(
+    'selects Gemini weekly %s / hourly %s without model-group labels',
+    async (weekly, hourly, expected, label) => {
+      const { ProviderSegment } = await import('./StatusBar')
+      const p = antigravityLimits({
+        weekly: weeklyWindow(100),
+        buckets: [
+          {
+            name: 'Gemini Models · Five Hour Limit Remaining',
+            ...weeklyWindow(hourly),
+            windowMinutes: 300
+          },
+          { name: 'Gemini Models · Weekly Limit Remaining', ...weeklyWindow(weekly) },
+          { name: 'Claude and GPT models', ...weeklyWindow(100) }
+        ]
+      })
+      for (const display of ['used', 'remaining'] as const) {
+        const markup = renderToStaticMarkup(
+          <ProviderSegment p={p} compact={false} display={display} mode="compact" />
+        )
+        const shown = display === 'used' ? expected : 100 - expected
+        expect(markup).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} ${label}`)
+        expect(markup).not.toContain('Models')
+        expect(markup).not.toContain('Limit Remaining')
+        expect(markup).not.toContain('Claude')
+      }
+    }
+  )
+
+  it('shows the Gemini reset countdown and handles a weekly-only tier', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment
+        p={antigravityLimits({
+          buckets: [{ name: 'Gemini Models', ...weeklyWindow(10), resetsAt: Date.now() + 90_000 }]
+        })}
+        compact={false}
+        display="used"
+        mode="compact"
+      />
+    )
+    expect(markup).toContain('10% used 1m')
+  })
+
+  it('does not substitute another model group when Gemini is absent', async () => {
+    const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
+    expect(
+      getUsageHeadlineSection(
+        antigravityLimits({ buckets: [{ name: 'Claude and GPT models', ...weeklyWindow(100) }] })
+      )
+    ).toBeNull()
+  })
+
+  it('prefers weekly on ties in legacy readings without buckets', async () => {
+    const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
+    const headline = getUsageHeadlineSection(
+      antigravityLimits({
+        buckets: [],
+        session: { ...weeklyWindow(100), windowMinutes: 300 }
+      })
+    )
+    expect(headline?.label).toBe('wk')
+  })
+
+  it('renders only Gemini usage with concise window labels', async () => {
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
       <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).toContain('Gemini Models')
-    expect(markup).toContain('Claude and GPT models')
-    expect(markup).toContain('100%')
+    expect(markup).not.toContain('Gemini Models')
+    expect(markup).not.toContain('Claude and GPT models')
+    expect(markup).toContain('100% used wk')
   })
 
   it('shows the weekly window when a tier reports no session pool', async () => {
