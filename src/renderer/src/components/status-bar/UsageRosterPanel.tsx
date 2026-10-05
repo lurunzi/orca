@@ -38,6 +38,9 @@ function providerMaxUsed(sections: UsageSection[]): number {
 
 // Buckets (Gemini Flash/Pro) keep their model name; windows use their duration.
 function shortLabel(p: ProviderRateLimits, section: UsageSection, now = Date.now()): string {
+  if (p.provider === 'antigravity' && p.buckets?.length) {
+    return `${section.label.split(' · ')[0]} · ${formatRateLimitWindowChipLabel(section.window, now)}`
+  }
   if (
     p.buckets?.some((b) => b.name === section.label) &&
     !(p.provider === 'cursor' && section.label === CURSOR_MODELS_BUCKET_NAME)
@@ -82,6 +85,16 @@ export function getUsageHeadlineSection(
   p: ProviderRateLimits,
   now = Date.now()
 ): UsageSection | null {
+  if (p.provider === 'antigravity' && p.buckets?.length) {
+    const buckets = p.buckets.filter((bucket) => /^Gemini Models(?: ·|$)/i.test(bucket.name))
+    if (buckets.length === 0) {
+      return null
+    }
+    const primary = getTightestUsageSection({ ...p, buckets }, now)
+    return primary
+      ? { ...primary, label: formatRateLimitWindowChipLabel(primary.window, now) }
+      : null
+  }
   if (p.provider === 'cursor') {
     const primary =
       usedSections(p).find((section) => section.label === CURSOR_MODELS_BUCKET_NAME) ??

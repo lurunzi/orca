@@ -152,9 +152,10 @@ export function getWindowSections(
 ): { label: string; window: RateLimitWindow | null }[] {
   if (p.buckets?.length) {
     if (p.provider === 'antigravity') {
-      return p.buckets
-        .filter((bucket) => /^Gemini Models(?: ·|$)/i.test(bucket.name))
-        .map((bucket) => ({ label: formatWindowLabel(bucket.windowMinutes), window: bucket }))
+      return p.buckets.map((bucket) => ({
+        label: `${bucket.name.split(' · ')[0].replace(/ models$/i, '')} · ${formatWindowLabel(bucket.windowMinutes)}`,
+        window: bucket
+      }))
     }
     const bucketSections = p.buckets.map((b) => ({ label: b.name, window: b as RateLimitWindow }))
     return [

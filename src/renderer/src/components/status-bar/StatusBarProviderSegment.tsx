@@ -12,8 +12,7 @@ import {
   USAGE_WARNING_PERCENT,
   clampUsedPercent,
   getProviderDisplayName,
-  getProviderUsageStatusLabel,
-  getWindowSections
+  getProviderUsageStatusLabel
 } from './tooltip'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
@@ -181,18 +180,12 @@ function VerboseProviderUsage({
   now?: number
 }): React.JSX.Element {
   if (p.provider === 'antigravity') {
+    const headline = getUsageHeadlineSection(p, now)
     return (
       <>
-        {getWindowSections(p).map(({ label, window }) =>
-          window ? (
-            <WindowLabel
-              key={label}
-              w={window}
-              label={formatRateLimitWindowChipLabel(window, now)}
-              display={display}
-            />
-          ) : null
-        )}
+        {headline ? (
+          <WindowLabel w={headline.window} label={headline.label} display={display} />
+        ) : null}
       </>
     )
   }
@@ -306,7 +299,9 @@ export function ProviderSegment({
   }
 
   const tightest =
-    mode === 'compact' ? getUsageHeadlineSection(p, now) : getTightestUsageSection(p, now)
+    mode === 'compact' || p.provider === 'antigravity'
+      ? getUsageHeadlineSection(p, now)
+      : getTightestUsageSection(p, now)
 
   // Fetching with no prior data
   if (p.status === 'fetching' && !tightest) {

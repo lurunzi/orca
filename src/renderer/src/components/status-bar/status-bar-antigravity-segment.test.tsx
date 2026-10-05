@@ -71,14 +71,17 @@ describe('Antigravity status-bar segment', () => {
         ]
       })
       for (const display of ['used', 'remaining'] as const) {
-        const markup = renderToStaticMarkup(
-          <ProviderSegment p={p} compact={false} display={display} mode="compact" />
-        )
-        const shown = display === 'used' ? expected : 100 - expected
-        expect(markup).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} ${label}`)
-        expect(markup).not.toContain('Models')
-        expect(markup).not.toContain('Limit Remaining')
-        expect(markup).not.toContain('Claude')
+        for (const mode of ['compact', 'verbose'] as const) {
+          const markup = renderToStaticMarkup(
+            <ProviderSegment p={p} compact={false} display={display} mode={mode} />
+          )
+          const shown = display === 'used' ? expected : 100 - expected
+          expect(markup).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} ${label}`)
+          expect(markup).not.toContain('Models')
+          expect(markup).not.toContain('Limit Remaining')
+          expect(markup).not.toContain('Claude')
+          expect(markup.match(/class="tabular-nums"/g)).toHaveLength(1)
+        }
       }
     }
   )

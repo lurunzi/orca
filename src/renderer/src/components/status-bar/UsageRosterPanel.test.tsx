@@ -135,7 +135,7 @@ describe('UsageRow', () => {
     expect(markup).toContain('10%')
   })
 
-  it('shows concise Gemini countdowns in the detailed Antigravity roster', () => {
+  it('keeps all model groups and countdowns in the detailed Antigravity roster', () => {
     const weekly = {
       usedPercent: 10,
       windowMinutes: 10080,
@@ -159,7 +159,13 @@ describe('UsageRow', () => {
               usedPercent: 1,
               resetsAt: mocks.now + 97 * 60_000
             },
-            { ...weekly, name: 'Claude and GPT models · Weekly Limit Remaining' }
+            { ...weekly, name: 'Claude and GPT models · Weekly Limit Remaining' },
+            {
+              ...weekly,
+              name: 'Claude and GPT models · Five Hour Limit Remaining',
+              windowMinutes: 300,
+              resetsAt: mocks.now + 4 * 60 * 60_000
+            }
           ]
         }}
         display="used"
@@ -168,12 +174,13 @@ describe('UsageRow', () => {
         now={mocks.now}
       />
     )
-    expect(markup).toContain('>3d<')
-    expect(markup).toContain('>1h 37m<')
+    expect(markup).toContain('Gemini · 3d')
+    expect(markup).toContain('Gemini · 1h 37m')
     expect(markup).not.toContain('Models')
     expect(markup).not.toContain('Limit Remaining')
-    expect(markup).not.toContain('Claude and GPT')
-    expect(markup.match(/data-usage-window=/g)).toHaveLength(2)
+    expect(markup).toContain('Claude and GPT · 3d')
+    expect(markup).toContain('Claude and GPT · 4h')
+    expect(markup.match(/data-usage-window=/g)).toHaveLength(4)
   })
 
   it('renders the tightest window inline in compact mode', () => {
