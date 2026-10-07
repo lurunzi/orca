@@ -79,7 +79,7 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
   state = applyStructuredAgentSessionOptions(state, CLAUDE_SESSION_OPTION_CATALOG, {
     ...options,
     current: { ...options.current, fastModeState: 'on' },
-    fastModeSupport: { supported: true }
+    fastModeSupport: { supported: true, accountVerified: true }
   })
   snapshot = structuredAgentSessionOptionSnapshot(state)
   rerender(view())

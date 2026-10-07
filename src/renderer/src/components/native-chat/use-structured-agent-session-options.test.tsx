@@ -172,7 +172,7 @@ describe('useStructuredAgentSessionOptions', () => {
           models: [{ id: 'opus', label: 'Opus', efforts: [], supportsFastMode: true }],
           fastModeSupport: blocked
             ? { supported: false, reason: 'extra_usage_disabled' }
-            : { supported: true },
+            : { supported: true, accountVerified: true },
           current: { model: 'opus', fastMode: true, fastModeState: 'on', confirmed: ['fastMode'] }
         })
       })
@@ -245,6 +245,7 @@ describe('useStructuredAgentSessionOptions', () => {
         modelCatalog: async () => ({ origin: 'probe', models, fetchedAt: 1_000 }),
         options: async () => ({
           models,
+          fastModeSupport: { supported: true, accountVerified: true },
           current: { model, fastMode: false, fastModeState: 'off', confirmed: ['fastMode'] }
         })
       })

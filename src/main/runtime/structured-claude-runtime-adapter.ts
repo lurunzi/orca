@@ -1,3 +1,4 @@
+import { readClaudeFastModeAccountAvailability } from '../claude/claude-fast-mode-account-availability'
 import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
 import { resolveClaudeCommand } from '../codex-cli/command'
@@ -75,6 +76,7 @@ export function createStructuredClaudeRuntimeAdapter(
 ): ClaudeStructuredSessionAdapter {
   const { store } = deps
   return new ClaudeStructuredSessionAdapter({
+    readFastModeAccountSupport: readClaudeFastModeAccountAvailability,
     atRestCommands: new ClaudeAtRestCommandCatalog({
       resolveWorkspacePath: deps.resolveWorkspacePath
     }),

@@ -192,7 +192,7 @@ export function applyStructuredAgentSessionOptions(
     fastModeSupport:
       state.record.agent === 'claude' &&
       result.fastModeSupport?.supported !== false &&
-      result.current.fastModeState === undefined
+      result.fastModeSupport?.accountVerified !== true
         ? { supported: false, reason: 'availability-unconfirmed' }
         : result.fastModeSupport
   }

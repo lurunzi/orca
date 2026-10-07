@@ -51,7 +51,7 @@ describe('structured agent session options', () => {
       expect(canSetStructuredAgentSessionOption(state, 'fastMode', true)).toBe(false)
       state = applyStructuredAgentSessionOptions(state, CODEX_SESSION_OPTION_CATALOG, {
         ...options,
-        fastModeSupport: { supported: true },
+        fastModeSupport: { supported: true, accountVerified: true },
         current: { ...options.current, fastModeState: 'cooldown' }
       })
       const recovered = structuredAgentSessionOptionSnapshot(state).find((d) => d.id === 'fastMode')

@@ -1,3 +1,7 @@
+import {
+  claudeFastModeAccountSupport,
+  refreshClaudeFastModeAccountSupport
+} from './claude-fast-mode-policy'
 import type { EffortLevel, PermissionMode } from '@anthropic-ai/claude-agent-sdk'
 import { ClaudeControlRequestError } from './claude-stream-json-connection'
 import { ClaudeControlRequestTimeoutError } from './claude-agent-sdk-control-requests'
@@ -132,19 +136,17 @@ export async function setClaudeStructuredOption(
         `claude model ${support.modelId ?? 'current'} does not support Fast mode`
       )
     }
-    if (
-      fastMode &&
-      session.fastModeDisabledReason &&
-      !['preference', 'sdk_opt_in_required'].includes(session.fastModeDisabledReason)
-    ) {
-      throw new AgentSessionOptionRejectedError(
-        `claude Fast mode is unavailable (${session.fastModeDisabledReason})`
-      )
-    }
-    if (fastMode && session.fastModeState === undefined) {
-      throw new AgentSessionOptionRejectedError(
-        'Claude Fast mode availability has not been confirmed for this session.'
-      )
+    if (fastMode) {
+      const settings = await session.connection.getSettings({ timeoutMs }).catch(() => null)
+      await refreshClaudeFastModeAccountSupport(session, settings, timeoutMs)
+      const availability = claudeFastModeAccountSupport(session)
+      if (!availability.supported) {
+        throw new AgentSessionOptionRejectedError(
+          availability.reason === 'availability-unconfirmed'
+            ? 'Claude Fast mode availability has not been confirmed for this session.'
+            : `Claude Fast mode is unavailable (${availability.reason})`
+        )
+      }
     }
   }
   // set_model resolves for a model the provider never lists and the session then

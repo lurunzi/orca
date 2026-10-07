@@ -42,7 +42,7 @@ import { persistClaudeTurnResumePoint } from './claude-structured-resume-point'
 import { restoreClaudePromptSuggestion } from './claude-prompt-suggestion'
 import { withAgentSessionCreatePhase } from '../observability/agent-session-instrumentation'
 import { resolveClaudeAcquisitionLaunch } from './claude-structured-acquisition-launch'
-import { agentModelCatalogSessionAccess } from '../native-chat/agent-model-catalog/agent-model-catalog-fingerprint'
+import { configureClaudeSessionAccountContext } from './claude-structured-session-account-context'
 import {
   bindClaudeConnectionJournalControls,
   createClaudeJournalFailureHandler
@@ -258,11 +258,7 @@ export async function acquireClaudeSession({
     })
     const session = publication.session
     liveSession = session
-    session.catalogAccess = agentModelCatalogSessionAccess(
-      deps.modelCatalog,
-      'claude',
-      launch.claudeConfigDir
-    )
+    configureClaudeSessionAccountContext(session, launch, deps)
     acquisitions.deleteIfCurrent(sessionId, attempt)
     await withAgentSessionCreatePhase('publish', input.recordPhase, async () => {
       sessions.set(sessionId, session)

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { AgentSessionFastModeSupport } from '../../shared/agent-session-wire'
 import {
   restoreClaudeStructuredSessionOptions,
   setClaudeStructuredOption
@@ -85,6 +86,7 @@ function fastModeSession(supportsFastMode: boolean | undefined) {
   const session = sessionFor(vi.fn(async () => undefined))
   session.options.set('model', 'opus')
   session.fastModeState = 'off'
+  session.fastModeAccountSupport = { supported: true, accountVerified: true }
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the literal supplies every connection member this fixture's code paths call, and the spread carries the rest from sessionFor.
   session.connection = {
     ...session.connection,
@@ -106,7 +108,7 @@ function fastModeSession(supportsFastMode: boolean | undefined) {
 describe('Claude structured Fast mode', () => {
   it('requires live availability before enabling but always permits turning Fast off', async () => {
     const { session, applyFlagSettings } = fastModeSession(true)
-    session.fastModeState = undefined
+    session.fastModeAccountSupport = undefined
     await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
       fastModeSupport: { supported: false, reason: 'availability-unconfirmed' }
     })
@@ -132,10 +134,105 @@ describe('Claude structured Fast mode', () => {
       })
       observeClaudeFastModeFacts(session, { fast_mode_state: 'off' })
       await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
-        fastModeSupport: { supported: true }
+        fastModeSupport: { supported: false, reason: 'availability-unconfirmed' }
+      })
+      session.readFastModeAccountSupport = async () => ({ supported: true, accountVerified: true })
+      await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+        fastModeSupport: { supported: true, accountVerified: true }
       })
     }
   )
+
+  it('never unlocks account-denied Fast from routing frames or a saved preference', async () => {
+    const { session, applyFlagSettings } = fastModeSession(true)
+    session.options.set('fastMode', 'true')
+    session.readFastModeAccountSupport = vi.fn(async () => ({
+      supported: false,
+      reason: 'extra_usage_disabled'
+    }))
+    for (const state of ['off', 'on', 'cooldown']) {
+      observeClaudeFastModeFacts(session, { fast_mode_state: state })
+      await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+        fastModeSupport: { supported: false, reason: 'extra_usage_disabled' }
+      })
+      await expect(
+        setClaudeStructuredOption(session, { key: 'fastMode', value: 'true' }, undefined)
+      ).rejects.toThrow('extra_usage_disabled')
+    }
+    expect(applyFlagSettings).not.toHaveBeenCalled()
+    const reads = vi.mocked(session.readFastModeAccountSupport).mock.calls.length
+    await setClaudeStructuredOption(session, { key: 'fastMode', value: 'false' }, undefined)
+    expect(session.readFastModeAccountSupport).toHaveBeenCalledTimes(reads)
+    session.readFastModeAccountSupport = async () => ({ supported: true, accountVerified: true })
+    await expect(
+      setClaudeStructuredOption(session, { key: 'fastMode', value: 'true' }, undefined)
+    ).resolves.toMatchObject({ fastMode: 'true' })
+  })
+
+  it('preserves account denial on an off-only frame until an account refresh proves recovery', async () => {
+    const { session } = fastModeSession(true)
+    observeClaudeFastModeFacts(session, {
+      fast_mode_state: 'off',
+      fast_mode_disabled_reason: 'extra_usage_disabled'
+    })
+    observeClaudeFastModeFacts(session, { fast_mode_state: 'off' })
+    expect(session.fastModeDisabledReason).toBe('extra_usage_disabled')
+    await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+      fastModeSupport: { supported: false }
+    })
+    session.readFastModeAccountSupport = async () => ({ supported: true, accountVerified: true })
+    await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+      fastModeSupport: { supported: true, accountVerified: true }
+    })
+  })
+
+  it('does not bypass a managed preference restriction after account permission is confirmed', async () => {
+    const { session } = fastModeSession(true)
+    session.fastModeDisabledReason = 'preference'
+    session.readFastModeAccountSupport = async () => ({ supported: true, accountVerified: true })
+    await expect(
+      setClaudeStructuredOption(session, { key: 'fastMode', value: 'true' }, undefined)
+    ).rejects.toThrow('preference')
+  })
+
+  it('does not wait for account initialization when options are read during startup', async () => {
+    const { session } = fastModeSession(true)
+    session.startup.state = 'pending'
+    session.readFastModeAccountSupport = vi.fn(
+      () => new Promise<AgentSessionFastModeSupport>(() => {})
+    )
+    await readClaudeStructuredSessionOptions(session, undefined)
+    expect(session.readFastModeAccountSupport).not.toHaveBeenCalled()
+  })
+
+  it('coalesces concurrent permission checks but retries after denial', async () => {
+    const { session } = fastModeSession(true)
+    let finish: (value: {
+      supported: boolean
+      reason?: string
+      accountVerified?: boolean
+    }) => void = () => {}
+    session.readFastModeAccountSupport = vi.fn(
+      () =>
+        new Promise<AgentSessionFastModeSupport>((resolve) => {
+          finish = resolve
+        })
+    )
+    const first = readClaudeStructuredSessionOptions(session, undefined)
+    const second = readClaudeStructuredSessionOptions(session, undefined)
+    await vi.waitFor(() => expect(session.readFastModeAccountSupport).toHaveBeenCalledTimes(1))
+    finish({ supported: false, reason: 'extra_usage_disabled' })
+    for (const result of await Promise.all([first, second])) {
+      expect(result.fastModeSupport).toMatchObject({
+        supported: false,
+        reason: 'extra_usage_disabled'
+      })
+    }
+    session.readFastModeAccountSupport = async () => ({ supported: true, accountVerified: true })
+    await expect(readClaudeStructuredSessionOptions(session, undefined)).resolves.toMatchObject({
+      fastModeSupport: { supported: true }
+    })
+  })
 
   it('applies absolute on and off values and confirms provider readback', async () => {
     const { session, applyFlagSettings } = fastModeSession(true)

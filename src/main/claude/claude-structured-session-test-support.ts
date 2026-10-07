@@ -266,6 +266,7 @@ export function adapterAtPublishFor(
   onDispatchSettledLate?: ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
 ): ClaudeStructuredSessionAdapter {
   return new ClaudeStructuredSessionAdapter({
+    readFastModeAccountSupport: async () => ({ supported: true, accountVerified: true }),
     resolveLaunch: async () => ({
       pathToClaudeCodeExecutable: 'claude',
       options: {},

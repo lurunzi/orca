@@ -31,6 +31,14 @@ it('keeps Claude Fast off and unavailable across cached and older-host answers',
     kind: { currentValue: false },
     disabledReason: 'fast-mode-availability-unconfirmed'
   })
+  for (const fastModeState of ['off', 'on', 'cooldown'] as const) {
+    state = applyStructuredAgentSessionOptions(state, seed, {
+      models,
+      current: { ...current, fastModeState },
+      fastModeSupport: { supported: true }
+    })
+    expect(fast()).toMatchObject({ settable: false, kind: { currentValue: false } })
+  }
   state = applyStructuredAgentSessionOptions(state, seed, {
     models,
     current: { ...current, fastModeState: 'off' },
@@ -44,7 +52,7 @@ it('keeps Claude Fast off and unavailable across cached and older-host answers',
   state = applyStructuredAgentSessionOptions(state, seed, {
     models,
     current: { ...current, fastModeState: 'on' },
-    fastModeSupport: { supported: true }
+    fastModeSupport: { supported: true, accountVerified: true }
   })
   expect(fast()).toMatchObject({ settable: true, kind: { currentValue: true } })
 })
