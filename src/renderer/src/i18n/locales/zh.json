@@ -3878,6 +3878,7 @@
             "6cf9eaed10": "下一个将在 {{value0}} 后过期",
             "20ad66aed1": "将在 {{value0}} 后过期",
             "0d8d7cfe15": "等待 Claude 会话",
+            "claudeCredentialsChanged": "Claude ???????????????Orca ????????????",
             "1804cd8c3f": "正在刷新登录",
             "f8f0f9d8cc": "网络问题",
             "bf2e739f18": "登录不可用",

@@ -23,6 +23,9 @@ export function nativeChatSessionOptionLabel(descriptor: SessionOptionDescriptor
 export function nativeChatSessionChoiceLabel(choice: SessionOptionSelectChoice): string {
   switch (choice.value) {
     case 'default':
+      if (choice.label && choice.label.toLowerCase() !== 'default') {
+        return choice.label
+      }
       return translate('components.native-chat.composer.optionValue.default', 'Default')
     case 'none':
       return translate('components.native-chat.composer.optionValue.none', 'None')

@@ -37,7 +37,7 @@ describe('getUsageRosterRowState', () => {
         }),
         false
       )
-    ).toEqual({ kind: 'error', statusLabel: 'Refreshing sign-in' })
+    ).toEqual({ kind: 'error', statusLabel: 'Usage unavailable' })
     expect(
       getUsageRosterRowState(
         provider({

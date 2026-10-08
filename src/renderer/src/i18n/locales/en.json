@@ -4061,6 +4061,7 @@
             "6cf9eaed10": "Next expires in {{value0}}",
             "20ad66aed1": "Expires in {{value0}}",
             "0d8d7cfe15": "Waiting for Claude session",
+            "claudeCredentialsChanged": "Claude usage credentials were rejected. After signing in again, Orca will retry when the credentials file changes.",
             "1804cd8c3f": "Refreshing sign-in",
             "f8f0f9d8cc": "Network issue",
             "bf2e739f18": "Sign-in unavailable",

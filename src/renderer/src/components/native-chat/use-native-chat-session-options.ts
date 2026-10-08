@@ -21,7 +21,7 @@ import {
   discoverNativeChatCatalogModels,
   resolveNativeChatModelDiscoveryContext
 } from './native-chat-session-option-discovery'
-import { readClaudeSessionOptionsFromTerminalScreen } from './claude-terminal-session-options'
+import { readAgentTerminalSessionOptions } from './agent-terminal-session-options'
 
 import { enqueueSessionOptionSettingsWrite } from './native-chat-session-option-settings-write'
 
@@ -108,7 +108,8 @@ export function useNativeChatSessionOptions(args: {
       : null
     const reportedValues =
       agent === 'claude'
-        ? readClaudeSessionOptionsFromTerminalScreen(
+        ? readAgentTerminalSessionOptions(
+            agent,
             readTerminalScreen?.(),
             discoveredModels ?? undefined
           )
@@ -146,12 +147,26 @@ export function useNativeChatSessionOptions(args: {
   ])
 
   useEffect(() => {
-    if (!surface || agent !== 'claude') {
+    if (!surface || (agent !== 'claude' && agent !== 'antigravity')) {
+      return
+    }
+    const current = surface.getSnapshot().find((option) => option.id === 'model')
+    if (
+      agent === 'antigravity' &&
+      (current?.valueSource === 'applied' || current?.valueSource === 'dispatched')
+    ) {
       return
     }
     let cancelled = false
+    let attempts = 0
+    let found = false
+    let reading = false
     reportedScreenRef.current = null
     const reportCurrentValues = async (): Promise<void> => {
+      if (cancelled || found || reading) {
+        return
+      }
+      reading = true
       let authoritativeScreen: string | null = null
       if (targetPtyId && window.api?.pty?.getMainBufferSnapshot) {
         try {
@@ -169,10 +184,7 @@ export function useNativeChatSessionOptions(args: {
         ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
         : null
       for (const screen of [authoritativeScreen, readTerminalScreen?.() ?? null]) {
-        const reportedValues = readClaudeSessionOptionsFromTerminalScreen(
-          screen,
-          models ?? undefined
-        )
+        const reportedValues = readAgentTerminalSessionOptions(agent, screen, models ?? undefined)
         if (!reportedValues) {
           continue
         }
@@ -182,14 +194,31 @@ export function useNativeChatSessionOptions(args: {
         if (cancelled) {
           return
         }
+        found = true
+        const current = surface.getSnapshot().find((option) => option.id === 'model')
+        if (
+          agent === 'antigravity' &&
+          (current?.valueSource === 'applied' || current?.valueSource === 'dispatched')
+        ) {
+          return
+        }
         reportedScreenRef.current = screen
         surface.reportSessionOptions(reportedValues)
         return
       }
+      reading = false
     }
     void reportCurrentValues()
+    const retry = window.setInterval(() => {
+      if (found || ++attempts >= 60) {
+        window.clearInterval(retry)
+      } else {
+        void reportCurrentValues()
+      }
+    }, 1_000)
     return () => {
       cancelled = true
+      window.clearInterval(retry)
     }
   }, [agent, discoveryContext, readTerminalScreen, surface, targetPtyId])
 
@@ -233,11 +262,13 @@ export function useNativeChatSessionOptions(args: {
       discoveryContext.hostKey,
       (models) => {
         surface.replaceModels(models)
-        const screen = agent === 'claude' ? reportedScreenRef.current : null
+        const screen = reportedScreenRef.current
         const reportedValues = screen
-          ? readClaudeSessionOptionsFromTerminalScreen(screen, models)
+          ? readAgentTerminalSessionOptions(agent, screen, models)
           : null
-        if (reportedValues) {
+        const current = surface.getSnapshot().find((option) => option.id === 'model')
+        const hasPick = current?.valueSource === 'applied' || current?.valueSource === 'dispatched'
+        if (reportedValues && !(agent === 'antigravity' && hasPick)) {
           surface.reportSessionOptions(reportedValues)
         }
         // A failed settings write must not surface as an unhandled rejection.

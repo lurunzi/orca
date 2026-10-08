@@ -341,3 +341,37 @@ describe('useNativeChatSessionOptions model reporting', () => {
     expect(modelDescriptor(result.current.snapshot).currentValue).toBeUndefined()
   })
 })
+
+it('learns the Antigravity startup model after the picker mounts and preserves a later pick', async () => {
+  clearNativeChatModelEnrichmentForTests()
+  Object.defineProperty(window, 'api', { configurable: true, value: undefined })
+  discoverModels.mockResolvedValue([
+    { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] },
+    { id: 'claude-opus', label: 'Claude Opus', options: [] }
+  ])
+  let screen: string | null = null
+  const dispatchCommand = vi.fn<NativeChatSessionOptionDispatchCommand>(async () => undefined)
+  const { result, rerender, unmount } = renderHook(() =>
+    useNativeChatSessionOptions({
+      agent: 'antigravity',
+      terminalTabId: 'tab-agy-delayed',
+      targetPtyId: 'pty-agy-delayed',
+      dispatchCommand,
+      readTerminalScreen: () => screen
+    })
+  )
+  await waitFor(() => expect(modelDescriptor(result.current.snapshot).choices).toHaveLength(2))
+  expect(modelDescriptor(result.current.snapshot).currentValue).toBeUndefined()
+  screen = 'Antigravity CLI 1.2.14\nGemini 3.8 Flash (High)\n~/repo'
+  await waitFor(
+    () =>
+      expect(modelDescriptor(result.current.snapshot).currentValue).toBe('gemini-3.8-flash-high'),
+    { timeout: 2500 }
+  )
+  await result.current.surface?.setOption('model', 'claude-opus')
+  rerender()
+  await waitFor(() =>
+    expect(modelDescriptor(result.current.snapshot).currentValue).toBe('claude-opus')
+  )
+  unmount()
+})

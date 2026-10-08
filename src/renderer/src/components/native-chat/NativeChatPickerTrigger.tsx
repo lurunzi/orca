@@ -31,6 +31,7 @@ function PickerTooltipContent(props: {
 }
 
 export function PickerTrigger(props: {
+  detail?: string
   label: string
   tooltipLabel: string
   disabled: boolean
@@ -58,14 +59,15 @@ export function PickerTrigger(props: {
             aria-label={accessibleName}
             className="max-w-48 text-muted-foreground"
           >
-            <span className="truncate">{props.label}</span>
+            <span className="max-w-48 truncate">{props.label}</span>
+            {props.detail ? <span className="shrink-0 tabular-nums">{props.detail}</span> : null}
             <ChevronDown className="size-3" />
           </Button>
         </DropdownMenuTrigger>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <PickerTooltipContent
-          label={props.tooltipLabel}
+          label={props.detail ? props.label : props.tooltipLabel}
           disabledReason={props.disabledReason}
           dispatched={props.dispatched}
           queued={props.queued}

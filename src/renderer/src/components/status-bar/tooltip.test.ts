@@ -255,9 +255,9 @@ describe('provider usage error copy', () => {
       }
     })
 
-    expect(getProviderUsageStatusLabel(p)).toBe('Refreshing sign-in')
+    expect(getProviderUsageStatusLabel(p)).toBe('Usage unavailable')
     expect(getProviderUsageErrorMessage(p)).toBe(
-      'Claude sign-in is being refreshed. Agent sessions may still be signed in.'
+      'Claude usage credentials were rejected. After signing in again, Orca will retry when the credentials file changes.'
     )
   })
 
