@@ -1,50 +1,102 @@
 import type { SessionOptionSelectChoice } from '../../../../shared/native-chat-session-options'
 
-// Why: some CLIs (Antigravity) list each effort tier as its own model id, e.g.
-// `gemini-3.1-pro-high` "Gemini 3.1 Pro (High)". The ids stay the switch values;
-// only the picker splits them into a model row plus a tier pill.
+// The picker groups CLI variants without changing the actual model ids sent to the host.
 const TIER_BY_LABEL: Record<string, string> = {
+  none: 'none',
   minimal: 'minimal',
   low: 'low',
   medium: 'medium',
   high: 'high',
   xhigh: 'xhigh',
   'extra high': 'xhigh',
-  max: 'max'
+  max: 'max',
+  ultra: 'ultra'
 }
 
 export type ModelTierChoice = SessionOptionSelectChoice & { tier: string; tierLabel: string }
 
 export type ModelPickerRow =
   | { kind: 'model'; choice: SessionOptionSelectChoice }
-  | { kind: 'tiered'; baseLabel: string; tiers: ModelTierChoice[] }
+  | { kind: 'tiered'; source: 'label' | 'id'; baseLabel: string; tiers: ModelTierChoice[] }
 
-function parseTieredChoice(choice: SessionOptionSelectChoice): ModelTierChoice | null {
+type ParsedTierChoice = ModelTierChoice & { groupKey: string }
+
+function parseTieredChoice(choice: SessionOptionSelectChoice): ParsedTierChoice | null {
   const match = choice.label.match(/^(.*\S)\s+\(([^()]+)\)$/)
   const tier = match ? TIER_BY_LABEL[match[2].trim().toLowerCase()] : undefined
-  return match && tier ? { ...choice, label: match[1], tier, tierLabel: match[2].trim() } : null
+  if (match && tier) {
+    return {
+      ...choice,
+      label: match[1],
+      groupKey: `label:${match[1]}`,
+      tier,
+      tierLabel: match[2].trim()
+    }
+  }
+  // Cursor sometimes omits the effort from its display name, so read its explicit id suffix.
+  const suffix = choice.value.match(
+    /^(.*)-(none|minimal|low|medium|high|xhigh|max|ultra)(-thinking)?(-fast)?$/
+  )
+  if (!suffix) {
+    return null
+  }
+  const groupId = `${suffix[1]}${suffix[3] ?? ''}${suffix[4] ?? ''}`
+  const label = (choice.label === choice.value ? groupId : choice.label)
+    .replace(/\s+(?:extra high|xhigh|none|minimal|low|medium|high|max|ultra)(?=\s|$)/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return {
+    ...choice,
+    label,
+    groupKey: `id:${groupId}`,
+    tier: suffix[2],
+    tierLabel:
+      suffix[2] === 'xhigh' ? 'Extra high' : suffix[2][0].toUpperCase() + suffix[2].slice(1)
+  }
 }
 
-/** Groups tier siblings that share a base label; a lone tier keeps its full label. */
+/** Groups CLI tier siblings; a lone tier keeps its full label. */
 export function buildModelPickerRows(
   choices: readonly SessionOptionSelectChoice[]
 ): ModelPickerRow[] {
   const parsed = choices.map((choice) => ({ choice, tiered: parseTieredChoice(choice) }))
+  const groupsById = new Map(
+    parsed.flatMap(({ tiered }) =>
+      tiered?.groupKey.startsWith('id:') ? [[tiered.groupKey, tiered] as const] : []
+    )
+  )
+  for (const entry of parsed) {
+    const group = groupsById.get(`id:${entry.choice.value}`)
+    if (!entry.tiered && group) {
+      entry.tiered = {
+        ...entry.choice,
+        label: group.label,
+        groupKey: group.groupKey,
+        tier: 'default',
+        tierLabel: 'Default'
+      }
+    }
+  }
   const siblings = new Map<string, ModelTierChoice[]>()
   for (const { tiered } of parsed) {
     if (tiered) {
-      siblings.set(tiered.label, [...(siblings.get(tiered.label) ?? []), tiered])
+      siblings.set(tiered.groupKey, [...(siblings.get(tiered.groupKey) ?? []), tiered])
     }
   }
   const rows: ModelPickerRow[] = []
   const emitted = new Set<string>()
   for (const { choice, tiered } of parsed) {
-    const tiers = tiered ? siblings.get(tiered.label) : undefined
+    const tiers = tiered ? siblings.get(tiered.groupKey) : undefined
     if (!tiered || !tiers || tiers.length < 2) {
       rows.push({ kind: 'model', choice })
-    } else if (!emitted.has(tiered.label)) {
-      emitted.add(tiered.label)
-      rows.push({ kind: 'tiered', baseLabel: tiered.label, tiers })
+    } else if (!emitted.has(tiered.groupKey)) {
+      emitted.add(tiered.groupKey)
+      rows.push({
+        kind: 'tiered',
+        source: tiered.groupKey.startsWith('id:') ? 'id' : 'label',
+        baseLabel: tiered.label,
+        tiers
+      })
     }
   }
   return rows

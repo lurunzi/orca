@@ -220,6 +220,16 @@ const fast: SessionOptionDescriptor = {
   settable: true
 }
 
+const CURSOR_MODEL_CHOICES = [
+  { value: 'gpt-5.3-codex', label: 'Codex 5.3' },
+  { value: 'gpt-5.3-codex-low', label: 'Codex 5.3 Low' },
+  { value: 'gpt-5.3-codex-high', label: 'Codex 5.3 High' },
+  { value: 'gpt-5.6-sol-high', label: 'GPT-5.6 Sol 1M High' },
+  { value: 'gpt-5.6-sol-xhigh', label: 'GPT-5.6 Sol 1M Extra High' },
+  { value: 'gpt-5.6-sol-high-fast', label: 'GPT-5.6 Sol 1M High Fast' },
+  { value: 'gpt-5.6-sol-xhigh-fast', label: 'GPT-5.6 Sol 1M Extra High Fast' }
+]
+
 afterEach(() => cleanup())
 
 describe('NativeChatSessionOptionPickers', () => {
@@ -774,6 +784,117 @@ describe('NativeChatSessionOptionPickers', () => {
       <NativeChatSessionOptionPickers surface={liveSurface} snapshot={snapshot} isWorking={false} />
     )
     await waitFor(() => expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'pro-low'))
+  })
+
+  it.each([false, true])(
+    'changes Cursor effort without losing Fast (working: %s)',
+    async (isWorking) => {
+      const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+      const liveSurface = { ...surface, setOption }
+      const snapshot = [
+        model({
+          kind: {
+            type: 'select',
+            currentValue: 'gpt-5.6-sol-high-fast',
+            choices: CURSOR_MODEL_CHOICES
+          }
+        })
+      ]
+      const { rerender } = render(
+        <NativeChatSessionOptionPickers
+          surface={liveSurface}
+          snapshot={snapshot}
+          isWorking={isWorking}
+        />
+      )
+      const models = within(screen.getByRole('radiogroup', { name: 'Model' }))
+      expect(models.getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
+        'Codex 5.3',
+        'GPT-5.6 Sol 1M',
+        'GPT-5.6 Sol 1M Fast'
+      ])
+      expect(
+        models.getByRole('radio', { name: 'GPT-5.6 Sol 1M Fast', checked: true })
+      ).not.toBeNull()
+      within(screen.getByRole('radiogroup', { name: 'Effort' }))
+        .getByRole('radio', { name: 'Extra high' })
+        .click()
+      if (isWorking) {
+        expect(await screen.findByRole('button', { name: 'Effort Extra high' })).not.toBeNull()
+        expect(setOption).not.toHaveBeenCalled()
+        rerender(
+          <NativeChatSessionOptionPickers
+            surface={liveSurface}
+            snapshot={snapshot}
+            isWorking={false}
+          />
+        )
+      }
+      await waitFor(() =>
+        expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'gpt-5.6-sol-xhigh-fast')
+      )
+    }
+  )
+
+  it('keeps one native effort control for Cursor seed models and carries its effort to another model', async () => {
+    const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+    render(
+      <NativeChatSessionOptionPickers
+        surface={{ ...surface, setOption }}
+        snapshot={[
+          model({
+            kind: { type: 'select', currentValue: 'gpt-5.3-codex', choices: CURSOR_MODEL_CHOICES }
+          }),
+          effort
+        ]}
+        isWorking={false}
+      />
+    )
+    expect(screen.getAllByRole('radiogroup', { name: 'Effort' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /^Effort/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Effort High' })).not.toBeNull()
+    within(screen.getByRole('radiogroup', { name: 'Model' }))
+      .getByRole('radio', { name: 'GPT-5.6 Sol 1M' })
+      .click()
+    await waitFor(() =>
+      expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'gpt-5.6-sol-high')
+    )
+  })
+
+  it('replaces queued Cursor seed options with the final variant id', async () => {
+    const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+    const liveSurface = { ...surface, setOption }
+    const snapshot = [
+      model({
+        kind: { type: 'select', currentValue: 'gpt-5.3-codex', choices: CURSOR_MODEL_CHOICES }
+      }),
+      effort,
+      fast
+    ]
+    const { rerender } = render(
+      <NativeChatSessionOptionPickers surface={liveSurface} snapshot={snapshot} isWorking={true} />
+    )
+    within(screen.getByRole('radiogroup', { name: 'Effort' }))
+      .getByRole('radio', { name: 'Low' })
+      .click()
+    expect(await screen.findByRole('button', { name: 'Effort Low · Fast' })).not.toBeNull()
+    within(screen.getByRole('radiogroup', { name: 'Model' }))
+      .getByRole('radio', { name: 'GPT-5.6 Sol 1M Fast' })
+      .click()
+    expect(await screen.findByRole('button', { name: 'Model GPT-5.6 Sol 1M Fast' })).not.toBeNull()
+    expect(screen.getAllByRole('radiogroup', { name: 'Effort' })).toHaveLength(1)
+    expect(screen.queryByRole('switch', { name: 'Fast mode' })).toBeNull()
+    within(screen.getByRole('radiogroup', { name: 'Effort' }))
+      .getByRole('radio', { name: 'Extra high' })
+      .click()
+    expect(await screen.findByRole('button', { name: 'Effort Extra high' })).not.toBeNull()
+    expect(setOption).not.toHaveBeenCalled()
+    rerender(
+      <NativeChatSessionOptionPickers surface={liveSurface} snapshot={snapshot} isWorking={false} />
+    )
+    await waitFor(() =>
+      expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'gpt-5.6-sol-xhigh-fast')
+    )
   })
 
   it.each([false, true])(

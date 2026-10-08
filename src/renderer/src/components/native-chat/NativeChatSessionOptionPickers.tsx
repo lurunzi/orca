@@ -45,6 +45,8 @@ export type NativeChatSessionOptionPickersProps = {
   pickerRequest?: NativeChatOptionPickerRequest | null
 }
 
+const COMPOSED_MODEL_OPTIONS = ['effort', 'thinking', 'fastMode']
+
 function DescriptorMenuRows(props: {
   descriptor: SessionOptionDescriptor
   pending: boolean
@@ -175,12 +177,22 @@ function NativeChatSessionOptionPickersInner({
   const { queued, queue } = useQueuedSessionOptions({ isWorking, flush })
   const rawModel = snapshot.find((descriptor) => descriptor.category === 'model')
   const model = rawModel ? withQueuedSessionOption(rawModel, queued) : undefined
-  const options = sortNativeChatSessionOptions(snapshot).map((descriptor) =>
-    withQueuedSessionOption(descriptor, queued)
-  )
   if (!surface || !model) {
     return null
   }
+  const modelChoices = model.kind.type === 'select' && !model.action ? model.kind : null
+  const modelRows = modelChoices ? buildModelPickerRows(modelChoices.choices) : []
+  const currentModelId = model.valueSource === 'unknown' ? undefined : modelChoices?.currentValue
+  const tieredRow = findTieredRow(modelRows, currentModelId)
+  const queuedModelVariant = tieredRow?.source === 'id' && queued.has(model.id)
+  const options = sortNativeChatSessionOptions(snapshot)
+    .filter((descriptor) => !queuedModelVariant || !COMPOSED_MODEL_OPTIONS.includes(descriptor.id))
+    .map((descriptor) => withQueuedSessionOption(descriptor, queued))
+  const effort = options.find((descriptor) => descriptor.category === 'thought_level')
+  const preferredTier =
+    effort?.kind.type === 'select' && effort.valueSource !== 'unknown'
+      ? effort.kind.currentValue
+      : undefined
   const requestedModelSequence = pickerRequest?.id === model.id ? pickerRequest.sequence : null
   const requestedOptionsSequence = options.some((descriptor) => descriptor.id === pickerRequest?.id)
     ? (pickerRequest?.sequence ?? null)
@@ -188,7 +200,11 @@ function NativeChatSessionOptionPickersInner({
 
   const setOption = (descriptor: SessionOptionDescriptor, value: SessionOptionValue): void => {
     if (isWorking) {
-      queue(descriptor.id, value)
+      const replacesOptions =
+        descriptor === model &&
+        typeof value === 'string' &&
+        findTieredRow(modelRows, value)?.source === 'id'
+      queue(descriptor.id, value, replacesOptions ? COMPOSED_MODEL_OPTIONS : [])
       return
     }
     runSurfaceCall(descriptor.id, setPendingId, () => surface.setOption(descriptor.id, value))
@@ -204,10 +220,6 @@ function NativeChatSessionOptionPickersInner({
     options.length > 0 && options.every((descriptor) => !descriptor.settable)
       ? nativeChatSessionOptionDisabledReason(options[0]?.disabledReason)
       : null
-  const modelChoices = model.kind.type === 'select' && !model.action ? model.kind : null
-  const modelRows = modelChoices ? buildModelPickerRows(modelChoices.choices) : []
-  const currentModelId = model.valueSource === 'unknown' ? undefined : modelChoices?.currentValue
-  const tieredRow = findTieredRow(modelRows, currentModelId)
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -231,6 +243,7 @@ function NativeChatSessionOptionPickersInner({
             <ModelTierMenuRows
               rows={modelRows}
               currentValue={currentModelId}
+              preferredTier={preferredTier}
               disabled={!model.settable || pendingId !== null}
               setValue={(value) => setOption(model, value)}
             />
@@ -245,7 +258,7 @@ function NativeChatSessionOptionPickersInner({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {tieredRow && currentModelId ? (
+      {tieredRow && currentModelId && !effort ? (
         <ModelTierPicker
           model={model}
           row={tieredRow}

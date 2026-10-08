@@ -17795,6 +17795,8 @@
         "fastModeAvailabilityUnconfirmed": "Fast mode availability has not been confirmed for this session.",
         "optionUpdateFailed": "Could not update option",
         "optionValue": {
+          "default": "Default",
+          "none": "None",
           "fast": "Fast",
           "minimal": "Minimal",
           "low": "Low",

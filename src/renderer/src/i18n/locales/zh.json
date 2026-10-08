@@ -17567,6 +17567,8 @@
         "fastModeAvailabilityUnconfirmed": "尚未确认此会话能否使用 Fast mode。",
         "optionUpdateFailed": "无法更新选项",
         "optionValue": {
+          "default": "??",
+          "none": "?",
           "fast": "快速",
           "minimal": "最小",
           "low": "低",

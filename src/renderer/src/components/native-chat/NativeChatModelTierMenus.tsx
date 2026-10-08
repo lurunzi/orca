@@ -24,12 +24,15 @@ function tierChoiceLabel(tier: ModelTierChoice): string {
 export function ModelTierMenuRows(props: {
   rows: readonly ModelPickerRow[]
   currentValue: string | undefined
+  preferredTier?: string
   disabled: boolean
   setValue: (value: string) => void
 }): React.JSX.Element {
-  const currentTier = findTieredRow(props.rows, props.currentValue)?.tiers.find(
-    (tier) => tier.value === props.currentValue
-  )?.tier
+  const currentTier =
+    props.preferredTier ??
+    findTieredRow(props.rows, props.currentValue)?.tiers.find(
+      (tier) => tier.value === props.currentValue
+    )?.tier
   return (
     <DropdownMenuRadioGroup
       aria-label={translate('components.native-chat.composer.model', 'Model')}
@@ -47,7 +50,7 @@ export function ModelTierMenuRows(props: {
           }
           return (
             <DropdownMenuRadioItem
-              key={row.baseLabel}
+              key={row.tiers[0]?.value}
               value={choice.value}
               disabled={props.disabled}
             >
