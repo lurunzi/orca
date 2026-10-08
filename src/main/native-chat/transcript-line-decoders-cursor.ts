@@ -4,7 +4,7 @@ import { stripGrokUserQueryEnvelope } from '../ai-vault/session-scanner-grok-use
 import { claudeContentBlocks } from './transcript-record-blocks'
 
 const CURSOR_QUERY_PREFIX =
-  /^(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [^\r\n]+\r?\n)?<user_query>/i
+  /^(?:<timestamp>[^<\r\n]*<\/timestamp>\s*|(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [^\r\n]+\r?\n)?<user_query>/i
 
 /** Cursor Agent message rows carry Claude-shaped content blocks without ids or timestamps. */
 export function decodeCursorTranscriptLine(
@@ -17,6 +17,10 @@ export function decodeCursorTranscriptLine(
     return null
   }
   const blocks = claudeContentBlocks(asRecord(record?.message)?.content).flatMap((block) => {
+    // Cursor writes standalone placeholders into otherwise useful assistant/tool rows.
+    if (role === 'assistant' && block.type === 'text' && block.text.trim() === '[REDACTED]') {
+      return []
+    }
     if (
       role !== 'user' ||
       block.type !== 'text' ||

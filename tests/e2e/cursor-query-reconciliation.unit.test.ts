@@ -17,10 +17,13 @@ function cursorMessage(role: 'user' | 'assistant', text: string, id: string) {
   return message
 }
 
-const query = 'Wednesday, Sep 23, 2026, 1:44 AM (UTC+1)\n<user_query>\n1为eeqe\n</user_query>'
 const pending = [{ id: 'send', text: '1为eeqe', sentAt: 100 }]
 
-describe('Cursor query envelope reconciliation', () => {
+describe.each([
+  'Wednesday, Sep 23, 2026, 1:44 AM (UTC+1)\n',
+  '<timestamp>Thursday, Oct 8, 2026, 2:41 PM (UTC+1)</timestamp>\n'
+])('Cursor query envelope reconciliation with %j', (prefix) => {
+  const query = `${prefix}<user_query>\n1为eeqe\n</user_query>`
   it('hides the echo when the user record arrives and retires it after the reply', () => {
     const user = cursorMessage('user', query, 'cursor:0')
     expect(pendingSendsAsMessages(pending, [user])).toEqual([])
