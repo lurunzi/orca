@@ -72,11 +72,6 @@ vi.mock('@/components/ui/dropdown-menu', () => {
       </div>
     ),
     DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuSubTrigger: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button {...props} />
-    ),
-    DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuSeparator: () => <hr />,
     // Forwards role/aria-* and hands onSelect an event: the switch rows set both,
     // and preventDefault is how a toggle keeps the menu open.
@@ -693,29 +688,96 @@ describe('NativeChatSessionOptionPickers', () => {
 
     expect(screen.getByRole('button', { name: 'Model Flash' })).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Effort Medium' })).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Flash' })).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Pro' })).not.toBeNull()
-    expect(screen.getByRole('radio', { name: 'Sonnet (Thinking)' })).not.toBeNull()
-    expect(
-      within(screen.getByRole('radiogroup', { name: 'Flash' })).getByRole('radio', {
-        name: 'Medium',
-        checked: true
-      })
-    ).not.toBeNull()
+    const models = within(screen.getByRole('radiogroup', { name: 'Model' }))
+    expect(models.getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
+      'Flash',
+      'Pro',
+      'Sonnet (Thinking)'
+    ])
+    expect(models.getByRole('radio', { name: 'Flash', checked: true })).not.toBeNull()
     const tiers = screen.getByRole('radiogroup', { name: 'Effort' })
     expect([...tiers.querySelectorAll('[role="radio"]')].map((r) => r.textContent)).toEqual([
       'High',
       'Medium'
     ])
 
-    const pro = within(screen.getByRole('radiogroup', { name: 'Pro' }))
-    expect(pro.queryByRole('radio', { name: 'Medium' })).toBeNull()
-    pro.getByRole('radio', { name: 'Low' }).click()
-    await waitFor(() => expect(setOption).toHaveBeenCalledWith('model', 'pro-low'))
+    within(tiers).getByRole('radio', { name: 'High' }).click()
+    await waitFor(() => expect(setOption).toHaveBeenCalledWith('model', 'flash-high'))
+  })
+
+  it.each([
+    ['flash-low', 'Pro', 'pro-low'],
+    ['flash-medium', 'Pro', 'pro-high'],
+    ['flash-medium', 'Sonnet (Thinking)', 'sonnet'],
+    ['sonnet', 'Pro', 'pro-high']
+  ])('switches %s to %s using model id %s', async (currentValue, label, expected) => {
+    const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+    render(
+      <NativeChatSessionOptionPickers
+        surface={{ ...surface, setOption }}
+        snapshot={[
+          model({
+            kind: {
+              type: 'select',
+              currentValue,
+              choices: [
+                { value: 'flash-high', label: 'Flash (High)' },
+                { value: 'flash-medium', label: 'Flash (Medium)' },
+                { value: 'flash-low', label: 'Flash (Low)' },
+                { value: 'pro-high', label: 'Pro (High)' },
+                { value: 'pro-low', label: 'Pro (Low)' },
+                { value: 'sonnet', label: 'Sonnet (Thinking)' }
+              ]
+            }
+          })
+        ]}
+        isWorking={false}
+      />
+    )
+    within(screen.getByRole('radiogroup', { name: 'Model' }))
+      .getByRole('radio', { name: label })
+      .click()
+    await waitFor(() => expect(setOption).toHaveBeenCalledExactlyOnceWith('model', expected))
+  })
+
+  it('queues a model switch and then changes only the new model effort', async () => {
+    const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
+    const liveSurface = { ...surface, setOption }
+    const snapshot = [
+      model({
+        kind: {
+          type: 'select',
+          currentValue: 'flash-medium',
+          choices: [
+            { value: 'flash-high', label: 'Flash (High)' },
+            { value: 'flash-medium', label: 'Flash (Medium)' },
+            { value: 'pro-high', label: 'Pro (High)' },
+            { value: 'pro-low', label: 'Pro (Low)' }
+          ]
+        }
+      })
+    ]
+    const { rerender } = render(
+      <NativeChatSessionOptionPickers surface={liveSurface} snapshot={snapshot} isWorking={true} />
+    )
+    within(screen.getByRole('radiogroup', { name: 'Model' }))
+      .getByRole('radio', { name: 'Pro' })
+      .click()
+    expect(await screen.findByRole('button', { name: 'Model Pro' })).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Effort High' })).not.toBeNull()
+    const effortChoices = within(screen.getByRole('radiogroup', { name: 'Effort' }))
+    expect(effortChoices.queryByRole('radio', { name: 'Medium' })).toBeNull()
+    effortChoices.getByRole('radio', { name: 'Low' }).click()
+    expect(await screen.findByRole('button', { name: 'Effort Low' })).not.toBeNull()
+    expect(setOption).not.toHaveBeenCalled()
+    rerender(
+      <NativeChatSessionOptionPickers surface={liveSurface} snapshot={snapshot} isWorking={false} />
+    )
+    await waitFor(() => expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'pro-low'))
   })
 
   it.each([false, true])(
-    'selects a tier with an unknown model (working: %s)',
+    'selects a model before its effort when the current model is unknown (working: %s)',
     async (isWorking) => {
       const setOption = vi.fn().mockResolvedValue({ snapshot: [] })
       const liveSurface = { ...surface, setOption }
@@ -741,13 +803,26 @@ describe('NativeChatSessionOptionPickers', () => {
       expect(screen.getByRole('button', { name: 'Model' })).not.toBeNull()
       expect(screen.queryByRole('button', { name: /^Effort/ })).toBeNull()
       expect(screen.queryByRole('radio', { checked: true })).toBeNull()
-      const choices = within(screen.getByRole('radiogroup', { name: 'Flash' }))
-      expect(choices.getAllByRole('radio').map((radio) => radio.textContent)).toEqual([
-        'High',
-        'Medium',
-        'Low'
-      ])
-      choices.getByRole('radio', { name: 'Low' }).click()
+      const choices = within(screen.getByRole('radiogroup', { name: 'Model' }))
+      expect(choices.getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Flash'])
+      choices.getByRole('radio', { name: 'Flash' }).click()
+      if (!isWorking) {
+        await waitFor(() =>
+          expect(setOption).toHaveBeenCalledExactlyOnceWith('model', 'account-high')
+        )
+        rerender(
+          <NativeChatSessionOptionPickers
+            surface={liveSurface}
+            snapshot={[{ ...unknown, valueSource: 'applied' }]}
+            isWorking={false}
+          />
+        )
+        setOption.mockClear()
+      }
+      expect(await screen.findByRole('button', { name: 'Effort High' })).not.toBeNull()
+      within(screen.getByRole('radiogroup', { name: 'Effort' }))
+        .getByRole('radio', { name: 'Low' })
+        .click()
       if (isWorking) {
         expect(await screen.findByRole('button', { name: 'Effort Low' })).not.toBeNull()
         expect(setOption).not.toHaveBeenCalled()
