@@ -230,17 +230,17 @@ describe('useStructuredAgentSessionOptions', () => {
   })
 
   it.each([
-    { agent: 'claude', paired: false },
-    { agent: 'codex', paired: false },
-    { agent: 'claude', paired: true },
-    { agent: 'codex', paired: true }
+    { agent: 'claude', paired: false, supportsFastMode: true },
+    { agent: 'codex', paired: false, supportsFastMode: true },
+    { agent: 'claude', paired: true, supportsFastMode: true },
+    { agent: 'codex', paired: true, supportsFastMode: true },
+    { agent: 'claude', paired: false, supportsFastMode: undefined },
+    { agent: 'claude', paired: true, supportsFastMode: undefined }
   ] as const)(
-    'keeps $agent Fast mode after startup (paired: $paired)',
-    async ({ agent, paired }) => {
+    'keeps $agent Fast mode after startup (paired: $paired, support: $supportsFastMode)',
+    async ({ agent, paired, supportsFastMode }) => {
       const model = agent === 'claude' ? 'opus' : 'gpt-6-astra'
-      const models = [
-        { id: model, label: model, isDefault: true, efforts: [], supportsFastMode: true }
-      ]
+      const models = [{ id: model, label: model, isDefault: true, efforts: [], supportsFastMode }]
       answer({
         modelCatalog: async () => ({ origin: 'probe', models, fetchedAt: 1_000 }),
         options: async () => ({
@@ -267,14 +267,18 @@ describe('useStructuredAgentSessionOptions', () => {
       await waitFor(() =>
         expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
           kind: { type: 'boolean', currentValue: false },
-          valueSource: 'reported',
-          settable: true
+          valueSource: supportsFastMode ? 'reported' : 'unknown',
+          settable: supportsFastMode === true
         })
       )
       await act(async () =>
-        expect(await result.current.setStructuredOption('fastMode', true)).toBe(true)
+        expect(await result.current.setStructuredOption('fastMode', true)).toBe(
+          supportsFastMode === true
+        )
       )
-      expect(setOptionCalls(mutation.calls)).toEqual([{ key: 'fastMode', value: 'true' }])
+      expect(setOptionCalls(mutation.calls)).toEqual(
+        supportsFastMode ? [{ key: 'fastMode', value: 'true' }] : []
+      )
       unmount()
     }
   )
