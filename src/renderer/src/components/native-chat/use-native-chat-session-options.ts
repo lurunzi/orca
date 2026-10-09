@@ -107,7 +107,7 @@ export function useNativeChatSessionOptions(args: {
       ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
       : null
     const reportedValues =
-      agent === 'claude'
+      agent === 'claude' || agent === 'antigravity'
         ? readAgentTerminalSessionOptions(
             agent,
             readTerminalScreen?.(),
@@ -162,11 +162,36 @@ export function useNativeChatSessionOptions(args: {
     let found = false
     let reading = false
     reportedScreenRef.current = null
+    const reportScreen = (screen: string | null): boolean => {
+      const models = discoveryContext
+        ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
+        : null
+      const reportedValues = readAgentTerminalSessionOptions(agent, screen, models ?? undefined)
+      if (!reportedValues || cancelled) {
+        return false
+      }
+      found = true
+      const current = surface.getSnapshot().find((option) => option.id === 'model')
+      if (
+        agent === 'antigravity' &&
+        (current?.valueSource === 'applied' || current?.valueSource === 'dispatched')
+      ) {
+        return true
+      }
+      // Discovery may arrive after the startup frame has scrolled away.
+      reportedScreenRef.current = screen
+      surface.reportSessionOptions(reportedValues)
+      return true
+    }
     const reportCurrentValues = async (): Promise<void> => {
       if (cancelled || found || reading) {
         return
       }
       reading = true
+      // Antigravity's mounted TUI already knows its model; a host snapshot may still be pending.
+      if (agent === 'antigravity' && reportScreen(readTerminalScreen?.() ?? null)) {
+        return
+      }
       let authoritativeScreen: string | null = null
       if (targetPtyId && window.api?.pty?.getMainBufferSnapshot) {
         try {
@@ -180,31 +205,10 @@ export function useNativeChatSessionOptions(args: {
           // The mounted renderer buffer remains a transport-neutral fallback.
         }
       }
-      const models = discoveryContext
-        ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
-        : null
       for (const screen of [authoritativeScreen, readTerminalScreen?.() ?? null]) {
-        const reportedValues = readAgentTerminalSessionOptions(agent, screen, models ?? undefined)
-        if (!reportedValues) {
-          continue
-        }
-        // Why: discovery can land after this read. Keeping the screen that
-        // parsed lets it re-resolve against the host's real ids later, when the
-        // frame itself may have already scrolled out of the buffer.
-        if (cancelled) {
+        if (reportScreen(screen)) {
           return
         }
-        found = true
-        const current = surface.getSnapshot().find((option) => option.id === 'model')
-        if (
-          agent === 'antigravity' &&
-          (current?.valueSource === 'applied' || current?.valueSource === 'dispatched')
-        ) {
-          return
-        }
-        reportedScreenRef.current = screen
-        surface.reportSessionOptions(reportedValues)
-        return
       }
       reading = false
     }

@@ -1,4 +1,3 @@
-import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { ArrowUp, Mic, Plus, Square } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
@@ -36,7 +35,6 @@ export type NativeChatComposerActionsProps = {
   /** Present while the composer is in goal mode; the chip calls it to leave. */
   onExitGoalMode?: () => void
   /** Absent until the session has reported or the transcript can estimate. */
-  modelUsage?: ProviderRateLimits | null
   contextUsage?: NativeChatContextUsageSummary | null
 }
 
@@ -59,8 +57,7 @@ export function NativeChatComposerActions({
   sessionOptionsSnapshot,
   sessionOptionsPickerRequest,
   onExitGoalMode,
-  contextUsage,
-  modelUsage
+  contextUsage
 }: NativeChatComposerActionsProps): React.JSX.Element {
   const handleCriticalAction = (event: React.MouseEvent<HTMLButtonElement>): void => {
     // A double-click commonly lands after the first send has started and the button has
@@ -106,7 +103,6 @@ export function NativeChatComposerActions({
         model trigger is ordered last so only the context ring separates it from dictation. */}
         <NativeChatSessionOptionPickers
           surface={sessionOptionsSurface}
-          modelUsage={modelUsage}
           snapshot={sessionOptionsSnapshot}
           isWorking={isWorking}
           pickerRequest={sessionOptionsPickerRequest}

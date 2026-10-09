@@ -417,7 +417,6 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         sessionOptionsSurface={sessionOptionsSurface}
         sessionOptionsSnapshot={sessionOptionsSnapshot}
         contextUsage={contextUsageSummary}
-        modelUsageContext={{ agent, terminalTabId }}
         sessionOptionsPickerRequest={structuredTransport?.optionPickerRequest ?? null}
       />
     )

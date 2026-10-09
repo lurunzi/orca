@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CatalogModel } from '../../../../shared/agent-session-option-catalog'
 import type { NativeChatSessionOptionDispatchCommand } from './native-chat-session-option-command-dispatch'
@@ -373,5 +373,52 @@ it('learns the Antigravity startup model after the picker mounts and preserves a
   await waitFor(() =>
     expect(modelDescriptor(result.current.snapshot).currentValue).toBe('claude-opus')
   )
+  unmount()
+})
+
+it('shows the existing Antigravity model on first render without waiting for a host snapshot', async () => {
+  clearNativeChatModelEnrichmentForTests()
+  const getMainBufferSnapshot = vi.fn(() => new Promise(() => {}))
+  Object.defineProperty(window, 'api', {
+    configurable: true,
+    value: { pty: { getMainBufferSnapshot } }
+  })
+  let resolveDiscovery: (models: CatalogModel[]) => void = () => {}
+  discoverModels.mockReturnValue(
+    new Promise((resolve) => {
+      resolveDiscovery = resolve
+    })
+  )
+  let screen: string | null = 'Antigravity CLI 1.3.2\nGemini 3.8 Flash (High)\n~/repo'
+  const dispatchCommand = vi.fn<NativeChatSessionOptionDispatchCommand>(async () => undefined)
+  const firstModels: (string | undefined)[] = []
+  const { result, rerender, unmount } = renderHook(() => {
+    const options = useNativeChatSessionOptions({
+      agent: 'antigravity',
+      terminalTabId: 'tab-agy-initial',
+      targetPtyId: 'pty-agy-initial',
+      dispatchCommand,
+      readTerminalScreen: () => screen
+    })
+    firstModels.push(modelDescriptor(options.snapshot).currentValue)
+    return options
+  })
+  expect(firstModels[0]).toBe('Gemini 3.8 Flash (High)')
+  expect(getMainBufferSnapshot).not.toHaveBeenCalled()
+  screen = null
+  await act(async () =>
+    resolveDiscovery([
+      { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] },
+      { id: 'claude-opus', label: 'Claude Opus', options: [] }
+    ])
+  )
+  expect(modelDescriptor(result.current.snapshot).currentValue).toBe('gemini-3.8-flash-high')
+  await act(async () => {
+    await result.current.surface?.setOption('model', 'claude-opus')
+  })
+  screen = 'Antigravity CLI 1.3.2\nGemini 3.8 Flash (High)\n~/repo'
+  rerender()
+  expect(modelDescriptor(result.current.snapshot).currentValue).toBe('claude-opus')
+  expect(dispatchCommand).toHaveBeenCalledExactlyOnceWith('/model claude-opus')
   unmount()
 })

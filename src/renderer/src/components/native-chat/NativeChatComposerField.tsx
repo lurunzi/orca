@@ -1,5 +1,3 @@
-import type { AgentType } from '../../../../shared/agent-status-types'
-import { useNativeChatModelUsage } from './use-native-chat-model-usage'
 import { NativeChatPromptEditor } from './NativeChatPromptEditor'
 import { NativeChatPromptSuggestion } from './NativeChatPromptSuggestion'
 import type { NativeChatComposerInput } from './native-chat-composer-input'
@@ -70,7 +68,6 @@ export type NativeChatComposerFieldProps = {
   onStop?: () => void
   sessionOptionsSurface: SessionOptionsSurface | null
   sessionOptionsSnapshot: SessionOptionDescriptor[]
-  modelUsageContext?: { agent: AgentType; terminalTabId: string }
   contextUsage?: NativeChatContextUsageSummary | null
   sessionOptionsPickerRequest?: NativeChatOptionPickerRequest | null
   goalMode?: NativeChatComposerGoalMode
@@ -150,15 +147,10 @@ export function NativeChatComposerField({
   sessionOptionsSurface,
   sessionOptionsSnapshot,
   contextUsage,
-  modelUsageContext,
   sessionOptionsPickerRequest,
   goalMode
 }: NativeChatComposerFieldProps): React.JSX.Element {
   // Value the IME started from, and whether a programmatic clear was dropped on top of it.
-  const modelUsage = useNativeChatModelUsage(
-    modelUsageContext?.agent,
-    modelUsageContext?.terminalTabId
-  )
   const compositionBaseRef = useRef('')
   const droppedDraftClearRef = useRef(false)
 
@@ -338,7 +330,6 @@ export function NativeChatComposerField({
                 onSend={onSend}
                 onStop={onStop}
                 sessionOptionsSurface={sessionOptionsSurface}
-                modelUsage={modelUsage}
                 sessionOptionsSnapshot={sessionOptionsSnapshot}
                 contextUsage={contextUsage}
                 sessionOptionsPickerRequest={sessionOptionsPickerRequest}

@@ -22,7 +22,6 @@ function tierChoiceLabel(tier: ModelTierChoice): string {
 }
 
 export function ModelTierMenuRows(props: {
-  usageLabel?: (value: string, label: string) => string | undefined
   rows: readonly ModelPickerRow[]
   currentValue: string | undefined
   preferredTier?: string
@@ -55,12 +54,7 @@ export function ModelTierMenuRows(props: {
               value={choice.value}
               disabled={props.disabled}
             >
-              <ChoiceBody
-                label={row.baseLabel}
-                description={[choice.description, props.usageLabel?.(choice.value, row.baseLabel)]
-                  .filter(Boolean)
-                  .join(' ? ')}
-              />
+              <ChoiceBody label={row.baseLabel} description={choice.description} />
             </DropdownMenuRadioItem>
           )
         }
@@ -72,12 +66,7 @@ export function ModelTierMenuRows(props: {
           >
             <ChoiceBody
               label={nativeChatSessionChoiceLabel(row.choice)}
-              description={[
-                row.choice.description,
-                props.usageLabel?.(row.choice.value, row.choice.label)
-              ]
-                .filter(Boolean)
-                .join(' ? ')}
+              description={row.choice.description}
             />
           </DropdownMenuRadioItem>
         )

@@ -1,7 +1,3 @@
-import { useAppStore } from '@/store'
-import { nativeChatModelUsageLabel, antigravityModelUsageBuckets } from './native-chat-model-usage'
-import { formatUsagePercentageLabel } from '../status-bar/usage-percentage-label'
-import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { memo, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { SwitchIndicator } from '@/components/ui/switch'
@@ -46,7 +42,6 @@ export type NativeChatSessionOptionPickersProps = {
   surface: SessionOptionsSurface | null
   snapshot: SessionOptionDescriptor[]
   isWorking: boolean
-  modelUsage?: ProviderRateLimits | null
   pickerRequest?: NativeChatOptionPickerRequest | null
 }
 
@@ -54,7 +49,6 @@ const COMPOSED_MODEL_OPTIONS = ['effort', 'thinking', 'fastMode']
 
 function DescriptorMenuRows(props: {
   descriptor: SessionOptionDescriptor
-  usageLabel?: (value: string, label: string) => string | undefined
   pending: boolean
   /** Actions drive the TUI directly, so they cannot be queued for the next turn. */
   actionsBlocked: boolean
@@ -126,9 +120,7 @@ function DescriptorMenuRows(props: {
         >
           <ChoiceBody
             label={nativeChatSessionChoiceLabel(choice)}
-            description={[choice.description, props.usageLabel?.(choice.value, choice.label)]
-              .filter(Boolean)
-              .join(' ? ')}
+            description={choice.description}
           />
         </DropdownMenuRadioItem>
       ))}
@@ -165,12 +157,8 @@ function NativeChatSessionOptionPickersInner({
   surface,
   snapshot,
   isWorking,
-  pickerRequest,
-  modelUsage
+  pickerRequest
 }: NativeChatSessionOptionPickersProps): React.JSX.Element | null {
-  const display = useAppStore((state) => state.usagePercentageDisplay)
-  const usageLabel = (value: string, label: string): string | undefined =>
-    nativeChatModelUsageLabel(modelUsage, `${value} ${label}`, display)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const flush = useCallback(
     (entries: [string, SessionOptionValue][]) => {
@@ -196,17 +184,6 @@ function NativeChatSessionOptionPickersInner({
   const modelRows = modelChoices ? buildModelPickerRows(modelChoices.choices) : []
   const currentModelId = model.valueSource === 'unknown' ? undefined : modelChoices?.currentValue
   const tieredRow = findTieredRow(modelRows, currentModelId)
-  const selectedUsage = antigravityModelUsageBuckets(
-    modelUsage,
-    `${currentModelId ?? ''} ${nativeChatModelPillLabel(model)}`
-  )
-  const usageDetail =
-    selectedUsage.length > 0
-      ? formatUsagePercentageLabel(
-          Math.max(...selectedUsage.map((bucket) => bucket.usedPercent)),
-          display
-        )
-      : undefined
   const queuedModelVariant = tieredRow?.source === 'id' && queued.has(model.id)
   const options = sortNativeChatSessionOptions(snapshot)
     .filter((descriptor) => !queuedModelVariant || !COMPOSED_MODEL_OPTIONS.includes(descriptor.id))
@@ -252,7 +229,6 @@ function NativeChatSessionOptionPickersInner({
       >
         <PickerTrigger
           label={tieredRow ? tieredRow.baseLabel : nativeChatModelPillLabel(model)}
-          detail={usageDetail}
           tooltipLabel={modelTooltip}
           disabled={pendingId !== null}
           disabledReason={modelReason}
@@ -266,7 +242,6 @@ function NativeChatSessionOptionPickersInner({
           {modelChoices && modelRows.some((row) => row.kind === 'tiered') ? (
             <ModelTierMenuRows
               rows={modelRows}
-              usageLabel={usageLabel}
               currentValue={currentModelId}
               preferredTier={preferredTier}
               disabled={!model.settable || pendingId !== null}
@@ -275,7 +250,6 @@ function NativeChatSessionOptionPickersInner({
           ) : (
             <DescriptorMenuRows
               descriptor={model}
-              usageLabel={usageLabel}
               pending={pendingId !== null}
               actionsBlocked={isWorking}
               setValue={(value) => setOption(model, value)}
