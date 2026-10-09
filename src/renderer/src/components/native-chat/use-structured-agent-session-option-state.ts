@@ -85,6 +85,7 @@ export function useStructuredAgentSessionOptionState(args: {
             ...seeded,
             catalog: previous.catalog,
             catalogSource: previous.catalogSource,
+            fastModeModelSupport: previous.fastModeModelSupport,
             fastModeSupport: previous.fastModeSupport
           }
         : seeded

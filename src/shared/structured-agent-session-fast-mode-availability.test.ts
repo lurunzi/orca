@@ -3,6 +3,8 @@ import { getAgentSessionOptionCatalog } from './agent-session-option-catalog'
 import {
   applyStructuredAgentSessionModelCatalog,
   applyStructuredAgentSessionOptions,
+  canSetStructuredAgentSessionOption,
+  commitStructuredAgentSessionOption,
   createStructuredAgentSessionOptionState,
   structuredAgentSessionOptionSnapshot
 } from './structured-agent-session-options'
@@ -74,4 +76,92 @@ it('leaves Codex availability independent of Claude routing state', () => {
     settable: true,
     kind: { currentValue: true }
   })
+})
+
+it.each([undefined, false, true])(
+  'keeps unconfirmed Claude model capability disabled with account support %s',
+  (accountSupport) => {
+    const seed = getAgentSessionOptionCatalog('claude')!
+    const result = {
+      models: [{ id: 'fable', label: 'Fable 5.1', isDefault: true, efforts: [] }],
+      current: { model: 'fable', fastMode: true, confirmed: ['fastMode'] },
+      ...(accountSupport === undefined
+        ? {}
+        : { fastModeSupport: { supported: accountSupport, accountVerified: true } })
+    }
+    let state = applyStructuredAgentSessionOptions(
+      createStructuredAgentSessionOptionState('claude'),
+      seed,
+      result
+    )
+    const fast = () =>
+      structuredAgentSessionOptionSnapshot(state).find((item) => item.id === 'fastMode')
+    expect(fast()).toMatchObject({
+      settable: false,
+      kind: { currentValue: false },
+      valueSource: 'unknown',
+      disabledReason: 'fast-mode-availability-unconfirmed'
+    })
+    expect(canSetStructuredAgentSessionOption(state, 'fastMode', true)).toBe(false)
+
+    state = applyStructuredAgentSessionOptions(state, seed, {
+      ...result,
+      models: result.models.map((model) => ({ ...model, supportsFastMode: true })),
+      fastModeSupport: { supported: true, accountVerified: true }
+    })
+    expect(fast()).toMatchObject({ settable: true, kind: { currentValue: true } })
+    expect(canSetStructuredAgentSessionOption(state, 'fastMode', false)).toBe(true)
+
+    state = applyStructuredAgentSessionOptions(state, seed, result)
+    expect(fast()).toMatchObject({ settable: false, kind: { currentValue: false } })
+    expect(canSetStructuredAgentSessionOption(state, 'fastMode', true)).toBe(false)
+  }
+)
+
+it('keeps capability tied to the selected model through cached and live catalogs', () => {
+  const seed = getAgentSessionOptionCatalog('claude')!
+  const catalogModels = [
+    { id: 'fable', label: 'Fable 5.1', isDefault: true, efforts: [] },
+    {
+      id: 'unsupported',
+      label: 'Unsupported',
+      isDefault: false,
+      supportsFastMode: false,
+      efforts: []
+    },
+    ...models
+  ]
+  let state = applyStructuredAgentSessionModelCatalog(
+    createStructuredAgentSessionOptionState('claude', seed),
+    seed,
+    { origin: 'live-session', models: catalogModels, fetchedAt: 1 },
+    { namesDefault: true }
+  )
+  const fast = () =>
+    structuredAgentSessionOptionSnapshot(state).find((item) => item.id === 'fastMode')
+  expect(fast()).toMatchObject({ settable: false })
+  state = commitStructuredAgentSessionOption(state, 'model', 'unsupported')
+  expect(fast()).toBeUndefined()
+  state = commitStructuredAgentSessionOption(state, 'model', 'fable')
+  expect(fast()).toMatchObject({ settable: false })
+  state = applyStructuredAgentSessionOptions(state, seed, {
+    models: catalogModels,
+    current: { model: 'opus' },
+    fastModeSupport: { supported: true, accountVerified: true }
+  })
+  expect(fast()).toMatchObject({ settable: true })
+  state = commitStructuredAgentSessionOption(state, 'model', 'fable')
+  expect(fast()).toMatchObject({ settable: false })
+  state = commitStructuredAgentSessionOption(state, 'model', 'unsupported')
+  expect(fast()).toBeUndefined()
+})
+
+it('does not add a Claude Fast control from a static seed alone', () => {
+  const state = createStructuredAgentSessionOptionState(
+    'claude',
+    getAgentSessionOptionCatalog('claude')
+  )
+  expect(structuredAgentSessionOptionSnapshot(state).some((item) => item.id === 'fastMode')).toBe(
+    false
+  )
 })
