@@ -150,18 +150,15 @@ export function useNativeChatSessionOptions(args: {
     if (!surface || (agent !== 'claude' && agent !== 'antigravity')) {
       return
     }
+    reportedScreenRef.current = null
     const current = surface.getSnapshot().find((option) => option.id === 'model')
-    if (
-      agent === 'antigravity' &&
-      (current?.valueSource === 'applied' || current?.valueSource === 'dispatched')
-    ) {
+    if (current?.valueSource === 'applied' || current?.valueSource === 'dispatched') {
       return
     }
     let cancelled = false
     let attempts = 0
     let found = false
     let reading = false
-    reportedScreenRef.current = null
     const reportScreen = (screen: string | null): boolean => {
       const models = discoveryContext
         ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
@@ -172,10 +169,8 @@ export function useNativeChatSessionOptions(args: {
       }
       found = true
       const current = surface.getSnapshot().find((option) => option.id === 'model')
-      if (
-        agent === 'antigravity' &&
-        (current?.valueSource === 'applied' || current?.valueSource === 'dispatched')
-      ) {
+      // Startup chrome cannot confirm or undo a later model pick.
+      if (current?.valueSource === 'applied' || current?.valueSource === 'dispatched') {
         return true
       }
       // Discovery may arrive after the startup frame has scrolled away.
@@ -184,14 +179,17 @@ export function useNativeChatSessionOptions(args: {
       return true
     }
     const reportCurrentValues = async (): Promise<void> => {
-      if (cancelled || found || reading) {
+      if (cancelled || found) {
+        return
+      }
+      // Preserve a visible startup frame before it scrolls away while the host read is pending.
+      if (reportScreen(readTerminalScreen?.() ?? null)) {
+        return
+      }
+      if (reading) {
         return
       }
       reading = true
-      // Antigravity's mounted TUI already knows its model; a host snapshot may still be pending.
-      if (agent === 'antigravity' && reportScreen(readTerminalScreen?.() ?? null)) {
-        return
-      }
       let authoritativeScreen: string | null = null
       if (targetPtyId && window.api?.pty?.getMainBufferSnapshot) {
         try {
@@ -204,6 +202,9 @@ export function useNativeChatSessionOptions(args: {
         } catch {
           // The mounted renderer buffer remains a transport-neutral fallback.
         }
+      }
+      if (cancelled || found) {
+        return
       }
       for (const screen of [authoritativeScreen, readTerminalScreen?.() ?? null]) {
         if (reportScreen(screen)) {
@@ -272,7 +273,7 @@ export function useNativeChatSessionOptions(args: {
           : null
         const current = surface.getSnapshot().find((option) => option.id === 'model')
         const hasPick = current?.valueSource === 'applied' || current?.valueSource === 'dispatched'
-        if (reportedValues && !(agent === 'antigravity' && hasPick)) {
+        if (reportedValues && !hasPick) {
           surface.reportSessionOptions(reportedValues)
         }
         // A failed settings write must not surface as an unhandled rejection.

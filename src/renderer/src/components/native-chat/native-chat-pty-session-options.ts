@@ -78,11 +78,11 @@ export function createNativeChatPtySessionOptions(
     record = createNativeChatSessionOptionRecord(args.agent)
   }
 
-  const preserveAntigravityPick =
-    args.agent === 'antigravity' &&
+  const preserveStartupPick =
+    (args.agent === 'claude' || args.agent === 'antigravity') &&
     (record.model?.source === 'applied' || record.model?.source === 'dispatched')
   if (
-    !preserveAntigravityPick &&
+    !preserveStartupPick &&
     args.reportedValues &&
     applyNativeChatReportedSessionOptions(record, args.reportedValues)
   ) {
