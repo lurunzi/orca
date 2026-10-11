@@ -21,11 +21,12 @@ import {
 } from './session-scanner-accumulator'
 import {
   asRecord,
-  extractContentText,
-  extractMessageText,
+  extractPreviewContentText,
   extractString,
+  normalizeTitleText,
   parseJsonObject
 } from './session-scanner-values'
+import { stripGrokUserQueryEnvelope } from './session-scanner-grok-user-text'
 
 type ParserSessionOptions = {
   executionHostId?: ExecutionHostId
@@ -68,8 +69,12 @@ function consumeCursorRecordLine(accumulator: SessionAccumulator, line: string):
   const role = extractString(record.role)
   if (role === 'user' || role === 'assistant') {
     accumulator.messageCount++
-    if (role === 'user') {
-      accumulator.title ??= extractMessageText(record.message) ?? extractContentText(record.content)
+    if (role === 'user' && accumulator.title == null) {
+      // Cursor wraps the ask in <timestamp>…<user_query>; read past the title limit to unwrap it.
+      const text =
+        extractPreviewContentText(asRecord(record.message)?.content) ??
+        extractPreviewContentText(record.content)
+      accumulator.title = text ? normalizeTitleText(stripGrokUserQueryEnvelope(text)) : null
     }
     addPreviewContent(
       accumulator,
