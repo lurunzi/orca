@@ -49,6 +49,7 @@ const StructuredAgentSessionOverlaySlot = memo(function StructuredAgentSessionOv
       {tab.agentTranscript ? (
         <NativeChatTranscriptView
           tabId={tab.id}
+          worktreeId={tab.worktreeId}
           source={tab.agentTranscript}
           isVisible={isActive}
           isFocusedGroup={isFocusedGroup}
