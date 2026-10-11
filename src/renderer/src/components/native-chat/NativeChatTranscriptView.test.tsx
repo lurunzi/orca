@@ -9,7 +9,13 @@ import { installNativeChatMessageListTestViewport } from './native-chat-message-
 type FrameHandler = Parameters<NativeChatSessionTransport['subscribe']>[1]
 const mocks = vi.hoisted(() => {
   const stream: { frame: FrameHandler | null } = { frame: null }
-  return { ...stream, read: vi.fn(), unsubscribe: vi.fn(), transport: vi.fn() }
+  return {
+    ...stream,
+    read: vi.fn(),
+    unsubscribe: vi.fn(),
+    transport: vi.fn(),
+    resume: { resumable: false, resume: vi.fn() }
+  }
 })
 vi.mock('./native-chat-session-transport', () => ({
   getNativeChatSessionTransport: (owner: string | null) => {
@@ -22,6 +28,9 @@ vi.mock('./native-chat-session-transport', () => ({
       }
     }
   }
+}))
+vi.mock('./use-cursor-transcript-resume', () => ({
+  useCursorTranscriptResume: () => mocks.resume
 }))
 vi.mock('./native-chat-image-runtime-context', () => ({
   useNativeChatImageRuntimeContext: () => null
@@ -56,7 +65,13 @@ afterEach(() => {
 
 it('renders the body, follows append frames and never offers worker input', async () => {
   const view = render(
-    <NativeChatTranscriptView tabId="worker-tab" source={source} isVisible isFocusedGroup />
+    <NativeChatTranscriptView
+      tabId="worker-tab"
+      worktreeId="wt"
+      source={source}
+      isVisible
+      isFocusedGroup
+    />
   )
   expect(await screen.findByText('Visible worker response')).toBeVisible()
   expect(mocks.transport).toHaveBeenCalledWith('worker-host')
@@ -74,6 +89,7 @@ it('renders the body, follows append frames and never offers worker input', asyn
   view.rerender(
     <NativeChatTranscriptView
       tabId="worker-tab"
+      worktreeId="wt"
       source={source}
       isVisible={false}
       isFocusedGroup={false}
@@ -84,6 +100,40 @@ it('renders the body, follows append frames and never offers worker input', asyn
 
 it('surfaces a read error instead of an indefinite loading page', async () => {
   mocks.read.mockResolvedValue({ error: 'Transcript unavailable on worker host' })
-  render(<NativeChatTranscriptView tabId="worker-tab" source={source} isVisible isFocusedGroup />)
+  render(
+    <NativeChatTranscriptView
+      tabId="worker-tab"
+      worktreeId="wt"
+      source={source}
+      isVisible
+      isFocusedGroup
+    />
+  )
   expect(await screen.findByText('Transcript unavailable on worker host')).toBeVisible()
+})
+
+it('offers Resume in New Tab only once the worker stopped writing', async () => {
+  const view = render(
+    <NativeChatTranscriptView
+      tabId="worker-tab"
+      worktreeId="wt"
+      source={source}
+      isVisible
+      isFocusedGroup
+    />
+  )
+  await screen.findByText('Visible worker response')
+  expect(screen.queryByRole('button', { name: /Resume in New Tab/ })).toBeNull()
+  mocks.resume.resumable = true
+  view.rerender(
+    <NativeChatTranscriptView
+      tabId="worker-tab"
+      worktreeId="wt"
+      source={source}
+      isVisible
+      isFocusedGroup
+    />
+  )
+  screen.getByRole('button', { name: /Resume in New Tab/ }).click()
+  expect(mocks.resume.resume).toHaveBeenCalledOnce()
 })
