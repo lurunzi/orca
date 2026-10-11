@@ -1,0 +1,11 @@
+{
+  "capturedAt": "2026-10-11T16:31:33.904Z",
+  "platform": "win32",
+  "command": [
+    "C:\\Users\\ABSCOND\\AppData\\Local\\agy\\bin\\agy.exe"
+  ],
+  "cols": 120,
+  "rows": 40,
+  "note": "Windows agy 1.3.3 startup in previously trusted workspace; account row shown (Google AI Pro); no prompt submitted.",
+  "exitCode": 1
+}
