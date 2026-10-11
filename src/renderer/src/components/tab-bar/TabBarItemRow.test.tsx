@@ -57,7 +57,14 @@ function buildItems({
   terminalPinned = false,
   browserTitle = 'Example',
   chatTitle = '',
-  chatCustomLabel = ''
+  chatCustomLabel = '',
+  chatAgent
+}: {
+  terminalPinned?: boolean
+  browserTitle?: string
+  chatTitle?: string
+  chatCustomLabel?: string
+  chatAgent?: 'claude' | 'cursor'
 } = {}): TabBarItem[] {
   return [
     {
@@ -122,6 +129,7 @@ function buildItems({
         groupId: 'group-1',
         worktreeId: 'wt-1',
         contentType: 'agent-session',
+        ...(chatAgent ? { agentSessionAgent: chatAgent } : {}),
         label: 'Session',
         aiVaultTitle: chatTitle
           ? { agent: 'claude', sessionId: 'provider-1', title: chatTitle }
@@ -143,6 +151,7 @@ type StripInputs = {
   browserTitle?: string
   chatTitle?: string
   chatCustomLabel?: string
+  chatAgent?: 'claude' | 'cursor'
   activeTabType?: WorkspaceVisibleTabType
   activeClientHostedBrowserRowId?: string | null
   statusByRelativePath?: TabBarItemSurfaceRuntime['statusByRelativePath']
@@ -156,6 +165,7 @@ function Strip({
   browserTitle,
   chatTitle,
   chatCustomLabel,
+  chatAgent,
   activeTabType = 'terminal',
   activeClientHostedBrowserRowId = null,
   statusByRelativePath = STATUS_BY_RELATIVE_PATH
@@ -200,7 +210,7 @@ function Strip({
   return (
     <>
       {renderTabBarItems({
-        items: buildItems({ terminalPinned, browserTitle, chatTitle, chatCustomLabel }),
+        items: buildItems({ terminalPinned, browserTitle, chatTitle, chatCustomLabel, chatAgent }),
         props,
         runtime,
         actions,
@@ -267,6 +277,19 @@ describe('tab strip rows', () => {
     expect(getTabDragLabel(chat, false)).toBe('My label')
     renderStrip({ chatTitle: 'Renamed conversation' })
     expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
+  })
+
+  it('names a chat by its recorded provider, not by an agent its title mentions', () => {
+    renderStrip({ chatAgent: 'claude', chatTitle: 'Antigravity install check' })
+    expect(lastRender('session-1')).toMatchObject({
+      sessionAgent: 'claude',
+      tab: { launchAgent: 'claude' }
+    })
+    renderStrip({ chatAgent: 'cursor' })
+    expect(lastRender('session-1')).toMatchObject({
+      sessionAgent: 'cursor',
+      tab: { launchAgent: 'cursor' }
+    })
   })
 
   it('skips every tab when the strip re-renders with equal tab content', () => {
