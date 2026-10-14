@@ -21,6 +21,9 @@ export function translateCodexNotification(input: {
   emit: EmitCodexEvent
 }): CodexJournalTranslationAdmission {
   const { sessionId, session, method, params, observedAt, dispatchSequenceAtReceipt } = input
+  if (session.promptSuggestion?.consume(method, params)) {
+    return { accepted: true }
+  }
   codexRewind.observeCodexRewindActivity(session, method, params)
   session.turnOpenWaits.observe(session.threadId, method, params)
   return deliverCodexNotification(

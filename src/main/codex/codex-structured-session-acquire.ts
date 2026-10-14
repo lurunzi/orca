@@ -44,6 +44,7 @@ import {
 import type { CodexStructuredSessionTeardown } from './codex-structured-session-teardown'
 import type { CodexStructuredNotificationRetry } from './codex-structured-notification-retry'
 import type { deliverCodexServerRequest } from './codex-structured-provider-events'
+import { CodexPromptSuggestion } from './codex-prompt-suggestion'
 
 const TURN_BOUNDARIES: ReadonlySet<string> = new Set(['turn/started', 'turn/completed'])
 
@@ -264,9 +265,15 @@ export async function acquireCodexStructuredSession(input: {
           ?.supportsFastMode
       })
     }
+    session.promptSuggestion = new CodexPromptSuggestion(session, () =>
+      acquireInput.events?.publish()
+    )
     sessions.set(sessionId, session)
     for (const event of acquisition.drain()) {
       event()
+    }
+    if (launch.resumeThreadId && !opened.supersededThreadId) {
+      void session.promptSuggestion.restore(opened.thread)
     }
     return acquired
   } catch (error) {

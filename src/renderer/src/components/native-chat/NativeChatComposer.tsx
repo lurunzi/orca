@@ -335,7 +335,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
     const promptSuggestion = useNativeChatPromptSuggestion({
       scopeKey: structuredTransport?.sessionId ?? targetPtyId ?? paneKey,
       enabled:
-        agent === 'claude' &&
+        (agent === 'claude' || (agent === 'codex' && structuredTransport !== undefined)) &&
         !disabled &&
         !goalMode.active &&
         !isWorking &&

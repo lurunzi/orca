@@ -141,6 +141,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
       // After the journal and the parent's republished row, never ahead of either.
       session.backgroundTasks.publishChildWork()
     }
+    session.promptSuggestion?.observe(event)
     this.deps.onEvent?.(event)
     return admission
   }
@@ -149,6 +150,9 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
     sessionId: string,
     request: Parameters<typeof deliverCodexServerRequest>[2]
   ): void {
+    if (this.sessions.get(sessionId)?.promptSuggestion?.denyRequest(request)) {
+      return
+    }
     deliverCodexServerRequest(sessionId, this.sessions.get(sessionId), request, (session, event) =>
       this.emit(session, event)
     )
@@ -168,6 +172,9 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
    *  owner of "what runs", and this stays only so tests can hold the two rule sets side by side. */
   backgroundTaskState = (sessionId: string): AgentSessionBackgroundTaskState | null | undefined =>
     this.sessions.get(sessionId)?.backgroundTasks.state
+
+  readPromptSuggestion = (sessionId: string): string | null =>
+    this.sessions.get(sessionId)?.promptSuggestion?.read() ?? null
 
   // Codex exposes no honest stop for a child thread or a persistent command.
   backgroundTaskStops: NonNullable<StructuredAgentSessionAdapter['backgroundTaskStops']> = (
@@ -201,6 +208,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
   }): Promise<AgentSessionDispatchOutcome> {
     const session = this.session(input.sessionId)
     session.dispatchPending = true
+    session.promptSuggestion?.invalidate()
     try {
       await input.beforeDispatch?.()
       return await dispatchCodexTurn(session, input, this.deps.requestTimeoutMs)
@@ -209,27 +217,36 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
     }
   }
 
-  cancelTurn: StructuredAgentSessionAdapter['cancelTurn'] = (request) =>
-    cancelCodexStructuredTurn({
+  cancelTurn: StructuredAgentSessionAdapter['cancelTurn'] = (request) => {
+    this.sessions.get(request.sessionId)?.promptSuggestion?.invalidate()
+    return cancelCodexStructuredTurn({
       request,
       sessions: this.sessions,
       requestTimeoutMs: this.deps.requestTimeoutMs
     })
+  }
 
   rewindSupport: NonNullable<StructuredAgentSessionAdapter['rewindSupport']> = (sessionId) =>
     this.sessions.get(sessionId)?.historyMode === 'legacy'
       ? { supported: false, reason: 'history-not-paginated' }
       : { supported: true }
 
-  rewind: NonNullable<StructuredAgentSessionAdapter['rewind']> = (input) =>
-    codexRewind.rewindCodexSession(this.session(input.sessionId), input, this.deps.requestTimeoutMs)
+  rewind: NonNullable<StructuredAgentSessionAdapter['rewind']> = (input) => {
+    const session = this.session(input.sessionId)
+    session.promptSuggestion?.invalidate()
+    return codexRewind.rewindCodexSession(session, input, this.deps.requestTimeoutMs)
+  }
 
-  recoverRewind: NonNullable<StructuredAgentSessionAdapter['recoverRewind']> = (input) =>
-    codexRewind.recoverCodexRewind(this.session(input.sessionId), input, this.deps.requestTimeoutMs)
+  recoverRewind: NonNullable<StructuredAgentSessionAdapter['recoverRewind']> = (input) => {
+    const session = this.session(input.sessionId)
+    session.promptSuggestion?.invalidate()
+    return codexRewind.recoverCodexRewind(session, input, this.deps.requestTimeoutMs)
+  }
 
   /** The ack is Codex's receipt; the translator ends the command's turn from the turn it opens. */
   compact: NonNullable<StructuredAgentSessionAdapter['compact']> = async (input) => {
     const session = this.session(input.sessionId)
+    session.promptSuggestion?.invalidate()
     session.translator?.beginCommand(input.command)
     try {
       await session.connection.request(

@@ -25,6 +25,7 @@ export const PROVIDER_FRAME_CLASSIFICATIONS = {
     'thread/closed': 'status-chrome',
     'skills/changed': 'status-chrome',
     'thread/name/updated': 'status-chrome',
+    'thread/prediction/updated': 'status-chrome',
     // The goal tool call is never emitted as an item, so these two frames are the only
     // truthful evidence a goal exists; the model's prose about goals can be wrong.
     'thread/goal/updated': 'timeline-substantive',
@@ -189,7 +190,9 @@ const TYPED_TRANSLATOR_KINDS: ReadonlyMap<string, ReadonlySet<string>> = new Map
     'codex',
     // Every status arm is thread state the translator reads; a fault's sentence arrives on `error`.
     new Set([
-      'notification:thread/status/changed'
+      'notification:thread/status/changed',
+      // Prediction failure clears composer metadata; it is not a failed conversation turn.
+      'notification:thread/prediction/updated'
     ] satisfies `notification:${CodexAppServerNotificationMethod}`[])
   ]
 ])

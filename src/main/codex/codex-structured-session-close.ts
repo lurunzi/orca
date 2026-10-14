@@ -27,6 +27,7 @@ export function handleCodexSessionExit(input: {
     return false
   }
   session.exitObservedAt ??= Date.now()
+  session.promptSuggestion?.invalidate()
   // Before the admission check: the child is gone whether or not its end was admitted.
   session.turnOpenWaits.releaseAll()
   const event: StructuredAgentSessionEndedEvent = {
@@ -90,6 +91,7 @@ export async function closeCodexPublishedSession(
   // Sink-failure recovery force-closes the child but must preserve the
   // observed-exit cause so host lease settlement runs as an unexpected death.
   session.requestedClose = options?.requestedClose ?? true
+  session.promptSuggestion?.invalidate()
   // Keep the session indexed until the child exit is observed. A timeout or
   // failed kill must leave the live connection available for a safe retry.
   const exited = await session.connection.close()

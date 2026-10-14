@@ -1,11 +1,13 @@
 import type { CodexAppServerConnection } from './codex-app-server-connection-types'
+import { isAppServerRecord } from './codex-app-server-jsonl'
+import { parseCliVersion } from '../../shared/app-version'
 
 const HANDSHAKE_TIMEOUT_MS = 15_000
 
 export async function initializeCodexAppServerConnection(
   connection: CodexAppServerConnection
-): Promise<void> {
-  await connection.request(
+): Promise<string | null> {
+  const result = await connection.request(
     'initialize',
     {
       clientInfo: { name: 'orca_desktop', title: 'Orca', version: '0.0.0' },
@@ -19,4 +21,7 @@ export async function initializeCodexAppServerConnection(
     { timeoutMs: HANDSHAKE_TIMEOUT_MS }
   )
   connection.notify('initialized')
+  return isAppServerRecord(result) && typeof result.userAgent === 'string'
+    ? parseCliVersion(result.userAgent)
+    : null
 }

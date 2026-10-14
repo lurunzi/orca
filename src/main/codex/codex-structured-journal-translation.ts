@@ -232,6 +232,10 @@ export function createCodexJournalTranslator(
       if (goal) {
         return publishActivity(event, goal)
       }
+      if (event.method === 'thread/prediction/updated') {
+        // The session owns this optional composer result, including generation failure.
+        return CODEX_JOURNAL_ADMITTED
+      }
       if (event.method === CODEX_TOKEN_USAGE_METHOD) {
         // Classified `status-chrome`, so the generic-frame path swallows it
         // before the journal. The roster consumes it as a typed notification.
