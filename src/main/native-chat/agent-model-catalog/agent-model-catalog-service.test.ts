@@ -45,6 +45,29 @@ const CODEX_HOME = (path: string): { variable: 'CODEX_HOME'; path: string } => (
 })
 
 describe('agent model catalog service', () => {
+  it('never treats a cached Claude capability as current availability', async () => {
+    const store = new AgentModelCatalogStore()
+    const sessionRecord: AgentSessionRecord = {
+      ...record('/homes/claude'),
+      provider: 'claude',
+      accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: '/homes/claude' }
+    }
+    store.recordSuccess(agentModelCatalogFingerprintForRecord(sessionRecord), 'claude', {
+      ...listing('opus'),
+      models: [{ id: 'opus', label: 'Opus', isDefault: true, supportsFastMode: true, efforts: [] }],
+      fastModeSupport: { supported: true }
+    })
+    const service = createAgentModelCatalogService({
+      store,
+      getRecord: () => sessionRecord,
+      resolveAccountHome: async () => sessionRecord.accountHome
+    })
+    await expect(service.read({ agent: 'claude', sessionId: 'session-1' })).resolves.toMatchObject({
+      models: [expect.objectContaining({ supportsFastMode: true })],
+      fastModeSupport: { supported: false, reason: 'availability-unconfirmed' }
+    })
+  })
+
   it('answers unknown and kicks one probe for a session whose key has never listed', async () => {
     const store = new AgentModelCatalogStore()
     const probe = vi.fn(async (_home: string) => listing('gpt-a'))

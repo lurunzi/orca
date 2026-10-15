@@ -22,7 +22,10 @@ import {
 import type { ClaudePendingPrompt } from './claude-structured-prompt-replies'
 import { readAgentJournalTurn } from '../../shared/agent-session-turn-record'
 import { createClaudeJournalTranslator } from './claude-structured-journal-translation'
-import { openTestJournalHostDatabase } from '../native-chat/agent-session-journal/journal-host-database-test-support'
+import {
+  closeTestJournalHostDatabase,
+  openTestJournalHostDatabase
+} from '../native-chat/agent-session-journal/journal-host-database-test-support'
 import { testEventSinkLogging } from '../native-chat/agent-session-wire/structured-agent-session-logger-test-support'
 
 function sinkState() {
@@ -190,6 +193,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  closeTestJournalHostDatabase(journalRoot)
   await rm(journalRoot, { recursive: true, force: true })
 })
 

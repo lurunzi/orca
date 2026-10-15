@@ -17,6 +17,7 @@ import {
   type NativeChatSessionOptionRecord
 } from './native-chat-session-option-state'
 import { STRUCTURED_LAUNCH_SEED_OPTION_IDS } from './native-chat-session-option-defaults'
+import { applyStructuredAgentFastModeAvailability } from './structured-agent-fast-mode-snapshot'
 import type { SessionOptionDescriptor, SessionOptionValue } from './native-chat-session-options'
 import type {
   AgentSessionModelCatalogResult,
@@ -91,6 +92,7 @@ export type StructuredAgentSessionOptionState = {
   record: NativeChatSessionOptionRecord
   pendingId: string | null
   fastModeSupport?: AgentSessionOptionsResult['fastModeSupport']
+  fastModeModelSupport?: ReadonlyMap<string, boolean | undefined>
 }
 
 /** With `seedCatalog`, the picker renders (and accepts picks against) the
@@ -161,7 +163,13 @@ export function applyStructuredAgentSessionModelCatalog(
       ...(options.namesDefault ? { defaultModelIsCliDefault: true } : {})
     },
     catalogSource: 'host',
-    fastModeSupport: catalog.fastModeSupport
+    fastModeModelSupport: new Map(
+      catalog.models.map((model) => [model.id, model.supportsFastMode])
+    ),
+    fastModeSupport:
+      state.record.agent === 'claude'
+        ? { supported: false, reason: 'availability-unconfirmed' }
+        : catalog.fastModeSupport
   }
 }
 
@@ -186,7 +194,13 @@ export function applyStructuredAgentSessionOptions(
     ...state,
     catalog: structuredAgentSessionOptionCatalog(seed, result),
     catalogSource: 'live',
-    fastModeSupport: result.fastModeSupport
+    fastModeModelSupport: new Map(result.models.map((model) => [model.id, model.supportsFastMode])),
+    fastModeSupport:
+      state.record.agent === 'claude' &&
+      result.fastModeSupport?.supported !== false &&
+      result.fastModeSupport?.accountVerified !== true
+        ? { supported: false, reason: 'availability-unconfirmed' }
+        : result.fastModeSupport
   }
 }
 
@@ -205,23 +219,12 @@ export function structuredAgentSessionOptionSnapshot(
     modelLabel: 'Model',
     liveTransport: 'agent-session'
   })
-  const support = state.fastModeSupport
-  if (support?.supported !== false) {
-    return snapshot
-  }
-  return snapshot.map((descriptor) =>
-    descriptor.id === 'fastMode' && descriptor.kind.type === 'boolean'
-      ? {
-          ...descriptor,
-          kind: { ...descriptor.kind, currentValue: false },
-          settable: false,
-          disabledReason:
-            support.reason === 'extra_usage_disabled'
-              ? 'fast-mode-extra-usage-required'
-              : 'fast-mode-unavailable'
-        }
-      : descriptor
-  )
+  return applyStructuredAgentFastModeAvailability({
+    snapshot,
+    agent: state.record.agent,
+    modelSupport: state.fastModeModelSupport,
+    support: state.fastModeSupport
+  })
 }
 
 /** No launch holds a pick and no fence can carry one yet, so the picker only shows. */

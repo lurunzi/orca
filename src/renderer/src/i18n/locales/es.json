@@ -15094,6 +15094,8 @@
         "availableAfterSessionStarts": "Disponible después de iniciar la sesión.",
         "optionUpdateFailed": "No se pudo actualizar la opción",
         "optionValue": {
+          "default": "Predeterminado",
+          "none": "Ninguno",
           "fast": "Rápido",
           "minimal": "Mínimo",
           "low": "Bajo",

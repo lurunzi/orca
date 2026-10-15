@@ -78,7 +78,14 @@ export function createNativeChatPtySessionOptions(
     record = createNativeChatSessionOptionRecord(args.agent)
   }
 
-  if (args.reportedValues && applyNativeChatReportedSessionOptions(record, args.reportedValues)) {
+  const preserveStartupPick =
+    (args.agent === 'claude' || args.agent === 'antigravity') &&
+    (record.model?.source === 'applied' || record.model?.source === 'dispatched')
+  if (
+    !preserveStartupPick &&
+    args.reportedValues &&
+    applyNativeChatReportedSessionOptions(record, args.reportedValues)
+  ) {
     writeNativeChatSessionOptionCache(args.scopeKey, record)
   }
   /** Why: an authoritative probe proved this id gone; left tracked it would re-enter

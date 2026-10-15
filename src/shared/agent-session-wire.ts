@@ -422,6 +422,8 @@ export type AgentSessionFastModeState = 'off' | 'cooldown' | 'on'
 
 export type AgentSessionFastModeSupport = {
   supported: boolean
+  /** Claude account permission was checked independently of its routing state. */
+  accountVerified?: boolean
   /** Provider-authored or host-normalized reason code; presentation may ignore unknown values. */
   reason?: string
 }

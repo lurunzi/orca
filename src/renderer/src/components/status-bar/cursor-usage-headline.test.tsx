@@ -49,6 +49,39 @@ function cursorPools(primary: number, other: number, onDemand?: number): Provide
 }
 
 describe('Cursor compact usage headline', () => {
+  it.each(['claude', 'codex', 'antigravity', 'cursor'] as const)(
+    'retains the %s reset countdown when the status bar becomes dense',
+    (provider) => {
+      const p: ProviderRateLimits = {
+        provider,
+        session: null,
+        weekly: { ...windowAt(22), windowMinutes: 10_080, resetsAt: 90_000 },
+        updatedAt: 0,
+        status: 'ok',
+        error: null
+      }
+      for (const mode of ['compact', 'verbose'] as const) {
+        const render = (now: number) =>
+          renderToStaticMarkup(
+            <ProviderSegment p={p} compact={true} mode={mode} display="used" now={now} />
+          )
+        expect(render(0)).toContain('22% used 1m')
+        expect(render(60_000)).toContain('22% used 0m')
+        expect(render(90_000)).toContain('22% used now')
+      }
+    }
+  )
+
+  it('shows the primary pool reset countdown', () => {
+    const p = cursorPools(19, 90)
+    p.buckets = p.buckets?.map((bucket) => ({ ...bucket, resetsAt: Date.now() + 90_000 }))
+    const segment = renderToStaticMarkup(
+      <ProviderSegment p={p} compact={false} mode="compact" display="used" />
+    )
+    expect(segment).toContain('19% used 1m')
+    expect(segment).not.toContain('Cursor Models')
+  })
+
   it.each([0, 7, 41])('shows primary pool %s with the chosen percentage display', (primary) => {
     const p = cursorPools(primary, 90, 100)
     for (const display of ['used', 'remaining'] as const) {
@@ -56,7 +89,8 @@ describe('Cursor compact usage headline', () => {
       const segment = renderToStaticMarkup(
         <ProviderSegment p={p} compact={false} mode="compact" display={display} />
       )
-      expect(segment).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} Cursor Models`)
+      expect(segment).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} 30d`)
+      expect(segment).not.toContain('Cursor Models')
       const row = renderToStaticMarkup(
         <UsageRow
           p={p}
@@ -67,7 +101,7 @@ describe('Cursor compact usage headline', () => {
           now={0}
         />
       )
-      expect(row).toContain('data-usage-window="Cursor Models"')
+      expect(row).toContain('data-usage-window="30d"')
       expect(row).toContain(`${shown}%`)
       expect(row.match(/data-usage-window=/g)).toHaveLength(1)
     }
@@ -79,7 +113,7 @@ describe('Cursor compact usage headline', () => {
       const p = bucket === 'Other Models' ? cursorPools(7, 100) : cursorPools(0, 0, 100)
       expect(getUsageTone(p)).toBe('urgent')
       expect(getTightestUsageSection(p)?.label).toBe(bucket)
-      expect(getUsageHeadlineSection(p)?.label).toBe('Cursor Models')
+      expect(getUsageHeadlineSection(p)?.label).toBe('30d')
       const overflow = renderToStaticMarkup(<UsageOverflowChip hidden={[p]} display="used" />)
       expect(overflow).toContain('data-tone="urgent"')
       expect(
@@ -135,7 +169,8 @@ describe('Cursor compact usage headline', () => {
     const detailed = renderToStaticMarkup(
       <ProviderSegment p={cursorPools(7, 18)} compact={false} mode="verbose" display="used" />
     )
-    expect(detailed).toContain('Cursor Models 7% used')
+    expect(detailed).toContain('7% used 30d')
+    expect(detailed).not.toContain('Cursor Models')
     expect(detailed).toContain('Other Models 18% used')
     const legacy: ProviderRateLimits = { ...cursorPools(0, 0), buckets: [], monthly: windowAt(44) }
     expect(getUsageHeadlineSection(legacy)?.window.usedPercent).toBe(44)
@@ -153,7 +188,6 @@ describe('Cursor compact usage headline', () => {
     'grok',
     'zcode',
     'kimi',
-    'antigravity',
     'minimax',
     'opencode-go'
   ] as const)('preserves %s selection', (provider) => {

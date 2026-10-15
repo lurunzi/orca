@@ -93,6 +93,7 @@ describe('ClaudeStructuredSessionAdapter.acquire', () => {
 
   it('restores an encoded Fast preference through the absolute flag setting', async () => {
     const claude = fakeClaude({
+      initFastModeState: 'off',
       settings: { effective: { fastMode: false, fastModePerSessionOptIn: false } },
       routes: {
         list_models: () => [{ value: 'opus', displayName: 'Opus', supportsFastMode: true }]
@@ -136,6 +137,7 @@ describe('ClaudeStructuredSessionAdapter.acquire', () => {
 
   it('restores Fast when reacquiring the same per-session-opt-in conversation', async () => {
     const claude = fakeClaude({
+      initFastModeState: 'off',
       settings: { effective: { fastMode: false, fastModePerSessionOptIn: true } },
       routes: {
         list_models: () => [{ value: 'opus', displayName: 'Opus', supportsFastMode: true }]

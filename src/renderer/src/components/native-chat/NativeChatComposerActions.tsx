@@ -75,8 +75,8 @@ export function NativeChatComposerActions({
     ? translate('components.native-chat.composer.stopDictation', 'Stop dictation')
     : translate('components.native-chat.composer.startDictation', 'Start dictation')
   return (
-    <div className="flex w-full items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-0.5">
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
+      <div className="flex shrink-0 items-center gap-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -98,7 +98,7 @@ export function NativeChatComposerActions({
         {onExitGoalMode ? <NativeChatComposerGoalChip onExit={onExitGoalMode} /> : null}
         {coordinatorLaunch}
       </div>
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
         {/* Why: keep session controls beside the actions they affect; the
         model trigger is ordered last so only the context ring separates it from dictation. */}
         <NativeChatSessionOptionPickers

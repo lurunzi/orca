@@ -21,7 +21,7 @@ import {
   discoverNativeChatCatalogModels,
   resolveNativeChatModelDiscoveryContext
 } from './native-chat-session-option-discovery'
-import { readClaudeSessionOptionsFromTerminalScreen } from './claude-terminal-session-options'
+import { readAgentTerminalSessionOptions } from './agent-terminal-session-options'
 
 import { enqueueSessionOptionSettingsWrite } from './native-chat-session-option-settings-write'
 
@@ -107,8 +107,9 @@ export function useNativeChatSessionOptions(args: {
       ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
       : null
     const reportedValues =
-      agent === 'claude'
-        ? readClaudeSessionOptionsFromTerminalScreen(
+      agent === 'claude' || agent === 'antigravity'
+        ? readAgentTerminalSessionOptions(
+            agent,
             readTerminalScreen?.(),
             discoveredModels ?? undefined
           )
@@ -146,12 +147,49 @@ export function useNativeChatSessionOptions(args: {
   ])
 
   useEffect(() => {
-    if (!surface || agent !== 'claude') {
+    if (!surface || (agent !== 'claude' && agent !== 'antigravity')) {
+      return
+    }
+    reportedScreenRef.current = null
+    const current = surface.getSnapshot().find((option) => option.id === 'model')
+    if (current?.valueSource === 'applied' || current?.valueSource === 'dispatched') {
       return
     }
     let cancelled = false
-    reportedScreenRef.current = null
+    let attempts = 0
+    let found = false
+    let reading = false
+    const reportScreen = (screen: string | null): boolean => {
+      const models = discoveryContext
+        ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
+        : null
+      const reportedValues = readAgentTerminalSessionOptions(agent, screen, models ?? undefined)
+      if (!reportedValues || cancelled) {
+        return false
+      }
+      found = true
+      const current = surface.getSnapshot().find((option) => option.id === 'model')
+      // Startup chrome cannot confirm or undo a later model pick.
+      if (current?.valueSource === 'applied' || current?.valueSource === 'dispatched') {
+        return true
+      }
+      // Discovery may arrive after the startup frame has scrolled away.
+      reportedScreenRef.current = screen
+      surface.reportSessionOptions(reportedValues)
+      return true
+    }
     const reportCurrentValues = async (): Promise<void> => {
+      if (cancelled || found) {
+        return
+      }
+      // Preserve a visible startup frame before it scrolls away while the host read is pending.
+      if (reportScreen(readTerminalScreen?.() ?? null)) {
+        return
+      }
+      if (reading) {
+        return
+      }
+      reading = true
       let authoritativeScreen: string | null = null
       if (targetPtyId && window.api?.pty?.getMainBufferSnapshot) {
         try {
@@ -165,31 +203,27 @@ export function useNativeChatSessionOptions(args: {
           // The mounted renderer buffer remains a transport-neutral fallback.
         }
       }
-      const models = discoveryContext
-        ? readNativeChatEnrichedModels(agent, discoveryContext.hostKey)
-        : null
-      for (const screen of [authoritativeScreen, readTerminalScreen?.() ?? null]) {
-        const reportedValues = readClaudeSessionOptionsFromTerminalScreen(
-          screen,
-          models ?? undefined
-        )
-        if (!reportedValues) {
-          continue
-        }
-        // Why: discovery can land after this read. Keeping the screen that
-        // parsed lets it re-resolve against the host's real ids later, when the
-        // frame itself may have already scrolled out of the buffer.
-        if (cancelled) {
-          return
-        }
-        reportedScreenRef.current = screen
-        surface.reportSessionOptions(reportedValues)
+      if (cancelled || found) {
         return
       }
+      for (const screen of [authoritativeScreen, readTerminalScreen?.() ?? null]) {
+        if (reportScreen(screen)) {
+          return
+        }
+      }
+      reading = false
     }
     void reportCurrentValues()
+    const retry = window.setInterval(() => {
+      if (found || ++attempts >= 60) {
+        window.clearInterval(retry)
+      } else {
+        void reportCurrentValues()
+      }
+    }, 1_000)
     return () => {
       cancelled = true
+      window.clearInterval(retry)
     }
   }, [agent, discoveryContext, readTerminalScreen, surface, targetPtyId])
 
@@ -233,11 +267,13 @@ export function useNativeChatSessionOptions(args: {
       discoveryContext.hostKey,
       (models) => {
         surface.replaceModels(models)
-        const screen = agent === 'claude' ? reportedScreenRef.current : null
+        const screen = reportedScreenRef.current
         const reportedValues = screen
-          ? readClaudeSessionOptionsFromTerminalScreen(screen, models)
+          ? readAgentTerminalSessionOptions(agent, screen, models)
           : null
-        if (reportedValues) {
+        const current = surface.getSnapshot().find((option) => option.id === 'model')
+        const hasPick = current?.valueSource === 'applied' || current?.valueSource === 'dispatched'
+        if (reportedValues && !hasPick) {
           surface.reportSessionOptions(reportedValues)
         }
         // A failed settings write must not surface as an unhandled rejection.

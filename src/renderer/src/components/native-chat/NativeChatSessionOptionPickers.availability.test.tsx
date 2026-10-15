@@ -22,15 +22,28 @@ vi.mock('@/i18n/i18n', () => ({
 
 afterEach(cleanup)
 
-it('opens the real options menu, exposes the blocked switch and refreshes on reopening', async () => {
+it.each([
+  {
+    model: 'opus',
+    supportsFastMode: true,
+    reason: 'extra_usage_disabled',
+    explanation: 'Fast mode requires paid usage credits.'
+  },
+  {
+    model: 'fable',
+    supportsFastMode: undefined,
+    reason: 'availability-unconfirmed',
+    explanation: 'Fast mode availability has not been confirmed for this session.'
+  }
+])('keeps blocked $model Fast visible and refreshes on reopening', async (scenario) => {
   const user = userEvent.setup()
   const options = {
     models: [
       {
-        id: 'opus',
-        label: 'Opus',
+        id: scenario.model,
+        label: scenario.model,
         isDefault: true,
-        supportsFastMode: true,
+        supportsFastMode: scenario.supportsFastMode,
         efforts: [
           { value: 'low', label: 'Low' },
           { value: 'high', label: 'High' }
@@ -38,7 +51,7 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
       }
     ],
     current: {
-      model: 'opus',
+      model: scenario.model,
       effort: 'high',
       fastMode: true,
       confirmed: ['model', 'effort', 'fastMode']
@@ -47,7 +60,7 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
   let state = applyStructuredAgentSessionOptions(
     createStructuredAgentSessionOptionState('claude'),
     CLAUDE_SESSION_OPTION_CATALOG,
-    { ...options, fastModeSupport: { supported: false, reason: 'extra_usage_disabled' } }
+    { ...options, fastModeSupport: { supported: false, reason: scenario.reason } }
   )
   let snapshot = structuredAgentSessionOptionSnapshot(state)
   const refresh = vi.fn()
@@ -71,13 +84,16 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
   const blocked = await screen.findByRole('switch', { name: 'Fast mode' })
   expect(blocked.getAttribute('aria-disabled')).toBe('true')
   expect(blocked.getAttribute('aria-checked')).toBe('false')
-  expect(screen.getByText('Fast mode requires paid usage credits.')).toBeDefined()
+  expect(screen.getByText('Fast mode').getAttribute('data-unavailable')).toBe('true')
+  expect(screen.getByText(scenario.explanation)).toBeDefined()
   await user.click(blocked)
   expect(setOption).not.toHaveBeenCalled()
   await user.keyboard('{Escape}')
   state = applyStructuredAgentSessionOptions(state, CLAUDE_SESSION_OPTION_CATALOG, {
     ...options,
-    fastModeSupport: { supported: true }
+    models: options.models.map((model) => ({ ...model, supportsFastMode: true })),
+    current: { ...options.current, fastModeState: 'on' },
+    fastModeSupport: { supported: true, accountVerified: true }
   })
   snapshot = structuredAgentSessionOptionSnapshot(state)
   rerender(view())
@@ -87,6 +103,7 @@ it('opens the real options menu, exposes the blocked switch and refreshes on reo
   const recovered = await screen.findByRole('switch', { name: 'Fast mode' })
   expect(recovered.getAttribute('aria-disabled')).toBeNull()
   expect(recovered.getAttribute('aria-checked')).toBe('true')
+  expect(screen.getByText('Fast mode').getAttribute('data-unavailable')).toBe('false')
   await user.click(recovered)
   expect(setOption).toHaveBeenCalledWith('fastMode', false)
 })

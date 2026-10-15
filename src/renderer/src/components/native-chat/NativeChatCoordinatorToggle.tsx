@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Clock3, Network } from 'lucide-react'
+import { Check, Clock3, Network, Slash } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { Toggle } from '@/components/ui/toggle'
@@ -165,7 +165,10 @@ export function NativeChatCoordinatorToggle({
             onPressedChange={onPressedChange}
             className="relative pointer-coarse:size-11"
           >
-            <Network className="size-4" />
+            <span className="relative size-4" aria-hidden="true">
+              <Network className="size-4" />
+              {!ready ? <Slash className="absolute inset-0 size-4" /> : null}
+            </span>
             {hasQueuedChange || enabled ? (
               <span className="absolute -right-1 -top-1 rounded-full bg-background text-foreground ring-1 ring-border">
                 {hasQueuedChange ? (

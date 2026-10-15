@@ -31,7 +31,7 @@ export function useQueuedSessionOptions(args: {
   flush: (entries: [string, SessionOptionValue][]) => void
 }): {
   queued: QueuedSessionOptions
-  queue: (id: string, value: SessionOptionValue) => void
+  queue: (id: string, value: SessionOptionValue, replacedIds?: readonly string[]) => void
 } {
   const { isWorking, flush } = args
   const [queued, setQueued] = useState<QueuedSessionOptions>(() => new Map())
@@ -44,8 +44,18 @@ export function useQueuedSessionOptions(args: {
     flush([...queued])
   }, [flush, isWorking, queued])
 
-  const queue = (id: string, value: SessionOptionValue): void => {
-    setQueued((previous) => new Map(previous).set(id, value))
+  const queue = (
+    id: string,
+    value: SessionOptionValue,
+    replacedIds: readonly string[] = []
+  ): void => {
+    setQueued((previous) => {
+      const next = new Map(previous)
+      for (const replacedId of replacedIds) {
+        next.delete(replacedId)
+      }
+      return next.set(id, value)
+    })
   }
   return { queued, queue }
 }

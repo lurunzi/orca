@@ -269,20 +269,36 @@ describe('useMobileStructuredAgentOptions fast mode', () => {
     await harness.unmount()
   })
 
-  it('offers no Fast row when the model capability is unknown', async () => {
-    const client = optionsClient(
-      queuedReads({
-        ...FAST_OPTIONS,
-        // Absent `supportsFastMode` means the host could not determine support, never "yes".
-        models: OPTIONS.models
-      })
-    )
-    const { mutate } = recordingMutate(async () => ({ status: 'rejected' }))
-    const harness = await mountOptions({ ...BASE, client: client.client, mutate })
+  it.each(['claude', 'codex'] as const)(
+    'never enables %s Fast when the model capability is unknown',
+    async (agent) => {
+      const client = optionsClient(
+        queuedReads({
+          ...FAST_OPTIONS,
+          // Absent `supportsFastMode` means the host could not determine support, never "yes".
+          models: OPTIONS.models
+        })
+      )
+      const { calls, mutate } = recordingMutate(async () => ({ status: 'rejected' }))
+      const harness = await mountOptions({ ...BASE, agent, client: client.client, mutate })
 
-    expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toBeUndefined()
-    await harness.unmount()
-  })
+      const fast = descriptorFor(harness.current().optionSnapshot, 'fastMode')
+      if (agent === 'claude') {
+        expect(fast).toMatchObject({
+          settable: false,
+          kind: { currentValue: false },
+          disabledReason: 'fast-mode-availability-unconfirmed'
+        })
+      } else {
+        expect(fast).toBeUndefined()
+      }
+      await act(async () => {
+        expect(await harness.current().setStructuredOption('fastMode', true)).toBe(false)
+      })
+      expect(calls).toEqual([])
+      await harness.unmount()
+    }
+  )
 })
 
 describe('useMobileStructuredAgentOptions post-write refresh', () => {

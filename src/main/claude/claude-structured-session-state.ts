@@ -23,7 +23,10 @@ import type {
   AgentModelCatalogSessionAccess,
   AgentModelCatalogStore
 } from '../native-chat/agent-model-catalog/agent-model-catalog-store'
-import type { AgentSessionFastModeState } from '../../shared/agent-session-wire'
+import type {
+  AgentSessionFastModeState,
+  AgentSessionFastModeSupport
+} from '../../shared/agent-session-wire'
 import type { AgentChildWorkEvidence } from '../../shared/agent-status-child-work-evidence'
 import type { ClaudeBackgroundTaskTracker } from './claude-background-task-tracker'
 import type { ClaudeChildWorkDecoder } from './claude-child-work-decoder'
@@ -95,6 +98,12 @@ export type ClaudeLateDispatchOutcome =
   | { clientMessageId: string; state: 'unknown'; reason: string }
 
 export type ClaudeStructuredSessionAdapterDeps = {
+  readFastModeAccountSupport?: (
+    launch: ClaudeStructuredLaunch,
+    settings: unknown,
+    timeoutMs: number | undefined,
+    initialization: unknown
+  ) => Promise<AgentSessionFastModeSupport>
   /** The `/` surface of a chat whose Claude is not running. */
   atRestCommands?: ClaudeAtRestCommandCatalog
   resolveLaunch: (input: {
@@ -173,6 +182,12 @@ export type ClaudeSession = {
   /** What `get_settings` says the next request will send, after Claude's own env and settings
    *  precedence: the lowest-ranked answer, unconfirmed until a turn reports it. */
   appliedOptions?: { model?: string; effort?: string }
+  fastModeAccountSupport?: AgentSessionFastModeSupport
+  readFastModeAccountSupport?: (
+    settings: unknown,
+    timeoutMs?: number
+  ) => Promise<AgentSessionFastModeSupport>
+  fastModeAccountRead?: Promise<void>
   fastModeState?: AgentSessionFastModeState
   fastModeDisabledReason?: string
   fastModePerSessionOptIn?: boolean

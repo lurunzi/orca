@@ -1,3 +1,7 @@
+import {
+  claudeFastModeAccountSupport,
+  refreshClaudeFastModeAccountSupport
+} from './claude-fast-mode-policy'
 import type {
   AgentSessionFastModeState,
   AgentSessionFastModeSupport,
@@ -85,11 +89,8 @@ export function observeClaudeFastModeFacts(session: ClaudeSession, value: unknow
   }
   if (facts.disabledReason) {
     session.fastModeDisabledReason = facts.disabledReason
-  } else if (facts.state || facts.disabledReasonReported) {
-    // The child omits the reason entirely when nothing blocks Fast — it never sends a
-    // null — so a frame that reports state without one is the only all-clear there is.
-    // Requiring the key back would latch the first reason for the session's life and
-    // retire the control for good: a model switch away and back never restores it.
+  } else if (facts.state === 'on' || facts.state === 'cooldown' || facts.disabledReasonReported) {
+    // Account denials live separately; routing frames can only clear session restrictions.
     delete session.fastModeDisabledReason
   }
 }
@@ -171,25 +172,17 @@ export function claudeModelFastModeSupport(
   }
 }
 
-const TRANSIENT_FAST_MODE_REASONS = new Set(['network_error', 'unknown', 'pending'])
-const NON_BLOCKING_FAST_MODE_REASONS = new Set(['preference', 'sdk_opt_in_required'])
-
 function claudeFastModeSupport(
   models: readonly ListedModel[],
-  disabledReason: string | undefined
-): AgentSessionFastModeSupport | undefined {
-  if (disabledReason && TRANSIENT_FAST_MODE_REASONS.has(disabledReason)) {
-    return undefined
+  session: ClaudeSession
+): AgentSessionFastModeSupport {
+  const account = claudeFastModeAccountSupport(session)
+  if (!account.supported) {
+    return account
   }
-  if (disabledReason && !NON_BLOCKING_FAST_MODE_REASONS.has(disabledReason)) {
-    return { supported: false, reason: disabledReason }
-  }
-  if (!models.some((model) => model.supportsFastMode === true)) {
-    return models.length > 0 && models.every((model) => model.supportsFastMode === false)
-      ? { supported: false, reason: 'model-not-supported' }
-      : undefined
-  }
-  return { supported: true }
+  return models.some((model) => model.supportsFastMode === true)
+    ? account
+    : { supported: false, reason: 'model-not-supported' }
 }
 
 function listedModelFastModeSupport(
@@ -270,10 +263,8 @@ function writeClaudeCatalogThrough(session: ClaudeSession, discovered: ListedMod
   if (discovered.length === 0 || !session.catalogAccess) {
     return
   }
-  const support = claudeFastModeSupport(discovered, undefined)
   session.catalogAccess.store.recordSuccess(session.catalogAccess.fingerprint, 'claude', {
     models: catalogClaudeModels(session, discovered),
-    ...(support ? { fastModeSupport: support } : {}),
     fastModeTierByModel: new Map(),
     origin: 'live-session'
   })
@@ -292,6 +283,9 @@ export async function readClaudeStructuredSessionOptions(
           session.connection.getSettings({ timeoutMs }).catch(() => null)
         ])
       : [null, null]
+  if (session.startup.state === 'proven') {
+    await refreshClaudeFastModeAccountSupport(session, settings, timeoutMs)
+  }
   observeClaudeSettingsReadback(session, settings, readMutationSequence)
   return claudeStructuredSessionOptionsFrom(session, catalog, readMutationSequence)
 }
@@ -364,7 +358,7 @@ export function claudeStructuredSessionOptionsFrom(
     desiredFastMode ??
     session.reportedOptions.fastMode ??
     (session.fastModeState === undefined ? undefined : session.fastModeState !== 'off')
-  const support = claudeFastModeSupport(discovered, session.fastModeDisabledReason)
+  const support = claudeFastModeSupport(discovered, session)
   const confirmed = [
     ...(current.confirmed ? ['model'] : []),
     ...(effort && session.confirmedOptions.has('effort') ? ['effort'] : []),

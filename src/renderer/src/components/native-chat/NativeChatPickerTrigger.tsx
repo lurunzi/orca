@@ -58,7 +58,7 @@ export function PickerTrigger(props: {
             aria-label={accessibleName}
             className="max-w-48 text-muted-foreground"
           >
-            <span className="truncate">{props.label}</span>
+            <span className="max-w-48 truncate">{props.label}</span>
             <ChevronDown className="size-3" />
           </Button>
         </DropdownMenuTrigger>

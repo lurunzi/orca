@@ -125,8 +125,8 @@ export function createClaudeJournalTranslator(
     ...(deps.coalesceMs === undefined ? {} : { coalesceMs: deps.coalesceMs }),
     ...(deps.schedule ? { schedule: deps.schedule } : {}),
     producer: subagents.linkage,
-    persist: (identity, text, options) => {
-      const body = claudeStreamingMessageBody(text)
+    persist: (identity, text, options, role) => {
+      const body = { ...claudeStreamingMessageBody(text), role }
       deps.sink.appendItem(identity, body, { ...options, turnScope: turnScope() })
       deps.sink.publish()
     }
@@ -152,7 +152,7 @@ export function createClaudeJournalTranslator(
     if (!delta) {
       return false
     }
-    streamedText.append(delta.identity, delta.text, delta.parentToolUseId)
+    streamedText.append(delta.identity, delta.text, delta.parentToolUseId, delta.role)
     return true
   }
 

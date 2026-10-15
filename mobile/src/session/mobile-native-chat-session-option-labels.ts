@@ -17,6 +17,8 @@ export function mobileSessionOptionDisabledReason(
       return 'Fast mode requires paid usage credits.'
     case 'fast-mode-unavailable':
       return 'Fast mode is currently unavailable for this session.'
+    case 'fast-mode-availability-unconfirmed':
+      return 'Fast mode availability has not been confirmed for this session.'
     case 'set-when-session-starts':
       return 'Set when the session starts.'
     case 'available-after-session-start':

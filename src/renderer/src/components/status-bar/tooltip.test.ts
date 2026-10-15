@@ -255,9 +255,9 @@ describe('provider usage error copy', () => {
       }
     })
 
-    expect(getProviderUsageStatusLabel(p)).toBe('Refreshing sign-in')
+    expect(getProviderUsageStatusLabel(p)).toBe('Usage unavailable')
     expect(getProviderUsageErrorMessage(p)).toBe(
-      'Claude sign-in is being refreshed. Agent sessions may still be signed in.'
+      'Claude usage credentials were rejected. After signing in again, Orca will retry when the credentials file changes.'
     )
   })
 
@@ -295,6 +295,38 @@ describe('provider usage error copy', () => {
 })
 
 describe('getWindowSections', () => {
+  it('preserves every Antigravity model group without duplicate weekly totals', () => {
+    const weekly = { usedPercent: 10, windowMinutes: 10080, resetsAt: null, resetDescription: null }
+    const session = { ...weekly, usedPercent: 1, windowMinutes: 300 }
+    const p = provider({
+      provider: 'antigravity',
+      status: 'ok',
+      weekly,
+      session,
+      buckets: [
+        { ...weekly, name: 'Gemini Models · Weekly Limit Remaining' },
+        { ...session, name: 'Gemini Models · Five Hour Limit Remaining' },
+        { ...weekly, usedPercent: 70, name: 'Claude and GPT models · Weekly Limit Remaining' },
+        { ...session, usedPercent: 80, name: 'Claude and GPT models · Five Hour Limit Remaining' }
+      ]
+    })
+    expect(getWindowSections(p).map((section) => section.label)).toEqual([
+      'Gemini · wk',
+      'Gemini · 5h',
+      'Claude and GPT · wk',
+      'Claude and GPT · 5h'
+    ])
+    expect(getWindowSections(p).map((section) => section.window)).toEqual(p.buckets)
+    const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
+    expect(markup).not.toContain('Limit Remaining')
+    expect(markup).not.toContain('Models')
+    expect(markup).toContain('Claude and GPT')
+    expect(markup).toContain('10% used')
+    expect(markup).toContain('1% used')
+    expect(markup).toContain('70% used')
+    expect(markup).toContain('80% used')
+  })
+
   it('keeps ZCode Coding Plan windows separate from MCP quota', () => {
     const session = { usedPercent: 25, windowMinutes: 300, resetsAt: null, resetDescription: null }
     const weekly = { usedPercent: 40, windowMinutes: 10080, resetsAt: null, resetDescription: null }

@@ -104,6 +104,11 @@ export function journalClaudeMessage(
     claudeMessageIdentity(envelope)
   ctx.streamedText.forget(agentJournalItemKey(identity))
   const thinking = claudeThinkingText(outputEnvelope)
+  const hasThinking = outputEnvelope.content.some((part) => claudeRecord(part)?.type === 'thinking')
+  const thinkingIdentity =
+    (hasThinking ? ctx.streamedBlocks.reconcile(envelope, 'reasoning') : null) ??
+    claudeThinkingIdentity(envelope.sessionId, envelope.uuid)
+  ctx.streamedText.forget(agentJournalItemKey(thinkingIdentity))
   const source: ClaudeTurnSource = {
     sessionId: envelope.sessionId,
     uuid: envelope.uuid,
@@ -158,7 +163,6 @@ export function journalClaudeMessage(
   }
   if (thinking) {
     ctx.turn.ensureOpen(message, source, observedAt)
-    const thinkingIdentity = claudeThinkingIdentity(envelope.sessionId, envelope.uuid)
     const thinkingBody: AgentJournalItemBody = {
       kind: 'message',
       role: 'reasoning',

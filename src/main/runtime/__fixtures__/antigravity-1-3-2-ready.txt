@@ -1,0 +1,48 @@
+[?9001h[?1004h[?2004h[>4;2m[>1u[?u[0 q[?25l[2J[m[H
+      ▄▀▀▄[1m[8CAntigravity CLI 1.3.2[22m
+     ▀▀▀▀▀▀       ~/Documents/GitHub/orca
+    ▀▀▀▀▀▀▀▀
+   ▄▀▀    ▀▀▄
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[9;3H]0;C:\Users\xxxxxxx\AppData\Local\agy\bin\agy.exe[?25h[?25l[3;17H  Gemini 3.8 Flash (High)[4;19H~/Documents/GitHub/orca[2m[11;98HGemini 3.8 Flash · hig[9;3H[?25h[22m[?25l[8;1H[K
+ ┃ [1mVerbosity now defaults to medium[22m
+ ┃ Verbosity is now medium by default, so tool calls and thoughts roll up into summaries. You can change your[K
+ ┃ preferred verbosity anytime in /config > Verbosity.[K
+ ┃ esc to dismiss[K
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts[82X[2m[82CGemini 3.8 Flash · hig[22m [14;3H[?25h

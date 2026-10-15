@@ -48,7 +48,11 @@ function resultFromEntry(
     models: entry.models.map((model) =>
       namesDefault ? { ...model } : { ...model, isDefault: false }
     ),
-    ...(entry.fastModeSupport ? { fastModeSupport: entry.fastModeSupport } : {}),
+    ...(entry.agent === 'claude'
+      ? { fastModeSupport: { supported: false, reason: 'availability-unconfirmed' } }
+      : entry.fastModeSupport
+        ? { fastModeSupport: entry.fastModeSupport }
+        : {}),
     fetchedAt: entry.fetchedAt
   }
 }

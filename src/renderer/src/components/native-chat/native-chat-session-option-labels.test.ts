@@ -52,6 +52,13 @@ describe('nativeChatModelPillLabel', () => {
 })
 
 describe('nativeChatSessionChoiceLabel', () => {
+  it('preserves a provider-resolved name for the default selector', () => {
+    expect(nativeChatSessionChoiceLabel({ value: 'default', label: 'Claude Sonnet 4.6' })).toBe(
+      'Claude Sonnet 4.6'
+    )
+    expect(nativeChatSessionChoiceLabel({ value: 'default', label: 'Default' })).toBe('Default')
+  })
+
   it('routes ultra through the localized effort label', () => {
     nativeChatSessionChoiceLabel({ value: 'ultra', label: 'Ultra' })
 

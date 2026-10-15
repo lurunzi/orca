@@ -7,6 +7,7 @@ import { isImeCompositionKeyDown } from '@/lib/ime-composition-keyboard-event'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
+import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { TabDragItemData } from '../tab-group/useTabDragSplit'
 import { useAppStore } from '../../store'
 import {
@@ -60,6 +61,8 @@ type SortableTabProps = {
   /** Toggle the tab between terminal and native chat view. */
   onToggleViewMode?: () => void
   canSplitTerminal?: boolean
+  /** A structured chat's provider, fixed at creation; its generated title must not re-identify it. */
+  sessionAgent?: TuiAgent
 }
 
 export const CLOSE_ALL_CONTEXT_MENUS_EVENT = 'orca-close-all-context-menus'
@@ -89,7 +92,8 @@ export default function SortableTab({
   canToggleViewMode = false,
   isChatView = false,
   onToggleViewMode,
-  canSplitTerminal = true
+  canSplitTerminal = true,
+  sessionAgent
 }: SortableTabProps): React.JSX.Element {
   // Why: agent-completion unread exists even with terminal-attention off; collapse both sources to one primitive so unrelated tabs don't re-render.
   const hasUnreadActivity = useAppStore((s) =>
@@ -115,7 +119,8 @@ export default function SortableTab({
   const shellForIcon = tab.shellOverride
 
   // Why: use hook status + title evidence so the icon reflects the harness running now, not just the launch command.
-  const tabAgent = useTabAgent(tab)
+  const resolvedTabAgent = useTabAgent(tab)
+  const tabAgent = sessionAgent ?? resolvedTabAgent
 
   // Why: with a provider icon shown, strip the agent's own leading glyph so the tab doesn't show two icons for one agent.
   const displayTitle =

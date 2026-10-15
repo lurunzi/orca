@@ -22,6 +22,13 @@ export function nativeChatSessionOptionLabel(descriptor: SessionOptionDescriptor
 
 export function nativeChatSessionChoiceLabel(choice: SessionOptionSelectChoice): string {
   switch (choice.value) {
+    case 'default':
+      if (choice.label && choice.label.toLowerCase() !== 'default') {
+        return choice.label
+      }
+      return translate('components.native-chat.composer.optionValue.default', 'Default')
+    case 'none':
+      return translate('components.native-chat.composer.optionValue.none', 'None')
     case 'minimal':
       return translate('components.native-chat.composer.optionValue.minimal', 'Minimal')
     case 'low':
@@ -56,6 +63,11 @@ export function nativeChatSessionOptionDisabledReason(
       return translate(
         'components.native-chat.composer.fastModeUnavailable',
         'Fast mode is currently unavailable for this session.'
+      )
+    case 'fast-mode-availability-unconfirmed':
+      return translate(
+        'components.native-chat.composer.fastModeAvailabilityUnconfirmed',
+        'Fast mode availability has not been confirmed for this session.'
       )
     case 'set-when-session-starts':
       return translate(

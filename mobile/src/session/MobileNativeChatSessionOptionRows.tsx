@@ -100,6 +100,7 @@ function ToggleRow({
   checked,
   marker,
   disabled,
+  unavailable,
   grouped,
   onToggle
 }: {
@@ -108,13 +109,14 @@ function ToggleRow({
   /** Where the rendered value came from, or null once something picked it. */
   marker: SessionOptionValueMarker | null
   disabled: boolean
+  unavailable: boolean
   grouped: boolean
   onToggle: (next: boolean) => void
 }): React.JSX.Element {
   return (
     <View style={[styles.row, grouped && styles.rowGrouped, disabled && styles.rowDisabled]}>
       <View style={styles.rowBody}>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={[styles.rowLabel, unavailable && styles.unavailableLabel]}>{label}</Text>
       </View>
       {marker ? (
         <Text style={styles.rowMarker}>{marker === 'default' ? 'Default' : 'Not reported'}</Text>
@@ -236,6 +238,7 @@ export function DescriptorRows({
     return (
       <ToggleRow
         label={descriptor.label}
+        unavailable={!descriptor.settable}
         checked={descriptor.kind.currentValue}
         marker={sessionOptionValueMarker(descriptor)}
         disabled={locked}
@@ -264,6 +267,9 @@ export function DescriptorRows({
 }
 
 const styles = StyleSheet.create({
+  unavailableLabel: {
+    textDecorationLine: 'line-through'
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

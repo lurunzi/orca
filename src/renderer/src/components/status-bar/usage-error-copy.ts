@@ -99,7 +99,7 @@ export function getProviderUsageStatusLabel(p: ProviderRateLimits): string {
       case 'stale-token':
       case 'refreshable-credentials-without-token':
       case 'delegated-refresh-required':
-        return translate('auto.components.status.bar.tooltip.1804cd8c3f', 'Refreshing sign-in')
+        return translate('auto.components.status.bar.tooltip.f8b8dbed85', 'Usage unavailable')
       case 'network':
         return translate('auto.components.status.bar.tooltip.f8f0f9d8cc', 'Network issue')
       case 'keychain-unavailable':
@@ -180,8 +180,8 @@ export function getProviderUsageErrorMessage(p: ProviderRateLimits): string {
       case 'refreshable-credentials-without-token':
       case 'delegated-refresh-required':
         return translate(
-          'auto.components.status.bar.tooltip.42fdd4da1d',
-          'Claude sign-in is being refreshed. Agent sessions may still be signed in.'
+          'auto.components.status.bar.tooltip.claudeCredentialsChanged',
+          'Claude usage credentials were rejected. After signing in again, Orca will retry when the credentials file changes.'
         )
       case 'missing-scope':
         return p.error
