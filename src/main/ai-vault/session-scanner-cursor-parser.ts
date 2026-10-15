@@ -12,6 +12,7 @@ import type {
   SessionAccumulator
 } from './session-scanner-types'
 import type { TranscriptMessageSink } from './session-transcript-consumers'
+import { extractGrokFirstUserPromptText } from './session-scanner-grok-user-text'
 import {
   accumulatorFoldResumeState,
   addPreviewContent,
@@ -21,12 +22,10 @@ import {
 } from './session-scanner-accumulator'
 import {
   asRecord,
-  extractPreviewContentText,
+  extractContentText,
   extractString,
-  normalizeTitleText,
   parseJsonObject
 } from './session-scanner-values'
-import { stripGrokUserQueryEnvelope } from './session-scanner-grok-user-text'
 
 type ParserSessionOptions = {
   executionHostId?: ExecutionHostId
@@ -69,12 +68,11 @@ function consumeCursorRecordLine(accumulator: SessionAccumulator, line: string):
   const role = extractString(record.role)
   if (role === 'user' || role === 'assistant') {
     accumulator.messageCount++
-    if (role === 'user' && accumulator.title == null) {
-      // Cursor wraps the ask in <timestamp>…<user_query>; read past the title limit to unwrap it.
-      const text =
-        extractPreviewContentText(asRecord(record.message)?.content) ??
-        extractPreviewContentText(record.content)
-      accumulator.title = text ? normalizeTitleText(stripGrokUserQueryEnvelope(text)) : null
+    if (role === 'user') {
+      // Unwrap metadata before the title limit can truncate away the ask.
+      accumulator.title ??=
+        extractContentText(extractGrokFirstUserPromptText(asRecord(record.message)?.content)) ??
+        extractContentText(extractGrokFirstUserPromptText(record.content))
     }
     addPreviewContent(
       accumulator,
