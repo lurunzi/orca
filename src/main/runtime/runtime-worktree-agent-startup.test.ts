@@ -60,6 +60,35 @@ function launchCliNameFor(repo: Repo): string {
 }
 
 describe('buildWorktreeStartupForAgent host resolution', () => {
+  it.each([
+    { connectionId: null, enabled: true, expected: 'chat' },
+    { connectionId: 'ssh-target', enabled: true, expected: undefined },
+    { connectionId: null, enabled: false, expected: undefined }
+  ])(
+    'opens Antigravity with the readable configured view: %j',
+    ({ connectionId, enabled, expected }) => {
+      const result = buildWorktreeStartupForAgent({
+        repo: makeRepo({ connectionId }),
+        settings: { ...settings, experimentalNativeChat: enabled },
+        agent: 'antigravity',
+        getLaunchRuntime: () => LINUX,
+        toSessionOptions: () => undefined
+      })
+      expect(result.startup.viewMode).toBe(expected)
+    }
+  )
+
+  it('opens an Antigravity startup draft in chat', async () => {
+    const result = await buildWorktreeStartupForDraft({
+      repo: makeRepo({}),
+      settings: { ...settings, experimentalNativeChat: true },
+      requestedAgent: 'antigravity',
+      draft: 'inspect this repository',
+      getLaunchRuntime: () => LINUX
+    })
+    expect(result?.startup.viewMode).toBe('chat')
+  })
+
   // Why two hosts: one SSH fixture passes even when the launch shape is resolved off another
   // host's row, which is the shape of the `ssh:m4air` -> openclaw leak.
   it('drops the Linux-only rename for both spellings of SSH ownership on two hosts', () => {
@@ -153,13 +182,13 @@ describe('buildWorktreeStartupForAgent prompt carry', () => {
       ...(onPromptCarry ? { onPromptCarry } : {})
     })
 
-  it('starts clean and reports it when a caller that pastes offers a prompt the line cannot carry', () => {
+  it('reports whether the host can leave a multiline prompt for a later paste', () => {
     const onPromptCarry = vi.fn()
     const result = build(onPromptCarry)
 
-    expect(result.startup.command).not.toContain('summarize')
+    expect(result.startup.command.includes('summarize')).toBe(process.platform === 'win32')
     expect(result.followup).toBeUndefined()
-    expect(onPromptCarry).toHaveBeenCalledWith(false)
+    expect(onPromptCarry).toHaveBeenCalledWith(process.platform === 'win32')
   })
 
   it('carries a short-lined multi-line prompt on a local zsh line, as main typed it', () => {

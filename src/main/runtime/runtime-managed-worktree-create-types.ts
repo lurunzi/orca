@@ -59,6 +59,7 @@ export type RuntimeManagedWorktreeCreateArgs = {
   /** Main-internal launch registration before catalog notification or activation. */
   onWorkspaceCreated?: (worktreeId: string) => void
   startupAgent?: TuiAgent
+  startupViewMode?: 'terminal' | 'chat'
   terminalImageViewerSupported?: boolean
   startupLaunchPreferences?: AgentLaunchPreferences
   startupPrompt?: string

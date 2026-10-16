@@ -40,6 +40,7 @@ export function TerminalPaneSurface({
     activePane,
     activePaneCanContinueInNewSession,
     activePaneCanResumeInChat,
+    activePaneCanToggleChat,
     activePaneIsChatLeaf,
     activatePaneTitleInteraction,
     agentSessionContinuation,
@@ -350,7 +351,8 @@ export function TerminalPaneSurface({
         managerRef={managerRef}
         paneTransportsRef={paneTransportsRef}
         canShowTerminal={activePaneIsChatLeaf}
-        onShowTerminal={handleToggleNativeChat}
+        canShowChat={activePaneCanToggleChat && !activePaneIsChatLeaf}
+        onToggleNativeChat={handleToggleNativeChat}
         canResumeInNewNativeChat={activePaneCanResumeInChat}
         canContinueAgentSessionInNewSession={activePaneCanContinueInNewSession}
         onContinueAgentSessionInNewSession={(pane) =>

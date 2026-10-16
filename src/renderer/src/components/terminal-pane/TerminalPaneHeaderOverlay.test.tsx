@@ -79,6 +79,8 @@ function renderOverlay({
   canContinueAgentSessionInNewSession = false,
   onContinueAgentSessionInNewSession = vi.fn(),
   canShowTerminal = false,
+  canShowChat = false,
+  onToggleNativeChat = vi.fn(),
   canResumeInNewNativeChat = false,
   renameValue = '',
   renamingPaneId = null,
@@ -95,6 +97,8 @@ function renderOverlay({
   canContinueAgentSessionInNewSession?: boolean
   onContinueAgentSessionInNewSession?: ReturnType<typeof vi.fn>
   canShowTerminal?: boolean
+  canShowChat?: boolean
+  onToggleNativeChat?: () => void
   canResumeInNewNativeChat?: boolean
   renameValue?: string
   renamingPaneId?: number | null
@@ -145,7 +149,8 @@ function renderOverlay({
           onContinueAgentSessionInNewSession as (pane: ManagedPane) => void
         }
         canShowTerminal={canShowTerminal}
-        onShowTerminal={vi.fn()}
+        canShowChat={canShowChat}
+        onToggleNativeChat={onToggleNativeChat}
         canResumeInNewNativeChat={canResumeInNewNativeChat}
         onSplitPane={vi.fn()}
         onBeginPaneDrag={vi.fn()}
@@ -191,6 +196,17 @@ afterEach(() => {
 })
 
 describe('TerminalPaneHeaderOverlay', () => {
+  it('switches the active supported terminal into chat from its header', () => {
+    const onToggleNativeChat = vi.fn()
+    const { container } = renderOverlay({ paneTitles: {}, canShowChat: true, onToggleNativeChat })
+    const buttons = container.querySelectorAll<HTMLButtonElement>(
+      'button[aria-label="Switch to chat view"]'
+    )
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0].closest('.pane-title-bar')?.hasAttribute('data-active-pane')).toBe(true)
+    act(() => buttons[0].click())
+    expect(onToggleNativeChat).toHaveBeenCalledOnce()
+  })
   it('offers Resume in New Native Chat instead of a chat view switch, on the active pane only', () => {
     const { container } = renderOverlay({ paneTitles: {}, canResumeInNewNativeChat: true })
 
@@ -201,7 +217,7 @@ describe('TerminalPaneHeaderOverlay', () => {
     expect(resumeButtons[0]?.closest('.pane-title-bar')?.hasAttribute('data-active-pane')).toBe(
       true
     )
-    expect(container.querySelector('button[aria-label="Show chat view"]')).toBeNull()
+    expect(container.querySelector('button[aria-label="Switch to chat view"]')).toBeNull()
   })
 
   it('keeps Show terminal as the way back from chat view', () => {

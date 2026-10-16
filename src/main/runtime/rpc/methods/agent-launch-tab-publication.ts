@@ -16,6 +16,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { initialAntigravityChatView } from '../../../../shared/antigravity-chat-launch-view'
 import type {
   AgentLaunchPlacementReceipt,
   AgentLaunchResult
@@ -190,7 +191,13 @@ export async function publishAgentLaunchTabEarly(
       tabId: pane.tabId,
       leafId: pane.leafId,
       launchAgent: params.agent,
-      viewMode: 'terminal',
+      viewMode:
+        initialAntigravityChatView({
+          agent: params.agent,
+          settings,
+          connectionId: workspace.connectionId,
+          ...(params.prompt?.delivery === 'draft' ? { draft: params.prompt.text } : {})
+        }) ?? 'terminal',
       ...(params.placement ? { placement: params.placement } : {}),
       viewer: agentLaunchTabViewerRule(context, params.presentation),
       ...(params.prompt?.text ? { prompt: params.prompt.text } : {}),

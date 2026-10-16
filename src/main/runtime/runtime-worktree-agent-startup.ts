@@ -1,4 +1,5 @@
 import { agentStartedTelemetry } from '../agent-launch/agent-started-telemetry'
+import { initialAntigravityChatView } from '../../shared/antigravity-chat-launch-view'
 import type { AgentLaunchPreferences } from '../../shared/agent-session-host-authority'
 import type { Repo } from '../../shared/repo-types'
 import type { TuiAgent } from '../../shared/tui-agent'
@@ -99,12 +100,19 @@ export async function buildWorktreeStartupForDraft(
     ...(environment.agentArgs !== undefined ? { agentArgs: environment.agentArgs } : {})
   })
   const telemetry = agentStartedTelemetry(agent, environment.launchSource)
+  const viewMode = initialAntigravityChatView({
+    agent,
+    settings,
+    connectionId: getRepoSshConnectionId(repo),
+    draft: content
+  })
   const draftPlan = buildAgentDraftLaunchPlan({ ...launchArgs, draft: content })
   if (draftPlan) {
     return {
       agent,
       startup: {
         command: draftPlan.launchCommand,
+        ...(viewMode ? { viewMode } : {}),
         launchConfig: draftPlan.launchConfig,
         ...(draftPlan.startupCommandDelivery
           ? { startupCommandDelivery: draftPlan.startupCommandDelivery }
@@ -127,6 +135,7 @@ export async function buildWorktreeStartupForDraft(
     agent,
     startup: {
       command: startupPlan.launchCommand,
+      ...(viewMode ? { viewMode } : {}),
       launchConfig: startupPlan.launchConfig,
       ...(startupPlan.startupCommandDelivery
         ? { startupCommandDelivery: startupPlan.startupCommandDelivery }
@@ -197,10 +206,16 @@ export function buildWorktreeStartupForAgent(
   if (!startupPlan) {
     throw new Error(`Could not build launch command for ${agent}.`)
   }
+  const viewMode = initialAntigravityChatView({
+    agent,
+    settings,
+    connectionId: getRepoSshConnectionId(repo)
+  })
   return {
     agent,
     startup: {
       command: startupPlan.launchCommand,
+      ...(viewMode ? { viewMode } : {}),
       launchConfig: startupPlan.launchConfig,
       ...(startupPlan.startupCommandDelivery
         ? { startupCommandDelivery: startupPlan.startupCommandDelivery }
@@ -248,10 +263,16 @@ export function resolveWorktreeCreateAgentStartup(
     ...(args.startupLaunchSource ? { launchSource: args.startupLaunchSource } : {}),
     ...(args.onStartupPromptCarry ? { onPromptCarry: args.onStartupPromptCarry } : {})
   })
-  return args.startupAccountEnv
+  return args.startupAccountEnv || args.startupViewMode
     ? {
         ...built,
-        startup: { ...built.startup, env: { ...built.startup.env, ...args.startupAccountEnv } }
+        startup: {
+          ...built.startup,
+          ...(args.startupViewMode ? { viewMode: args.startupViewMode } : {}),
+          ...(args.startupAccountEnv
+            ? { env: { ...built.startup.env, ...args.startupAccountEnv } }
+            : {})
+        }
       }
     : built
 }

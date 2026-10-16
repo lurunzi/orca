@@ -128,15 +128,18 @@ function claudeDisabledCredits(): ProviderRateLimits {
 
 describe('ProviderSegment extra-usage balance token', () => {
   it.each([
-    ['Spanish', 'saldo {{value0}}', 'saldo $12.40'],
-    ['French', 'solde {{value0}}', 'solde $12.40']
+    ['Spanish', 'saldo {{value0}}', 'saldo'],
+    ['French', 'solde {{value0}}', 'solde']
   ])('lets %s put the balance label before its amount', async (_locale, message, expected) => {
     compactMessages.balance = message
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
       <ProviderSegment p={openCodeGo(100)} compact={false} display="used" />
     )
-    expect(markup).toContain(expected)
+    const amount = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(
+      12.4
+    )
+    expect(markup).toContain(`${expected} ${amount}`)
     expect(markup).not.toContain('{{value0}}')
   })
 

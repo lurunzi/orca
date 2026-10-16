@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store'
+import { initialAntigravityChatView } from '../../../shared/antigravity-chat-launch-view'
 import type { AgentStartupPlan } from '@/lib/tui-agent-startup'
 import { planLaunchAgentStartupPrompt } from '@/lib/launch-agent-startup-prompt-plan'
 import { persistAgentLaunchTabOrder } from '@/lib/launch-agent-tab-order'
@@ -214,6 +215,12 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   }
 
   args.focusIntent?.cancel()
+  const initialViewMode = initialAntigravityChatView({
+    agent,
+    settings: store.settings,
+    connectionId: executionContext.worktreeSshConnectionId,
+    ...(routePromptDelivery === 'draft' && hasPrompt ? { draft: trimmedPrompt } : {})
+  })
   const runtimeEnvironmentId = getRuntimeEnvironmentIdForWorktree(store, worktreeId)
   if (isWebRuntimeSessionActive(runtimeEnvironmentId)) {
     if (beforeSurfaceOpen?.({ kind: 'host-published' }) === false) {
@@ -232,8 +239,8 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
       submitPastedPrompt,
       agentArgs,
       // Why: omission means terminal locally, but would let a paired host apply
-      // its own default; send the client's resolved terminal choice explicitly.
-      viewMode: 'terminal',
+      // its own default; send the client's resolved view explicitly.
+      viewMode: initialViewMode ?? 'terminal',
       onPromptDelivered
     })
     return {
@@ -255,6 +262,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   ) {
     const launched = launchNewTabPromptThroughHost({
       agent,
+      ...(initialViewMode ? { viewMode: initialViewMode } : {}),
       worktreeId,
       ...(groupId ? { groupId } : {}),
       prompt: trimmedPrompt,
@@ -279,6 +287,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   }
   const tab = store.createTab(worktreeId, groupId, undefined, {
     launchAgent: agent,
+    ...(initialViewMode ? { viewMode: initialViewMode } : {}),
     quickCommandLabel,
     ...(pendingActivationSpawn ? { pendingActivationSpawn: true } : {}),
     ...(activate === false ? { activate: false } : {}),

@@ -177,6 +177,7 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
   // The menu switcher gates on the leaf it opened over, so mixed splits show it only where chat can render.
   const contextMenuCanToggleChat = canToggleChatForLeaf(contextMenuLeafId)
   const activeLeafId = activePane?.leafId ?? null
+  const activePaneCanToggleChat = canToggleChatForLeaf(activeLeafId)
   // One subscription for both reads keeps the pane inside its store listener budget.
   const { menuAgentSessionId, activePaneCanResumeInChat } = useAppStore(
     useShallow((state) => ({
@@ -228,6 +229,7 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
     activePaneCanContinueInNewSession,
     contextMenuCanContinueInNewSession,
     activePaneCanResumeInChat,
+    activePaneCanToggleChat,
     contextMenuCanToggleChat,
     contextMenuIsChatView,
     handleContextMenuToggleNativeChat

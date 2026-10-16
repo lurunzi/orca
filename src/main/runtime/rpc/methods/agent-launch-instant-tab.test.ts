@@ -31,6 +31,7 @@ import {
 import type { AgentLaunchPaneVerdict } from '../../../../shared/agent-launch-pane-verdict'
 import type { AgentSessionRecordStore } from '../../agent-session-record-store'
 import { openTestAgentSessionRecordStore } from '../../agent-session-record-store-test-harness'
+import { closeTestJournalHostDatabases } from '../../../native-chat/agent-session-journal/journal-host-database-test-support'
 import type { RpcContext } from '../core'
 import { DESKTOP_RPC_CALLER } from '../rpc-caller-identity'
 import {
@@ -110,6 +111,7 @@ beforeEach(async () => {
 afterEach(async () => {
   setAgentLaunchRecordStore(null)
   resetAgentLaunchPanesForTests()
+  closeTestJournalHostDatabases()
   await rm(directory, { recursive: true, force: true })
 })
 

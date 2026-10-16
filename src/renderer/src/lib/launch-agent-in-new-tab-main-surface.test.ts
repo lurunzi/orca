@@ -42,6 +42,37 @@ function seedMainWindowOnEditor(): ReturnType<typeof createTestStore> {
 }
 
 describe('launchAgentInNewTab main-window surface', () => {
+  it('opens Antigravity in transcript chat while retaining its terminal startup', async () => {
+    const store = seedMainWindowOnEditor()
+    store.setState({ settings: { ...getDefaultSettings('/tmp'), experimentalNativeChat: true } })
+    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
+    const result = launchAgentInNewTab({
+      requestId: 'antigravity-chat',
+      agent: 'antigravity',
+      worktreeId: MAIN_WORKTREE_ID
+    })
+    await result?.structuredSettlement
+    const tabId = store
+      .getState()
+      .tabsByWorktree[MAIN_WORKTREE_ID]?.find((tab) => tab.launchAgent === 'antigravity')?.id
+    expect(tabId).toBeDefined()
+    if (!tabId) {
+      throw new Error('Antigravity terminal was not created')
+    }
+    expect(store.getState().unifiedTabsByWorktree[MAIN_WORKTREE_ID]).toContainEqual(
+      expect.objectContaining({ entityId: tabId, viewMode: 'chat' })
+    )
+    expect(store.getState().tabsByWorktree[MAIN_WORKTREE_ID]).toContainEqual(
+      expect.objectContaining({
+        id: tabId,
+        launchAgent: 'antigravity'
+      })
+    )
+    expect(store.getState().pendingStartupByTabId[tabId]).toMatchObject({
+      launchAgent: 'antigravity'
+    })
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })

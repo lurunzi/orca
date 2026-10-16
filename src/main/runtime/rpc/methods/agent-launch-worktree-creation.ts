@@ -10,6 +10,9 @@
  */
 
 import { buildCliWorkspaceProvenance } from '../../../../shared/cli-workspace-provenance'
+import { initialAntigravityChatView } from '../../../../shared/antigravity-chat-launch-view'
+import { getRepoSshConnectionId } from '../../../../shared/execution-host'
+import { readAgentLaunchModeSettings } from '../../../agent-launch/agent-launch-mode'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import {
@@ -46,6 +49,7 @@ export function agentLaunchWorkspaceFactory(
     createWorktree: async ({
       create,
       startupAgent,
+      nativeChatDefault,
       promisedAgentChat,
       onWorkspaceCreated,
       startupPrompt,
@@ -91,6 +95,16 @@ export function agentLaunchWorkspaceFactory(
             context
           ),
           ...(agentArgs !== undefined ? { startupAgentArgs: agentArgs } : {}),
+          ...(startupAgent === 'antigravity'
+            ? {
+                startupViewMode:
+                  initialAntigravityChatView({
+                    agent: startupAgent,
+                    settings: readAgentLaunchModeSettings(runtime, nativeChatDefault),
+                    connectionId: getRepoSshConnectionId(repo)
+                  }) ?? 'terminal'
+              }
+            : {}),
           ...(startupPrompt
             ? {
                 onStartupPromptCarry: (carried: boolean) => {

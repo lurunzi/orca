@@ -113,6 +113,7 @@ export type AgentLaunchWorkspaceFactory = {
      *  wait-for-setup gate for free. A structured launch has no startup command to sequence and
      *  must await that gate explicitly instead. */
     startupAgent: TuiAgent | undefined
+    nativeChatDefault?: boolean
     /** Offered only alongside a `startupAgent` whose CLI takes the prompt on argv: agent-first
      *  creation builds the startup command, so that is where the typed line is measured. */
     startupPrompt?: string
