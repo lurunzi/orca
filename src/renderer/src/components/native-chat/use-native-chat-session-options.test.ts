@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CatalogModel } from '../../../../shared/agent-session-option-catalog'
 import type { NativeChatSessionOptionDispatchCommand } from './native-chat-session-option-command-dispatch'
 import { clearNativeChatModelEnrichmentForTests } from './native-chat-session-option-enrichment'
+import { AGENT_MODEL_CATALOG_FRESH_MS } from '../../../../shared/agent-model-catalog-refresh-policy'
 
 const discoverModels = vi.fn<() => Promise<readonly CatalogModel[] | null>>()
 
@@ -340,6 +341,48 @@ describe('useNativeChatSessionOptions model reporting', () => {
     )
     expect(modelDescriptor(result.current.snapshot).currentValue).toBeUndefined()
   })
+})
+
+it('updates an open Antigravity surface with new models without dispatching or changing its selection', async () => {
+  clearNativeChatModelEnrichmentForTests()
+  Object.defineProperty(window, 'api', { configurable: true, value: undefined })
+  const initial = [{ id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] }]
+  discoverModels.mockReset().mockResolvedValue(initial)
+  const dispatchCommand = vi.fn<NativeChatSessionOptionDispatchCommand>(async () => undefined)
+  const { result, unmount } = renderHook(() =>
+    useNativeChatSessionOptions({
+      agent: 'antigravity',
+      terminalTabId: 'tab-agy-refresh',
+      targetPtyId: 'pty-agy-refresh',
+      dispatchCommand,
+      readTerminalScreen: () => 'Antigravity CLI 1.4.0\nGemini 3.8 Flash (High)\n~/repo'
+    })
+  )
+  await waitFor(() =>
+    expect(modelDescriptor(result.current.snapshot).currentValue).toBe(initial[0].id)
+  )
+  await act(async () => result.current.surface?.refresh?.())
+  expect(discoverModels).toHaveBeenCalledOnce()
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + AGENT_MODEL_CATALOG_FRESH_MS)
+  try {
+    discoverModels.mockResolvedValue([
+      ...initial,
+      { id: 'gemini-4-argon-high', label: 'Gemini 4 Argon (High)', options: [] }
+    ])
+    await act(async () => result.current.surface?.refresh?.())
+    await waitFor(() =>
+      expect(modelDescriptor(result.current.snapshot).choices.map(({ value }) => value)).toEqual([
+        'gemini-3.8-flash-high',
+        'gemini-4-argon-high'
+      ])
+    )
+    expect(modelDescriptor(result.current.snapshot).currentValue).toBe(initial[0].id)
+    expect(dispatchCommand).not.toHaveBeenCalled()
+    expect(discoverModels).toHaveBeenCalledTimes(2)
+  } finally {
+    clock.mockRestore()
+    unmount()
+  }
 })
 
 it('learns the Antigravity startup model after the picker mounts and preserves a later pick', async () => {
