@@ -2,12 +2,9 @@
 // of the draft. Split from native-chat-runtime-send.ts to keep that file bounded.
 
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
-import type { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat-answer-stepping'
 import { NATIVE_CHAT_SUBMIT } from './native-chat-send'
 import type { NativeChatSendOptions } from './native-chat-runtime-send'
-
-type RuntimeSettings = ReturnType<typeof getSettingsForAgentTabRuntimeOwner>
 
 export type NativeChatSubmitConfirmation = {
   /** Body-to-Enter gap; replaces NATIVE_CHAT_SUBMIT_DELAY_MS. */
@@ -38,7 +35,6 @@ export function submitConfirmDurationMs(options?: NativeChatSendOptions): number
  * it is still expanding a paste or finishing a turn, leaving the prompt unsent.
  */
 export function writeNativeChatSubmit(
-  settings: RuntimeSettings,
   ptyId: string,
   options: NativeChatSendOptions | undefined,
   ctx: {
@@ -47,7 +43,7 @@ export function writeNativeChatSubmit(
     markSubmitWritten: () => void
   }
 ): void {
-  sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT, 'driving')
+  sendRuntimePtyInput(ptyId, NATIVE_CHAT_SUBMIT, 'driving')
   const confirmation = options?.submitConfirmation
   if (!confirmation) {
     ctx.markSubmitted()
@@ -68,7 +64,7 @@ export function writeNativeChatSubmit(
       return
     }
     retries += 1
-    sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT, 'driving')
+    sendRuntimePtyInput(ptyId, NATIVE_CHAT_SUBMIT, 'driving')
     ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
   }
   ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)

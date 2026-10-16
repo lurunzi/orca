@@ -1,10 +1,14 @@
+import { useRef } from 'react'
 import { Play } from 'lucide-react'
 import type { Tab } from '../../../../shared/tab-types'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
 import { useCursorTranscriptResume } from './use-cursor-transcript-resume'
 import { useNativeChatRetainedSession } from './use-native-chat-retained-session'
-import { useNativeChatFontScale } from './use-native-chat-font-scale'
+import { useNativeChatFontSize } from './use-native-chat-font-size'
+import { NATIVE_CHAT_APPEARANCE_ROOT_CLASS } from './native-chat-appearance-style'
+import { useNativeChatStoreAppearanceStyle } from './use-native-chat-store-appearance-style'
+import { cn } from '@/lib/utils'
 import { useNativeChatImageRuntimeContext } from './native-chat-image-runtime-context'
 import { selectNativeChatViewState } from './native-chat-view-state'
 import { NativeChatMessageList } from './NativeChatMessageList'
@@ -28,7 +32,9 @@ export function NativeChatTranscriptView({
     paneKey: tabId,
     enabled: isVisible
   })
-  const fontScale = useNativeChatFontScale(isVisible && isFocusedGroup)
+  const rootRef = useRef<HTMLDivElement>(null)
+  useNativeChatFontSize(isVisible && isFocusedGroup, rootRef)
+  const appearanceStyle = useNativeChatStoreAppearanceStyle()
   const runtimeContext = useNativeChatImageRuntimeContext(tabId)
   const view = selectNativeChatViewState(session)
   const resume = useCursorTranscriptResume({
@@ -37,7 +43,12 @@ export function NativeChatTranscriptView({
     enabled: isVisible
   })
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-background">
+    <div
+      ref={rootRef}
+      className={cn(NATIVE_CHAT_APPEARANCE_ROOT_CLASS, 'flex h-full min-h-0 w-full flex-col')}
+      style={appearanceStyle}
+      data-native-chat-scheme={appearanceStyle.colorScheme}
+    >
       <div className="flex min-h-0 flex-1 flex-col">
         {view.kind === 'ready' ? (
           <NativeChatMessageList
@@ -45,7 +56,6 @@ export function NativeChatTranscriptView({
             isVisible={isVisible}
             isWorking={false}
             expandSignal={false}
-            fontScale={fontScale.scale}
             runtimeContext={runtimeContext}
           />
         ) : (

@@ -111,7 +111,6 @@ describe('antigravityComposerHoldsDraft', () => {
 })
 
 describe('Antigravity chat send confirmation', () => {
-  const SETTINGS: Parameters<typeof sendNativeChatMessage>[0] = null
   const PTY = 'pty-agy'
 
   beforeEach(() => {
@@ -125,7 +124,7 @@ describe('Antigravity chat send confirmation', () => {
   })
 
   const enters = (): number =>
-    sendRuntimePtyInput.mock.calls.filter((call) => call[2] === NATIVE_CHAT_SUBMIT).length
+    sendRuntimePtyInput.mock.calls.filter((call) => call[1] === NATIVE_CHAT_SUBMIT).length
 
   it('leaves other agents on the plain delayed Enter', () => {
     const options = withAntigravitySubmitConfirmation('claude', 'hi', () => '', undefined)
@@ -135,7 +134,7 @@ describe('Antigravity chat send confirmation', () => {
   it('re-sends Enter while the composer still holds the draft, then stops', async () => {
     let current = screen(['> hi'])
     const options = withAntigravitySubmitConfirmation('antigravity', 'hi', () => current, undefined)
-    const handle = sendNativeChatMessage(SETTINGS, PTY, 'hi', options)
+    const handle = sendNativeChatMessage(PTY, 'hi', options)
     vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS + 45)
     expect(enters()).toBe(1)
     vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CONFIRM_MS)
@@ -153,7 +152,7 @@ describe('Antigravity chat send confirmation', () => {
       () => screen(['> hi']),
       undefined
     )
-    const handle = sendNativeChatMessage(SETTINGS, PTY, 'hi', options)
+    const handle = sendNativeChatMessage(PTY, 'hi', options)
     vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS + 45 + NATIVE_CHAT_SUBMIT_CONFIRM_MS * 10)
     expect(enters()).toBe(1 + NATIVE_CHAT_SUBMIT_RETRY_MAX)
     await handle.settled
@@ -166,12 +165,12 @@ describe('Antigravity chat send confirmation', () => {
       () => screen(['> hi']),
       undefined
     )
-    const handle = sendNativeChatMessage(SETTINGS, PTY, 'hi', options)
+    const handle = sendNativeChatMessage(PTY, 'hi', options)
     vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS + 45)
     sendRuntimePtyInput.mockClear()
     handle.cancel()
     vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CONFIRM_MS * 10)
-    expect(sendRuntimePtyInput.mock.calls.map((call) => call[2])).not.toContain(
+    expect(sendRuntimePtyInput.mock.calls.map((call) => call[1])).not.toContain(
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT
     )
     expect(enters()).toBe(0)
@@ -187,7 +186,6 @@ describe('Antigravity chat send confirmation', () => {
     )
     const handle = sendNativeChatMessageWithImageAttachments(
       'antigravity',
-      SETTINGS,
       PTY,
       'look',
       ['/tmp/a.png'],

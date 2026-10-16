@@ -7,7 +7,8 @@
 // Enter cannot land on Claude's model confirmation dialog.
 
 export type NativeChatPtySendQueueHandle = {
-  cancel: () => void
+  /** `keepInput` skips the unsubmitted-input clear, e.g. while a dialog owns the agent's input. */
+  cancel: (keepInput?: boolean) => void
   settleAfterMs: number
   settled: Promise<void>
   bodyStarted: () => boolean
@@ -166,7 +167,7 @@ export function enqueueNativeChatPtySend(
   state.tail = settled
 
   const handle: NativeChatPtySendQueueHandle = {
-    cancel: () => {
+    cancel: (keepInput = false) => {
       if (cancelled) {
         return
       }
@@ -182,7 +183,7 @@ export function enqueueNativeChatPtySend(
       state.freeAt = Math.max(Date.now(), state.freeAt - Math.max(0, durationMs))
       finishEntry()
       dropHandle()
-      if (shouldClear) {
+      if (shouldClear && !keepInput) {
         options?.onCancelUnsubmitted?.()
       }
     },

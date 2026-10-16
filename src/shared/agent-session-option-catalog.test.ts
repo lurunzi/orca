@@ -52,6 +52,7 @@ describe('agent session option catalog', () => {
       type: 'control_response',
       response: {
         subtype: 'success',
+        request_id: 'orca-model-discovery',
         response: {
           models: [
             {
@@ -83,7 +84,7 @@ describe('agent session option catalog', () => {
     const parsed = getAgentSessionOptionCatalog('claude')!.listModels!.parse(stdout)
     expect(parsed.map(({ id }) => id)).toEqual(['opus[1m]', 'sonnet', 'haiku'])
     expect(parsed[0]).toMatchObject({
-      label: 'Opus (1M context)',
+      label: 'Opus 5 (1M context)',
       description: 'Opus 5 with 1M context'
     })
     expect(parsed[0].options.map(({ id }) => id)).toEqual(['effort', 'fastMode'])

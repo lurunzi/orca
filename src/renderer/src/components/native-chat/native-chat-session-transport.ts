@@ -6,12 +6,9 @@ import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabili
 import { guardNativeChatAgentTransport } from './native-chat-provider-capability'
 import type { NativeChatApi, NativeChatAppendedMessages } from '../../../../preload/api-types'
 import { isWebClientLocation } from '@/lib/web-client-location'
-import {
-  callRuntimeRpc,
-  runtimeEnvironmentSupportsCapability,
-  RuntimeRpcCallError,
-  type RuntimeClientTarget
-} from '@/runtime/runtime-rpc-client'
+import { callRuntimeRpc, runtimeEnvironmentSupportsCapability } from '@/runtime/runtime-rpc-client'
+import { RuntimeRpcCallError } from '@/runtime/runtime-rpc-result'
+import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import { isRuntimeCompatBlockError } from '@/runtime/runtime-protocol-compat'
 import {
   parseRuntimeNativeChatReadSessionResult,

@@ -7,7 +7,6 @@ describe('native chat startup routing', () => {
   it('preserves a Cursor chat request until its local workspace owner hydrates', () => {
     const eligible = (connectionId: string | null | undefined): boolean =>
       canToggleNativeChat({
-        experimentalNativeChatEnabled: true,
         contentType: 'terminal',
         launchAgent: 'cursor',
         nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable(connectionId)

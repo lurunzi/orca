@@ -6,7 +6,7 @@ const empty = { draft: '', imageAttachments: [] }
 
 describe('resolveComposerCriticalAction', () => {
   it('stops a running turn', () => {
-    expect(resolveComposerCriticalAction({ ...idle, isWorking: true }, empty)).toEqual({
+    expect(resolveComposerCriticalAction({ ...idle, isWorking: true }, empty)).toMatchObject({
       kind: 'stop',
       disabled: false
     })
@@ -15,7 +15,7 @@ describe('resolveComposerCriticalAction', () => {
   it('stops background tasks from an empty idle composer', () => {
     expect(
       resolveComposerCriticalAction({ ...idle, onStopBackgroundTasks: () => {} }, empty)
-    ).toEqual({ kind: 'stop-background-tasks', disabled: false })
+    ).toMatchObject({ kind: 'stop-background-tasks', disabled: false })
   })
 
   it('keeps Send for a typed draft while background tasks run', () => {
@@ -24,7 +24,7 @@ describe('resolveComposerCriticalAction', () => {
         { ...idle, onStopBackgroundTasks: () => {} },
         { ...empty, draft: 'follow up' }
       )
-    ).toEqual({ kind: 'send', disabled: false })
+    ).toMatchObject({ kind: 'send', disabled: false })
   })
 
   it('disables Send while an image attachment is still saving', () => {
@@ -33,10 +33,22 @@ describe('resolveComposerCriticalAction', () => {
         draft: 'hi',
         imageAttachments: [{ id: 'image-1', path: '', pending: true }]
       })
-    ).toEqual({ kind: 'send', disabled: true })
+    ).toMatchObject({ kind: 'send', disabled: true })
   })
 
   it('disables an empty Send when nothing runs', () => {
-    expect(resolveComposerCriticalAction(idle, empty)).toEqual({ kind: 'send', disabled: true })
+    expect(resolveComposerCriticalAction(idle, empty)).toMatchObject({
+      kind: 'send',
+      disabled: true
+    })
+  })
+
+  it('holds Send and says why while the host refuses this chat a turn', () => {
+    expect(
+      resolveComposerCriticalAction(
+        { ...idle, structuredTransport: { sendBlockedReason: 'Host offline' } },
+        { ...empty, draft: 'hi' }
+      )
+    ).toEqual({ kind: 'send', disabled: true, sendBlockedReason: 'Host offline' })
   })
 })

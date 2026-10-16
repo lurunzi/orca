@@ -4,7 +4,6 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { useRef, useState } from 'react'
 import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'
 import { useNativeChatComposerKeyDown } from './use-native-chat-composer-keydown'
-import { EMPTY_HISTORY } from './native-chat-composer-state'
 
 afterEach(() => {
   cleanup()
@@ -41,9 +40,10 @@ function Composer({
   })
   const keyDown = useNativeChatComposerKeyDown({
     autocomplete: { mode: 'none' },
+    mentionFiles: { files: [], loading: false, failed: false },
+    completeMention: vi.fn(),
     activeSuggestion: 0,
     draft,
-    history: EMPTY_HISTORY,
     isComposing: () => composing,
     completePickerItem: vi.fn(),
     dispatchPickerCommand: vi.fn(),
@@ -59,7 +59,6 @@ function Composer({
     dismissPromptSuggestion: next.dismiss,
     setDraft,
     setCaret: vi.fn(),
-    setHistory: vi.fn(),
     setActiveSuggestion: vi.fn()
   })
   return (

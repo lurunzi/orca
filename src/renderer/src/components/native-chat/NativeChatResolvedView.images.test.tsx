@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { NativeChatSession } from '../../../../shared/native-chat-types'
-import type { RuntimeFileOperationArgs } from '@/runtime/runtime-file-client'
+import type { RuntimeFileOperationArgs } from '@/runtime/runtime-file-client-types'
 import { resetLocalImageSrcStateForTests } from '@/components/editor/useLocalImageSrc'
 import { NativeChatImageAttachments } from './NativeChatTranscriptChrome'
 import { NativeChatResolvedView } from './NativeChatResolvedView'
@@ -92,7 +92,7 @@ beforeEach(() => {
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
   readFile.mockResolvedValue({ content: 'AA==', isBinary: true, mimeType: 'image/png' })
   imageContext.mockReturnValue({
-    settings: { activeRuntimeEnvironmentId: null },
+    target: { kind: 'local' },
     worktreeId: 'image-workspace',
     worktreePath: '/repo/image-workspace',
     expectedExecutionHostId: 'local'
@@ -142,7 +142,7 @@ it('waits for the image owner and then recovers without reopening the conversati
   expect(readFile).not.toHaveBeenCalled()
   expect(view.container.querySelector('img')).toBeNull()
   imageContext.mockReturnValue({
-    settings: { activeRuntimeEnvironmentId: null },
+    target: { kind: 'local' },
     worktreeId: 'image-workspace',
     worktreePath: '/repo/image-workspace',
     expectedExecutionHostId: 'local'

@@ -5,7 +5,6 @@ import type {
 } from '../../shared/agent-session-journal-types'
 import type { StructuredAgentSessionAppendOptions } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
 import { createClaudeStreamedTextCheckpoints } from './claude-streamed-text-checkpoints'
-import type { ClaudeStreamedRole } from './claude-streamed-block-identity'
 import type {
   ClaudeSubagentLinkageSource,
   ClaudeSubagentLinkageVerdict
@@ -60,14 +59,12 @@ function checkpoints(producer: ClaudeSubagentLinkageSource = unconsultedProducer
    *  about text stay about text — and so a harness that dropped the argument
    *  would show up as an empty list rather than as silence. */
   const stamps: StructuredAgentSessionAppendOptions[] = []
-  const roles: ClaudeStreamedRole[] = []
   let scheduled: (() => void) | null = null
   const store = createClaudeStreamedTextCheckpoints({
     producer,
-    persist: (identity, text, options, role) => {
+    persist: (identity, text, options) => {
       rows.push({ uuid: 'uuid' in identity ? identity.uuid : '', text })
       stamps.push(options)
-      roles.push(role)
     },
     schedule: (run) => {
       scheduled = run
@@ -80,7 +77,6 @@ function checkpoints(producer: ClaudeSubagentLinkageSource = unconsultedProducer
     store,
     rows,
     stamps,
-    roles,
     runWindow: () => {
       const run = scheduled as (() => void) | null
       run?.()
@@ -89,17 +85,6 @@ function checkpoints(producer: ClaudeSubagentLinkageSource = unconsultedProducer
 }
 
 describe('claude streamed text checkpoints', () => {
-  it('keeps reasoning typed when a provisional child is reattributed', () => {
-    const producer = scriptedProducer()
-    const { store, roles, stamps, runWindow } = checkpoints(producer.source)
-    store.append(identityOf('reasoning'), 'Received reasoning', 'toolu_1', 'reasoning')
-    runWindow()
-    producer.resolve(CHILD_LINKAGE)
-    store.reattribute()
-    expect(roles).toEqual(['reasoning', 'reasoning'])
-    expect(stamps.at(-1)).toEqual(CHILD_LINKAGE)
-    store.dispose()
-  })
   it('rewrites a block row with the full text accumulated so far', () => {
     const { store, rows, runWindow } = checkpoints()
 

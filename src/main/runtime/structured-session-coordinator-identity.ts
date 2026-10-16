@@ -14,6 +14,7 @@
 
 import type { StructuredSessionOrchestrationIdentityStatus as Status } from '../../shared/structured-session-orchestration-identity'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import { isTuiAgent } from '../../shared/tui-agent-config'
 import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-host'
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-registry'
 import type { OrchestrationDb } from './orchestration/db'
@@ -62,7 +63,7 @@ async function resolveSession(
   }
   // Why custody's answer: a chat at rest (released lease, tab still listed) is still the user's
   // open chat, and authority resolves its granted handle by the same rule.
-  if (structuredWorkerOwned(sessionId) !== true) {
+  if (structuredWorkerOwned({ sessionId, record, lineage: [sessionId] }) !== true) {
     return { state: 'unavailable', reason: 'missing' }
   }
   return { host, record }
@@ -133,7 +134,7 @@ export async function setStructuredSessionCoordinatorIdentity(
   const identity = {
     handle: mintStructuredWorkerHandle(),
     sessionId,
-    agent: record.provider,
+    agent: isTuiAgent(record.provider) ? record.provider : null,
     paneKey: mintStructuredWorkerPaneKey(sessionId),
     processIncarnation: structuredWorkerProcessIncarnation(sessionId),
     worktreeId: record.location.workspaceId,

@@ -1,4 +1,4 @@
-import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import type { NativeChatFileLinkContext } from './native-chat-file-link'
 import { NativeChatOrchestrationIdentityMenuItem } from './NativeChatOrchestrationIdentityMenuItem'

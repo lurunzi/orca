@@ -1,83 +1,64 @@
+import type { NativeChatComposerImageAttachment } from './NativeChatComposerField'
 import type { JSONContent } from '@tiptap/react'
-import { z } from 'zod'
-import { setBoundedScopeCacheEntry } from './native-chat-composer-scope-cache'
+import type { NativeChatComposerDraftOwner } from './native-chat-composer-draft-storage'
+// The composer's in-progress draft text and its editor document, keyed by the same stable pane
+// scope as image attachments. The composer unmounts when the pane toggles back to the hosted
+// terminal, so without this the typed-but-unsent draft would be lost on every TUI/GUI round-trip.
+// A view of native-chat-composer-draft-store, which owns the whole draft and keeps it across a
+// reload or quit.
+
 import {
-  clearNativeChatComposerStorageForTests,
-  readNativeChatComposerStorage,
-  writeNativeChatComposerStorage
-} from './native-chat-composer-storage'
-
-const documentSchema: z.ZodType<JSONContent> = z.lazy(() =>
-  z.object({
-    type: z.enum(['doc', 'paragraph', 'text', 'hardBreak', 'nativeChatSkill']),
-    text: z.string().optional(),
-    attrs: z.object({ token: z.string() }).optional(),
-    content: z.array(documentSchema).optional()
-  })
-)
-const draftSchema = z.object({
-  text: z.string(),
-  document: documentSchema.optional().catch(undefined)
-})
-
-const draftCache = new Map<string, { text: string; document?: JSONContent }>()
-
-function readDraft(scopeKey: string): { text: string; document?: JSONContent } | undefined {
-  const cached = draftCache.get(scopeKey)
-  if (cached) {
-    return cached
-  }
-  const stored = draftSchema.safeParse(readNativeChatComposerStorage('draft', scopeKey)).data
-  if (stored?.text) {
-    setBoundedScopeCacheEntry(draftCache, scopeKey, stored)
-  }
-  return stored
-}
+  appendToNativeChatComposerDraft,
+  clearNativeChatComposerDraftsForTests,
+  readNativeChatComposerDraft,
+  updateNativeChatComposerDraft
+} from './native-chat-composer-draft-store'
+import { clearNativeChatPendingAttachmentsForTests } from './native-chat-pending-attachment-cache'
 
 export function readNativeChatDraftCache(scopeKey: string): string {
-  return readDraft(scopeKey)?.text ?? ''
+  return readNativeChatComposerDraft(scopeKey).text
 }
 
-export function writeNativeChatDraftCache(scopeKey: string, draft: string): void {
-  // An empty draft carries no state worth retaining; drop the entry so a stale
-  // scope key never resurrects cleared text.
-  if (draft === '') {
-    draftCache.delete(scopeKey)
-    writeNativeChatComposerStorage('draft', scopeKey, undefined)
+/** `unsaved` shows text this run without saving it while the draft is still exactly that text. */
+export function writeNativeChatDraftCache(
+  scopeKey: string,
+  draft: string,
+  options?: { unsaved?: boolean }
+): void {
+  if (readNativeChatComposerDraft(scopeKey).text === draft) {
     return
   }
-  // LRU-bounded so unsent drafts for permanently-removed panes can't accumulate.
-  const previous = readDraft(scopeKey)
-  const next = {
-    text: draft,
-    document: previous?.text === draft ? previous.document : undefined
-  }
-  setBoundedScopeCacheEntry(draftCache, scopeKey, next)
-  writeNativeChatComposerStorage('draft', scopeKey, next)
-}
-
-export function appendNativeChatDraftText(draft: string, text: string): string {
-  return draft === '' ? text : `${draft.trimEnd()}\n\n${text}`
-}
-
-// Only a write from outside the composer notifies; its own writes already hold the text.
-const appendListeners = new Map<string, Set<(text: string) => void>>()
-
-/** Puts text back after whatever is typed, and tells a mounted composer to show it. */
-export function appendNativeChatDraftCache(scopeKey: string, text: string): void {
-  if (text === '') {
-    return
-  }
-  writeNativeChatDraftCache(
+  // Cleared at once, so a sent or emptied draft never resurfaces.
+  updateNativeChatComposerDraft(
     scopeKey,
-    appendNativeChatDraftText(readNativeChatDraftCache(scopeKey), text)
+    { text: draft, document: undefined, ...(options?.unsaved ? { unsavedText: draft } : {}) },
+    draft === '' ? 'immediate' : 'deferred'
   )
-  appendListeners.get(scopeKey)?.forEach((listener) => listener(text))
+}
+
+// Why: a composer mid-IME-composition keeps showing what it had, so it is told what was appended.
+const appendListeners = new Map<string, Set<(text: string, previous: string) => void>>()
+
+/** Puts text back after whatever is typed, and tells a mounted composer to show it. True once it
+ *  is durable, so the copy it came from may go. */
+export function appendNativeChatDraftCache(
+  scopeKey: string,
+  text: string,
+  owner?: NativeChatComposerDraftOwner
+): boolean {
+  if (text === '') {
+    return true
+  }
+  const previous = readNativeChatDraftCache(scopeKey)
+  // Durable now: the copy it came from (a send handed back, a queued card) goes right after this.
+  const durable = appendToNativeChatComposerDraft(scopeKey, { text }, owner)
+  appendListeners.get(scopeKey)?.forEach((listener) => listener(text, previous))
+  return durable
 }
 
 export function subscribeToNativeChatDraftAppend(
   scopeKey: string,
-  listener: (text: string) => void
+  listener: (text: string, previous: string) => void
 ): () => void {
   const listeners = appendListeners.get(scopeKey) ?? new Set()
   appendListeners.set(scopeKey, listeners)
@@ -91,16 +72,15 @@ export function subscribeToNativeChatDraftAppend(
 }
 
 export function clearNativeChatDraftCacheForTests(): void {
-  draftCache.clear()
-  clearNativeChatComposerStorageForTests('draft')
+  clearNativeChatComposerDraftsForTests()
 }
 
 export function readNativeChatDraftDocument(
   scopeKey: string,
   text: string
 ): JSONContent | undefined {
-  const cached = readDraft(scopeKey)
-  return cached?.text === text ? cached.document : undefined
+  const draft = readNativeChatComposerDraft(scopeKey)
+  return draft.text === text ? draft.document : undefined
 }
 
 export function writeNativeChatDraftDocument(
@@ -109,10 +89,41 @@ export function writeNativeChatDraftDocument(
   document: JSONContent
 ): void {
   if (!text) {
-    draftCache.delete(scopeKey)
-    writeNativeChatComposerStorage('draft', scopeKey, undefined)
+    writeNativeChatDraftCache(scopeKey, '')
     return
   }
-  setBoundedScopeCacheEntry(draftCache, scopeKey, { text, document })
-  writeNativeChatComposerStorage('draft', scopeKey, { text, document })
+  updateNativeChatComposerDraft(scopeKey, { text, document }, 'deferred')
+}
+
+export function readNativeChatAttachmentCache(
+  scopeKey: string
+): NativeChatComposerImageAttachment[] {
+  return readNativeChatComposerDraft(scopeKey).images.map((image) => ({ ...image }))
+}
+
+/** Adds settled images after the ones the draft holds now, durably at once: when Stop gives images
+ *  back, the copy they came from goes right after this. Only an image the user attaches
+ *  (`fromUser`) takes the place of a placeholder with its file name, as a re-pick does. */
+export function appendNativeChatAttachmentCache(
+  scopeKey: string,
+  appended: readonly NativeChatComposerImageAttachment[],
+  options?: { fromUser?: boolean }
+): void {
+  if (appended.length === 0) {
+    return
+  }
+  // Preview URLs can retain the full clipboard Blob, so only the path is kept.
+  appendToNativeChatComposerDraft(scopeKey, {
+    images: appended.map(({ id, path, connectionId }) => ({
+      id,
+      path,
+      ...(connectionId ? { connectionId } : {})
+    })),
+    ...(options?.fromUser ? { fromUser: true } : {})
+  })
+}
+
+export function clearNativeChatAttachmentCacheForTests(): void {
+  clearNativeChatComposerDraftsForTests()
+  clearNativeChatPendingAttachmentsForTests()
 }

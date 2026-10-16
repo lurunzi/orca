@@ -28,13 +28,18 @@ const {
   structuredWorkerIdentities,
   structuredWorkerProcessIncarnation
 } = await import('./structured-worker-identity')
-const { structuredSessionChildIdentityEnv } =
-  await import('./structured-session-child-identity-env')
+const { sealedChildEnv: structuredSessionChildIdentityEnv } =
+  await import('./structured-session-child-env.test-support')
 
 const SESSION_ID = '0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0'
 
 type FakeHost = {
-  deps: { store: { getRecord: (sessionId: string) => AgentSessionRecord | null } }
+  deps: {
+    store: {
+      getRecord: (sessionId: string) => AgentSessionRecord | null
+      listRecords: () => AgentSessionRecord[]
+    }
+  }
   hasSession: (sessionId: string) => boolean
   eventRecovery: { restartProviderChild: ReturnType<typeof vi.fn> }
   subscribeStatus: (subscriber: { emit: (event: AgentSessionStatusEvent) => void }) => () => void
@@ -46,6 +51,7 @@ function installHost(options: { attached?: boolean; wslDistro?: string | null } 
   const host: FakeHost = {
     deps: {
       store: {
+        listRecords: () => [],
         getRecord: (sessionId) =>
           // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test record carries only the fields the grant reads.
           ({

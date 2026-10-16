@@ -1,4 +1,4 @@
-import { isAppServerRecord } from './codex-app-server-jsonl'
+import { isProviderRecord as isAppServerRecord } from '../provider-process/provider-json-record'
 import { CodexPromptPrediction, supportsCodexPredictionFork } from './codex-prompt-prediction'
 import type { CodexAppServerServerRequest } from './codex-app-server-connection-types'
 import { isCodexAppServerRequestError } from './codex-app-server-request-error'
@@ -51,7 +51,7 @@ export class CodexPromptSuggestion {
   private idle(): boolean {
     return (
       !this.session.ended &&
-      !this.session.requestedClose &&
+      !this.session.orcaClose &&
       !this.session.connection.closed &&
       !this.session.dispatchPending &&
       this.session.dispatchEchoes.size === 0 &&

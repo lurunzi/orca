@@ -185,10 +185,12 @@ describe('Codex prompt suggestions', () => {
       })
     })
     const adapter = await acquired(codex, { resumeThreadId: THREAD_ID })
-    expect(codex.connections[0].calls.at(-1)).toEqual({
-      method: REQUEST,
-      params: { threadId: THREAD_ID, sourceTurnId: 'saved' }
-    })
+    expect(codex.connections[0].calls.filter((call) => call.method === REQUEST)).toEqual([
+      {
+        method: REQUEST,
+        params: { threadId: THREAD_ID, sourceTurnId: 'saved' }
+      }
+    ])
     codex.connections[0].handlers.onNotification?.(UPDATED, {
       threadId: THREAD_ID,
       sourceTurnId: 'saved',
@@ -228,10 +230,12 @@ describe('Codex prompt suggestions', () => {
       })
       const adapter = await acquired(codex, { resumeThreadId: THREAD_ID })
       const connection = codex.connections[0]
-      expect(connection.calls.at(-1)).toEqual({
-        method: 'thread/turns/list',
-        params: { threadId: THREAD_ID, limit: 1, sortDirection: 'desc' }
-      })
+      expect(connection.calls.filter((call) => call.method === 'thread/turns/list')).toEqual([
+        {
+          method: 'thread/turns/list',
+          params: { threadId: THREAD_ID, limit: 1, sortDirection: 'desc' }
+        }
+      ])
       if (race) {
         connection.handlers.onNotification?.('turn/started', {
           threadId: THREAD_ID,

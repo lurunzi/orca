@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { spawnProcess } from '../../shared/child-process/run-process'
+import { spawnProcess } from '@orca/process-host'
 import { getManagedScript } from './hook-script'
 
 const PAYLOAD = JSON.stringify({ hook_event_name: 'Stop', result: 'café 日本語 😀'.repeat(4000) })

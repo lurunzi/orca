@@ -1,6 +1,5 @@
 // Clearing the agent's unsubmitted input line before a chat send writes its body.
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
-import type { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
 import { AGENT_TUI_CLEAR_INPUT_MAX } from '../../../../shared/agent-tui-input-clear'
 import { whenNativeChatComposerReady } from './native-chat-composer-ready-wait'
 
@@ -23,6 +22,9 @@ export type NativeChatSendOptions = {
   onWriteRejected?: () => void
   /** A write's acknowledgment was lost; it may or may not have landed. */
   onWriteUnconfirmed?: () => void
+  /** All body/submit writes settled; false includes unknown acceptance. Setting it asks the
+   *  host for each write's provider acknowledgment. */
+  onDeliverySettled?: (acknowledged: boolean) => void
   /** Bytes that empty the agent's input line. Defaults to a single Ctrl+U. */
   clearInput?: string
   /**
@@ -39,19 +41,11 @@ export type NativeChatSendOptions = {
   composerReady?: () => boolean
 }
 
-type RuntimeSettings = ReturnType<typeof getSettingsForAgentTabRuntimeOwner>
-
-export function clearUnsubmittedAgentInput(
-  settings: RuntimeSettings,
-  ptyId: string,
-  options?: NativeChatSendOptions
-): void {
-  sendRuntimePtyInput(
-    settings,
-    ptyId,
-    options?.clearInput ?? NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
-    'driving'
-  )
+export function clearUnsubmittedAgentInput(ptyId: string, options?: NativeChatSendOptions): void {
+  if (options?.clearInput === '') {
+    return
+  }
+  sendRuntimePtyInput(ptyId, options?.clearInput ?? NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT, 'driving')
 }
 
 /**
@@ -64,7 +58,6 @@ export function clearUnsubmittedAgentInput(
  * `composerReady` defers all of this; `onLineTouched` marks the first write.
  */
 export function clearThenWrite(
-  settings: RuntimeSettings,
   ptyId: string,
   options: NativeChatSendOptions | undefined,
   delay: (ms: number, fn: () => void) => void,
@@ -73,18 +66,17 @@ export function clearThenWrite(
 ): void {
   whenNativeChatComposerReady(options?.composerReady, delay, () => {
     onLineTouched?.()
-    clearConfirmedThenWrite(settings, ptyId, options, delay, writeBody)
+    clearConfirmedThenWrite(ptyId, options, delay, writeBody)
   })
 }
 
 function clearConfirmedThenWrite(
-  settings: RuntimeSettings,
   ptyId: string,
   options: NativeChatSendOptions | undefined,
   delay: (ms: number, fn: () => void) => void,
   writeBody: () => void
 ): void {
-  clearUnsubmittedAgentInput(settings, ptyId, options)
+  clearUnsubmittedAgentInput(ptyId, options)
   const confirmCleared = options?.confirmCleared
   if (!confirmCleared) {
     writeBody()
@@ -98,7 +90,7 @@ function clearConfirmedThenWrite(
       // An unreadable terminal is unconfirmed; the maximal clear remains safe.
     }
     if (!cleared) {
-      sendRuntimePtyInput(settings, ptyId, AGENT_TUI_CLEAR_INPUT_MAX, 'driving')
+      sendRuntimePtyInput(ptyId, AGENT_TUI_CLEAR_INPUT_MAX, 'driving')
     }
     writeBody()
   })

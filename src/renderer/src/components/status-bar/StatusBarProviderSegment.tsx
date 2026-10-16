@@ -6,6 +6,8 @@ import {
   type UsagePercentageDisplay
 } from '../../../../shared/usage-percentage-display'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
+import { formatCurrencyAmount } from '../../../../shared/currency-format'
+import { formatCreditCount } from '../../../../shared/credit-count-format'
 import {
   ProviderIcon,
   USAGE_URGENT_PERCENT,
@@ -14,14 +16,11 @@ import {
   getProviderDisplayName,
   getProviderUsageStatusLabel
 } from './tooltip'
+import { isClaudeUsageWaitingForClaude } from './usage-error-copy'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
-import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
-import { formatUsagePercentageLabel } from './usage-percentage-label'
+import { formatBareUsagePercentage, formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
-import {
-  CURSOR_MODELS_BUCKET_NAME,
-  isCursorUsageBucket
-} from '../../../../shared/cursor-usage-buckets'
+import { getStatusBarUsageSections } from './status-bar-usage-sections'
 
 function MiniBar({
   usedPct,
@@ -46,16 +45,21 @@ function MiniBar({
 function WindowLabel({
   w,
   label,
-  display
+  display,
+  showLabel = true,
+  labelFirst = false
 }: {
   w: RateLimitWindow
   label: string
   display: UsagePercentageDisplay
+  showLabel?: boolean
+  labelFirst?: boolean
 }): React.JSX.Element {
   return (
     <span className="tabular-nums">
-      {formatUsagePercentageLabel(w.usedPercent, display)}
-      {` ${label}`}
+      {showLabel && labelFirst ? `${label} ` : ''}
+      {formatBareUsagePercentage(w.usedPercent, display)}
+      {showLabel && !labelFirst ? ` ${label}` : ''}
     </span>
   )
 }
@@ -94,9 +98,11 @@ export function getUsageTone(p: ProviderRateLimits): UsageTone {
  */
 export function UsageOverflowChip({
   hidden,
+  providerCount,
   display
 }: {
   hidden: readonly ProviderRateLimits[]
+  providerCount: number
   display: UsagePercentageDisplay
 }): React.JSX.Element {
   const tones = hidden.map(getUsageTone)
@@ -127,9 +133,13 @@ export function UsageOverflowChip({
           value0: names
         }
       )}
-      className="inline-flex h-4 items-center rounded-full border border-border px-1.5 text-[11px] font-medium tabular-nums text-foreground data-[tone=urgent]:border-destructive/40 data-[tone=urgent]:text-destructive data-[tone=warning]:border-status-warning-border data-[tone=warning]:text-status-warning data-[usage-collapsed=true]:invisible data-[usage-collapsed=true]:absolute"
+      className="inline-grid h-4 items-center justify-items-center rounded-full border border-border px-1.5 text-[11px] font-medium tabular-nums text-foreground data-[tone=urgent]:border-destructive/40 data-[tone=urgent]:text-destructive data-[tone=warning]:border-status-warning-border data-[tone=warning]:text-status-warning data-[usage-collapsed=true]:invisible data-[usage-collapsed=true]:absolute"
     >
-      +{Math.max(1, hidden.length)}
+      {/* Why: count changes must not invalidate density measurements and restart probing. */}
+      <span aria-hidden="true" className="invisible col-start-1 row-start-1">
+        +{providerCount}
+      </span>
+      <span className="col-start-1 row-start-1">+{Math.max(1, hidden.length)}</span>
     </span>
   )
 }
@@ -163,113 +173,41 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
 // Provider segment
 // ---------------------------------------------------------------------------
 
-// Why: Gemini exposes extra experimental buckets that made the pre-existing verbose footer noisy.
-const STATUS_BAR_BUCKET_NAMES = new Set(['Flash', 'Pro', '1.5 Pro'])
+// A plan spends into its overage balance only once an included window is
+// exhausted. Treat ~100% as capped to tolerate provider rounding.
+const CAP_THRESHOLD_PERCENT = 99.5
 
-function isVisibleStatusBarBucket(name: string): boolean {
-  return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
+// Why: only reveal the compact balance once a capped window can spend it.
+function isExtraUsageActive(p: ProviderRateLimits): boolean {
+  if (
+    !p.extraUsage ||
+    !p.extraUsage.enabled ||
+    (p.extraUsage.unit === 'currency' &&
+      (p.extraUsage.balance === null || p.extraUsage.balance <= 0))
+  ) {
+    return false
+  }
+  return [p.session, p.weekly, p.monthly, p.fableWeekly].some(
+    (w) => w != null && clampUsedPercent(w.usedPercent) >= CAP_THRESHOLD_PERCENT
+  )
 }
 
-function VerboseProviderUsage({
-  p,
-  display,
-  now
-}: {
-  p: ProviderRateLimits
-  display: UsagePercentageDisplay
-  now?: number
-}): React.JSX.Element {
-  if (p.provider === 'antigravity') {
-    const headline = getUsageHeadlineSection(p, now)
-    return (
-      <>
-        {headline ? (
-          <WindowLabel w={headline.window} label={headline.label} display={display} />
-        ) : null}
-      </>
-    )
+function formatCompactExtraUsage(balance: ProviderRateLimits['extraUsage']): string {
+  if (!balance) {
+    return ''
   }
-  if (p.buckets && p.buckets.length > 0) {
-    const visibleBuckets = p.buckets.filter((bucket) => isVisibleStatusBarBucket(bucket.name))
-    // Why: a provider whose buckets are all filtered out still has a headline
-    // window worth showing rather than rendering an empty segment.
-    // Why weekly is in the chain: a tier metered weekly only (Antigravity reports no 5h pool on
-    // some tiers) has no session window, and omitting weekly rendered an empty segment for an
-    // account that does have a limit worth showing.
-    const fallbackWindow = p.session ?? p.monthly ?? p.weekly ?? null
-    return (
-      <>
-        {visibleBuckets.map((bucket, index) => (
-          <React.Fragment key={bucket.name}>
-            {index > 0 ? <span className="text-muted-foreground">·</span> : null}
-            {p.provider === 'cursor' && bucket.name === CURSOR_MODELS_BUCKET_NAME ? (
-              <WindowLabel
-                w={bucket}
-                label={formatRateLimitWindowChipLabel(bucket, now)}
-                display={display}
-              />
-            ) : (
-              <span className="tabular-nums">
-                {bucket.name} {formatUsagePercentageLabel(bucket.usedPercent, display)}
-              </span>
-            )}
-          </React.Fragment>
-        ))}
-        {visibleBuckets.length === 0 && fallbackWindow ? (
-          <WindowLabel
-            w={fallbackWindow}
-            label={formatRateLimitWindowChipLabel(fallbackWindow, now)}
-            display={display}
-          />
-        ) : null}
-      </>
-    )
+  if (balance.unit === 'credits') {
+    return balance.unlimited
+      ? translate('auto.components.status.bar.StatusBar.4025a6f62f', 'Unlimited')
+      : translate('auto.components.status.bar.StatusBar.a95969101f', '{{value0}} credits', {
+          value0: formatCreditCount(balance.balance)
+        })
   }
-
-  const visibleWindows = [
-    p.session
-      ? {
-          key: 'session',
-          window: p.session,
-          label: formatRateLimitWindowChipLabel(p.session, now)
-        }
-      : null,
-    p.weekly
-      ? {
-          key: 'weekly',
-          window: p.weekly,
-          label: formatRateLimitWindowChipLabel(p.weekly, now)
-        }
-      : null,
-    p.fableWeekly
-      ? {
-          key: 'fableWeekly',
-          window: p.fableWeekly,
-          label: translate('auto.components.status.bar.StatusBar.a79c64f87e', 'Fable')
-        }
-      : null,
-    // Why: monthly stays inline for monthly-only providers; otherwise the detail panel carries it.
-    p.monthly && !p.session && !p.weekly
-      ? {
-          key: 'monthly',
-          window: p.monthly,
-          label: formatRateLimitWindowChipLabel(p.monthly, now)
-        }
-      : null
-  ].filter((window): window is { key: string; window: RateLimitWindow; label: string } => {
-    return window !== null
-  })
-
-  return (
-    <>
-      {visibleWindows.map((window, index) => (
-        <React.Fragment key={window.key}>
-          {index > 0 ? <span className="text-muted-foreground">·</span> : null}
-          <WindowLabel w={window.window} label={window.label} display={display} />
-        </React.Fragment>
-      ))}
-    </>
-  )
+  return balance.balance === null
+    ? ''
+    : translate('auto.components.status.bar.StatusBar.4fba7dc1e7', '{{value0}} bal', {
+        value0: formatCurrencyAmount(balance.balance, balance.currencyCode)
+      })
 }
 
 export function ProviderSegment({
@@ -287,6 +225,8 @@ export function ProviderSegment({
 }): React.JSX.Element {
   const provider = p?.provider ?? 'claude'
   const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
+  // Why: not a problem; Claude updates its own login the next time it runs.
+  const calm = p ? isClaudeUsageWaitingForClaude(p) : false
 
   // Idle / initial load
   if (!p || p.status === 'idle') {
@@ -327,27 +267,39 @@ export function ProviderSegment({
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
-        <AlertTriangle size={11} className="text-muted-foreground/80" />
+        {!calm && <AlertTriangle size={11} className="text-muted-foreground/80" />}
         {!compact && <span className="text-[11px] font-medium">{statusLabel}</span>}
       </span>
     )
   }
 
   // Has data (ok, fetching with stale data, or error with stale data)
-  const isStale = p.status === 'error'
+  const isStale = p.status === 'error' && !calm
+  const showBalance = isExtraUsageActive(p)
+  const sections = getStatusBarUsageSections(p, mode, now)
 
   return (
     <span className="inline-flex items-center gap-1.5">
       <ProviderIcon provider={provider} />
-      {mode === 'verbose' ? (
+      {mode === 'verbose' && tightest && !compact ? (
+        <MiniBar usedPct={clampUsedPercent(tightest.window.usedPercent)} display={display} />
+      ) : null}
+      {sections.map((section, index) => (
+        <React.Fragment key={section.key}>
+          {index > 0 ? <span className="text-muted-foreground">·</span> : null}
+          <WindowLabel
+            w={section.window}
+            label={section.label}
+            display={display}
+            labelFirst={section.labelFirst}
+          />
+        </React.Fragment>
+      ))}
+      {showBalance && p.extraUsage ? (
         <>
-          {tightest && !compact ? (
-            <MiniBar usedPct={clampUsedPercent(tightest.window.usedPercent)} display={display} />
-          ) : null}
-          <VerboseProviderUsage p={p} display={display} now={now} />
+          <span className="text-muted-foreground">·</span>
+          <span className="tabular-nums">{formatCompactExtraUsage(p.extraUsage)}</span>
         </>
-      ) : tightest ? (
-        <WindowLabel w={tightest.window} label={tightest.label} display={display} />
       ) : null}
       {isStale && <AlertTriangle size={11} className="text-muted-foreground/80" />}
     </span>

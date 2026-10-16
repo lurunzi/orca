@@ -1,4 +1,3 @@
-import type { GlobalSettings } from '../../../shared/global-settings-types'
 import { ANTIGRAVITY_VISIBLE_READINESS_RUNTIME_CAPABILITY } from '../../../shared/agent-provider-runtime-capabilities'
 import type {
   RuntimeTerminalResolvePane,
@@ -9,25 +8,29 @@ import { makePaneKey } from '../../../shared/stable-pane-id'
 import { toHostSessionTabId } from '../../../shared/terminal-surface-id'
 import { useAppStore } from '@/store'
 import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabilities'
-import {
-  callRuntimeRpc,
-  getActiveRuntimeTarget,
-  hasRuntimeRpcErrorCode,
-  runtimeEnvironmentSupportsCapability
-} from '@/runtime/runtime-rpc-client'
+import { callRuntimeRpc, runtimeEnvironmentSupportsCapability } from '@/runtime/runtime-rpc-client'
 import { parseRemoteRuntimePtyId } from '../../../shared/remote-runtime-pty-id'
+import { hasRuntimeRpcErrorCode } from '../../../shared/runtime-rpc-error-code'
 
 /** The host's recorded-screen classifier owns readiness; shell paste mode is not agent input. */
 export async function waitForAntigravityDraftReady(
-  tabId: string,
+  knownTabId: string | undefined,
   ptyId: string,
-  timeoutMs: number,
-  settings: Pick<GlobalSettings, 'activeRuntimeEnvironmentId'> | null | undefined
+  timeoutMs: number
 ): Promise<boolean> {
+  // The PTY's own identity names its owner; a local PTY's host is this machine's runtime.
   const remotePty = parseRemoteRuntimePtyId(ptyId)
   const target = remotePty?.environmentId
     ? ({ kind: 'environment', environmentId: remotePty.environmentId } as const)
-    : getActiveRuntimeTarget(settings)
+    : ({ kind: 'local' } as const)
+  const tabId =
+    knownTabId ??
+    Object.entries(useAppStore.getState().ptyIdsByTabId).find(([, ptyIds]) =>
+      ptyIds.includes(ptyId)
+    )?.[0]
+  if (!tabId) {
+    return false
+  }
   const deadline = Date.now() + timeoutMs
   const stillOwnsPty = (): boolean =>
     useAppStore.getState().ptyIdsByTabId[tabId]?.includes(ptyId) === true

@@ -7,15 +7,15 @@ import {
   type AgentSessionDeltaCoalescerDeps
 } from '../native-chat/agent-session-wire/agent-session-delta-coalescer'
 import type { ClaudeSubagentLinkageSource } from './claude-subagent-linkage'
-import type { ClaudeStreamedRole } from './claude-streamed-block-identity'
 
 export type ClaudeStreamedTextCheckpointDeps = {
-  /** Rewrites the block's journal row with the text accumulated so far. */
+  /** Rewrites the block's journal row with the text accumulated so far. `ended` is set on the
+   *  block's last write, when it ends without the final frame that would otherwise replace it. */
   persist: (
     identity: AgentJournalItemIdentity,
     text: string,
     options: StructuredAgentSessionAppendOptions,
-    role: ClaudeStreamedRole
+    ended?: ClaudeStreamedBlockEnd
   ) => void
   /** Who produced a block, asked by the scope the block streamed under. */
   producer: ClaudeSubagentLinkageSource
@@ -23,13 +23,15 @@ export type ClaudeStreamedTextCheckpointDeps = {
   schedule?: AgentSessionDeltaCoalescerDeps['schedule']
 }
 
+/** How a block ended: `completedAt` is when the host saw it end, or saw what cut it off. */
+export type ClaudeStreamedBlockEnd = { completedAt?: number }
+
 export type ClaudeStreamedTextCheckpoints = {
   /** Accumulate a delta; the row is rewritten on the coalescer's own cadence. */
   append: (
     identity: AgentJournalItemIdentity,
     text: string,
-    parentToolUseId?: string | null,
-    role?: ClaudeStreamedRole
+    parentToolUseId?: string | null
   ) => void
   /** Write every block whose row is behind the text received for it. */
   flush: () => void
@@ -39,6 +41,11 @@ export type ClaudeStreamedTextCheckpoints = {
   reattribute: () => void
   /** Drop one block's state, for a block whose final frame has now landed. */
   forget: (key: string) => void
+  /** The text received for a block so far, if it is still streaming. */
+  latest: (key: string) => string | undefined
+  /** Write each matching block's text one last time as ended, then drop it: its final frame is
+   *  never coming. A block with no text has no row and is only dropped. */
+  finish: (ended: ClaudeStreamedBlockEnd, only?: (key: string) => boolean) => void
   /**
    * Drop every block still awaiting its final frame, at turn settlement. Their
    * text is already journaled by the flush that precedes settlement; keeping it
@@ -73,7 +80,6 @@ export function createClaudeStreamedTextCheckpoints(
   deps: ClaudeStreamedTextCheckpointDeps
 ): ClaudeStreamedTextCheckpoints {
   const identities = new Map<string, AgentJournalItemIdentity>()
-  const roles = new Map<string, ClaudeStreamedRole>()
   /** The scope a block streamed under, kept because the persist callback has no
    *  frame to re-read it from. */
   const scopes = new Map<string, string | null>()
@@ -110,7 +116,7 @@ export function createClaudeStreamedTextCheckpoints(
     const options = producerOptions(key)
     checkpointLengths.set(key, text.length)
     writtenLinkage.set(key, options)
-    deps.persist(identity, text, options, roles.get(key) ?? 'assistant')
+    deps.persist(identity, text, options)
   }
 
   const coalescer = createAgentSessionDeltaCoalescer({
@@ -122,7 +128,6 @@ export function createClaudeStreamedTextCheckpoints(
   const drop = (key: string): void => {
     coalescer.forget(key)
     identities.delete(key)
-    roles.delete(key)
     scopes.delete(key)
     writtenLinkage.delete(key)
     latestText.delete(key)
@@ -130,10 +135,9 @@ export function createClaudeStreamedTextCheckpoints(
   }
 
   return {
-    append: (identity, text, parentToolUseId = null, role = 'assistant') => {
+    append: (identity, text, parentToolUseId = null) => {
       const key = agentJournalItemKey(identity)
       identities.set(key, identity)
-      roles.set(key, role)
       scopes.set(key, parentToolUseId)
       coalescer.append(key, text)
     },
@@ -158,10 +162,24 @@ export function createClaudeStreamedTextCheckpoints(
           continue
         }
         writtenLinkage.set(key, options)
-        deps.persist(identity, text, options, roles.get(key) ?? 'assistant')
+        deps.persist(identity, text, options)
       }
     },
     forget: drop,
+    latest: (key) => coalescer.snapshot(key)?.text ?? latestText.get(key),
+    finish: (ended, only) => {
+      for (const [key, identity] of identities) {
+        if (only && !only(key)) {
+          continue
+        }
+        coalescer.flush(key)
+        const text = latestText.get(key)
+        if (text !== undefined) {
+          deps.persist(identity, text, producerOptions(key), ended)
+        }
+        drop(key)
+      }
+    },
     settle: () => {
       // Map iteration tolerates deletion of the entry just visited.
       for (const key of identities.keys()) {
@@ -174,7 +192,6 @@ export function createClaudeStreamedTextCheckpoints(
     dispose: () => {
       coalescer.dispose()
       identities.clear()
-      roles.clear()
       scopes.clear()
       writtenLinkage.clear()
       latestText.clear()

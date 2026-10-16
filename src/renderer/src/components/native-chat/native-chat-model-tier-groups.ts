@@ -1,4 +1,7 @@
-import type { SessionOptionSelectChoice } from '../../../../shared/native-chat-session-options'
+import type {
+  SessionOptionDescriptor,
+  SessionOptionSelectChoice
+} from '../../../../shared/native-chat-session-options'
 
 // The picker groups CLI variants without changing the actual model ids sent to the host.
 const TIER_BY_LABEL: Record<string, string> = {
@@ -112,4 +115,54 @@ export function findTieredRow(
     }
   }
   return null
+}
+
+/** Present encoded model tiers through the current picker while sending the original model id. */
+export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
+  snapshot: SessionOptionDescriptor[]
+  tierModelId: string | null
+} {
+  const model = snapshot.find((option) => option.category === 'model')
+  if (
+    !model ||
+    model.kind.type !== 'select' ||
+    model.action ||
+    snapshot.some((option) => option.id === 'effort')
+  ) {
+    return { snapshot, tierModelId: null }
+  }
+  const rows = buildModelPickerRows(model.kind.choices)
+  const current = model.kind.currentValue
+  const active = findTieredRow(rows, current)
+  const tier = active?.tiers.find((choice) => choice.value === current)?.tier
+  const choices = rows.map((row) => {
+    if (row.kind === 'model') {
+      return row.choice
+    }
+    const choice =
+      row.tiers.find((choice) => choice.value === current || choice.tier === tier) ?? row.tiers[0]
+    return { ...choice, label: row.baseLabel }
+  })
+  const projected = snapshot.map((option) =>
+    option === model
+      ? {
+          ...model,
+          kind: { type: 'select' as const, currentValue: current, choices }
+        }
+      : option
+  )
+  if (active) {
+    projected.push({
+      ...model,
+      id: 'effort',
+      label: 'Effort',
+      category: 'thought_level',
+      kind: {
+        type: 'select',
+        currentValue: current,
+        choices: active.tiers.map((choice) => ({ value: choice.value, label: choice.tierLabel }))
+      }
+    })
+  }
+  return { snapshot: projected, tierModelId: active ? model.id : null }
 }

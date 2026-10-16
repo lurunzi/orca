@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { DropdownMenuCheckboxItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { translate } from '@/i18n/i18n'
-import type { RuntimeClientTarget } from '@/runtime/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type { StructuredSessionOrchestrationIdentityStatus } from '../../../../shared/structured-session-orchestration-identity'
 
 type NativeChatOrchestrationIdentityMenuItemProps = {
@@ -98,7 +98,7 @@ export function NativeChatOrchestrationIdentityMenuItem({
       >
         {translate('components.native-chat.orchestrationIdentity.label', 'Orchestration identity')}
         {unavailableLabel ? (
-          <span className="ml-auto text-[11px] text-muted-foreground">{unavailableLabel}</span>
+          <span className="ml-auto text-2xs text-muted-foreground">{unavailableLabel}</span>
         ) : null}
       </DropdownMenuCheckboxItem>
     </>

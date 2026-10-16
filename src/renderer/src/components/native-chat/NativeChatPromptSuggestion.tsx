@@ -13,7 +13,7 @@ export function NativeChatPromptSuggestion({
     <div className="pointer-events-none absolute inset-x-2 top-1 flex items-start gap-2">
       <span
         role="status"
-        className="min-w-0 flex-1 line-clamp-2 break-words text-sm text-muted-foreground/60"
+        className="min-w-0 flex-1 line-clamp-2 break-words text-sm text-chat-foreground-faint"
       >
         {text}
       </span>

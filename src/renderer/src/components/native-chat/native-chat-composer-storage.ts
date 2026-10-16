@@ -1,15 +1,14 @@
 import { z } from 'zod'
-import { NATIVE_CHAT_COMPOSER_SCOPE_CACHE_MAX } from './native-chat-composer-scope-cache'
+import {
+  parseStoredNativeChatComposerDraft,
+  type NativeChatComposerDraftStorage
+} from './native-chat-composer-draft-storage'
 
-type ComposerPart = 'draft' | 'attachments'
-const storedEntrySchema = z.object({ savedAt: z.number(), value: z.unknown() })
-let warnedAboutStorageFailure = false
+const entrySchema = z.object({ savedAt: z.number(), value: z.unknown() })
+const textSchema = z.object({ text: z.string(), document: z.unknown().optional() })
+const PREFIXES = ['orca.native-chat.draft.v1:', 'orca.native-chat.attachments.v1:'] as const
 
-function storagePrefix(part: ComposerPart): string {
-  return `orca.native-chat.${part}.v1:`
-}
-
-function getStorage(): Storage | null {
+function legacyStorage(): Storage | null {
   try {
     return globalThis.localStorage ?? null
   } catch {
@@ -17,79 +16,52 @@ function getStorage(): Storage | null {
   }
 }
 
-export function readNativeChatComposerStorage(part: ComposerPart, scopeKey: string): unknown {
-  try {
-    const raw = getStorage()?.getItem(storagePrefix(part) + scopeKey)
-    return raw ? storedEntrySchema.safeParse(JSON.parse(raw)).data?.value : undefined
-  } catch {
-    return undefined
+/** Move the fork's saved drafts into the current store before its first hydration. */
+export async function migrateNativeChatComposerStorage(
+  destination: NativeChatComposerDraftStorage
+): Promise<void> {
+  const storage = legacyStorage()
+  if (!storage) {
+    return
   }
-}
-
-function trimStoredScopes(storage: Storage, part: ComposerPart): void {
-  const prefix = storagePrefix(part)
-  const entries: { key: string; savedAt: number }[] = []
+  const scopes = new Set<string>()
   for (let index = 0; index < storage.length; index++) {
     const key = storage.key(index)
-    if (!key?.startsWith(prefix)) {
+    const prefix = PREFIXES.find((candidate) => key?.startsWith(candidate))
+    if (key && prefix) {
+      scopes.add(key.slice(prefix.length))
+    }
+  }
+  for (const scope of scopes) {
+    const keys = PREFIXES.map((prefix) => prefix + scope)
+    const raw = keys.map((key) => storage.getItem(key))
+    const entries = raw.map((value) => {
+      try {
+        return entrySchema.safeParse(JSON.parse(value ?? 'null')).data
+      } catch {
+        return undefined
+      }
+    })
+    const text = textSchema.safeParse(entries[0]?.value).data
+    const draft = parseStoredNativeChatComposerDraft({
+      text: text?.text ?? '',
+      document: text?.document,
+      images: Array.isArray(entries[1]?.value) ? entries[1].value : [],
+      savedAt: Math.max(entries[0]?.savedAt ?? 0, entries[1]?.savedAt ?? 0)
+    })
+    if (!draft || (!draft.text && draft.images.length === 0)) {
       continue
     }
-    let savedAt = 0
-    try {
-      const parsed = storedEntrySchema.safeParse(JSON.parse(storage.getItem(key) ?? 'null'))
-      savedAt = parsed.data?.savedAt ?? 0
-    } catch {
-      // Corrupt entries are discarded before valid drafts when the cache fills.
-    }
-    entries.push({ key, savedAt })
+    // An atomic update preserves a newer window's draft, including an empty tombstone.
+    await destination.update(
+      scope,
+      (current) => parseStoredNativeChatComposerDraft(current) ?? draft
+    )
+    keys.forEach((key, index) => {
+      // An older renderer may still be editing while migration commits.
+      if (storage.getItem(key) === raw[index]) {
+        storage.removeItem(key)
+      }
+    })
   }
-  entries.sort((a, b) => a.savedAt - b.savedAt)
-  for (const entry of entries.slice(0, -NATIVE_CHAT_COMPOSER_SCOPE_CACHE_MAX)) {
-    storage.removeItem(entry.key)
-  }
-}
-
-export function writeNativeChatComposerStorage(
-  part: ComposerPart,
-  scopeKey: string,
-  value: unknown
-): void {
-  const storage = getStorage()
-  if (!storage) {
-    return
-  }
-  const key = storagePrefix(part) + scopeKey
-  try {
-    if (value === undefined) {
-      storage.removeItem(key)
-      return
-    }
-    const isNewScope = storage.getItem(key) === null
-    // Per-pane keys prevent another window's save from replacing unrelated drafts.
-    storage.setItem(key, JSON.stringify({ savedAt: Date.now(), value }))
-    if (isNewScope) {
-      trimStoredScopes(storage, part)
-    }
-    warnedAboutStorageFailure = false
-  } catch {
-    // Retain the in-memory draft if browser storage is full or disabled.
-    if (!warnedAboutStorageFailure) {
-      warnedAboutStorageFailure = true
-      console.warn('Native chat draft could not be saved for restart')
-    }
-  }
-}
-
-export function clearNativeChatComposerStorageForTests(part: ComposerPart): void {
-  const storage = getStorage()
-  if (!storage) {
-    return
-  }
-  for (let index = storage.length - 1; index >= 0; index--) {
-    const key = storage.key(index)
-    if (key?.startsWith(storagePrefix(part))) {
-      storage.removeItem(key)
-    }
-  }
-  warnedAboutStorageFailure = false
 }

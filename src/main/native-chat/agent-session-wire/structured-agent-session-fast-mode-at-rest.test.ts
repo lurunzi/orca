@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from 'vitest'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session-mutation-envelope'
+import { claudeProviderHandle } from '../../../shared/agent-session-provider-handle-encoding'
 import {
   hostTestAttachParams,
   hostTestOperationId
@@ -27,7 +28,11 @@ it('refuses enabling Claude Fast at rest despite an older catalog claiming suppo
           { id: 'opus', label: 'Opus', isDefault: true, efforts: [], supportsFastMode: true }
         ],
         fastModeSupport: { supported: true }
-      })
+      }),
+      recordLiveListing: () => {},
+      prewarm: async () => {},
+      stop: () => {},
+      providerStarted: () => {}
     }
   })
   const providerSessionId = '819cf9f8-e43c-4ad7-b50f-54aa158a726a'
@@ -36,8 +41,8 @@ it('refuses enabling Claude Fast at rest despite an older catalog claiming suppo
     process: { hostId: 'local', pid: 4242, processStartTimeMs: 1, spawnToken },
     link: {
       linkId: 'claude-link',
-      handle: { provider: 'claude', sessionId: providerSessionId, leafUuid: null },
-      origin: 'created',
+      handle: claudeProviderHandle(providerSessionId, null),
+      origin: 'created' as const,
       mintedAtFence: fence,
       observedAt: 1
     }

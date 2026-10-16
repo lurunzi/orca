@@ -16,6 +16,8 @@ import {
   openCodeWslPath
 } from './session-scanner-opencode-wsl-client'
 import { findForeignSqliteReaderEntry } from '../foreign-sqlite-readers/foreign-sqlite-reader-entry-path'
+import { runOpenCodeSqliteScanRequest } from './session-scanner-opencode-sqlite-scan-scope'
+import { noteAiVaultScanDatabases, openAiVaultScanSource } from './ai-vault-scan-progress'
 
 // Why: resolve the built worker entry + own the process-wide shared client so
 // the client class stays free of Electron (require'd lazily here) and the
@@ -42,7 +44,9 @@ function defaultWorkerFactory(): Worker {
 let sharedClient: OpenCodeSqliteWorkerClient | null = null
 
 function getSharedClient(): OpenCodeSqliteWorkerClient {
-  sharedClient ??= new OpenCodeSqliteWorkerClient({ workerFactory: defaultWorkerFactory })
+  sharedClient ??= new OpenCodeSqliteWorkerClient({
+    workerFactory: defaultWorkerFactory
+  })
   return sharedClient
 }
 
@@ -159,6 +163,22 @@ export function captureZcodeSqliteSessionViaWorker(args: {
 async function listForHost(
   args: Parameters<OpenCodeSqliteWorkerClient['list']>[0]
 ): Promise<SessionFileCandidate[]> {
+  const agent = args.agent ?? 'opencode'
+  const closeSource = args.dbPaths.length > 0 ? openAiVaultScanSource(args.signal, agent) : null
+  try {
+    const candidates = await listCandidatesForHost(args)
+    // A database counts once it holds this agent's sessions: OpenCode 1 and 2 share one file.
+    const dbPaths = candidates.map((c) => splitOpenCodeSqliteCandidate(c.file.path, agent)?.dbPath)
+    noteAiVaultScanDatabases(args.signal, agent, new Set(dbPaths.filter(Boolean)).size)
+    return candidates
+  } finally {
+    closeSource?.()
+  }
+}
+
+async function listCandidatesForHost(
+  args: Parameters<OpenCodeSqliteWorkerClient['list']>[0]
+): Promise<SessionFileCandidate[]> {
   throwIfSignalAborted(args.signal)
   const native: string[] = []
   const groups = new Map<string, { distro: string; paths: Map<string, string> }>()
@@ -169,7 +189,10 @@ async function listForHost(
       continue
     }
     const key = wsl.distro.toLowerCase()
-    const group = groups.get(key) ?? { distro: wsl.distro, paths: new Map<string, string>() }
+    const group = groups.get(key) ?? {
+      distro: wsl.distro,
+      paths: new Map<string, string>()
+    }
     group.paths.set(wsl.linuxPath, path)
     groups.set(key, group)
   }
@@ -179,8 +202,19 @@ async function listForHost(
       const first = paths.values().next().value!
       const issues: AiVaultScanIssue[] = []
       try {
-        const client = await openCodeWslClient(distro, first, args.signal)
-        const result = await client.list({ ...args, dbPaths: [...paths.keys()], issues })
+        const result = await runOpenCodeSqliteScanRequest(
+          args.signal,
+          async (signal) => {
+            const client = await openCodeWslClient(distro, first, signal)
+            return client.list({
+              ...args,
+              signal,
+              dbPaths: [...paths.keys()],
+              issues
+            })
+          },
+          args.agent
+        )
         return result.flatMap((candidate) => {
           const parsed = splitOpenCodeSqliteCandidate(candidate.file.path, args.agent)
           const original = parsed && paths.get(parsed.dbPath)
@@ -207,7 +241,10 @@ async function listForHost(
         return []
       } finally {
         args.issues.push(
-          ...issues.map((issue) => ({ ...issue, path: paths.get(issue.path) ?? issue.path }))
+          ...issues.map((issue) => ({
+            ...issue,
+            path: paths.get(issue.path) ?? issue.path
+          }))
         )
       }
     })
@@ -223,8 +260,19 @@ async function parseForHost(
   if (!wsl) {
     return getSharedClient().parse(args)
   }
-  const client = await openCodeWslClient(wsl.distro, args.dbPath, args.signal)
-  const session = await client.parse({ ...args, dbPath: wsl.linuxPath, platform: 'linux' })
+  const session = await runOpenCodeSqliteScanRequest(
+    args.signal,
+    async (signal) => {
+      const client = await openCodeWslClient(wsl.distro, args.dbPath, signal)
+      return client.parse({
+        ...args,
+        signal,
+        dbPath: wsl.linuxPath,
+        platform: 'linux'
+      })
+    },
+    args.agent
+  )
   return mapOpenCodeWslSession(session, args.dbPath)
 }
 
@@ -235,9 +283,23 @@ async function captureForHost(
   if (!wsl) {
     return getSharedClient().capture(args)
   }
-  const client = await openCodeWslClient(wsl.distro, args.dbPath, args.signal)
-  const capture = await client.capture({ ...args, dbPath: wsl.linuxPath, platform: 'linux' })
-  return { ...capture, session: mapOpenCodeWslSession(capture.session, args.dbPath) }
+  const capture = await runOpenCodeSqliteScanRequest(
+    args.signal,
+    async (signal) => {
+      const client = await openCodeWslClient(wsl.distro, args.dbPath, signal)
+      return client.capture({
+        ...args,
+        signal,
+        dbPath: wsl.linuxPath,
+        platform: 'linux'
+      })
+    },
+    args.agent
+  )
+  return {
+    ...capture,
+    session: mapOpenCodeWslSession(capture.session, args.dbPath)
+  }
 }
 
 export async function readOpenCodeTranscriptPageViaWorker(
@@ -246,6 +308,7 @@ export async function readOpenCodeTranscriptPageViaWorker(
     sessionId: string
     limit: number
     beforeMessageRowId?: number
+    agent?: 'zcode'
   },
   signal?: AbortSignal
 ) {
@@ -270,6 +333,7 @@ export async function readOpenCodeTranscriptSignalViaWorker(
   args: {
     dbPath: string
     sessionId: string
+    agent?: 'zcode'
   },
   signal?: AbortSignal
 ) {

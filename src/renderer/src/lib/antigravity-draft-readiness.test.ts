@@ -25,11 +25,7 @@ vi.mock('@/runtime/runtime-rpc-client', async (importOriginal) => {
   return {
     ...actual,
     callRuntimeRpc: mocks.call,
-    runtimeEnvironmentSupportsCapability: mocks.remoteCapability,
-    getActiveRuntimeTarget: (settings?: { activeRuntimeEnvironmentId?: string }) =>
-      settings?.activeRuntimeEnvironmentId
-        ? { kind: 'environment', environmentId: settings.activeRuntimeEnvironmentId }
-        : { kind: 'local' }
+    runtimeEnvironmentSupportsCapability: mocks.remoteCapability
   }
 })
 
@@ -71,7 +67,7 @@ describe('Antigravity host-owned draft readiness', () => {
   })
 
   it('waits for the exact pane on its owning host', async () => {
-    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000, null)).resolves.toBe(true)
+    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000)).resolves.toBe(true)
     expect(mocks.call).toHaveBeenCalledWith(
       { kind: 'local' },
       'terminal.resolvePane',
@@ -86,13 +82,11 @@ describe('Antigravity host-owned draft readiness', () => {
     )
   })
 
-  it('routes a paired PTY to its owner even when another host is selected', async () => {
+  it('routes a paired PTY to its owner', async () => {
     const pty = 'remote:host-b@@term_test'
     mocks.state.ptyIdsByTabId.tab = [pty]
     mocks.state.terminalLayoutsByTabId.tab = { ptyIdsByLeafId: { [leaf]: pty } }
-    await expect(
-      waitForAntigravityDraftReady('tab', pty, 60000, { activeRuntimeEnvironmentId: 'host-a' })
-    ).resolves.toBe(true)
+    await expect(waitForAntigravityDraftReady('tab', pty, 60000)).resolves.toBe(true)
     expect(mocks.remoteCapability).toHaveBeenCalledWith('host-b', capability, 5000)
     expect(mocks.call).toHaveBeenCalledWith(
       { kind: 'environment', environmentId: 'host-b' },
@@ -106,9 +100,9 @@ describe('Antigravity host-owned draft readiness', () => {
   it('does not paste on old local or paired hosts', async () => {
     mocks.capabilities.mockResolvedValue([])
     mocks.remoteCapability.mockResolvedValue(false)
-    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000, null)).resolves.toBe(false)
+    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000)).resolves.toBe(false)
     await expect(
-      waitForAntigravityDraftReady('tab', 'pty', 60000, { activeRuntimeEnvironmentId: 'host-b' })
+      waitForAntigravityDraftReady('tab', 'remote:host-b@@term_test', 60000)
     ).resolves.toBe(false)
     expect(mocks.remoteCapability).toHaveBeenCalledWith('host-b', capability, 5000)
     expect(mocks.call).not.toHaveBeenCalled()
@@ -125,7 +119,7 @@ describe('Antigravity host-owned draft readiness', () => {
         ? { terminal: { handle: 'term_test', ptyId: 'pty' } }
         : { wait: { ...ready, ...change } }
     )
-    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000, null)).resolves.toBe(false)
+    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000)).resolves.toBe(false)
   })
 
   it('rejects a different agent that took over the same PTY while waiting', async () => {
@@ -142,12 +136,12 @@ describe('Antigravity host-owned draft readiness', () => {
             }
           }
     )
-    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000, null)).resolves.toBe(false)
+    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000)).resolves.toBe(false)
   })
 
   it('rejects loss of host contact', async () => {
     mocks.call.mockRejectedValue(new Error('transport disconnected'))
-    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000, null)).resolves.toBe(false)
+    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000)).resolves.toBe(false)
     expect(mocks.call).toHaveBeenCalledTimes(1)
   })
 
@@ -159,12 +153,12 @@ describe('Antigravity host-owned draft readiness', () => {
       mocks.state.ptyIdsByTabId.tab = ['replacement']
       return { wait: ready }
     })
-    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000, null)).resolves.toBe(false)
+    await expect(waitForAntigravityDraftReady('tab', 'pty', 60000)).resolves.toBe(false)
   })
 
   it('waits for publication of a newly bound pane without trusting the shell', async () => {
     mocks.call.mockRejectedValueOnce(new Error('terminal_not_found'))
-    const waiting = waitForAntigravityDraftReady('tab', 'pty', 60000, null)
+    const waiting = waitForAntigravityDraftReady('tab', 'pty', 60000)
     await vi.advanceTimersByTimeAsync(100)
     await expect(waiting).resolves.toBe(true)
     expect(mocks.call).toHaveBeenCalledTimes(4)

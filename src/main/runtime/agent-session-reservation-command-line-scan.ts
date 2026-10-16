@@ -9,6 +9,7 @@
  */
 
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import { agentSessionProviderHandleBelongsTo } from '../../shared/agent-session-provider-handle-encoding'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import { claudeSessionIdForOrcaSession } from '../claude/claude-structured-launch-resolution'
 import {
@@ -62,8 +63,8 @@ export function agentSessionReservationCommandLineIds(record: AgentSessionRecord
   if (record.provider === 'claude') {
     ids.add(claudeSessionIdForOrcaSession(record.sessionId))
     for (const link of record.providerHandleChain) {
-      if (link.handle.provider === 'claude') {
-        ids.add(link.handle.sessionId)
+      if (agentSessionProviderHandleBelongsTo(link.handle, 'claude')) {
+        ids.add(link.handle.nativeId)
       }
     }
   }

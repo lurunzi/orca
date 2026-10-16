@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import { codexProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
 import {
   agentSessionLeaseFixture,
   agentSessionRecordFixture
@@ -38,7 +39,7 @@ function codexReservation(): AgentSessionRecord {
         origin: 'created',
         mintedAtFence: 7,
         observedAt: 1_000,
-        handle: { provider: 'codex', threadId: THREAD }
+        handle: codexProviderHandle(THREAD)
       }
     ]
   })

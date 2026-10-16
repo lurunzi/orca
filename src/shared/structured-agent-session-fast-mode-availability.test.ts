@@ -17,8 +17,14 @@ it('keeps Claude Fast off and unavailable across cached and older-host answers',
   let state = applyStructuredAgentSessionModelCatalog(
     createStructuredAgentSessionOptionState('claude', seed),
     seed,
-    { origin: 'live-session', models, fetchedAt: 1, fastModeSupport: { supported: true } },
-    { namesDefault: true }
+    {
+      origin: 'live-session',
+      models,
+      fetchedAt: 1,
+      listingNamesConfiguredModel: true,
+      fastModeSupport: { supported: true }
+    },
+    { newLaunch: true }
   )
   const fast = () =>
     structuredAgentSessionOptionSnapshot(state).find((item) => item.id === 'fastMode')
@@ -134,8 +140,13 @@ it('keeps capability tied to the selected model through cached and live catalogs
   let state = applyStructuredAgentSessionModelCatalog(
     createStructuredAgentSessionOptionState('claude', seed),
     seed,
-    { origin: 'live-session', models: catalogModels, fetchedAt: 1 },
-    { namesDefault: true }
+    {
+      origin: 'live-session',
+      models: catalogModels,
+      fetchedAt: 1,
+      listingNamesConfiguredModel: true
+    },
+    { newLaunch: true }
   )
   const fast = () =>
     structuredAgentSessionOptionSnapshot(state).find((item) => item.id === 'fastMode')

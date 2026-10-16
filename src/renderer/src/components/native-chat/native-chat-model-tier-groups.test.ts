@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildModelPickerRows, findTieredRow } from './native-chat-model-tier-groups'
+import {
+  buildModelPickerRows,
+  findTieredRow,
+  projectModelTierOptions
+} from './native-chat-model-tier-groups'
+import type { SessionOptionDescriptor } from '../../../../shared/native-chat-session-options'
 
 // Shape of `agy models` output: each effort tier is its own model id.
 const AGY_CHOICES = [
@@ -11,6 +16,35 @@ const AGY_CHOICES = [
   { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Thinking)' },
   { value: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B (Medium)' }
 ]
+
+it('leaves a native effort option and its model values unchanged', () => {
+  const snapshot: SessionOptionDescriptor[] = [
+    {
+      id: 'model',
+      label: 'Model',
+      category: 'model',
+      valueSource: 'reported',
+      transport: 'agent-session',
+      settable: true,
+      kind: { type: 'select', currentValue: AGY_CHOICES[0].value, choices: AGY_CHOICES }
+    },
+    {
+      id: 'effort',
+      label: 'Effort',
+      category: 'thought_level',
+      valueSource: 'reported',
+      transport: 'agent-session',
+      settable: true,
+      kind: {
+        type: 'select',
+        currentValue: 'medium',
+        choices: [{ value: 'medium', label: 'Medium' }]
+      }
+    }
+  ]
+  expect(projectModelTierOptions(snapshot)).toEqual({ snapshot, tierModelId: null })
+  expect(projectModelTierOptions(snapshot).snapshot).toBe(snapshot)
+})
 
 describe('buildModelPickerRows', () => {
   it('groups tier siblings and keeps singles and non-tier suffixes whole', () => {

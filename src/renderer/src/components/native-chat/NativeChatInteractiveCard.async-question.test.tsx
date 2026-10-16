@@ -3,6 +3,7 @@
 import '@testing-library/jest-dom/vitest'
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NativeChatBlock, NativeChatMessage } from '../../../../shared/native-chat-types'
 import type { NativeChatInteractiveSend } from './use-native-chat-interactive-send'
@@ -24,6 +25,7 @@ const send = {
   sendAnswer: vi.fn<NativeChatInteractiveSend['sendAnswer']>(),
   sendMessage: vi.fn<NativeChatInteractiveSend['sendMessage']>(),
   sendRaw: vi.fn<NativeChatInteractiveSend['sendRaw']>(),
+  sendRawVerified: vi.fn<NativeChatInteractiveSend['sendRawVerified']>(),
   cancelPending: vi.fn<NativeChatInteractiveSend['cancelPending']>(),
   cancelAsk: vi.fn<NativeChatInteractiveSend['cancelAsk']>(),
   cancel: vi.fn<NativeChatInteractiveSend['cancel']>()
@@ -51,30 +53,20 @@ function asyncAsk(questions: unknown[]): NativeChatMessage[] {
 const WITH_OPTIONS = asyncAsk([{ title: QUESTION, options: ['Moved', 'Not moved'] }])
 
 // The pane derives the card with the hook, then renders it; test that pair end to end.
-function Pane({
-  messages,
-  onShowing
-}: {
-  messages: readonly NativeChatMessage[]
-  onShowing?: (showing: boolean) => void
-}): React.JSX.Element | null {
+function Pane({ messages }: { messages: readonly NativeChatMessage[] }): React.JSX.Element | null {
   const prompt = useNativeChatInteractivePromptCard({
     paneKey: 'tab-1:leaf-1',
     messages,
     transcriptSettled: true
   })
-  return (
-    <NativeChatInteractiveCard
-      card={prompt}
-      canSend
-      onShowingQuestionChange={onShowing}
-      send={send}
-    />
-  )
+  const [dismissed, setDismissed] = useState(false)
+  return prompt && !dismissed ? (
+    <NativeChatInteractiveCard card={prompt} send={send} onDismiss={() => setDismissed(true)} />
+  ) : null
 }
 
-function card(messages: readonly NativeChatMessage[], onShowing?: (showing: boolean) => void) {
-  return <Pane messages={messages} onShowing={onShowing} />
+function card(messages: readonly NativeChatMessage[]) {
+  return <Pane messages={messages} />
 }
 
 describe('NativeChatInteractiveCard async Codex questions', () => {
@@ -86,13 +78,11 @@ describe('NativeChatInteractiveCard async Codex questions', () => {
   afterEach(cleanup)
 
   it('renders an answerable card after the acknowledgement', () => {
-    const onShowing = vi.fn()
-    render(card(WITH_OPTIONS, onShowing))
+    render(card(WITH_OPTIONS))
 
     expect(screen.getByText(QUESTION)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Not moved/ })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Type your answer')).toBeInTheDocument()
-    expect(onShowing).toHaveBeenCalledWith(true)
   })
 
   it('answers with a follow-up chat message, never selector keystrokes', () => {

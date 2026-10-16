@@ -1,4 +1,3 @@
-import { hasFlag } from './agent-cli-flag-detection'
 import { removeAgentArgOption } from './agent-session-option-agent-args'
 import type { AgentSessionOptionCatalog, CatalogOption } from './agent-session-option-catalog-types'
 import { parseAntigravityModels } from './commit-message-model-parsers'
@@ -18,8 +17,7 @@ const ANTIGRAVITY_EFFORT: CatalogOption = {
   },
   apply: {
     launchArgs: (value) => ['--effort', String(value)],
-    agentArgsOverride: (tokens) => hasFlag(tokens, ['--effort']),
-    removeAgentArgs: (tokens) => removeAgentArgOption(tokens, ['--effort']),
+    removeAgentArgs: (tokens) => removeAgentArgOption('antigravity', tokens, ['--effort']),
     midSession: { kind: 'command', build: (value) => `/effort ${String(value)}` }
   }
 }
@@ -30,8 +28,7 @@ export const ANTIGRAVITY_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
   models: [],
   modelApply: {
     launchArgs: (value) => ['--model', String(value)],
-    agentArgsOverride: (tokens) => hasFlag(tokens, ['--model']),
-    removeAgentArgs: (tokens) => removeAgentArgOption(tokens, ['--model']),
+    removeAgentArgs: (tokens) => removeAgentArgOption('antigravity', tokens, ['--model']),
     // agy >= 1.2 switches by slug, so the chat lists models instead of opening the TUI picker.
     midSession: {
       kind: 'command',

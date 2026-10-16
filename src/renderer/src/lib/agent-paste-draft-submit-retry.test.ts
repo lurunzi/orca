@@ -105,12 +105,7 @@ describe('post-paste submit retry Enter', () => {
 
     await expect(promise).resolves.toBe(true)
     expect(enterWrites()).toHaveLength(2)
-    expect(testState.sendRuntimePtyInputVerified).toHaveBeenLastCalledWith(
-      {},
-      'pty-1',
-      '\r',
-      'launch'
-    )
+    expect(testState.sendRuntimePtyInputVerified).toHaveBeenLastCalledWith('pty-1', '\r', 'launch')
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -135,7 +130,7 @@ describe('post-paste submit retry Enter', () => {
   it('holds the PTY input transaction across the retry Enter', async () => {
     const writes: string[] = []
     testState.sendRuntimePtyInputVerified.mockImplementation(
-      async (_settings: unknown, _ptyId: string, data: string) => {
+      async (_ptyId: string, data: string) => {
         writes.push(data)
         return true
       }
@@ -146,7 +141,6 @@ describe('post-paste submit retry Enter', () => {
     await vi.advanceTimersByTimeAsync(POST_PASTE_SUBMIT_DELAY_MS)
     // Competing paste on the same PTY: it must not open a frame the retry can land in.
     const competing = sendAgentDraftPasteContent(
-      {},
       'pty-1',
       'y'.repeat(AGENT_DRAFT_PASTE_DIRECT_MAX_BYTES + 1),
       'driving'
@@ -189,7 +183,7 @@ describe('post-paste submit retry Enter', () => {
       await signalCodexComposerReady()
       await vi.advanceTimersByTimeAsync(POST_PASTE_SUBMIT_DELAY_MS + CODEX_SUBMIT_RETRY_DELAY_MS)
       await expect(promise).resolves.toBe(true)
-      expect(testState.sendRuntimePtyInputVerified.mock.calls.map((call) => call[2])).toEqual([
+      expect(testState.sendRuntimePtyInputVerified.mock.calls.map((call) => call[1])).toEqual([
         hostPlatform === 'win32' ? 'first\x1b\rsecond' : '\x1b[200~first\rsecond\x1b[201~',
         '\r',
         '\r'
@@ -214,7 +208,7 @@ describe('post-paste submit retry Enter', () => {
 })
 
 function enterWrites(): unknown[][] {
-  return testState.sendRuntimePtyInputVerified.mock.calls.filter((call) => call[2] === '\r')
+  return testState.sendRuntimePtyInputVerified.mock.calls.filter((call) => call[1] === '\r')
 }
 
 function startCodexSubmit(): Promise<boolean> {

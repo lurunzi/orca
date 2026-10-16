@@ -1,5 +1,5 @@
 import type { CodexAppServerConnection } from './codex-app-server-connection-types'
-import { isAppServerRecord } from './codex-app-server-jsonl'
+import { isProviderRecord as isAppServerRecord } from '../provider-process/provider-json-record'
 import { parseCliVersion } from '../../shared/app-version'
 
 const HANDSHAKE_TIMEOUT_MS = 15_000

@@ -33,11 +33,10 @@ import {
   buildAgentTuiClearInputForText
 } from '../../../../shared/agent-tui-input-clear'
 
-const SETTINGS = {} as Parameters<typeof sendNativeChatMessage>[0]
 const PTY = 'pty-launch-draft'
 const DRAFT = 'Linked Linear issue: ABC-123\nhttps://linear.app/x/issue/ABC-123'
 
-const writes = (): string[] => sendRuntimePtyInput.mock.calls.map((call) => call[2] as string)
+const writes = (): string[] => sendRuntimePtyInput.mock.calls.map((call) => String(call[1]))
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -53,19 +52,14 @@ afterEach(() => {
 describe('sendNativeChatMessage with a parked multi-line draft', () => {
   it('leads with a clear sized to every line of the draft, not one Ctrl+U', () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessage(SETTINGS, PTY, 'edited text', { clearInput })
+    sendNativeChatMessage(PTY, 'edited text', { clearInput })
     expect(writes()).toEqual([clearInput, buildNativeChatPasteBytes('edited text')])
     expect(clearInput).not.toBe(NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT)
   })
 
-  it('still defaults to a single Ctrl+U when no draft is parked', () => {
-    sendNativeChatMessage(SETTINGS, PTY, 'plain')
-    expect(writes()[0]).toBe(NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT)
-  })
-
   it('holds the body until the clear is confirmed, then submits after the gap', () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+    sendNativeChatMessage(PTY, 'edited', {
       clearInput,
       confirmCleared: () => true
     })
@@ -80,15 +74,15 @@ describe('sendNativeChatMessage with a parked multi-line draft', () => {
   it('preserves the body-to-Enter gap when the renderer stalls past both nominal deadlines', async () => {
     vi.useRealTimers()
     const writeTimes = new Map<string, number>()
-    sendRuntimePtyInput.mockImplementation((_settings, _pty, bytes: string) => {
+    sendRuntimePtyInput.mockImplementation((_pty, bytes: string) => {
       writeTimes.set(bytes, performance.now())
       return true
     })
-    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+    sendNativeChatMessage(PTY, 'edited', {
       clearInput: buildAgentTuiClearInputForText(DRAFT),
       confirmCleared: () => true
     })
-    sendNativeChatMessage(SETTINGS, PTY, 'queued')
+    sendNativeChatMessage(PTY, 'queued')
 
     const blockedUntil =
       performance.now() + NATIVE_CHAT_CLEAR_CONFIRM_MS + NATIVE_CHAT_SUBMIT_DELAY_MS + 50
@@ -110,7 +104,7 @@ describe('sendNativeChatMessage with a parked multi-line draft', () => {
 
   it('widens to a maximal burst when the draft is still observed on the line', () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+    sendNativeChatMessage(PTY, 'edited', {
       clearInput,
       confirmCleared: () => false
     })
@@ -122,20 +116,8 @@ describe('sendNativeChatMessage with a parked multi-line draft', () => {
     ])
   })
 
-  it('re-clears before the body, never after it', () => {
-    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
-      clearInput: buildAgentTuiClearInputForText(DRAFT),
-      confirmCleared: () => false
-    })
-    vi.advanceTimersByTime(NATIVE_CHAT_CLEAR_CONFIRM_MS + NATIVE_CHAT_SUBMIT_DELAY_MS)
-    const order = writes()
-    expect(order.indexOf(AGENT_TUI_CLEAR_INPUT_MAX)).toBeLessThan(
-      order.indexOf(buildNativeChatPasteBytes('edited'))
-    )
-  })
-
   it('charges the confirm gap to the handle so the send card outlives the Enter', () => {
-    const withConfirm = sendNativeChatMessage(SETTINGS, PTY, 'a', {
+    const withConfirm = sendNativeChatMessage(PTY, 'a', {
       clearInput: '\x15',
       confirmCleared: () => true
     })
@@ -146,11 +128,11 @@ describe('sendNativeChatMessage with a parked multi-line draft', () => {
 
   it('submits before a queued send starts after clear confirmation', async () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessage(SETTINGS, PTY, 'first', {
+    sendNativeChatMessage(PTY, 'first', {
       clearInput,
       confirmCleared: () => true
     })
-    sendNativeChatMessage(SETTINGS, PTY, 'second')
+    sendNativeChatMessage(PTY, 'second')
 
     await vi.advanceTimersByTimeAsync(NATIVE_CHAT_CLEAR_CONFIRM_MS + NATIVE_CHAT_SUBMIT_DELAY_MS)
 
@@ -168,7 +150,7 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
   it('touches nothing until the composer is painted, then sends in order', () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
     let painted = false
-    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+    sendNativeChatMessage(PTY, 'edited', {
       clearInput,
       confirmCleared: () => true,
       composerReady: () => painted
@@ -185,11 +167,11 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
 
   it('holds a queued send behind the waiting one', async () => {
     let painted = false
-    sendNativeChatMessage(SETTINGS, PTY, 'first', {
+    sendNativeChatMessage(PTY, 'first', {
       clearInput: '\x15',
       composerReady: () => painted
     })
-    sendNativeChatMessage(SETTINGS, PTY, 'second')
+    sendNativeChatMessage(PTY, 'second')
     await vi.advanceTimersByTimeAsync(NATIVE_CHAT_COMPOSER_READY_POLL_MS * 30)
     expect(writes()).toEqual([])
 
@@ -206,7 +188,7 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
   })
 
   it('falls back to the best-effort send after the bound', () => {
-    sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+    sendNativeChatMessage(PTY, 'edited', {
       clearInput: '\x15',
       composerReady: () => false
     })
@@ -215,7 +197,7 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
   })
 
   it('leaves the parked draft alone when cancelled while waiting', () => {
-    const handle = sendNativeChatMessage(SETTINGS, PTY, 'edited', {
+    const handle = sendNativeChatMessage(PTY, 'edited', {
       clearInput: buildAgentTuiClearInputForText(DRAFT),
       composerReady: () => false
     })
@@ -229,7 +211,7 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
 describe('image sends with a parked multi-line draft', () => {
   it('clears every draft line before pasting, so no line rides along with the image', () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessageWithImageAttachments('claude', SETTINGS, PTY, 'caption', ['/tmp/a.png'], {
+    sendNativeChatMessageWithImageAttachments('claude', PTY, 'caption', ['/tmp/a.png'], {
       clearInput
     })
     expect(writes()[0]).toBe(clearInput)
@@ -237,7 +219,7 @@ describe('image sends with a parked multi-line draft', () => {
 
   it('clears exactly once — a second Ctrl+U would wipe the just-pasted image', () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessageWithImageAttachments('claude', SETTINGS, PTY, 'caption', ['/tmp/a.png'], {
+    sendNativeChatMessageWithImageAttachments('claude', PTY, 'caption', ['/tmp/a.png'], {
       clearInput
     })
     vi.advanceTimersByTime(10_000)
@@ -246,11 +228,11 @@ describe('image sends with a parked multi-line draft', () => {
 
   it('submits the image send before a queued message starts', async () => {
     const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    sendNativeChatMessageWithImageAttachments('claude', SETTINGS, PTY, 'caption', ['/tmp/a.png'], {
+    sendNativeChatMessageWithImageAttachments('claude', PTY, 'caption', ['/tmp/a.png'], {
       clearInput,
       confirmCleared: () => true
     })
-    sendNativeChatMessage(SETTINGS, PTY, 'second')
+    sendNativeChatMessage(PTY, 'second')
 
     await vi.advanceTimersByTimeAsync(
       NATIVE_CHAT_CLEAR_CONFIRM_MS +

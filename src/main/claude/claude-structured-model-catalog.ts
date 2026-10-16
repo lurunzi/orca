@@ -49,6 +49,8 @@ export function listedModels(value: unknown): ListedModel[] {
     const description = text(row.description)
     const supportsFastMode =
       typeof row.supportsFastMode === 'boolean' ? row.supportsFastMode : undefined
+    const supportsAutoMode =
+      typeof row.supportsAutoMode === 'boolean' ? row.supportsAutoMode : undefined
     return [
       {
         id,
@@ -57,6 +59,7 @@ export function listedModels(value: unknown): ListedModel[] {
         isDefault: resolvedModel !== null && resolvedModel === defaultResolvedModel,
         efforts: listedEfforts(row),
         ...(supportsFastMode !== undefined ? { supportsFastMode } : {}),
+        ...(supportsAutoMode !== undefined ? { supportsAutoMode } : {}),
         resolvedModel
       }
     ]

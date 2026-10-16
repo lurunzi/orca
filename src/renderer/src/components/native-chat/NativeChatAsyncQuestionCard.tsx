@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
 import { nativeChatAskDismissKey, type AskPrompt } from '../../../../shared/native-chat-ask'
 import {
   extractPendingAsyncAsk,
@@ -56,5 +56,27 @@ export function usePendingAsyncAsk(messages: readonly NativeChatMessage[]): {
   return {
     prompt: key !== null && key !== dismissedKey ? pending : null,
     dismiss: () => setDismissedKey(key)
+  }
+}
+
+/** A structured chat's pending async question, and its card while no blocking prompt is shown. */
+export function useStructuredChatAsyncAsk(
+  controller: {
+    messages: readonly NativeChatMessage[]
+    send: (text: string, attachments: []) => boolean | 'queued'
+  },
+  blockingPrompt: boolean
+): { prompt: AskPrompt | null; card: ReactNode } {
+  const asyncAsk = usePendingAsyncAsk(controller.messages)
+  const prompt = blockingPrompt ? null : asyncAsk.prompt
+  return {
+    prompt,
+    card: prompt ? (
+      <NativeChatAsyncQuestionCard
+        prompt={prompt}
+        sendMessage={(text) => controller.send(text, []) !== false}
+        onDone={asyncAsk.dismiss}
+      />
+    ) : null
   }
 }

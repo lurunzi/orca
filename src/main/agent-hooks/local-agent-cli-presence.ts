@@ -12,6 +12,10 @@ import type { ManagedAgentHookTarget } from '../../shared/managed-agent-hook-tar
 import type { GlobalSettings } from '../../shared/global-settings-types'
 import { hydrateShellPath, mergePathSegments } from '../startup/hydrate-shell-path'
 import { mergePersistedWindowsPathAsync, resolvePathEnvKey } from '../pty/windows-environment-path'
+import {
+  isUnderWindowsDriveMount,
+  readGuestWindowsDriveMounts
+} from '../ipc/wsl-guest-windows-drive-path'
 
 export type LocalCliPresenceState = 'found' | 'missing' | 'unknown'
 export type LocalCliPresenceByAgent = Partial<
@@ -38,6 +42,8 @@ type DetectOptions = {
   hydratePath?: () => Promise<HydrationResult>
   shouldHydrateShellPath?: boolean
   homeDir?: string
+  /** Windows drive mounts to skip in a WSL guest; defaults to this process's own. */
+  guestWindowsDriveMounts?: readonly string[]
 }
 
 type CommandOverrideSettings = Partial<Pick<GlobalSettings, 'agentCmdOverrides'>> | null | undefined
@@ -136,11 +142,17 @@ function isPlatformAbsolutePath(candidate: string, platform: NodeJS.Platform): b
 }
 
 async function maybeHydrateShellPath(options: DetectOptions): Promise<void> {
-  if (!options.shouldHydrateShellPath) {
-    return
+  if (options.shouldHydrateShellPath) {
+    await hydrateAgentCliShellPath(options.hydratePath)
   }
+}
+
+/** Merges the login shell's PATH into this process once (cached), as CLI detection does. */
+export async function hydrateAgentCliShellPath(
+  hydratePath: () => Promise<HydrationResult> = hydrateShellPath
+): Promise<void> {
   try {
-    const result = await (options.hydratePath ?? hydrateShellPath)()
+    const result = await hydratePath()
     if (result.ok) {
       mergePathSegments(result.segments)
     }
@@ -163,10 +175,11 @@ export async function detectLocalManagedAgentCliPresence(
     // Newly installed CLIs can be on the registry PATH before this process inherits it.
     await mergePersistedWindowsPathAsync(env, { forceRefresh: true })
   }
+  const guestMounts = options.guestWindowsDriveMounts ?? readGuestWindowsDriveMounts()
   const dirs = pathEntries(
     options.pathEnv ?? env[resolvePathEnvKey(env, platform)] ?? '',
     delimiter
-  )
+  ).filter((dir) => !isUnderWindowsDriveMount(dir, guestMounts))
   const homeDir = options.homeDir ?? homedir()
   const fileProbe = options.fileProbe ?? {
     isExecutableFile: (filePath: string) => isExecutableFile(filePath, platform)

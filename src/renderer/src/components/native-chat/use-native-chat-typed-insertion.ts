@@ -3,11 +3,7 @@ import {
   type NativeChatComposerInput
 } from './native-chat-composer-input'
 import { useCallback, type Dispatch, type RefObject, type SetStateAction } from 'react'
-import {
-  applyMentionSuggestion,
-  type ComposerAutocomplete,
-  type HistoryState
-} from './native-chat-composer-state'
+import { appendReturnedDraftText } from '../../../../shared/returned-draft-text'
 
 /** Imperative text insertion and focus for the composer textarea, used by the
  *  paste pipeline and the composer's imperative handle. */
@@ -17,37 +13,62 @@ export function useNativeChatTypedInsertion(args: {
   draft: string
   setDraft: (value: string) => void
   setCaret: Dispatch<SetStateAction<number>>
-  setHistory: Dispatch<SetStateAction<HistoryState>>
   setActiveSuggestion: Dispatch<SetStateAction<number>>
 }): {
   insertTypedText: (text: string) => boolean
+  appendText: (text: string) => void
+  acceptsText: () => boolean
   insertPastedText: (text: string) => boolean
   focus: () => boolean
   contains: (node: Node | null) => boolean
 } {
-  const { textareaRef, caret, draft, setDraft, setCaret, setHistory, setActiveSuggestion } = args
+  const { textareaRef, caret, draft, setDraft, setCaret, setActiveSuggestion } = args
 
-  const insertTypedText = useCallback(
-    (text: string): boolean => {
-      const textarea = textareaRef.current
-      if (!textarea || textarea.disabled) {
-        return false
-      }
-      const selectionStart = textarea.selectionStart ?? caret
-      const selectionEnd = textarea.selectionEnd ?? selectionStart
-      const next = `${draft.slice(0, selectionStart)}${text}${draft.slice(selectionEnd)}`
-      const nextCaret = selectionStart + text.length
+  const usableInput = useCallback((): NativeChatComposerInput | null => {
+    const textarea = textareaRef.current
+    return textarea && !textarea.disabled ? textarea : null
+  }, [textareaRef])
+
+  const showDraft = useCallback(
+    (textarea: NativeChatComposerInput, next: string, nextCaret: number): void => {
       textarea.focus()
       setDraft(next)
       setCaret(nextCaret)
-      setHistory((prev) => ({ entries: prev.entries, index: null }))
       setActiveSuggestion(0)
       requestAnimationFrame(() => {
         textarea.setSelectionRange(nextCaret, nextCaret)
       })
+    },
+    [setActiveSuggestion, setCaret, setDraft]
+  )
+
+  const insertTypedText = useCallback(
+    (text: string): boolean => {
+      const textarea = usableInput()
+      if (!textarea) {
+        return false
+      }
+      const selectionStart = textarea.selectionStart ?? caret
+      const selectionEnd = textarea.selectionEnd ?? selectionStart
+      showDraft(
+        textarea,
+        `${draft.slice(0, selectionStart)}${text}${draft.slice(selectionEnd)}`,
+        selectionStart + text.length
+      )
       return true
     },
-    [caret, draft, setActiveSuggestion, setCaret, setDraft, setHistory, textareaRef]
+    [caret, draft, showDraft, usableInput]
+  )
+
+  const appendText = useCallback(
+    (text: string): void => {
+      const textarea = usableInput()
+      if (textarea) {
+        const next = appendReturnedDraftText(draft, text)
+        showDraft(textarea, next, next.length)
+      }
+    },
+    [draft, showDraft, usableInput]
   )
 
   // Reads the live input when a delayed clipboard read settles.
@@ -56,59 +77,49 @@ export function useNativeChatTypedInsertion(args: {
     [textareaRef]
   )
 
+  const acceptsText = useCallback((): boolean => usableInput() !== null, [usableInput])
+
   const focus = useCallback((): boolean => {
-    const textarea = textareaRef.current
-    if (!textarea || textarea.disabled) {
-      return false
-    }
-    textarea.focus()
-    return true
-  }, [textareaRef])
+    const textarea = usableInput()
+    textarea?.focus()
+    return textarea !== null
+  }, [usableInput])
 
   const contains = useCallback(
     (node: Node | null): boolean => textareaRef.current?.contains?.(node) === true,
     [textareaRef]
   )
 
-  return { insertTypedText, insertPastedText, focus, contains }
+  return { insertTypedText, appendText, acceptsText, insertPastedText, focus, contains }
 }
 
-/** Draft, caret and `@mention` handlers for the composer field; kept here so the
- *  composer stays within its line budget. Also returns typed insertion for the
- *  prompt-suggestion accept path, which the imperative handle does not expose. */
-export function useNativeChatComposerTextHandlers(
-  args: Parameters<typeof useNativeChatTypedInsertion>[0] & {
-    onDraftOrCaretChange: (value: string, caret: number) => void
-  }
-): {
-  insertTypedText: (text: string) => boolean
-  handleDraftChange: (value: string, input: NativeChatComposerInput) => void
-  handleSelect: (input: NativeChatComposerInput) => void
-  acceptMention: (autocomplete: ComposerAutocomplete) => void
+/** The field's draft and caret handlers; kept here so the composer stays within its line budget. */
+export function useNativeChatComposerTextHandlers(args: {
+  setDraft: (value: string) => void
+  setCaret: Dispatch<SetStateAction<number>>
+  setActiveSuggestion: Dispatch<SetStateAction<number>>
+  onDraftOrCaretChange: (value: string, caret: number) => void
+}): {
+  handleDraftChange: (value: string, element: NativeChatComposerInput) => void
+  handleSelect: (element: NativeChatComposerInput) => void
 } {
-  const { textareaRef, caret, draft, setDraft, setCaret, setHistory, setActiveSuggestion } = args
-  const { insertTypedText } = useNativeChatTypedInsertion(args)
-  const handleSelect = (input: NativeChatComposerInput): void => {
-    const position = input.selectionStart ?? input.value.length
-    setCaret(position)
-    args.onDraftOrCaretChange(input.value, position)
+  const { setDraft, setCaret, setActiveSuggestion, onDraftOrCaretChange } = args
+  const handleDraftChange = useCallback(
+    (value: string, element: NativeChatComposerInput) => {
+      const nextCaret = element.selectionStart ?? value.length
+      setDraft(value)
+      setCaret(nextCaret)
+      onDraftOrCaretChange(value, nextCaret)
+      setActiveSuggestion(0)
+    },
+    [onDraftOrCaretChange, setActiveSuggestion, setCaret, setDraft]
+  )
+  const handleSelect = (element: NativeChatComposerInput): void => {
+    const value = element.value
+    const nextCaret = element.selectionStart ?? value.length
+    setCaret(nextCaret)
+    onDraftOrCaretChange(value, nextCaret)
     setActiveSuggestion(0)
   }
-  const handleDraftChange = (value: string, input: NativeChatComposerInput): void => {
-    setDraft(value)
-    setHistory((previous) => ({ entries: previous.entries, index: null }))
-    handleSelect(input)
-  }
-  const acceptMention = (autocomplete: ComposerAutocomplete): void => {
-    if (autocomplete.mode !== 'mention') {
-      return
-    }
-    const result = applyMentionSuggestion(draft, caret, autocomplete.query)
-    setDraft(result.draft)
-    setCaret(result.caret)
-    const input = textareaRef.current
-    input?.focus()
-    requestAnimationFrame(() => input?.setSelectionRange(result.caret, result.caret))
-  }
-  return { insertTypedText, handleDraftChange, handleSelect, acceptMention }
+  return { handleDraftChange, handleSelect }
 }

@@ -1,4 +1,5 @@
-import { parseRetryAfterMs } from './rate-limit-retry-after'
+import { classifyThrownUsageRequestError } from './usage-request-failure-kind'
+import { parseUsageRetryAfterMs } from './usage-retry-after'
 
 export class OAuthUsageError extends Error {
   constructor(
@@ -11,6 +12,16 @@ export class OAuthUsageError extends Error {
   }
 }
 
+/** The usage request threw before a usable body: a transport failure or malformed JSON. */
+export class ClaudeUsageRequestError extends Error {
+  readonly failureKind: 'network' | 'parse'
+
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause })
+    this.failureKind = classifyThrownUsageRequestError(cause)
+  }
+}
+
 export async function createOAuthUsageError(res: Response): Promise<OAuthUsageError> {
   return new OAuthUsageError(
     await describeOAuthUsageError(res),
@@ -18,7 +29,7 @@ export async function createOAuthUsageError(res: Response): Promise<OAuthUsageEr
     // Why: auth/rate-limit responses are already the user-visible usage API
     // answer. Falling through to /usage can spawn Claude Code needlessly.
     res.status === 401 || res.status === 403 || res.status === 429,
-    res.status === 429 ? parseRetryAfterMs(res.headers.get('retry-after')) : null
+    res.status === 429 ? parseUsageRetryAfterMs(res.headers.get('retry-after')) : null
   )
 }
 

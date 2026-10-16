@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import './native-chat-picker-menu-test-fixture'
 import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
@@ -8,7 +8,7 @@ import type { SessionOptionDescriptor } from '../../../../shared/native-chat-ses
 
 const surface = {
   getSnapshot: () => [],
-  setOption: vi.fn(),
+  setOption: vi.fn().mockResolvedValue(undefined),
   invokeAction: vi.fn(),
   subscribe: () => () => {}
 }
@@ -60,13 +60,14 @@ describe('Model picker labels', () => {
       render(
         <NativeChatSessionOptionPickers surface={surface} snapshot={[model]} isWorking={false} />
       )
-      expect(screen.getByRole('button', { name: 'Model Gemini Flash' }).textContent).toBe(
-        'Gemini Flash'
-      )
-      expect(screen.getByRole('radio', { name: 'Gemini Flash' })).toBeTruthy()
-      expect(screen.getByRole('radio', { name: 'Claude Opus' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: 'Effort High' })).toBeTruthy()
+      const picker = screen.getByRole('button', { name: 'Model Gemini Flash, Effort High' })
+      fireEvent.click(picker)
+      expect(screen.getByRole('option', { name: 'Gemini Flash' })).toBeTruthy()
+      expect(screen.getByRole('option', { name: 'Claude Opus' })).toBeTruthy()
+      expect(screen.getByRole('radio', { name: 'High' })).toBeTruthy()
       expect(screen.queryByText(/%|7d|5h/)).toBeNull()
+      fireEvent.click(screen.getByRole('radio', { name: 'Low' }))
+      expect(surface.setOption).toHaveBeenLastCalledWith('model', 'gemini-low')
     }
   )
 })

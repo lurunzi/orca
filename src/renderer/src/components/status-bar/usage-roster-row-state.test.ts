@@ -37,7 +37,7 @@ describe('getUsageRosterRowState', () => {
         }),
         false
       )
-    ).toEqual({ kind: 'error', statusLabel: 'Usage unavailable' })
+    ).toEqual({ kind: 'error', statusLabel: 'Sign-in expired' })
     expect(
       getUsageRosterRowState(
         provider({

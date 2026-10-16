@@ -1,4 +1,3 @@
-import { agentModelCatalogSessionAccess } from '../native-chat/agent-model-catalog/agent-model-catalog-fingerprint'
 import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
 import type {
   ClaudeSession,
@@ -8,13 +7,8 @@ import type {
 export function configureClaudeSessionAccountContext(
   session: ClaudeSession,
   launch: ClaudeStructuredLaunch,
-  deps: Pick<ClaudeStructuredSessionAdapterDeps, 'modelCatalog' | 'readFastModeAccountSupport'>
+  deps: Pick<ClaudeStructuredSessionAdapterDeps, 'readFastModeAccountSupport'>
 ): void {
-  session.catalogAccess = agentModelCatalogSessionAccess(
-    deps.modelCatalog,
-    'claude',
-    launch.claudeConfigDir
-  )
   const read = deps.readFastModeAccountSupport
   if (read) {
     session.readFastModeAccountSupport = async (settings, timeoutMs) =>

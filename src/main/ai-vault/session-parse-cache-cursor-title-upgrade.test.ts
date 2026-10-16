@@ -72,7 +72,7 @@ it('replaces a persisted Cursor envelope title even when its transcript has not 
   expect(stats.fullParses).toBe(1)
   expect(stats.reused).toBe(0)
 
-  scheduleSessionParseCachePersist(stats)
+  scheduleSessionParseCachePersist()
   await flushSessionParseCachePersist()
   resetSessionParseCacheForTests()
   resetSessionParseCachePersistenceForTests()

@@ -65,9 +65,9 @@ describe('Cursor compact usage headline', () => {
           renderToStaticMarkup(
             <ProviderSegment p={p} compact={true} mode={mode} display="used" now={now} />
           )
-        expect(render(0)).toContain('22% used 1m')
-        expect(render(60_000)).toContain('22% used 0m')
-        expect(render(90_000)).toContain('22% used now')
+        expect(render(0)).toContain('22% 1m')
+        expect(render(60_000)).toContain('22% 0m')
+        expect(render(90_000)).toContain('22% now')
       }
     }
   )
@@ -78,7 +78,7 @@ describe('Cursor compact usage headline', () => {
     const segment = renderToStaticMarkup(
       <ProviderSegment p={p} compact={false} mode="compact" display="used" />
     )
-    expect(segment).toContain('19% used 1m')
+    expect(segment).toContain('19% 1m')
     expect(segment).not.toContain('Cursor Models')
   })
 
@@ -89,8 +89,7 @@ describe('Cursor compact usage headline', () => {
       const segment = renderToStaticMarkup(
         <ProviderSegment p={p} compact={false} mode="compact" display={display} />
       )
-      expect(segment).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} 30d`)
-      expect(segment).not.toContain('Cursor Models')
+      expect(segment).toContain(`>${shown}% 30d<`)
       const row = renderToStaticMarkup(
         <UsageRow
           p={p}
@@ -114,13 +113,22 @@ describe('Cursor compact usage headline', () => {
       expect(getUsageTone(p)).toBe('urgent')
       expect(getTightestUsageSection(p)?.label).toBe(bucket)
       expect(getUsageHeadlineSection(p)?.label).toBe('30d')
-      const overflow = renderToStaticMarkup(<UsageOverflowChip hidden={[p]} display="used" />)
+      const overflow = renderToStaticMarkup(
+        <UsageOverflowChip hidden={[p]} providerCount={1} display="used" />
+      )
       expect(overflow).toContain('data-tone="urgent"')
+      // The "+N" title is read on its own, so it keeps the sentence label.
+      expect(overflow).toMatch(/title="[^"]*% used"/)
       expect(
         pickCollapsedUsageChips(
           [
-            { provider: 'codex', width: 60, urgent: false },
-            { provider: 'cursor', width: 60, urgent: getUsageTone(p) === 'urgent' }
+            { provider: 'codex', width: 60, urgent: false, percentage: true },
+            {
+              provider: 'cursor',
+              width: 60,
+              urgent: getUsageTone(p) === 'urgent',
+              percentage: true
+            }
           ],
           20,
           10,
@@ -169,9 +177,8 @@ describe('Cursor compact usage headline', () => {
     const detailed = renderToStaticMarkup(
       <ProviderSegment p={cursorPools(7, 18)} compact={false} mode="verbose" display="used" />
     )
-    expect(detailed).toContain('7% used 30d')
-    expect(detailed).not.toContain('Cursor Models')
-    expect(detailed).toContain('Other Models 18% used')
+    expect(detailed).toContain('>7% 30d<')
+    expect(detailed).toContain('>Other Models 18%<')
     const legacy: ProviderRateLimits = { ...cursorPools(0, 0), buckets: [], monthly: windowAt(44) }
     expect(getUsageHeadlineSection(legacy)?.window.usedPercent).toBe(44)
     const noPrimary: ProviderRateLimits = {

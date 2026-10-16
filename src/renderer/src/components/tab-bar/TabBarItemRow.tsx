@@ -2,16 +2,17 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { shallow } from 'zustand/shallow'
 import type { GitFileStatus } from '../../../../shared/git-status-types'
-import type { TerminalTab } from '../../../../shared/terminal-tab-types'
-import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import type { OpenFile } from '../../store/slices/editor'
 import SortableTab from './SortableTab'
+import TerminalSortableTab from './TerminalSortableTab'
 import EditorFileTab from './EditorFileTab'
 import BrowserTab from './BrowserTab'
 import type { DropIndicator } from './drop-indicator'
 import type { TabDragItemData } from '../tab-group/useTabDragSplit'
 import { getTabDragLabel, resolveTerminalItemTab, type TabBarItem } from './tab-bar-item-model'
 import type { TabBarItemActions } from './use-tab-bar-item-actions'
+import { useStructuredChatTabConversationName } from '@/runtime/structured-conversation-name'
+import { agentTypeToIconAgent } from '@/lib/agent-status'
 
 // Why only values and `actions`: anything a tab draws must be a compared prop, or a skipped render shows it stale.
 type TabBarItemRowProps = {
@@ -57,6 +58,9 @@ function TabBarItemRow({
 }: TabBarItemRowProps): React.JSX.Element {
   // Why: the tabs' labels come from `translate()`, which a skipped render would leave in the old language.
   useTranslation()
+  const conversationName = useStructuredChatTabConversationName(
+    item.type === 'agent-session' ? item.data : undefined
+  )
   const dragData: TabDragItemData = {
     kind: 'tab',
     worktreeId,
@@ -92,7 +96,7 @@ function TabBarItemRow({
   }
   if (item.type === 'terminal') {
     return (
-      <SortableTab
+      <TerminalSortableTab
         {...sortableTabProps}
         tab={resolveTerminalItemTab(item.data, generatedTabTitlesEnabled)}
         canToggleViewMode={canToggleViewMode}
@@ -105,29 +109,24 @@ function TabBarItemRow({
     )
   }
   if (item.type === 'agent-session') {
-    const sessionAgent = isTuiAgent(item.data.agentSessionAgent)
-      ? item.data.agentSessionAgent
-      : undefined
-    const structuredTab: TerminalTab = {
-      id: item.id,
-      ptyId: null,
-      worktreeId,
-      title: getTabDragLabel(item, generatedTabTitlesEnabled),
-      customTitle: item.data.customLabel,
-      color: item.data.color,
-      sortOrder: item.data.sortOrder,
-      createdAt: item.data.createdAt,
-      ...(sessionAgent ? { launchAgent: sessionAgent } : {})
-    }
+    const nativeChat = { sessionId: item.data.entityId, agent: item.data.agentSessionAgent }
     return (
       <SortableTab
         {...sortableTabProps}
-        tab={structuredTab}
+        tab={{
+          id: item.id,
+          worktreeId,
+          title: conversationName ?? getTabDragLabel(item, generatedTabTitlesEnabled),
+          customTitle: item.data.customLabel,
+          color: item.data.color
+        }}
+        // Why: a chat records its provider, so its title or turn state must never re-identify it.
+        agent={agentTypeToIconAgent(nativeChat.agent)}
         isExpanded={false}
         onActivate={actions.activateAgentSession}
         onToggleExpand={() => {}}
         canSplitTerminal={false}
-        sessionAgent={sessionAgent}
+        nativeChat={nativeChat}
       />
     )
   }

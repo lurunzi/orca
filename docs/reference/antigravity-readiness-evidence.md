@@ -9,7 +9,7 @@ against a five-line screen typed from memory into a `.spec.ts` fixture. Three of
 were found worse than the bug they replaced, and the fifth was reverted.
 
 Real transcripts now exist. They were recorded from a live `agy` on macOS with
-[`agent-pty-transcript-capture.md`](./agent-pty-transcript-capture.md) and are committed under
+[`capture-agent-pty-transcript.mjs`](../../config/scripts/capture-agent-pty-transcript.mjs) and are committed under
 `src/main/runtime/__fixtures__/`. `src/main/runtime/antigravity-readiness-transcripts.test.ts`
 replays them through the runtime.
 
