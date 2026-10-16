@@ -268,10 +268,13 @@ describe('SortableTabContextMenu', () => {
     expect(container.textContent).not.toContain('Switch to chat view')
   })
 
-  it('hides switching a terminal-view tab into chat view', () => {
-    const { container } = renderMenu({ canToggleViewMode: true, onToggleViewMode: vi.fn() })
+  it('offers the supported transcript chat view from a terminal tab', () => {
+    const onToggleViewMode = vi.fn()
+    const { container } = renderMenu({ canToggleViewMode: true, onToggleViewMode })
 
-    expect(container.textContent).not.toContain('Switch to chat view')
+    act(() => getButton(container, 'Switch to chat view').click())
+    expect(onToggleViewMode).toHaveBeenCalledOnce()
+    expect(getSurfaceSwitchMarker(container).getAttribute('data-leading-separator')).toBe('false')
   })
 
   it('keeps the way back for a tab already in chat view, in the chat/CLI move section', () => {

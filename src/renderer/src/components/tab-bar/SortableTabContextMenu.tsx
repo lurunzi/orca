@@ -4,6 +4,7 @@ import {
   Pin,
   PinOff,
   Pencil,
+  MessageSquare,
   SquareTerminal,
   X,
   ListX
@@ -159,9 +160,7 @@ export function SortableTabContextMenu({
 
   const closeShortcut = useOptionalShortcutLabel('tab.close')
   const renameShortcut = useOptionalShortcutLabel('tab.rename')
-  // Why: switching a tab into chat view is hidden while that toggle is removed; a tab already in
-  // chat view keeps its way back.
-  const showTerminalViewSwitch = canToggleViewMode && isChatView && onToggleViewMode !== undefined
+  const showViewSwitch = canToggleViewMode && onToggleViewMode !== undefined
 
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
@@ -184,15 +183,24 @@ export function SortableTabContextMenu({
           splitDownShortcut={splitDownShortcut}
           showTerminalSplit={canSplitTerminal}
         />
-        {showTerminalViewSwitch ? (
+        {showViewSwitch ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onToggleViewMode}>
-              <SquareTerminal className="size-3.5 shrink-0" />
-              {translate(
-                'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
-                'Switch to terminal view'
+              {isChatView ? (
+                <SquareTerminal className="size-3.5 shrink-0" />
+              ) : (
+                <MessageSquare className="size-3.5 shrink-0" />
               )}
+              {isChatView
+                ? translate(
+                    'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
+                    'Switch to terminal view'
+                  )
+                : translate(
+                    'components.tab.bar.SortableTabContextMenu.switchToChatView',
+                    'Switch to chat view'
+                  )}
             </DropdownMenuItem>
           </>
         ) : null}
@@ -201,7 +209,7 @@ export function SortableTabContextMenu({
           onComplete={onSessionSwitchComplete}
           tab={tab}
           nativeChat={nativeChat}
-          leadingSeparator={!showTerminalViewSwitch}
+          leadingSeparator={!showViewSwitch}
         />
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onTogglePin}>
