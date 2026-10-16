@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -25,6 +25,10 @@ import { useNativeChatPickerFocusReturn } from './native-chat-picker-focus-retur
 import { NativeChatSessionOptionRows } from './NativeChatSessionOptionRows'
 import { NativeChatSessionOptionWriteGroup } from './NativeChatSessionOptionWriteGroup'
 import { projectModelTierOptions } from './native-chat-model-tier-groups'
+import {
+  useQueuedSessionOptions,
+  withQueuedSessionOption
+} from './native-chat-queued-session-options'
 
 export type NativeChatSessionOptionPickersProps = {
   surface: SessionOptionsSurface | null
@@ -84,13 +88,14 @@ function PickerTrigger(props: {
   disabled: boolean
   disabledReason: string | null
   dispatched: boolean
+  queued?: boolean
   triggerRef: React.Ref<HTMLButtonElement>
   onKeyDown: React.KeyboardEventHandler<HTMLButtonElement>
 }): React.JSX.Element {
   const [tooltipOpen, setTooltipOpen] = useState(false)
   // Why: the pill already shows its values, so it only gets a tooltip for what it cannot show.
   // Held closed rather than unmounted: a pick can flip this, and the open picker hangs off the pill.
-  const informative = props.disabledReason !== null || props.dispatched
+  const informative = props.disabledReason !== null || props.dispatched || props.queued
   return (
     <Tooltip open={informative && tooltipOpen} onOpenChange={setTooltipOpen}>
       <TooltipTrigger asChild>
@@ -113,6 +118,14 @@ function PickerTrigger(props: {
       <TooltipContent side="top" sideOffset={4}>
         <div className="space-y-0.5">
           {props.disabledReason ? <div>{props.disabledReason}</div> : null}
+          {props.queued ? (
+            <div>
+              {translate(
+                'components.native-chat.composer.appliesNextTurn',
+                'Applies after this turn'
+              )}
+            </div>
+          ) : null}
           {props.dispatched ? (
             <div>
               {translate(
@@ -131,6 +144,7 @@ function SessionOptionPopover(props: {
   model: SessionOptionDescriptor
   options: readonly SessionOptionDescriptor[]
   isWorking: boolean
+  queued?: boolean
   /** A write is in flight: nothing else is taken, and the write controls say so. */
   busy: boolean
   request: NativeChatOptionPickerRequest | null
@@ -209,6 +223,7 @@ function SessionOptionPopover(props: {
         }
         disabled={props.isWorking && model.transport !== 'agent-session'}
         disabledReason={modelReason ?? optionsReason}
+        queued={props.queued}
         dispatched={
           sessionOptionDispatchUnconfirmed(model) || options.some(sessionOptionDispatchUnconfirmed)
         }
@@ -299,11 +314,29 @@ function NativeChatSessionOptionPickersInner({
   focusComposer
 }: NativeChatSessionOptionPickersProps): React.JSX.Element | null {
   const [pending, setPending] = useState<PendingPick | null>(null)
+  const flush = useCallback(
+    (entries: [string, SessionOptionValue][]) => {
+      const last = entries.at(-1)
+      if (!surface || !last) {
+        return
+      }
+      const [id, value] = last
+      runSessionOptionSurfaceCall({ id, value }, setPending, async () => {
+        for (const [optionId, selection] of entries) {
+          await surface.setOption(optionId, selection)
+        }
+      })
+    },
+    [surface]
+  )
+  const { queued, queue } = useQueuedSessionOptions({ isWorking, flush })
   // Why: the session holds a request across composer remounts; one left standing reopens the
   // picker each time a prompt card gives the composer back. Dropped even when nothing could open.
   useEffect(() => pickerRequest?.consume(), [pickerRequest])
   const projected = projectModelTierOptions(
-    snapshot.map((descriptor) => withPendingValue(descriptor, pending))
+    snapshot.map((descriptor) =>
+      withQueuedSessionOption(withPendingValue(descriptor, pending), queued)
+    )
   )
   const reportedModel = projected.snapshot.find((descriptor) => descriptor.category === 'model')
   if (!surface || !reportedModel) {
@@ -317,16 +350,26 @@ function NativeChatSessionOptionPickersInner({
       <SessionOptionPopover
         model={model}
         options={options}
-        isWorking={isWorking}
+        isWorking={isWorking && (!surface.deferWhileWorking || Boolean(model.action))}
+        queued={queued.size > 0}
         busy={pending !== null}
         request={pickerRequest ?? null}
         onSet={(descriptor, value) => {
+          const speedModel =
+            descriptor.id === 'serviceTier' && typeof value === 'string'
+              ? projected.speedModelValues?.[value]
+              : undefined
           const id =
-            descriptor.id === 'effort' && projected.tierModelId
+            (descriptor.id === 'effort' || speedModel) && projected.tierModelId
               ? projected.tierModelId
               : descriptor.id
-          return runSessionOptionSurfaceCall({ id, value }, setPending, () =>
-            surface.setOption(id, value)
+          const selection = speedModel ?? value
+          if (isWorking && surface.deferWhileWorking) {
+            queue(id, selection, id === model.id ? [...queued.keys()] : [])
+            return
+          }
+          return runSessionOptionSurfaceCall({ id, value: selection }, setPending, () =>
+            surface.setOption(id, selection)
           )
         }}
         onAction={(descriptor) =>

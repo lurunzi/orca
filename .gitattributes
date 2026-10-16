@@ -46,6 +46,8 @@
 # normalisation on a Windows checkout would rewrite the evidence the fixture exists to be.
 /src/main/runtime/__fixtures__/*.txt -text
 /src/main/daemon/__fixtures__/pty-transcripts/*.txt -text
+# Cursor picker captures retain terminal-emitted line endings and painted trailing spaces.
+/src/renderer/src/components/native-chat/__fixtures__/cursor-model-*.txt -text whitespace=-blank-at-eol,cr-at-eol
 /src/renderer/src/components/terminal-pane/terminal-link-transcripts/*.txt -text whitespace=cr-at-eol
 # Generated runtime English subset: compared byte-for-byte by
 # verify:localization-runtime-catalog, so a CRLF checkout would fail the gate.

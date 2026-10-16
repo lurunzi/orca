@@ -679,7 +679,10 @@ describe('native chat PTY session options', () => {
 
     await surface.setOption('effort', 'high')
 
-    expect(dispatch).toHaveBeenCalledWith('/model gpt-5.3-codex-high-fast')
+    expect(dispatch).toHaveBeenCalledWith('/model gpt-5.3-codex-high-fast', {
+      detectAgentInteraction: 'cursor-model-picker',
+      expectedChoiceLabel: 'GPT-5.3 Codex'
+    })
     expect(surface.getSnapshot().find(({ id }) => id === 'effort')).toMatchObject({
       valueSource: 'dispatched',
       kind: { currentValue: 'high' }

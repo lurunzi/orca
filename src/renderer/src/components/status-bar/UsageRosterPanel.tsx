@@ -86,11 +86,7 @@ export function getUsageHeadlineSection(
   now = Date.now()
 ): UsageSection | null {
   if (p.provider === 'antigravity' && p.buckets?.length) {
-    const buckets = p.buckets.filter((bucket) => /^Gemini Models(?: ·|$)/i.test(bucket.name))
-    if (buckets.length === 0) {
-      return null
-    }
-    const primary = getTightestUsageSection({ ...p, buckets }, now)
+    const primary = getTightestUsageSection(p, now)
     return primary
       ? { ...primary, label: formatRateLimitWindowChipLabel(primary.window, now) }
       : null

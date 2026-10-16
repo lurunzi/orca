@@ -55,7 +55,7 @@ describe('Antigravity status-bar segment', () => {
     [10, 25, 25, '5h'],
     [0, 0, 0, 'wk']
   ] as const)(
-    'selects Gemini weekly %s / hourly %s without model-group labels',
+    'selects the highest usage across weekly %s / hourly %s without model-group labels',
     async (weekly, hourly, expected, label) => {
       const { ProviderSegment } = await import('./StatusBar')
       const p = antigravityLimits({
@@ -67,7 +67,7 @@ describe('Antigravity status-bar segment', () => {
             windowMinutes: 300
           },
           { name: 'Gemini Models · Weekly Limit Remaining', ...weeklyWindow(weekly) },
-          { name: 'Claude and GPT models', ...weeklyWindow(100) }
+          { name: 'Claude and GPT models', ...weeklyWindow(0) }
         ]
       })
       for (const display of ['used', 'remaining'] as const) {
@@ -76,7 +76,7 @@ describe('Antigravity status-bar segment', () => {
             <ProviderSegment p={p} compact={false} display={display} mode={mode} />
           )
           const shown = display === 'used' ? expected : 100 - expected
-          expect(markup).toContain(`${shown}% ${display === 'used' ? 'used' : 'left'} ${label}`)
+          expect(markup).toContain(`${shown}% ${label}`)
           expect(markup).not.toContain('Models')
           expect(markup).not.toContain('Limit Remaining')
           expect(markup).not.toContain('Claude')
@@ -98,16 +98,54 @@ describe('Antigravity status-bar segment', () => {
         mode="compact"
       />
     )
-    expect(markup).toContain('10% used 1m')
+    expect(markup).toContain('10% 1m')
   })
 
-  it('does not substitute another model group when Gemini is absent', async () => {
+  it('uses another model group when Gemini is absent', async () => {
     const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
     expect(
       getUsageHeadlineSection(
         antigravityLimits({ buckets: [{ name: 'Claude and GPT models', ...weeklyWindow(100) }] })
       )
-    ).toBeNull()
+    ).toMatchObject({ window: { usedPercent: 100 } })
+  })
+
+  it.each(['used', 'remaining'] as const)(
+    'uses Argon usage and its reset in the %s footer and compact roster',
+    async (display) => {
+      const { ProviderSegment } = await import('./StatusBar')
+      const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
+      const now = Date.now()
+      const argon = {
+        name: 'Gemini 4 Argon · Weekly Limit Remaining',
+        ...weeklyWindow(44),
+        resetsAt: now + 6 * 24 * 60 * 60_000
+      }
+      const p = antigravityLimits({
+        buckets: [
+          { name: 'Gemini Models', ...weeklyWindow(2), windowMinutes: 300 },
+          { name: 'Claude and GPT models', ...weeklyWindow(0) },
+          argon
+        ]
+      })
+      expect(getUsageHeadlineSection(p, now)).toEqual({ label: '6d', window: argon })
+      const markup = renderToStaticMarkup(
+        <ProviderSegment p={p} compact={false} display={display} mode="compact" now={now} />
+      )
+      expect(markup).toContain(`${display === 'used' ? 44 : 56}% 6d`)
+    }
+  )
+
+  it('follows a different pool when it becomes more used than Argon', async () => {
+    const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
+    const claude = { name: 'Claude and GPT models', ...weeklyWindow(61), windowMinutes: 300 }
+    expect(
+      getUsageHeadlineSection(
+        antigravityLimits({
+          buckets: [{ name: 'Gemini 4 Argon', ...weeklyWindow(44) }, claude]
+        })
+      )
+    ).toEqual({ label: '5h', window: claude })
   })
 
   it('prefers weekly on ties in legacy readings without buckets', async () => {
@@ -121,7 +159,7 @@ describe('Antigravity status-bar segment', () => {
     expect(headline?.label).toBe('wk')
   })
 
-  it('renders only Gemini usage with concise window labels', async () => {
+  it('renders the highest usage with concise window labels', async () => {
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
       <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
@@ -129,7 +167,7 @@ describe('Antigravity status-bar segment', () => {
 
     expect(markup).not.toContain('Gemini Models')
     expect(markup).not.toContain('Claude and GPT models')
-    expect(markup).toContain('100% used wk')
+    expect(markup).toContain('100% wk')
   })
 
   it('shows the weekly window when a tier reports no session pool', async () => {

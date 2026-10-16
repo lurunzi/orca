@@ -227,7 +227,8 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         disabled,
         onSlashCommand,
         onSubmitted,
-        resolveTarget
+        resolveTarget,
+        readTerminalScreen
       })
 
     const { surface: ptySessionOptionsSurface, snapshot: ptySessionOptionsSnapshot } =

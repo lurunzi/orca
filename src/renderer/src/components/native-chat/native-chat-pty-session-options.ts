@@ -199,6 +199,7 @@ export function createNativeChatPtySessionOptions(
   })
 
   return {
+    ...(args.agent === 'antigravity' ? { deferWhileWorking: true as const } : {}),
     refresh: args.refresh,
     getSnapshot: () => snapshot,
     setOption: appliers.setOption,

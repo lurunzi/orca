@@ -16,7 +16,11 @@ const TIER_BY_LABEL: Record<string, string> = {
   ultra: 'ultra'
 }
 
-export type ModelTierChoice = SessionOptionSelectChoice & { tier: string; tierLabel: string }
+export type ModelTierChoice = SessionOptionSelectChoice & {
+  tier: string
+  tierLabel: string
+  speed?: 'default' | 'fast'
+}
 
 export type ModelPickerRow =
   | { kind: 'model'; choice: SessionOptionSelectChoice }
@@ -38,13 +42,15 @@ function parseTieredChoice(choice: SessionOptionSelectChoice): ParsedTierChoice 
   }
   // Cursor sometimes omits the effort from its display name, so read its explicit id suffix.
   const suffix = choice.value.match(
-    /^(.*)-(none|minimal|low|medium|high|xhigh|max|ultra)(-thinking)?(-fast)?$/
+    /^(.*?)-(none|minimal|low|medium|high|extra-high|xhigh|max|ultra)(-thinking)?(-fast)?$/
   )
   if (!suffix) {
     return null
   }
-  const groupId = `${suffix[1]}${suffix[3] ?? ''}${suffix[4] ?? ''}`
+  const groupId = `${suffix[1]}${suffix[3] ?? ''}`
   const label = (choice.label === choice.value ? groupId : choice.label)
+    .replace(/[\u200b-\u200d\ufeff]/g, '')
+    .replace(/\s+fast$/i, '')
     .replace(/\s+(?:extra high|xhigh|none|minimal|low|medium|high|max|ultra)(?=\s|$)/i, '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -52,9 +58,11 @@ function parseTieredChoice(choice: SessionOptionSelectChoice): ParsedTierChoice 
     ...choice,
     label,
     groupKey: `id:${groupId}`,
-    tier: suffix[2],
-    tierLabel:
-      suffix[2] === 'xhigh' ? 'Extra high' : suffix[2][0].toUpperCase() + suffix[2].slice(1)
+    tier: suffix[2] === 'extra-high' ? 'xhigh' : suffix[2],
+    speed: suffix[4] ? 'fast' : 'default',
+    tierLabel: ['xhigh', 'extra-high'].includes(suffix[2])
+      ? 'Extra high'
+      : suffix[2][0].toUpperCase() + suffix[2].slice(1)
   }
 }
 
@@ -69,14 +77,19 @@ export function buildModelPickerRows(
     )
   )
   for (const entry of parsed) {
-    const group = groupsById.get(`id:${entry.choice.value}`)
-    if (!entry.tiered && group) {
+    const baseId = entry.choice.value.replace(/-fast$/, '')
+    const group = groupsById.get(`id:${baseId}`)
+    const speedPair =
+      choices.some((choice) => choice.value === `${baseId}-fast`) &&
+      choices.some((choice) => choice.value === baseId)
+    if (!entry.tiered && (group || speedPair)) {
       entry.tiered = {
         ...entry.choice,
-        label: group.label,
-        groupKey: group.groupKey,
+        label: group?.label ?? entry.choice.label.replace(/\s+fast[\u200b-\u200d\ufeff]*$/i, ''),
+        groupKey: group?.groupKey ?? `id:${baseId}`,
         tier: 'default',
-        tierLabel: 'Default'
+        tierLabel: 'Default',
+        speed: entry.choice.value.endsWith('-fast') ? 'fast' : 'default'
       }
     }
   }
@@ -121,26 +134,34 @@ export function findTieredRow(
 export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
   snapshot: SessionOptionDescriptor[]
   tierModelId: string | null
+  speedModelValues?: Record<string, string>
 } {
   const model = snapshot.find((option) => option.category === 'model')
   if (
     !model ||
     model.kind.type !== 'select' ||
     model.action ||
-    snapshot.some((option) => option.id === 'effort')
+    snapshot.some(
+      (option) => option.id === 'effort' || option.id === 'serviceTier' || option.id === 'fastMode'
+    )
   ) {
     return { snapshot, tierModelId: null }
   }
   const rows = buildModelPickerRows(model.kind.choices)
   const current = model.kind.currentValue
   const active = findTieredRow(rows, current)
-  const tier = active?.tiers.find((choice) => choice.value === current)?.tier
+  const selected = active?.tiers.find((choice) => choice.value === current)
+  const tier = selected?.tier
+  const speed = selected?.speed ?? 'default'
   const choices = rows.map((row) => {
     if (row.kind === 'model') {
       return row.choice
     }
     const choice =
-      row.tiers.find((choice) => choice.value === current || choice.tier === tier) ?? row.tiers[0]
+      row.tiers.find((choice) => choice.value === current) ??
+      row.tiers.find((choice) => choice.tier === tier && (choice.speed ?? 'default') === speed) ??
+      row.tiers.find((choice) => (choice.speed ?? 'default') === speed) ??
+      row.tiers[0]
     return { ...choice, label: row.baseLabel }
   })
   const projected = snapshot.map((option) =>
@@ -151,7 +172,8 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
         }
       : option
   )
-  if (active) {
+  const efforts = active?.tiers.filter((choice) => (choice.speed ?? 'default') === speed) ?? []
+  if (new Set(efforts.map((choice) => choice.tier)).size > 1) {
     projected.push({
       ...model,
       id: 'effort',
@@ -160,9 +182,32 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
       kind: {
         type: 'select',
         currentValue: current,
-        choices: active.tiers.map((choice) => ({ value: choice.value, label: choice.tierLabel }))
+        choices: efforts.map((choice) => ({ value: choice.value, label: choice.tierLabel }))
       }
     })
+  }
+  const speeds = active?.tiers.filter((choice) => choice.tier === tier) ?? []
+  if (new Set(speeds.map((choice) => choice.speed)).size > 1) {
+    const speedModelValues = Object.fromEntries(
+      speeds.map((choice) => [choice.speed ?? 'default', choice.value])
+    )
+    projected.push({
+      ...model,
+      id: 'serviceTier',
+      label: 'Speed',
+      category: 'mode',
+      kind: {
+        type: 'select',
+        currentValue: speed,
+        choices: ['default', 'fast']
+          .filter((value) => speedModelValues[value])
+          .map((value) => ({
+            value,
+            label: value === 'fast' ? 'Fast' : 'Standard'
+          }))
+      }
+    })
+    return { snapshot: projected, tierModelId: model.id, speedModelValues }
   }
   return { snapshot: projected, tierModelId: active ? model.id : null }
 }

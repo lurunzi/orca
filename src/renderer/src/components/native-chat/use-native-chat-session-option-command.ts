@@ -12,6 +12,8 @@ import {
   type ClaudeModelSwitchConfirmationObserver
 } from './claude-model-switch-confirmation'
 import type { NativeChatSessionOptionDispatchCommand } from './native-chat-session-option-command-dispatch'
+import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-inspection'
+import { switchCursorModel } from './cursor-model-switch'
 
 export function useNativeChatSessionOptionCommand(args: {
   agent: AgentType
@@ -19,8 +21,9 @@ export function useNativeChatSessionOptionCommand(args: {
   onSlashCommand?: (command: string) => void
   onSubmitted?: () => void
   resolveTarget: () => NativeChatResolvedTarget | null
+  readTerminalScreen?: () => string | null
 }): { dispatch: NativeChatSessionOptionDispatchCommand; isDispatching: boolean } {
-  const { agent, disabled, onSlashCommand, onSubmitted, resolveTarget } = args
+  const { agent, disabled, onSlashCommand, onSubmitted, resolveTarget, readTerminalScreen } = args
   const mountedRef = useRef(true)
   const activeObserversRef = useRef(new Set<ClaudeModelSwitchConfirmationObserver>())
   const activeSendsRef = useRef(new Set<AbortController>())
@@ -69,6 +72,22 @@ export function useNativeChatSessionOptionCommand(args: {
         if (!mountedRef.current || sendController.signal.aborted) {
           throw new Error('Chat UI command was canceled because the composer closed.')
         }
+        if (agent === 'cursor' && options?.detectAgentInteraction === 'cursor-model-picker') {
+          const outcome =
+            readTerminalScreen && options.expectedChoiceLabel
+              ? await switchCursorModel({
+                  modelId: command.replace(/^\/model\s+/, ''),
+                  modelLabel: options.expectedChoiceLabel,
+                  readScreen: readTerminalScreen,
+                  write: (data) => sendRuntimePtyInputVerified(target.ptyId, data, 'driving'),
+                  signal: sendController.signal
+                })
+              : 'unknown'
+          if (outcome === 'applied') {
+            onSlashCommand?.(command.trim())
+          }
+          return { outcome }
+        }
         const detectClaudeConfirmation =
           options?.detectAgentInteraction === 'claude-model-switch-confirmation'
         if (detectClaudeConfirmation) {
@@ -112,7 +131,7 @@ export function useNativeChatSessionOptionCommand(args: {
         }
       }
     },
-    [agent, disabled, onSlashCommand, onSubmitted, resolveTarget]
+    [agent, disabled, onSlashCommand, onSubmitted, resolveTarget, readTerminalScreen]
   )
 
   return { dispatch, isDispatching }

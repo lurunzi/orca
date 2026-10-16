@@ -5,7 +5,9 @@ import type {
   SessionOptionValue
 } from './native-chat-session-options'
 
-export type CatalogAgentInteractionDetection = 'claude-model-switch-confirmation'
+export type CatalogAgentInteractionDetection =
+  | 'claude-model-switch-confirmation'
+  | 'cursor-model-picker'
 export type CatalogCommandDelivery = 'type'
 
 export type CatalogMidSessionApply =

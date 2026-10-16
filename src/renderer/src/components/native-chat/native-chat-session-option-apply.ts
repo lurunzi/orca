@@ -148,9 +148,12 @@ async function dispatchLiveCommand(
         ? ctx.catalog.modelApply.midSession.detectAgentInteraction
         : undefined
   const expectedChoiceLabel =
-    args.optionId === 'model' && typeof args.value === 'string'
-      ? (findCatalogModel({ ...ctx.catalog, models }, args.value)?.label ?? args.value)
-      : undefined
+    detectAgentInteraction === 'cursor-model-picker'
+      ? (findCatalogModel({ ...ctx.catalog, models }, command.replace(/^\/model\s+/, ''))?.label ??
+        findCatalogModel({ ...ctx.catalog, models }, args.modelId ?? '')?.label)
+      : args.optionId === 'model' && typeof args.value === 'string'
+        ? (findCatalogModel({ ...ctx.catalog, models }, args.value)?.label ?? args.value)
+        : undefined
   return detectAgentInteraction
     ? await ctx.dispatchCommand(command, {
         detectAgentInteraction,

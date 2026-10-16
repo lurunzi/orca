@@ -1,0 +1,17 @@
+[?9001h[?1004h[>1u[?25l[2J[m[H]0;C:\Users\xxxxxxx\AppData\Local\cursor-agent\versions\2026.10.14-0f9edde\node.exe[?25h[?25l[K[3;1H  Cursor Agent
+  [2mv2026.10.14-0f9edde[22m
+  [2mTip: Use subagents to parallelize work and preserve context.[22m[9;1H [48;2;21;21;21m[118X[m
+ [48;2;21;21;21m [2m→ [22m[7mP[2m[27mlan, search, build anything[22m[87X[m
+ [48;2;21;21;21m[118X[m[13;1H  [2mClaude Opus 5.5 300K High[22m
+  [2mC:\ocpr16 · fix/cursor-gui-model-controls-20261016
+[?25h[?2004h[22m[?25l[?2031h[?1004h]0;Cursor Agent[10;1H [48;2;21;21;21m → [36m[1m/model[39m[22m cursor-grok-4.5-high[7m [27m[87X[m[87C 
+ [48;2;21;21;21m[118X[m[118C 
+[K
+  [2mClaude Opus 5.5 300K High[22m[K
+  [2mC:\ocpr16 · fix/cursor-gui-model-controls-20261016[22m[K
+[K[120C[10;1H [48;2;21;21;21m [2m→ [22m[7mP[2m[27mlan, search, build anything[22m[87X[m[87C 
+ [48;2;21;21;21m[118X[m[118C 
+[K
+ [2mModels matching "cursor-grok-4.5-high" (no matches)[22m[54X[2m[54CMax mode:[22m [2mOFF[22m 
+[K
+ [2mFilter: [22mcursor-grok-4.5-high[K[18;1H [2mType to filter • Enter to select • Tab to edit[22m

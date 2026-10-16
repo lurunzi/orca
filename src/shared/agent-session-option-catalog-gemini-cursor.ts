@@ -84,7 +84,11 @@ export const CURSOR_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
   modelApply: {
     launchArgs: (value) => ['--model', String(value)],
     removeAgentArgs: (tokens) => removeAgentArgOption('cursor', tokens, ['-m', '--model']),
-    midSession: { kind: 'command', build: (value) => `/model ${String(value)}` }
+    midSession: {
+      kind: 'command',
+      build: (value) => `/model ${String(value)}`,
+      detectAgentInteraction: 'cursor-model-picker'
+    }
   },
   composeModelValue: (modelId, values) => {
     if (modelId === 'auto') {

@@ -94,7 +94,7 @@ describe('buildModelPickerRows', () => {
     })
   })
 
-  it('keeps Cursor fast and thinking variants separate while grouping their efforts', () => {
+  it('groups Cursor speeds together while keeping thinking variants separate', () => {
     const rows = buildModelPickerRows([
       { value: 'claude-opus-5-high', label: 'Claude Opus 5 1M' },
       { value: 'claude-opus-5-low', label: 'Claude Opus 5 1M Low' },
@@ -107,12 +107,16 @@ describe('buildModelPickerRows', () => {
     ])
     expect(rows.map((row) => (row.kind === 'tiered' ? row.baseLabel : row.choice.label))).toEqual([
       'Claude Opus 5 1M',
-      'Claude Opus 5 1M Fast',
       'Claude Opus 5 1M Thinking',
       'Opus 4.6 Thinking'
     ])
     expect(findTieredRow(rows, 'claude-opus-5-high-fast')?.tiers.map(({ value }) => value)).toEqual(
-      ['claude-opus-5-high-fast', 'claude-opus-5-low-fast']
+      [
+        'claude-opus-5-high',
+        'claude-opus-5-low',
+        'claude-opus-5-high-fast',
+        'claude-opus-5-low-fast'
+      ]
     )
   })
 
@@ -128,5 +132,88 @@ describe('buildModelPickerRows', () => {
       'one-low',
       'one-high'
     ])
+  })
+
+  it('keeps an extra-high suffix in the same model group', () => {
+    const rows = buildModelPickerRows([
+      { value: 'gpt-5.5-high', label: 'GPT 5.5 High' },
+      { value: 'gpt-5.5-extra-high', label: 'GPT 5.5 Extra High' },
+      { value: 'gpt-5.5-extra-high-fast', label: 'GPT 5.5 Extra High Fast' }
+    ])
+    expect(rows).toHaveLength(1)
+    expect(findTieredRow(rows, 'gpt-5.5-extra-high-fast')?.tiers.map(({ tier }) => tier)).toEqual([
+      'high',
+      'xhigh',
+      'xhigh'
+    ])
+  })
+})
+
+describe('model effort and speed projection', () => {
+  function project(
+    currentValue: string,
+    choices = [
+      { value: 'grok-4.7-low', label: 'Grok 4.7 Low' },
+      { value: 'grok-4.7-low-fast', label: 'Grok 4.7 Low Fast\u200b\u200b' },
+      { value: 'grok-4.7-high', label: 'Grok 4.7 High' },
+      { value: 'grok-4.7-high-fast', label: 'Grok 4.7 High Fast' }
+    ]
+  ) {
+    return projectModelTierOptions([
+      {
+        id: 'model',
+        label: 'Model',
+        category: 'model',
+        valueSource: 'reported',
+        transport: 'catalog',
+        settable: true,
+        kind: { type: 'select', currentValue, choices }
+      }
+    ])
+  }
+
+  it('keeps Fast selected and changes effort within the same speed', () => {
+    const result = project('grok-4.7-high-fast')
+    expect(result.snapshot[0].kind).toMatchObject({
+      currentValue: 'grok-4.7-high-fast',
+      choices: [{ value: 'grok-4.7-high-fast', label: 'Grok 4.7' }]
+    })
+    expect(result.snapshot.find((option) => option.id === 'effort')?.kind).toMatchObject({
+      choices: [
+        { value: 'grok-4.7-low-fast', label: 'Low' },
+        { value: 'grok-4.7-high-fast', label: 'High' }
+      ]
+    })
+    expect(result.snapshot.find((option) => option.id === 'serviceTier')?.kind).toEqual({
+      type: 'select',
+      currentValue: 'fast',
+      choices: [
+        { value: 'default', label: 'Standard' },
+        { value: 'fast', label: 'Fast' }
+      ]
+    })
+    expect(result.speedModelValues).toEqual({
+      default: 'grok-4.7-high',
+      fast: 'grok-4.7-high-fast'
+    })
+  })
+
+  it('offers speed without a made-up effort for Composer', () => {
+    const result = project('composer-2.5-fast', [
+      { value: 'composer-2.5', label: 'Composer 2.5' },
+      { value: 'composer-2.5-fast', label: 'Composer 2.5 Fast' }
+    ])
+    expect(result.snapshot.map((option) => option.id)).toEqual(['model', 'serviceTier'])
+    expect(result.speedModelValues).toEqual({ default: 'composer-2.5', fast: 'composer-2.5-fast' })
+  })
+
+  it('does not invent a Fast variant for an effort absent from the listing', () => {
+    const result = project('grok-4.7-high', [
+      { value: 'grok-4.7-low', label: 'Grok 4.7 Low' },
+      { value: 'grok-4.7-low-fast', label: 'Grok 4.7 Low Fast' },
+      { value: 'grok-4.7-high', label: 'Grok 4.7 High' }
+    ])
+    expect(result.speedModelValues).toBeUndefined()
+    expect(result.snapshot.find((option) => option.id === 'serviceTier')).toBeUndefined()
   })
 })

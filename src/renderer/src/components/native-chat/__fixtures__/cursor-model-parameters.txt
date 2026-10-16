@@ -1,0 +1,22 @@
+[?9001h[?1004h[>1u[?25l[2J[m[H]0;C:\Users\xxxxxxx\AppData\Local\cursor-agent\versions\2026.10.14-0f9edde\node.exe[?25h[?25l[K[3;1H  Cursor Agent
+  [2mv2026.10.14-0f9edde[22m
+  [2mTip: Try Cursor Grok 4.7 via /model, frontier intelligence at a fraction of the cost.[22m[9;1H [48;2;21;21;21m[118X[m
+ [48;2;21;21;21m [2m→ [22m[7mP[2m[27mlan, search, build anything[22m[87X[m
+ [48;2;21;21;21m[118X[m[13;1H  [2mGrok 4.5 High Fast[22m
+  [2mC:\ocpr16 · fix/cursor-gui-model-controls-20261016
+[?25h[?2004h[22m[?25l[?2031h[?1004h]0;Cursor Agent[10;1H [48;2;21;21;21m → [36m[1m/model[39m[22m Grok 4.5[7m [27m[99X[m[99C 
+ [48;2;21;21;21m[118X[m[118C 
+[K
+  [2mGrok 4.5 High Fast[22m[K
+  [2mC:\ocpr16 · fix/cursor-gui-model-controls-20261016[22m[K
+[K[120C[13;1H [2mModels matching "Grok 4.5"[22m[79X[2m[79CMax mode:[22m [2mOFF[22m 
+[K
+ [36m→  [32mGrok 4.5                 High Fast (Tab to modify)[K[m
+[K
+ [2mEdit prompt to filter • Enter to select • Tab to edit[22m[K
+[K[120C[13;1H Grok 4.5 [2m— Edit Parameters[22m[79X[2m[79CMax mode:[22m [2mOFF[22m 
+[K
+ [2m Effort[22m[K
+  [36m[1m→ ○ Low[m[K
+    ○ Medium[K
+    ● High [32m✓[K[m[20;1H    ◉ Fast[22;1H [2m↑/↓ to navigate • Enter to select • Esc to go back[22m

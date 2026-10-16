@@ -5,6 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sendNativeChatMessageVerified = vi.fn()
 const typeNativeChatCommand = vi.fn()
+const switchCursorModel = vi.fn()
+
+vi.mock('./cursor-model-switch', () => ({
+  switchCursorModel: (...args: unknown[]) => switchCursorModel(...args)
+}))
 
 vi.mock('./native-chat-runtime-send', () => ({
   sendNativeChatMessageVerified: (...args: unknown[]) => sendNativeChatMessageVerified(...args),
@@ -57,4 +62,41 @@ describe('useNativeChatSessionOptionCommand', () => {
     )
     expect(typeNativeChatCommand).not.toHaveBeenCalled()
   })
+
+  it.each(['applied', 'unknown'] as const)(
+    'reports Cursor model commands only after a verified selection (%s)',
+    async (outcome) => {
+      switchCursorModel.mockResolvedValue(outcome)
+      const onSlashCommand = vi.fn()
+      const readTerminalScreen = () => 'Cursor Agent'
+      const hook = renderHook(() =>
+        useNativeChatSessionOptionCommand({
+          agent: 'cursor',
+          disabled: false,
+          onSlashCommand,
+          readTerminalScreen,
+          resolveTarget: () => ({ settings: {}, ptyId: 'pty-1' })
+        })
+      )
+      await act(async () => {
+        expect(
+          await hook.result.current.dispatch('/model grok-4.7-high', {
+            detectAgentInteraction: 'cursor-model-picker',
+            expectedChoiceLabel: 'Grok 4.7 High'
+          })
+        ).toEqual({ outcome })
+      })
+      expect(switchCursorModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          modelId: 'grok-4.7-high',
+          modelLabel: 'Grok 4.7 High',
+          readScreen: readTerminalScreen
+        })
+      )
+      expect(onSlashCommand).toHaveBeenCalledTimes(outcome === 'applied' ? 1 : 0)
+      expect(sendNativeChatMessageVerified).not.toHaveBeenCalled()
+      expect(typeNativeChatCommand).not.toHaveBeenCalled()
+      expect(hook.result.current.isDispatching).toBe(false)
+    }
+  )
 })

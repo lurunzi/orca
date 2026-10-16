@@ -127,6 +127,8 @@ export type NativeChatSessionOptionSettingsMutation =
   | { type: 'clear-model-if-missing'; agent: AgentType; availableModelIds: readonly string[] }
 
 export type SessionOptionsSurface = {
+  /** The picker may hold choices until the terminal-backed agent finishes its turn. */
+  deferWhileWorking?: true
   /** Recheck provider availability when a reader opens the picker. */
   refresh?: () => void
   getSnapshot(): SessionOptionDescriptor[]
