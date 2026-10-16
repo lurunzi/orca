@@ -56,6 +56,7 @@ import { useNativeChatHostOutageNotice } from './use-native-chat-host-outage-not
 import { useNativeChatHostPermissionGate } from './use-native-chat-host-permission-gate'
 import { useNativeChatAvailabilityNotice } from './use-native-chat-availability-notice'
 import { useStructuredAgentSessionStartFailureFacts } from './use-structured-agent-session-start-failure-facts'
+import { useStructuredNativeChatInbox } from './use-structured-native-chat-inbox'
 import { pendingPromptsAllUnanswerableHere } from '../../../../shared/agent-session-approval-subject'
 import {
   isClaudeSignInFailureKind,
@@ -111,6 +112,7 @@ export function NativeChatStructuredSession(
   const [optionPickerRequest, setOptionPickerRequest] =
     useState<NativeChatOptionPickerRequest | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const inbox = useStructuredNativeChatInbox(props, controller, composerRef)
   const paneCommands = useStructuredNativeChatPaneCommands({
     tabId: props.tabId,
     groupId: props.groupId,
@@ -121,7 +123,13 @@ export function NativeChatStructuredSession(
     terminalPaneActions: props.contextMenuActions,
     sessionId: props.sessionId,
     target: props.target,
-    chat: { agent: props.agent, paneKey, messages: controller.messages, fileLinkContext }
+    chat: {
+      agent: props.agent,
+      paneKey,
+      messages: controller.messages,
+      fileLinkContext,
+      inbox: inbox.button
+    }
   })
   const historyPhase = structuredChatHistoryPhase(provisionalLaunch, controller.status)
   const hostOutage = useNativeChatHostOutage(props.target)
@@ -325,6 +333,7 @@ export function NativeChatStructuredSession(
                   allowFileUriLinks={onLinkClick !== undefined}
                   runtimeContext={imageRuntimeContext}
                   deliveryNotices={deliveryNotices}
+                  jumpRequest={inbox.jumpRequest}
                 />
               </NativeChatClaudeSignInContext.Provider>
             </NativeChatOrcaStopContext.Provider>

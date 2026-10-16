@@ -1,0 +1,6 @@
+@import '../../../src/renderer/src/assets/main.css';
+@source './fixture.tsx';
+@source '../../../src/renderer/src/components/native-chat/NativeChatInboxButton.tsx';
+@source '../../../src/renderer/src/components/native-chat/NativeChatInboxPanel.tsx';
+@source '../../../src/renderer/src/components/native-chat/NativeChatInboxRows.tsx';
+@source '../../../src/renderer/src/components/ui';

@@ -52,6 +52,10 @@ import { useNativeChatRailHistoryJump } from './use-native-chat-rail-history-jum
 import { useNativeChatRailJumpLanding } from './use-native-chat-rail-jump-landing'
 import { useNativeChatReaderScrollInput } from './native-chat-reader-scroll-input'
 import { useNativeChatMessageListHandle } from './use-native-chat-reveal-latest'
+import {
+  useNativeChatJumpRequest,
+  type NativeChatJumpRequest
+} from './use-native-chat-jump-request'
 
 import type {
   AgentJournalRenderItem,
@@ -93,7 +97,8 @@ export function NativeChatMessageList({
   awaitingInput = null,
   turnActivity,
   stopping = false,
-  runtimeContext
+  runtimeContext,
+  jumpRequest
 }: {
   ref?: Parameters<typeof useNativeChatMessageListHandle>[0]
   session: NativeChatLiveSession
@@ -125,6 +130,8 @@ export function NativeChatMessageList({
   /** A person's Stop is ending the live turn: its tail line reads "Stopping…". */
   stopping?: boolean
   runtimeContext?: RuntimeFileOperationArgs | null
+  /** A user message to bring into view, asked for from outside the transcript. */
+  jumpRequest?: NativeChatJumpRequest | null
 }): React.JSX.Element {
   const [navigationRequest, setNavigationRequest] = useState<NavigationRequest | null>(null)
   const navigationSequence = useRef(0)
@@ -300,6 +307,7 @@ export function NativeChatMessageList({
     },
     [beginNavigation, readerLeavesEnd, requestRailJump, startHistoryJump]
   )
+  useNativeChatJumpRequest(jumpRequest, rail.items, selectRailItem)
   const revealDiff = useCallback(
     (target: NativeChatDiffTarget) => {
       beginNavigation()

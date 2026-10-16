@@ -2,7 +2,14 @@ import * as terminalThemeSelection from '../../../../shared/terminal-theme-selec
 import { getDefaultSettings } from '../../../../shared/constants'
 // @vitest-environment happy-dom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderComponent,
+  screen,
+  waitFor
+} from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AgentJournalRenderItem } from '../../../../shared/agent-session-journal-types'
 import { useAppStore } from '@/store'
@@ -37,6 +44,10 @@ vi.mock('./use-structured-chat-continuation', () => ({
 import { NativeChatStructuredSession } from './NativeChatStructuredSession'
 import { structuredAgentSessionPaneKey } from '../../../../shared/structured-agent-session-projection'
 import { structuredAgentSessionDraftScopeKey } from './native-chat-composer-draft-store'
+
+function render(ui: Parameters<typeof renderComponent>[0]) {
+  return renderComponent(ui, { wrapper: TooltipProvider })
+}
 
 describe('NativeChatStructuredSession', () => {
   it('applies persisted appearance at the chat root and updates it live', () => {

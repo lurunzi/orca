@@ -197,7 +197,11 @@ describe('claude structured launch resolution', () => {
 
     expect(launch.env).toMatchObject({
       ORCA_AGENT_SESSION_ID: SESSION_ID,
-      ORCA_CLI_COMMAND: expect.stringMatching(/^[^:;]*[\\/]cli[\\/]bin[\\/]orca-dev$/)
+      ORCA_CLI_COMMAND: expect.stringMatching(
+        process.platform === 'win32'
+          ? /[\\/]cli[\\/]bin[\\/]orca-dev\.cmd$/
+          : /^[^:;]*[\\/]cli[\\/]bin[\\/]orca-dev$/
+      )
     })
     expect(launch.env?.ORCA_AGENT_SESSION_ID).not.toBe(launch.providerSessionId)
   })

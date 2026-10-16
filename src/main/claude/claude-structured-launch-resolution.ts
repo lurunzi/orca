@@ -49,6 +49,7 @@ export type ClaudeStructuredSdkOptions = Pick<
   | 'settings'
   | 'sessionId'
   | 'resume'
+  | 'mcpServers'
 >
 
 /**

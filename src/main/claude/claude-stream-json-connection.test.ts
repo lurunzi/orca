@@ -20,7 +20,10 @@ import { createClaudeJournalTranslator } from './claude-structured-journal-trans
 import { readClaudeStructuredSessionOptions } from './claude-structured-session-options'
 import type { ClaudeSession } from './claude-structured-session-state'
 import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './claude-structured-launch-resolution'
-import { openTestJournalHostDatabase } from '../native-chat/agent-session-journal/journal-host-database-test-support'
+import {
+  closeTestJournalHostDatabase,
+  openTestJournalHostDatabase
+} from '../native-chat/agent-session-journal/journal-host-database-test-support'
 import { testEventSinkLogging } from '../native-chat/agent-session-wire/structured-agent-session-logger-test-support'
 import { claudeProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
 import { providerExecutableMissing } from '../provider-process/provider-executable-missing'
@@ -49,6 +52,7 @@ afterEach(async () => {
   }
   await Promise.all(childClosures.splice(0))
   for (const dir of scratchDirs.splice(0)) {
+    closeTestJournalHostDatabase(join(dir, 'journal'))
     rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
   }
   spawned.splice(0)

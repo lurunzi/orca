@@ -13,14 +13,17 @@ type Props = {
   groupId?: string
   /** Absent when there is no session context to continue from. */
   onContinueInNewSession?: () => void
+  /** The session inbox button, for agents that have one. */
+  inbox?: React.ReactNode
 }
 
 /** Top-right cluster of a standalone structured Chat, mirroring the terminal pane header's
- *  [continue][split] order. */
+ *  [continue][split] order, with the session inbox first. */
 export function StructuredAgentSessionHeaderActions({
   tabId,
   groupId,
-  onContinueInNewSession
+  onContinueInNewSession,
+  inbox
 }: Props): React.JSX.Element {
   const canSplit = useAppStore((state) =>
     groupId ? canMoveTabToNewPaneColumnFromState(state, tabId, groupId) : false
@@ -35,6 +38,7 @@ export function StructuredAgentSessionHeaderActions({
   )
   return (
     <div className="absolute right-1 top-1 z-20 flex items-center">
+      {inbox}
       {onContinueInNewSession ? (
         <Tooltip>
           <TooltipTrigger asChild>

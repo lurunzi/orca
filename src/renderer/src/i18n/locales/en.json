@@ -18998,6 +18998,60 @@
         "launchRefused": "Orca did not start a {{value0}} chat",
         "outdatedHost": "This host runs an older Orca that ignores chat permissions, so {{value0}} would run here without asking. Update Orca on this host to use {{value1}}.",
         "unverified": "Orca couldn't confirm this host applies chat permissions. Reconnect to it to send."
+      },
+      "inbox": {
+        "check": {
+          "inFolder": "{{check}} in {{folder}}",
+          "failedOf": "{{fail}} of {{total}} failed",
+          "failed": "failed",
+          "ranBeforeEdit": "{{ago}}, before the last edit",
+          "fixSent": "Fix requested",
+          "fix": "Ask to fix"
+        },
+        "request": {
+          "answer": "My answer to your question {{id}} (\"{{question}}\"): {{answer}}",
+          "replyPrefix": "About your question {{id}} (\"{{question}}\"): ",
+          "fixFailed": "{{check}} failed when you last ran it.",
+          "fixCommand": "Command: {{command}}",
+          "fixOutput": "Output:",
+          "fixInstruction": "Find the cause, fix it, and run it again to verify.",
+          "address": "Please address this finding you recorded ({{id}}):",
+          "discuss": "Let's talk through this finding you recorded ({{id}}) before changing anything:",
+          "findingFile": "File: {{path}}"
+        },
+        "triggerWaiting": "Inbox, {{count}} waiting on you",
+        "title": "Inbox",
+        "history": {
+          "loading": "Reading earlier turns…",
+          "partial": "Older turns are not included.",
+          "failed": "Earlier turns could not be read.",
+          "retry": "Retry"
+        },
+        "waitingCount": "{{count}} waiting on you",
+        "nothingWaiting": "Nothing waiting on you",
+        "empty": "Questions {{agent}} leaves to you, findings it records, and checks still failing when a turn ends show up here.",
+        "section": {
+          "needsYou": "Needs you",
+          "findings": "Findings"
+        },
+        "action": {
+          "jump": "Go to turn",
+          "dismiss": "Dismiss"
+        },
+        "question": {
+          "recommended": "{{agent}} recommends: {{option}}",
+          "answerWith": "Answer: {{option}}",
+          "reply": "Reply…"
+        },
+        "finding": {
+          "issue": "Issue",
+          "opportunity": "Opportunity",
+          "sent": "Sent to {{agent}}",
+          "address": "Address",
+          "discuss": "Discuss"
+        },
+        "triggerFindings_one": "Inbox, {{count}} finding",
+        "triggerFindings_other": "Inbox, {{count}} findings"
       }
     },
     "tab": {
@@ -19301,7 +19355,8 @@
       "deliveryFailed": "The new {{agent}} session started, but its context could not be sent.",
       "deliveryUnconfirmed": "Orca could not confirm {{agent}} received the session context. Check the new session, and paste it yourself if its input is empty.",
       "copyPrompt": "Copy prompt",
-      "launchFailed": "Could not start a new {{agent}} session."
+      "launchFailed": "Could not start a new {{agent}} session.",
+      "continueInNewSession": "Continue in New Session…"
     },
     "status": {
       "bar": {

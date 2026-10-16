@@ -2405,6 +2405,7 @@
             }
           },
           "tooltip": {
+            "42fdd4da1d": "Claude sign-in is being refreshed. Agent sessions may still be signed in.",
             "7567cd1c6b": "Usage unavailable",
             "cedb7b99e3": "% used"
           }
@@ -2952,6 +2953,10 @@
         "theAgent": "The agent",
         "thenSendAgain": "Then send your message again.",
         "writeFailed": "Orca couldn't hand this message to the agent, so it was not sent."
+      },
+      "inbox": {
+        "triggerFindings_one": "Inbox, {{count}} finding",
+        "triggerFindings_other": "Inbox, {{count}} findings"
       },
       "notices": {
         "compaction": "Context compacted",

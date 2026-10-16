@@ -34,6 +34,21 @@ function callbacksFor() {
 }
 
 describe('Claude permission callbacks', () => {
+  it('allows the inbox tools without a prompt, since they only record into the journal', async () => {
+    const control = callbacksFor()
+    const input = { kind: 'issue', title: 'Retry loop never gives up', detail: 'It spins.' }
+
+    await expect(
+      control.canUseTool(
+        'mcp__orca_inbox__record_finding',
+        input,
+        permissionOptions('perm-inbox', 'tool-inbox', new AbortController().signal)
+      )
+    ).resolves.toEqual({ behavior: 'allow', updatedInput: input, toolUseID: 'tool-inbox' })
+    expect(control.emit).not.toHaveBeenCalled()
+    expect(control.prompts.find('perm-inbox')).toBeNull()
+  })
+
   it('registers a decodable can_use_tool as a durable prompt and settles it from the registry', async () => {
     const control = callbacksFor()
     const controller = new AbortController()

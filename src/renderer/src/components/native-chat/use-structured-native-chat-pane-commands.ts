@@ -48,7 +48,7 @@ export function useStructuredNativeChatPaneCommands({
   /** The chat behind the header cluster and its session menu items. */
   chat: Pick<
     Parameters<typeof useStructuredChatSessionActions>[0],
-    'agent' | 'paneKey' | 'messages' | 'fileLinkContext'
+    'agent' | 'paneKey' | 'messages' | 'fileLinkContext' | 'inbox'
   >
 }) {
   const sessionActions = useStructuredChatSessionActions({
