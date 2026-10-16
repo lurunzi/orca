@@ -3,6 +3,15 @@ import type {
   AgentSessionModelOption
 } from '../../../shared/agent-session-wire'
 import type { AgentModelCatalogPersistence } from './agent-model-catalog-persistence'
+import {
+  AGENT_MODEL_CATALOG_FRESH_MS,
+  AGENT_MODEL_CATALOG_FAILURE_TTL_MS
+} from '../../../shared/agent-model-catalog-refresh-policy'
+
+export {
+  AGENT_MODEL_CATALOG_FRESH_MS,
+  AGENT_MODEL_CATALOG_FAILURE_TTL_MS
+} from '../../../shared/agent-model-catalog-refresh-policy'
 
 // The execution host's one model catalog per (agent, launch fingerprint):
 // served immediately at any age, refreshed in the background when old, and
@@ -11,8 +20,6 @@ import type { AgentModelCatalogPersistence } from './agent-model-catalog-persist
 // and never persisted — it is held separately under a short TTL so a burst of
 // picker opens does not hammer a dead binary, then dies on its own.
 
-export const AGENT_MODEL_CATALOG_FRESH_MS = 10 * 60_000
-export const AGENT_MODEL_CATALOG_FAILURE_TTL_MS = 30_000
 /** A validation read younger than this trusts the entry even when the picked
  *  model is missing; older, it waits for one bounded refresh before refusing. */
 export const AGENT_MODEL_CATALOG_VALIDATION_MIN_AGE_MS = 60_000

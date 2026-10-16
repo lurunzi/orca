@@ -52,6 +52,7 @@ export type CreateNativeChatPtySessionOptionsArgs = {
   reportedValues?: Record<string, SessionOptionValue> | null
   dispatchCommand: NativeChatSessionOptionDispatchCommand
   onAgentPicker?: () => void
+  refresh?: () => void
   persistSelection?: PersistSelection
   onDraftValuesChanged?: (values: Record<string, SessionOptionValue>) => void
 }
@@ -196,6 +197,7 @@ export function createNativeChatPtySessionOptions(
   })
 
   return {
+    refresh: args.refresh,
     getSnapshot: () => snapshot,
     setOption: appliers.setOption,
     invokeAction: appliers.invokeAction,

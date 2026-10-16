@@ -226,6 +226,11 @@ function NativeChatSessionOptionPickersInner({
       <DropdownMenu
         key={`model:${requestedModelSequence ?? 'idle'}`}
         defaultOpen={requestedModelSequence !== null}
+        onOpenChange={(open) => {
+          if (open) {
+            surface.refresh?.()
+          }
+        }}
       >
         <PickerTrigger
           label={tieredRow ? tieredRow.baseLabel : nativeChatModelPillLabel(model)}
