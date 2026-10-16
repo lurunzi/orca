@@ -17,6 +17,7 @@ export function useStructuredChatSessionActions(args: {
   target: RuntimeClientTarget
   messages: readonly NativeChatMessage[]
   hasTerminalPaneActions: boolean
+  inbox?: React.ReactNode
 }): { header: React.JSX.Element; menuItems: React.JSX.Element } {
   const continuation = useStructuredChatContinuation(args)
   return {
@@ -26,6 +27,7 @@ export function useStructuredChatSessionActions(args: {
           tabId={args.tabId}
           groupId={args.groupId}
           onContinueInNewSession={continuation.onContinue}
+          inbox={args.inbox}
         />
         {continuation.dialog}
       </>

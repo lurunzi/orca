@@ -1,4 +1,5 @@
 import type { CanUseTool, OnUserDialog, PermissionResult } from '@anthropic-ai/claude-agent-sdk'
+import { SESSION_INBOX_TOOL_NAMES } from '../../shared/session-inbox-tool-contract'
 import type { ClaudePromptRegistry } from './claude-structured-prompt-replies'
 import type { ClaudeStructuredSessionEvent } from './claude-structured-session-state'
 import {
@@ -34,8 +35,16 @@ export function buildClaudePermissionCallbacks(deps: ClaudePermissionCallbackDep
   canUseTool: CanUseTool
   onUserDialog: OnUserDialog
 } {
-  const canUseTool: CanUseTool = (toolName, input, options) =>
-    new Promise<PermissionResult | null>((resolve) => {
+  const canUseTool: CanUseTool = (toolName, input, options) => {
+    // The inbox's tools only record into the journal; a permission card for them would be noise.
+    if (SESSION_INBOX_TOOL_NAMES.includes(toolName)) {
+      return Promise.resolve({
+        behavior: 'allow',
+        updatedInput: input,
+        ...(options.toolUseID ? { toolUseID: options.toolUseID } : {})
+      })
+    }
+    return new Promise<PermissionResult | null>((resolve) => {
       let cancel = (): void => {}
       const settle = (response: PermissionResult | null): void => {
         options.signal.removeEventListener('abort', cancel)
@@ -78,6 +87,7 @@ export function buildClaudePermissionCallbacks(deps: ClaudePermissionCallbackDep
       options.signal.addEventListener('abort', cancel, { once: true })
       deps.emit({ type: 'prompt', sessionId: deps.sessionId, prompt })
     })
+  }
 
   const onUserDialog: OnUserDialog = () => Promise.resolve({ behavior: 'cancelled' })
 

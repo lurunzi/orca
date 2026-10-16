@@ -1,9 +1,17 @@
 // @vitest-environment happy-dom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderComponent,
+  screen,
+  waitFor
+} from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AgentJournalRenderItem } from '../../../../shared/agent-session-journal-types'
 import { useAppStore } from '@/store'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   claudeGroupedQuestionPromptItems,
   legacySingleQuestionPromptItems
@@ -32,6 +40,10 @@ vi.mock('./use-structured-chat-continuation', () => ({
 
 import { NativeChatStructuredSession } from './NativeChatStructuredSession'
 import { structuredAgentSessionPaneKey } from '../../../../shared/structured-agent-session-projection'
+
+function render(ui: Parameters<typeof renderComponent>[0]) {
+  return renderComponent(ui, { wrapper: TooltipProvider })
+}
 
 describe('NativeChatStructuredSession', () => {
   afterEach(() => {

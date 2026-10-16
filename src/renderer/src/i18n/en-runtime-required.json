@@ -2801,6 +2801,10 @@
         "theAgent": "The agent",
         "writeFailed": "Orca couldn't hand this message to the agent, so it was not sent."
       },
+      "inbox": {
+        "triggerFindings_one": "Inbox, {{count}} finding",
+        "triggerFindings_other": "Inbox, {{count}} findings"
+      },
       "notices": {
         "historyItemTooLarge": "This part of the chat was too large to show.",
         "historyRepaired": "Part of this chat's history couldn't be loaded."
@@ -2882,7 +2886,6 @@
         "openCurrentConversation": "Open the current conversation to continue.",
         "optionRejected": "The agent didn't accept this setting.",
         "outcomeUnknown": "Orca couldn't confirm what happened. Check the chat.",
-        "sendOutcomeLost": "Orca couldn't confirm your message reached the agent. Check the chat, then send it again if needed.",
         "ownerUnproven": "The previous agent in this chat may still be running.",
         "promptPending": "The agent is waiting for an answer to a question or approval.",
         "questionChanged": "This question was already answered or has changed.",
@@ -2892,6 +2895,7 @@
         "reopenChat": "Reopen the chat to check again.",
         "restartFailed": "The agent couldn't restart.",
         "savedByNewerOrca": "Chats were saved by a newer Orca.",
+        "sendOutcomeLost": "Orca couldn't confirm your message reached the agent. Check the chat, then send it again if needed.",
         "settleEarlierMessage": "Wait for your earlier message to go through, or retry it.",
         "startNewChat": "Start a new chat to continue.",
         "terminalAgentHoldsChat": "This chat is still open in a terminal agent.",

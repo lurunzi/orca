@@ -17,6 +17,7 @@ import {
 import { createClaudeChildTreeReaper, proveClaudeChildExit } from './claude-agent-sdk-exit-proof'
 import type { DescendantTreeVerdict } from '../pty-descendant-exit-verification'
 import { createClaudeCodeProcessSpawn } from './claude-agent-sdk-process-spawn'
+import { withClaudeInboxSdkOptions } from './claude-inbox-mcp-server'
 import {
   claudeUnwrittenUserMessageError,
   createClaudeUserMessageQueue
@@ -118,13 +119,14 @@ export async function openClaudeStreamJsonConnection(
   spawnImpl: typeof spawnProcess = spawnProcess,
   queryImpl?: typeof ClaudeAgentSdk.query
 ): Promise<ClaudeStreamJsonConnection> {
-  const { query } = await loadClaudeAgentSdk()
+  const sdk = await loadClaudeAgentSdk()
   const spawner = createClaudeCodeProcessSpawn(spawnImpl)
   const inbox = createClaudeUserMessageQueue()
-  const session = (queryImpl ?? query)({
+  const session = (queryImpl ?? sdk.query)({
     prompt: inbox.messages,
     options: {
       ...launch.options,
+      ...withClaudeInboxSdkOptions(sdk, launch.options),
       cwd: launch.cwd,
       // Why env is never omitted: the SDK inherits process.env when it is, which is
       // exactly the ambient ANTHROPIC_* auth leak this lane already shipped once.

@@ -43,6 +43,10 @@ import type {
   NativeChatRailOutlineEntry
 } from './native-chat-message-rail-items'
 import { useNativeChatRailHistoryJump } from './use-native-chat-rail-history-jump'
+import {
+  useNativeChatJumpRequest,
+  type NativeChatJumpRequest
+} from './use-native-chat-jump-request'
 import { nativeChatReaderScrollInputHandlers } from './native-chat-reader-scroll-input'
 
 import type {
@@ -83,7 +87,8 @@ export function NativeChatMessageList({
   deliveryNotices,
   awaitingInput = null,
   turnActivity,
-  runtimeContext
+  runtimeContext,
+  jumpRequest
 }: {
   session: NativeChatLiveSession
   journalItems?: readonly AgentJournalRenderItem[]
@@ -110,6 +115,8 @@ export function NativeChatMessageList({
   awaitingInput?: NativeChatAwaitingInput | null
   turnActivity?: NativeChatTurnActivity | null
   runtimeContext?: RuntimeFileOperationArgs | null
+  /** A user message to bring into view, asked for from outside the transcript. */
+  jumpRequest?: NativeChatJumpRequest | null
 }): React.JSX.Element {
   const [navigationRequest, setNavigationRequest] = useState<NativeChatNavigationRequest | null>(
     null
@@ -281,6 +288,7 @@ export function NativeChatMessageList({
     },
     [beginNavigation, requestRailJump, startHistoryJump]
   )
+  useNativeChatJumpRequest(jumpRequest, rail.items, selectRailItem)
   const revealDiff = useCallback(
     (target: NativeChatDiffTarget) => {
       beginNavigation()

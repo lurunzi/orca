@@ -17922,7 +17922,61 @@
       "structuredSessionHostDeclined": "已在终端中打开 {{value0}}",
       "structuredSessionHostDeclinedDescription": "此服务器无法在此工作区中运行 {{value0}} 聊天。",
       "structuredSessionHostUnreachable": "无法连接到 {{value0}}",
-      "structuredSessionHostUnreachableDescription": "Orca 未打开 {{value0}} 聊天。请检查与服务器的连接，然后重试。"
+      "structuredSessionHostUnreachableDescription": "Orca 未打开 {{value0}} 聊天。请检查与服务器的连接，然后重试。",
+      "inbox": {
+        "check": {
+          "inFolder": "{{check}}（{{folder}}）",
+          "failedOf": "{{total}} 项中 {{fail}} 项失败",
+          "failed": "失败",
+          "ranBeforeEdit": "{{ago}}，在最近一次修改之前",
+          "fixSent": "已请求修复",
+          "fix": "请求修复"
+        },
+        "request": {
+          "answer": "我对你的问题 {{id}}（“{{question}}”）的回答：{{answer}}",
+          "replyPrefix": "关于你的问题 {{id}}（“{{question}}”）：",
+          "fixFailed": "{{check}} 在你上次运行时失败了。",
+          "fixCommand": "命令：{{command}}",
+          "fixOutput": "输出：",
+          "fixInstruction": "请找出原因并修复，然后重新运行以验证。",
+          "address": "请处理你记录的这条发现（{{id}}）：",
+          "discuss": "在改动任何内容之前，我们先讨论一下你记录的这条发现（{{id}}）：",
+          "findingFile": "文件：{{path}}"
+        },
+        "triggerWaiting": "收件箱，{{count}} 项等你处理",
+        "title": "收件箱",
+        "history": {
+          "loading": "正在读取更早的对话…",
+          "partial": "未包含更早的对话。",
+          "failed": "无法读取更早的对话。",
+          "retry": "重试"
+        },
+        "waitingCount": "{{count}} 项等你处理",
+        "nothingWaiting": "没有等你处理的事项",
+        "empty": "{{agent}} 留给你决定的问题、它记录的发现，以及在一轮结束时仍然失败的检查，都会显示在这里。",
+        "section": {
+          "needsYou": "等你处理",
+          "findings": "发现"
+        },
+        "action": {
+          "jump": "转到该轮",
+          "dismiss": "忽略"
+        },
+        "question": {
+          "recommended": "{{agent}} 建议：{{option}}",
+          "answerWith": "回答：{{option}}",
+          "reply": "回复…"
+        },
+        "finding": {
+          "issue": "问题",
+          "opportunity": "改进机会",
+          "sent": "已发送给 {{agent}}",
+          "address": "处理",
+          "discuss": "讨论"
+        },
+        "triggerFindings_one": "收件箱，{{count}} 条发现",
+        "triggerFindings_other": "收件箱，{{count}} 条发现"
+      }
     },
     "tab": {
       "bar": {

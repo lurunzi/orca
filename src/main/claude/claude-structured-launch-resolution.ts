@@ -48,6 +48,7 @@ export type ClaudeStructuredSdkOptions = Pick<
   | 'allowDangerouslySkipPermissions'
   | 'sessionId'
   | 'resume'
+  | 'mcpServers'
 >
 
 /**

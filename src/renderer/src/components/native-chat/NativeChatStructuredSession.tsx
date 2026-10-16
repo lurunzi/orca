@@ -34,6 +34,7 @@ import { useStructuredAgentSessionStartFailureFacts } from './use-structured-age
 import { structuredAgentSessionDeliveryNotices } from './structured-agent-session-delivery-notices'
 import type { AgentJournalSubmission } from '../../../../shared/agent-session-journal-types'
 import { useStructuredChatSessionActions } from './use-structured-chat-session-actions'
+import { useStructuredNativeChatInbox } from './use-structured-native-chat-inbox'
 
 const NO_SUBMISSIONS: readonly AgentJournalSubmission[] = []
 
@@ -75,15 +76,17 @@ export function NativeChatStructuredSession(
     id: string
     sequence: number
   } | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<NativeChatComposerHandle>(null)
+  const inbox = useStructuredNativeChatInbox(props, controller, composerRef)
   const sessionActions = useStructuredChatSessionActions({
     ...props,
     fileLinkContext,
     paneKey,
     messages: controller.messages,
-    hasTerminalPaneActions: Boolean(props.contextMenuActions)
+    hasTerminalPaneActions: Boolean(props.contextMenuActions),
+    inbox: inbox.button
   })
-  const rootRef = useRef<HTMLDivElement>(null)
-  const composerRef = useRef<NativeChatComposerHandle>(null)
   const paneCommands = useStructuredNativeChatPaneCommands({
     tabId: props.tabId,
     groupId: props.groupId,
@@ -288,6 +291,7 @@ export function NativeChatStructuredSession(
             allowFileUriLinks={onLinkClick !== undefined}
             runtimeContext={imageRuntimeContext}
             deliveryNotices={deliveryNotices}
+            jumpRequest={inbox.jumpRequest}
           />
         )}
       </div>
