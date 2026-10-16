@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react'
+import { useMemo, useState, type ReactNode, type RefObject } from 'react'
 import { nativeChatAskDismissKey, type AskPrompt } from '../../../../shared/native-chat-ask'
 import {
   extractPendingAsyncAsk,
@@ -46,16 +46,13 @@ export function usePendingAsyncAsk(messages: readonly NativeChatMessage[]): {
 } {
   const pending = useMemo(() => extractPendingAsyncAsk(messages), [messages])
   const key = nativeChatAskDismissKey(pending)
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
-  // A superseded question clears the dismissal so a later identical ask shows again.
-  useEffect(() => {
-    if (key === null) {
-      setDismissedKey(null)
-    }
-  }, [key])
+  const [dismissal, setDismissal] = useState({ key, dismissed: false })
+  if (dismissal.key !== key) {
+    setDismissal({ key, dismissed: false })
+  }
   return {
-    prompt: key !== null && key !== dismissedKey ? pending : null,
-    dismiss: () => setDismissedKey(key)
+    prompt: dismissal.key === key && dismissal.dismissed ? null : pending,
+    dismiss: () => setDismissal({ key, dismissed: true })
   }
 }
 

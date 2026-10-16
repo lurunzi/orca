@@ -56,7 +56,7 @@ export function PickerTrigger(props: {
             variant="ghost"
             size="xs"
             aria-label={accessibleName}
-            className="max-w-48 text-muted-foreground"
+            className="max-w-48"
           >
             <span className="max-w-48 truncate">{props.label}</span>
             <ChevronDown className="size-3" />

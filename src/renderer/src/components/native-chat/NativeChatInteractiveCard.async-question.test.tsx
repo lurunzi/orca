@@ -2,7 +2,7 @@
 
 import '@testing-library/jest-dom/vitest'
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NativeChatBlock, NativeChatMessage } from '../../../../shared/native-chat-types'
@@ -19,6 +19,7 @@ vi.mock('../../store', () => ({
 }))
 
 import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
+import { usePendingAsyncAsk } from './NativeChatAsyncQuestionCard'
 import { useNativeChatInteractivePromptCard } from './use-native-chat-interactive-prompt-card'
 
 const send = {
@@ -76,6 +77,29 @@ describe('NativeChatInteractiveCard async Codex questions', () => {
   })
 
   afterEach(cleanup)
+
+  it('keeps a dismissed question hidden through streaming updates and resets for a later ask', () => {
+    const { result, rerender } = renderHook(({ messages }) => usePendingAsyncAsk(messages), {
+      initialProps: { messages: WITH_OPTIONS }
+    })
+    act(() => result.current.dismiss())
+    rerender({ messages: [...WITH_OPTIONS] })
+    expect(result.current.prompt).toBeNull()
+    rerender({ messages: [] })
+    rerender({ messages: WITH_OPTIONS })
+    expect(result.current.prompt?.questions[0]?.question).toBe(QUESTION)
+  })
+
+  it('clears dismissal when another question supersedes it', () => {
+    const { result, rerender } = renderHook(({ messages }) => usePendingAsyncAsk(messages), {
+      initialProps: { messages: WITH_OPTIONS }
+    })
+    act(() => result.current.dismiss())
+    rerender({ messages: asyncAsk([{ title: 'Any constraints?' }]) })
+    expect(result.current.prompt?.questions[0]?.question).toBe('Any constraints?')
+    rerender({ messages: WITH_OPTIONS })
+    expect(result.current.prompt?.questions[0]?.question).toBe(QUESTION)
+  })
 
   it('renders an answerable card after the acknowledgement', () => {
     render(card(WITH_OPTIONS))

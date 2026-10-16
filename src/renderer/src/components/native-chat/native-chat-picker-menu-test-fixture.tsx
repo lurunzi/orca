@@ -1,4 +1,3 @@
-import type * as ReactModule from 'react'
 import { vi, type Mock } from 'vitest'
 
 const toastError: Mock = vi.hoisted(() => vi.fn())
@@ -30,8 +29,8 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
-vi.mock('@/components/ui/dropdown-menu', () => {
-  const React = require('react') as typeof ReactModule
+vi.mock('@/components/ui/dropdown-menu', async () => {
+  const React = await import('react')
   return {
     DropdownMenu: ({
       children,
@@ -108,14 +107,16 @@ vi.mock('@/components/ui/dropdown-menu', () => {
         data-on-value-change={onValueChange ? '1' : '0'}
       >
         {React.Children.map(children, (child) => {
-          if (!React.isValidElement(child)) {
+          if (
+            !React.isValidElement<{
+              value?: string
+              disabled?: boolean
+              children?: React.ReactNode
+            }>(child)
+          ) {
             return child
           }
-          const props = child.props as {
-            value?: string
-            disabled?: boolean
-            children?: React.ReactNode
-          }
+          const props = child.props
           const selected = props.value !== undefined && props.value === value
           return (
             <button
@@ -142,13 +143,7 @@ vi.mock('@/components/ui/dropdown-menu', () => {
       disabled,
       value
     }: React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }) => (
-      // Why: parent RadioGroup mock reads `value` via Children.map — keep it on
-      // props even though native span has no value attribute.
-      <span
-        data-radio-item
-        data-disabled={disabled || undefined}
-        {...({ value } as Record<string, string>)}
-      >
+      <span data-radio-item data-disabled={disabled || undefined} data-value={value}>
         {children}
       </span>
     )
