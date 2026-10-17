@@ -27,3 +27,12 @@ it('only opens a draft in chat when the composer can safely mirror it', () => {
   expect(initialAntigravityChatView({ ...local, draft: 'Please inspect this' })).toBe('chat')
   expect(initialAntigravityChatView({ ...local, draft: 'a\u2028b' })).toBeUndefined()
 })
+
+it('follows the per-agent chat switch under Chat UI', () => {
+  const settings = (antigravity: boolean) => ({
+    experimentalNativeChat: true,
+    nativeChatProviders: { antigravity }
+  })
+  expect(initialAntigravityChatView({ ...local, settings: settings(false) })).toBeUndefined()
+  expect(initialAntigravityChatView({ ...local, settings: settings(true) })).toBe('chat')
+})

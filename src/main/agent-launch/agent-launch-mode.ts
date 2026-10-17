@@ -83,9 +83,11 @@ export type AgentLaunchModePlacement = {
   callerRendersStructured?: boolean
 }
 
-const REGISTERED_STRUCTURED_AGENTS: readonly string[] = STRUCTURED_AGENT_RUNTIME_METADATA.map(
-  ({ definition }) => definition.agent
-)
+// Fork: an agent whose managed program has no build for this host (Antigravity on Windows) launches
+// as a terminal from the start, so its early tab and transcript chat view still apply.
+const REGISTERED_STRUCTURED_AGENTS: readonly string[] = STRUCTURED_AGENT_RUNTIME_METADATA.filter(
+  ({ definition }) => definition.managedRuntime?.() !== false
+).map(({ definition }) => definition.agent)
 
 const DOWNGRADE_DETAIL: Record<Exclude<AgentLaunchModeReason, 'user_default'>, string> = {
   remote_execution_host: 'this launch runs on a remote execution host',

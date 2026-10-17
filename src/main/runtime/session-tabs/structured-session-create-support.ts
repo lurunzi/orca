@@ -3,7 +3,7 @@ import {
   structuredAgentCliSourcePathFromEvidence
 } from '../../native-chat/structured-agent-cli-source'
 import type { OrcaRuntimeWithRestoreStructuredAgentSessionTabsOnce as RestoreStructuredAgentSessionTabsOnceMethods } from './structured-session-tab-restoration'
-import { agentSessionRefusalError } from '../../../shared/agent-session-wire-refusals'
+import { hostUnsupportedCreateRefusal } from './structured-session-create-refusal'
 import { OrcaRuntimeWithGetWorktreePs } from '../workspaces/workspace-process-listing'
 import { getStructuredAgentSessionHost } from '../../native-chat/agent-session-wire/structured-agent-session-registry'
 import {
@@ -66,12 +66,6 @@ export abstract class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport exte
     if (!registration) {
       return null
     }
-    const services = {
-      getClaudeConfigDirectory: (target) => this.accounts.getClaudeConfigDirectory(target),
-      prepareCodexLaunchHome: this.prepareCodexStructuredLaunchFn,
-      readCodexLaunchHome: this.resolveCodexStructuredLaunchHomeFn,
-      workspaceTrustSettings: () => this.requireStore().getSettings()
-    }
     return async ({ launchEnv, location }) =>
       registration.resolveAccountHome(
         {
@@ -85,7 +79,14 @@ export abstract class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport exte
                   (await this.resolveRuntimeFileTarget(worktree)).worktree.path
               : null
         },
-        services
+        {
+          getClaudeConfigDirectory: (target) => this.accounts.getClaudeConfigDirectory(target),
+          prepareCodexLaunchHome: this.prepareCodexStructuredLaunchFn,
+          readCodexLaunchHome: this.resolveCodexStructuredLaunchHomeFn,
+          workspaceTrustSettings: () => this.requireStore().getSettings(),
+          // The chat host's own state root (ensureStructuredAgentSessionHost).
+          stateDirectory: getProfileUserDataPath()
+        }
       )
   }
 
@@ -94,9 +95,7 @@ export abstract class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport exte
   protected requireRegisteredStructuredAgent(agent: StructuredAgentId) {
     const definition = structuredAgentRuntimeMetadata(agent)?.definition
     if (!definition) {
-      throw agentSessionRefusalError('structured_agent_session_unsupported', {
-        reason: 'hostUnsupported'
-      })
+      throw hostUnsupportedCreateRefusal()
     }
     return definition
   }
@@ -175,9 +174,7 @@ export abstract class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport exte
       hostLaunchDirectory
     )
     if (!resolveAccountHome) {
-      throw agentSessionRefusalError('structured_agent_session_unsupported', {
-        reason: 'hostUnsupported'
-      })
+      throw hostUnsupportedCreateRefusal()
     }
     const resolved = await this.resolveStructuredAgentSessionIntent(
       { ...input, structuredAgentCliSourceEvidence },
@@ -196,9 +193,7 @@ export abstract class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport exte
   ): Promise<AgentSessionAccountHome> {
     const resolveAccountHome = this.structuredAgentAccountHomeResolver(agent, '', 'read')
     if (!resolveAccountHome) {
-      throw agentSessionRefusalError('structured_agent_session_unsupported', {
-        reason: 'hostUnsupported'
-      })
+      throw hostUnsupportedCreateRefusal()
     }
     const launchEnv = this.structuredAgentLaunchEnv(agent, this.requireStore().getSettings())
     return resolveAccountHome({ launchEnv, location: null })
@@ -221,9 +216,7 @@ export abstract class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport exte
     // importer adopts.
     const transcriptImport = structuredAgentRuntimeMetadata(input.agent)?.transcriptImport
     if (!support.supported || (input.resumeFrom && !transcriptImport)) {
-      throw agentSessionRefusalError('structured_agent_session_unsupported', {
-        reason: 'hostUnsupported'
-      })
+      throw hostUnsupportedCreateRefusal()
     }
     const settings = this.requireStore().getSettings()
     const launchEnv = this.structuredAgentLaunchEnv(input.agent, settings)

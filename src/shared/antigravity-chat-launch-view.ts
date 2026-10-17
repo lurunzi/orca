@@ -1,11 +1,11 @@
 import { canMirrorLaunchDraftToNativeChat } from './native-chat-launch-draft-mirrorability'
 import { isNativeChatTranscriptLocalReadable } from './native-chat-transcript-readability'
 import {
-  isNativeChatEnabled,
+  isNativeChatDefaultFor,
   type NativeChatDefaultSettings
 } from './structured-native-chat-launch-route'
 
-/** Antigravity runs in a terminal but opens its existing transcript view when Chat UI is on. */
+/** Antigravity runs in a terminal but opens its transcript view when its chat switch is on. */
 export function initialAntigravityChatView(input: {
   agent: string
   settings: Partial<NativeChatDefaultSettings> | null | undefined
@@ -14,7 +14,7 @@ export function initialAntigravityChatView(input: {
 }): 'chat' | undefined {
   if (
     input.agent !== 'antigravity' ||
-    !isNativeChatEnabled(input.settings) ||
+    !isNativeChatDefaultFor(input.settings, 'antigravity') ||
     !isNativeChatTranscriptLocalReadable(input.connectionId) ||
     (input.draft !== undefined && !canMirrorLaunchDraftToNativeChat(input.draft))
   ) {
