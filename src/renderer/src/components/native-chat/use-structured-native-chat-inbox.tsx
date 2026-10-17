@@ -10,9 +10,14 @@ import type { NativeChatJumpRequest } from './use-native-chat-jump-request'
 import type { useStructuredAgentSession } from './use-structured-agent-session'
 
 /** A structured chat's inbox: its header button, and the jumps it asks the transcript to make. */
+export type StructuredNativeChatInboxController = Pick<
+  ReturnType<typeof useStructuredAgentSession>,
+  'epoch' | 'journalItems' | 'hasOlder' | 'isWorking' | 'send'
+>
+
 export function useStructuredNativeChatInbox(
   props: Pick<NativeChatStructuredViewProps, 'agent' | 'sessionId' | 'tabId' | 'target'>,
-  controller: ReturnType<typeof useStructuredAgentSession>,
+  controller: StructuredNativeChatInboxController,
   composerRef: RefObject<NativeChatComposerHandle | null>
 ): { button: React.JSX.Element | null; jumpRequest: NativeChatJumpRequest | null } {
   const fileLinkContext = useNativeChatFileLinkContext(props.tabId)

@@ -12,7 +12,6 @@ import { structuredAgentSessionDraftScopeKey } from './native-chat-composer-draf
 import { NativeChatEmptyState } from './NativeChatEmptyState'
 import { NativeChatLoadingCue } from './NativeChatLoadingCue'
 import { NativeChatMessageList } from './NativeChatMessageList'
-import { useStructuredChatAsyncAsk } from './NativeChatAsyncQuestionCard'
 import { useStructuredNativeChatSubmitReveal } from './use-structured-native-chat-submit-reveal'
 import { useStructuredPromptResponseHold } from './use-structured-prompt-response-hold'
 import { NativeChatStructuredQuestionCard } from './NativeChatStructuredQuestionCard'
@@ -29,6 +28,7 @@ import { useNativeChatTabOwnerWorktreeId } from './use-native-chat-tab-owner'
 import { useStructuredAgentSession } from './use-structured-agent-session'
 import { useNativeChatImageRuntimeContext } from './native-chat-image-runtime-context'
 import { useStructuredNativeChatPaneCommands } from './use-structured-native-chat-pane-commands'
+import { structuredPromptCancel } from './structured-prompt-cancel'
 import type { NativeChatStructuredViewProps } from './native-chat-view-types'
 import { NativeChatStructuredSessionStatus } from './NativeChatStructuredSessionStatus'
 import { useNativeChatLaunchDraftSignal } from './use-native-chat-launch-draft-adoption'
@@ -36,6 +36,7 @@ import { useNativeChatInterruptedContinuation } from './NativeChatInterruptedCon
 import { NativeChatOrcaStopContext } from './native-chat-orca-stop-context'
 import { structuredSessionNotices } from './native-chat-structured-session-notices'
 import { NativeChatPromptSlotNotices } from './NativeChatComposerNotices'
+import { NativeChatInstallSlot, useNativeChatInstallSlot } from './NativeChatInstallSlot'
 import { useNativeChatComposerError } from './use-native-chat-composer-notice'
 import { useNativeChatProvisionalLaunch } from './use-native-chat-provisional-launch'
 import { useStructuredAgentSessionHostExecution } from './StructuredAgentSessionStatusBridge'
@@ -56,7 +57,6 @@ import { useNativeChatHostOutageNotice } from './use-native-chat-host-outage-not
 import { useNativeChatHostPermissionGate } from './use-native-chat-host-permission-gate'
 import { useNativeChatAvailabilityNotice } from './use-native-chat-availability-notice'
 import { useStructuredAgentSessionStartFailureFacts } from './use-structured-agent-session-start-failure-facts'
-import { useStructuredNativeChatInbox } from './use-structured-native-chat-inbox'
 import { pendingPromptsAllUnanswerableHere } from '../../../../shared/agent-session-approval-subject'
 import {
   isClaudeSignInFailureKind,
@@ -91,7 +91,8 @@ export function NativeChatStructuredSession(
     hostStopping: hostExecution.stopping,
     hostOptionStamp: hostExecution.optionStamp,
     providerStarting: hostExecution.phase === 'starting',
-    providerRunning: hostExecution.phase !== null,
+    // A start's own verdict (a signed-out agent) exists only once that start is proven.
+    providerRunning: hostExecution.phase === 'ready',
     rewind: rewindHost,
     transportEnabled: provisionalLaunch.transportEnabled,
     ...(provisionalLaunch.launch ? { launch: provisionalLaunch.launch } : {})
@@ -112,25 +113,6 @@ export function NativeChatStructuredSession(
   const [optionPickerRequest, setOptionPickerRequest] =
     useState<NativeChatOptionPickerRequest | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
-  const inbox = useStructuredNativeChatInbox(props, controller, composerRef)
-  const paneCommands = useStructuredNativeChatPaneCommands({
-    tabId: props.tabId,
-    groupId: props.groupId,
-    isVisible: props.isVisible,
-    rootRef,
-    composerRef,
-    questionAnswerInputRef,
-    terminalPaneActions: props.contextMenuActions,
-    sessionId: props.sessionId,
-    target: props.target,
-    chat: {
-      agent: props.agent,
-      paneKey,
-      messages: controller.messages,
-      fileLinkContext,
-      inbox: inbox.button
-    }
-  })
   const historyPhase = structuredChatHistoryPhase(provisionalLaunch, controller.status)
   const hostOutage = useNativeChatHostOutage(props.target)
   const hostNotice = useNativeChatHostOutageNotice(hostOutage)
@@ -145,7 +127,6 @@ export function NativeChatStructuredSession(
   const hostPermission = useNativeChatHostPermissionGate(props.target, props.agent, agentLabel)
   const hostHeld = hostPermission.sendBlockedReason !== null
   const submits = useStructuredNativeChatSubmitReveal(controller, provisionalLaunch.retry, hostHeld)
-  const { revealLatest } = submits
   const promptResponse = useStructuredPromptResponseHold(submits.respond)
   const continuation = useNativeChatInterruptedContinuation({
     target: props.target,
@@ -199,22 +180,33 @@ export function NativeChatStructuredSession(
     rootRef,
     { sessionId: props.sessionId, isVisible: props.isVisible }
   )
+  const paneCommands = useStructuredNativeChatPaneCommands({
+    tabId: props.tabId,
+    groupId: props.groupId,
+    isVisible: props.isVisible,
+    rootRef,
+    composerRef,
+    questionAnswerInputRef,
+    terminalPaneActions: props.contextMenuActions,
+    sessionId: props.sessionId,
+    target: props.target,
+    messageListRef: submits.messageListRef,
+    fileLinkContext,
+    rewind: controller.rewind.surface,
+    onFind: find.open,
+    chat: { agent: props.agent, paneKey, controller }
+  })
   const prompt = controller.prompts[0] ?? null
-  const asyncAsk = useStructuredChatAsyncAsk(controller, prompt !== null)
   // Prompts this build cannot answer leave the composer open: a send starts a turn, whose card
   // cancel then works.
   const promptsUnanswerable = pendingPromptsAllUnanswerableHere(controller.prompts)
-  const composerShown =
-    (prompt === null || promptsUnanswerable) && asyncAsk.prompt === null && !readFailedFinally
+  const composerShown = (prompt === null || promptsUnanswerable) && !readFailedFinally
+  // An owned prompt keeps its card; otherwise a missing program takes the composer's place.
+  const install = useNativeChatInstallSlot(props.target, props.agent, props.isVisible, agentLabel)
+  const composerOpen = composerShown && install.slot.kind !== 'install' && !paneCommands.askOpen
   const approval = prompt?.body.kind === 'approval' ? chatApprovalFromJournal(prompt.body) : null
-  const cancelPrompt = () => {
-    if (prompt && (controller.turnId || props.agent === 'pi')) {
-      void controller.cancel(controller.turnId ?? undefined, {
-        itemId: prompt.itemId,
-        expectedRevision: prompt.revision
-      })
-    }
-  }
+  // Fork: moved out to keep this file under its line limit.
+  const cancelPrompt = structuredPromptCancel(controller, prompt, props.agent)
   const rootInput = useNativeChatRootInputRouting({
     tabId: props.tabId,
     rootRef,
@@ -222,7 +214,7 @@ export function NativeChatStructuredSession(
     questionAnswerInputRef,
     isVisible: props.isVisible,
     isFocusedGroup: props.isFocusedGroup,
-    composerReady: composerShown
+    composerReady: composerOpen
   })
   const questionBody = prompt?.body.kind === 'question' ? prompt.body : null
   const questions = questionBody ? agentSessionPromptQuestions(questionBody) : []
@@ -235,8 +227,8 @@ export function NativeChatStructuredSession(
     optionPickerRequest,
     setOptionPickerRequest,
     onError: reportComposerError,
-    onSubmitted: revealLatest,
-    sendBlockedReason: hostPermission.sendBlockedReason
+    onSubmitted: submits.revealLatest,
+    sendBlockedReason: hostPermission.sendBlockedReason ?? install.sendBlockedReason
   })
 
   // Said once: on the pane when the failure took it, else in the composer's notices.
@@ -258,8 +250,9 @@ export function NativeChatStructuredSession(
     failure: provisionalLaunch.failure,
     failureRows: startFailures.filter((fact) => isClaudeSignInFailureKind(fact.kind)).length
   })
+  // While Install shows, it says what to do; a start failure's "send again" or Retry can't help.
   const notices = structuredSessionNotices({
-    launch,
+    launch: install.slot.kind === 'install' ? { ...launch, lifecycle: null } : launch,
     agentLabel,
     sessionError,
     composerError: composerError ?? continuation.continueError,
@@ -333,7 +326,7 @@ export function NativeChatStructuredSession(
                   allowFileUriLinks={onLinkClick !== undefined}
                   runtimeContext={imageRuntimeContext}
                   deliveryNotices={deliveryNotices}
-                  jumpRequest={inbox.jumpRequest}
+                  jumpRequest={paneCommands.inbox.jumpRequest}
                 />
               </NativeChatClaudeSignInContext.Provider>
             </NativeChatOrcaStopContext.Provider>
@@ -370,7 +363,7 @@ export function NativeChatStructuredSession(
             />
           )}
           {/* Prompt cards take the composer's slot, below the background-task dock. */}
-          {composerShown ? null : <NativeChatPromptSlotNotices notices={notices} />}
+          {composerOpen ? null : <NativeChatPromptSlotNotices notices={notices} />}
           {prompt && approval ? (
             <NativeChatApprovalCard
               key={`${prompt.itemId}:${prompt.revision}`}
@@ -396,8 +389,9 @@ export function NativeChatStructuredSession(
               answerInputRef={questionAnswerInputRef}
             />
           ) : null}
-          {asyncAsk.card}
-          {composerShown ? (
+          {paneCommands.asyncAsk.card}
+          {composerShown && <NativeChatInstallSlot slot={install.slot} agentLabel={agentLabel} />}
+          {composerOpen ? (
             <NativeChatComposer
               ref={composerRef}
               terminalTabId={props.tabId}

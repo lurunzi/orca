@@ -26,6 +26,14 @@ export function composerMetadataChanged(
   )
 }
 
+/** A suggestion change writes no row, so a caught-up subscriber still owes a frame. */
+export function promptSuggestionChanged(
+  subscriber: AgentSessionComposerMetadata,
+  hooks: Pick<AgentSessionComposerMetadataHooks, 'readPromptSuggestion'>
+): boolean {
+  return composerMetadataChanged(subscriber, { readPromptSuggestion: hooks.readPromptSuggestion })
+}
+
 export function emitComposerMetadataFrames(
   subscriber: AgentSessionComposerMetadata & { emit: (event: AgentSessionSubscribeEvent) => void },
   frames: readonly AgentSessionSubscribeEvent[],

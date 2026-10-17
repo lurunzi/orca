@@ -6,7 +6,8 @@ import { ClaudeControlRequestTimeoutError } from './claude-agent-sdk-control-req
 import { ClaudeBackgroundTaskTracker } from './claude-background-task-tracker'
 import { ClaudeChildWorkDecoder } from './claude-child-work-decoder'
 import { ClaudeSlashCommandCatalog } from './claude-slash-command-catalog'
-import { createClaudeSessionStartup } from './claude-structured-session-startup-state'
+import { createClaudeInitProof } from './claude-structured-init-proof'
+import { claudeProviderHandleLink } from './claude-structured-owner-identity'
 import {
   observeClaudeFastModeFacts,
   readClaudeStructuredSessionOptions
@@ -44,7 +45,19 @@ function sessionFor(setModel: ClaudeSession['connection']['setModel']): ClaudeSe
     capabilities: [],
     events: undefined,
     translator: null,
-    startup: { ...createClaudeSessionStartup(), state: 'proven' }
+    link: claudeProviderHandleLink({
+      sessionId: 'provider-session',
+      leafUuid: null,
+      resumed: false,
+      fence: 1,
+      observedAt: 1
+    }),
+    initialization: {
+      proof: createClaudeInitProof(),
+      account: undefined,
+      resumesTranscript: false,
+      onLateRefusal: () => {}
+    }
   }
 }
 
@@ -188,16 +201,6 @@ describe('Claude structured Fast mode', () => {
     await expect(
       setClaudeStructuredOption(session, { key: 'fastMode', value: 'true' }, undefined)
     ).rejects.toThrow('preference')
-  })
-
-  it('does not wait for account initialization when options are read during startup', async () => {
-    const { session } = fastModeSession(true)
-    session.startup.state = 'pending'
-    session.readFastModeAccountSupport = vi.fn(
-      () => new Promise<AgentSessionFastModeSupport>(() => {})
-    )
-    await readClaudeStructuredSessionOptions(session, undefined)
-    expect(session.readFastModeAccountSupport).not.toHaveBeenCalled()
   })
 
   it('coalesces concurrent permission checks but retries after denial', async () => {

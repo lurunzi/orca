@@ -17,11 +17,11 @@ it.each([
       fence: 1
     }))
     const runtime: AgentLaunchExecution['runtime'] = {
-      getClientSettings: () => ({
-        ...getDefaultSettings('/tmp'),
-        hostSettingOverrides: {},
-        sourceControlAi: { actions: {} },
-        experimentalNativeChat: scenario.enabled
+      requireStore: () => ({
+        getSettings: () => ({
+          ...getDefaultSettings('/tmp'),
+          experimentalNativeChat: scenario.enabled
+        })
       }),
       getStructuredAgentSessionCreateSupport: vi.fn(async () => ({
         supported: false,

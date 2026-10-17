@@ -39,7 +39,7 @@ export type NativeChatSessionOptionPickersProps = {
   focusComposer?: () => void
 }
 
-/** A write in flight. Its value shows at once, and nothing else is sent until it settles. */
+/** A descriptor write in flight; its value shows until it settles. */
 type PendingPick = { id: string; value?: SessionOptionValue }
 
 // Why: the picker stays open across a pick, so the choice has to land where it was made before
@@ -145,8 +145,8 @@ function SessionOptionPopover(props: {
   options: readonly SessionOptionDescriptor[]
   isWorking: boolean
   queued?: boolean
-  /** A write is in flight: nothing else is taken, and the write controls say so. */
-  busy: boolean
+  /** Only the descriptor being saved holds its write controls. */
+  pendingIds: ReadonlySet<string>
   request: NativeChatOptionPickerRequest | null
   onSet: (descriptor: SessionOptionDescriptor, value: SessionOptionValue) => void
   onAction: (descriptor: SessionOptionDescriptor) => void
@@ -154,7 +154,7 @@ function SessionOptionPopover(props: {
   onOpen?: () => void
   focusComposer?: () => void
 }): React.JSX.Element {
-  const { model, options, busy } = props
+  const { model, options, pendingIds } = props
   // Why here: this unmounts with the pill, so a picker that went away comes back closed.
   const [open, setOpenState] = useState(false)
   const setOpen = (next: boolean): void => {
@@ -185,9 +185,9 @@ function SessionOptionPopover(props: {
       ? nativeChatSessionOptionDisabledReason(options[0]?.disabledReason)
       : null
 
-  // Why not sent while busy: the surface drops a write made while another is in flight.
+  // Different descriptors can save together; hold only a repeat of the same pick.
   const set = (descriptor: SessionOptionDescriptor, value: SessionOptionValue): void => {
-    if (busy) {
+    if (pendingIds.has(descriptor.id)) {
       return
     }
     focusReturn.notePick()
@@ -200,7 +200,7 @@ function SessionOptionPopover(props: {
     }
   }
   const act = (descriptor: SessionOptionDescriptor): void => {
-    if (busy) {
+    if (pendingIds.has(descriptor.id)) {
       return
     }
     // Why: agent-picker opens the TUI, and that picker owns focus.
@@ -274,11 +274,14 @@ function SessionOptionPopover(props: {
             currentValue={model.kind.currentValue}
             readOnly={!model.settable}
             readOnlyReason={modelReason}
-            busy={busy}
+            busy={pendingIds.has(model.id)}
             onSelect={(value) => set(model, value)}
           />
         ) : (
-          <NativeChatSessionOptionWriteGroup busy={busy} className="flex flex-col p-1">
+          <NativeChatSessionOptionWriteGroup
+            busy={pendingIds.has(model.id)}
+            className="flex flex-col p-1"
+          >
             {modelReason && !model.settable ? (
               <div className="px-2 py-1 text-xs text-muted-foreground">{modelReason}</div>
             ) : null}
@@ -297,7 +300,7 @@ function SessionOptionPopover(props: {
         <NativeChatSessionOptionRows
           options={options}
           shownReason={model.settable ? null : modelReason}
-          busy={busy}
+          pendingIds={pendingIds}
           onSet={set}
           onAction={act}
         />
@@ -313,7 +316,21 @@ function NativeChatSessionOptionPickersInner({
   pickerRequest,
   focusComposer
 }: NativeChatSessionOptionPickersProps): React.JSX.Element | null {
-  const [pending, setPending] = useState<PendingPick | null>(null)
+  const [pending, setPending] = useState<ReadonlyMap<string, PendingPick>>(() => new Map())
+  const markPending = useCallback(
+    (id: string) => (pick: PendingPick | null) => {
+      setPending((current) => {
+        const next = new Map(current)
+        if (pick === null) {
+          next.delete(id)
+        } else {
+          next.set(id, pick)
+        }
+        return next
+      })
+    },
+    []
+  )
   const flush = useCallback(
     (entries: [string, SessionOptionValue][]) => {
       const last = entries.at(-1)
@@ -321,13 +338,13 @@ function NativeChatSessionOptionPickersInner({
         return
       }
       const [id, value] = last
-      runSessionOptionSurfaceCall({ id, value }, setPending, async () => {
+      runSessionOptionSurfaceCall({ id, value }, markPending(id), async () => {
         for (const [optionId, selection] of entries) {
           await surface.setOption(optionId, selection)
         }
       })
     },
-    [surface]
+    [surface, markPending]
   )
   const { queued, queue } = useQueuedSessionOptions({ isWorking, flush })
   // Why: the session holds a request across composer remounts; one left standing reopens the
@@ -335,7 +352,10 @@ function NativeChatSessionOptionPickersInner({
   useEffect(() => pickerRequest?.consume(), [pickerRequest])
   const projected = projectModelTierOptions(
     snapshot.map((descriptor) =>
-      withQueuedSessionOption(withPendingValue(descriptor, pending), queued)
+      withQueuedSessionOption(
+        withPendingValue(descriptor, pending.get(descriptor.id) ?? null),
+        queued
+      )
     )
   )
   const reportedModel = projected.snapshot.find((descriptor) => descriptor.category === 'model')
@@ -352,7 +372,7 @@ function NativeChatSessionOptionPickersInner({
         options={options}
         isWorking={isWorking && (!surface.deferWhileWorking || Boolean(model.action))}
         queued={queued.size > 0}
-        busy={pending !== null}
+        pendingIds={new Set(pending.keys())}
         request={pickerRequest ?? null}
         onSet={(descriptor, value) => {
           const speedModel =
@@ -368,12 +388,12 @@ function NativeChatSessionOptionPickersInner({
             queue(id, selection, id === model.id ? [...queued.keys()] : [])
             return
           }
-          return runSessionOptionSurfaceCall({ id, value: selection }, setPending, () =>
+          return runSessionOptionSurfaceCall({ id, value: selection }, markPending(id), () =>
             surface.setOption(id, selection)
           )
         }}
         onAction={(descriptor) =>
-          runSessionOptionSurfaceCall({ id: descriptor.id }, setPending, () =>
+          runSessionOptionSurfaceCall({ id: descriptor.id }, markPending(descriptor.id), () =>
             surface.invokeAction(descriptor.id)
           )
         }

@@ -16,11 +16,18 @@ import { useNativeChatPasteBridge } from './use-native-chat-paste-bridge'
 import {
   emptyNativeChatContextMenuActions,
   useNativeChatContextMenu,
-  type NativeChatContextMenuActions
+  type NativeChatContextMenuActions,
+  type NativeChatContextMenuTargetArgs
 } from './use-native-chat-context-menu'
 import { matchNativeChatSplitShortcut } from './native-chat-split-shortcut'
 import { runNativeChatSplitTarget } from './native-chat-layout-actions'
 import { useStructuredChatSessionActions } from './use-structured-chat-session-actions'
+import {
+  useStructuredNativeChatInbox,
+  type StructuredNativeChatInboxController
+} from './use-structured-native-chat-inbox'
+import { useStructuredChatAsyncAsk } from './NativeChatAsyncQuestionCard'
+import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 
 export function useStructuredNativeChatPaneCommands({
   tabId,
@@ -33,7 +40,8 @@ export function useStructuredNativeChatPaneCommands({
   sessionMenuItems,
   sessionId,
   target,
-  chat
+  chat,
+  ...menuTargets
 }: {
   tabId: string
   groupId?: string
@@ -45,14 +53,27 @@ export function useStructuredNativeChatPaneCommands({
   sessionMenuItems?: ReactNode
   sessionId: string
   target: RuntimeClientTarget
-  /** The chat behind the header cluster and its session menu items. */
-  chat: Pick<
-    Parameters<typeof useStructuredChatSessionActions>[0],
-    'agent' | 'paneKey' | 'messages' | 'fileLinkContext' | 'inbox'
-  >
-}) {
+  /** Fork: the chat behind the header cluster, its session menu items, Inbox and async asks. */
+  chat: Pick<Parameters<typeof useStructuredChatSessionActions>[0], 'agent' | 'paneKey'> & {
+    controller: StructuredNativeChatInboxController & {
+      messages: readonly NativeChatMessage[]
+      prompts: readonly unknown[]
+    }
+  }
+} & NativeChatContextMenuTargetArgs) {
+  const { controller } = chat
+  const inbox = useStructuredNativeChatInbox(
+    { agent: chat.agent, sessionId, tabId, target },
+    controller,
+    composerRef
+  )
+  const asyncAsk = useStructuredChatAsyncAsk(controller, controller.prompts.length > 0)
   const sessionActions = useStructuredChatSessionActions({
-    ...chat,
+    agent: chat.agent,
+    paneKey: chat.paneKey,
+    messages: controller.messages,
+    fileLinkContext: menuTargets.fileLinkContext ?? null,
+    inbox: inbox.button,
     tabId,
     groupId,
     sessionId,
@@ -73,6 +94,7 @@ export function useStructuredNativeChatPaneCommands({
     questionAnswerInputRef
   })
   const contextMenu = useNativeChatContextMenu({
+    ...menuTargets,
     rootRef,
     actions: {
       ...emptyNativeChatContextMenuActions,
@@ -132,5 +154,12 @@ export function useStructuredNativeChatPaneCommands({
     [groupId, keybindings, tabId, terminalPaneActions]
   )
 
-  return { ...contextMenu, onKeyDownCapture, header: sessionActions.header }
+  return {
+    ...contextMenu,
+    onKeyDownCapture,
+    header: sessionActions.header,
+    inbox,
+    asyncAsk,
+    askOpen: asyncAsk.prompt !== null
+  }
 }

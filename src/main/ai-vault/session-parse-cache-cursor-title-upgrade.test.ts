@@ -3,18 +3,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
 import {
-  ensureSessionParseCacheLoaded,
   flushSessionParseCachePersist,
   initSessionParseCachePersistence,
-  resetSessionParseCachePersistenceForTests,
-  scheduleSessionParseCachePersist
+  resetSessionParseCachePersistenceForTests
 } from './session-parse-cache-persistence'
 import {
   createSessionParseStats,
   parseAgentSessionFileCached,
-  resetSessionParseCacheForTests,
-  snapshotSessionParseCacheForPersistence
+  resetSessionParseCacheForTests
 } from './session-scanner-parse-cache'
+import { getSessionParseCacheEntry } from './session-parse-cache-store'
 import type { SessionFileCandidate } from './session-scanner-types'
 
 let root: string | undefined
@@ -53,18 +51,20 @@ it('replaces a persisted Cursor envelope title even when its transcript has not 
     }
   }
   await parseAgentSessionFileCached(candidate, process.platform)
-  const entries = snapshotSessionParseCacheForPersistence().map(([filePath, entry]) => [
-    filePath,
-    {
-      ...entry,
-      session: entry.session && { ...entry.session, title: '<timestamp>Sunday, Oct 11, 2026...' }
-    }
-  ])
+  const { resume: _resume, foldSession: _fold, ...entry } = getSessionParseCacheEntry(path)!
+  const entries = [
+    [
+      path,
+      {
+        ...entry,
+        session: entry.session && { ...entry.session, title: '<timestamp>Sunday, Oct 11, 2026...' }
+      }
+    ]
+  ]
   const cacheFile = join(root, 'cache.json')
   await writeFile(cacheFile, JSON.stringify({ schemaVersion: 4, appVersion: 'pre-fix', entries }))
   resetSessionParseCacheForTests()
   initSessionParseCachePersistence({ filePath: cacheFile, appVersion: 'fixed' })
-  await ensureSessionParseCacheLoaded()
 
   const stats = createSessionParseStats()
   const session = await parseAgentSessionFileCached(candidate, process.platform, stats)
@@ -72,12 +72,10 @@ it('replaces a persisted Cursor envelope title even when its transcript has not 
   expect(stats.fullParses).toBe(1)
   expect(stats.reused).toBe(0)
 
-  scheduleSessionParseCachePersist()
   await flushSessionParseCachePersist()
   resetSessionParseCacheForTests()
   resetSessionParseCachePersistenceForTests()
   initSessionParseCachePersistence({ filePath: cacheFile, appVersion: 'next-release' })
-  await ensureSessionParseCacheLoaded()
   const reusedStats = createSessionParseStats()
   const reused = await parseAgentSessionFileCached(candidate, process.platform, reusedStats)
   expect(reused?.title).toBe('Fix the login bug')

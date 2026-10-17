@@ -2,7 +2,7 @@
  * The host needs the created workspace to answer; a definitive refusal starts a terminal agent. */
 
 import { assertOpenCodeModelLaunchPreferencesAbsent } from '../opencode/opencode-model-startup-plan'
-import { initialAntigravityChatView } from '../../shared/antigravity-chat-launch-view'
+import { antigravityTerminalViewMode } from './agent-launch-antigravity-chat-view'
 import { parsePaneKey } from '../../shared/stable-pane-id'
 import type { AgentLaunchIntent, AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { withoutReservedAgentCreateFields } from '../../shared/agent-launch-intent'
@@ -71,7 +71,9 @@ export async function executeAgentLaunch(
           : {}),
         ...(execution.callerRendersStructured === false ? { callerRendersStructured: false } : {})
       },
-      settings: readAgentLaunchModeSettings(runtime, intent.nativeChatDefault),
+      settings: execution.terminalOnly
+        ? undefined
+        : readAgentLaunchModeSettings(runtime, intent.nativeChatDefault),
       ...(execution.terminalOnly ? { terminalOnly: true } : {}),
       vocabulary
     })
@@ -332,15 +334,7 @@ async function createTerminalSurface(
     agent: intent.agent,
     ...(startupPrompt ? { startupPrompt } : {}),
     ...terminalLaunchInputs(intent),
-    viewMode:
-      initialAntigravityChatView({
-        agent: intent.agent,
-        settings: execution.terminalOnly
-          ? undefined
-          : readAgentLaunchModeSettings(execution.runtime, intent.nativeChatDefault),
-        connectionId: workspace.connectionId,
-        ...(intent.prompt?.delivery === 'draft' ? { draft: intent.prompt.text } : {})
-      }) ?? 'terminal'
+    viewMode: antigravityTerminalViewMode(execution, workspace.connectionId)
   })
   return {
     outcome: {

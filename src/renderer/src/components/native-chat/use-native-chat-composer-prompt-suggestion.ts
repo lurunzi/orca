@@ -11,8 +11,10 @@ export function useNativeChatComposerPromptSuggestion(args: {
   structuredTransport: NativeChatStructuredComposerTransport | undefined
   targetPtyId: string | null
   paneKey: string
-  /** Composer state that hides the suggestion: disabled, goal mode, working, dictating, images. */
+  /** Composer state that hides the suggestion: disabled, goal mode, working, dictating. */
   blocked: boolean
+  /** Attached images also hide it. */
+  hasImages: boolean
   readTerminalPromptSuggestion: (() => string | null) | undefined
   textareaRef: RefObject<NativeChatComposerInput | null>
   caret: number
@@ -27,7 +29,8 @@ export function useNativeChatComposerPromptSuggestion(args: {
     scopeKey: structuredTransport?.sessionId ?? args.targetPtyId ?? args.paneKey,
     enabled:
       (agent === 'claude' || (agent === 'codex' && structuredTransport !== undefined)) &&
-      !args.blocked,
+      !args.blocked &&
+      !args.hasImages,
     draft: args.draft,
     suggestion: structuredTransport?.promptSuggestion,
     readTerminalSuggestion: structuredTransport ? undefined : args.readTerminalPromptSuggestion,

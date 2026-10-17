@@ -57,6 +57,9 @@ export abstract class RuntimeConstructionServices {
   abstract stopTerminalsForWorktree(
     ...args: Calls.StopTerminalsForWorktreeArgs
   ): Calls.StopTerminalsForWorktreeResult
+  abstract stopTerminalsForProject(
+    ...args: Calls.StopTerminalsForProjectArgs
+  ): Calls.StopTerminalsForProjectResult
   abstract resolveOrchestrationWorkerServer(
     ...args: Calls.ResolveOrchestrationWorkerServerArgs
   ): Calls.ResolveOrchestrationWorkerServerResult

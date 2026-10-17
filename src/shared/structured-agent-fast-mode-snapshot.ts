@@ -1,4 +1,8 @@
-import type { AgentSessionOptionsResult } from './agent-session-wire'
+import type {
+  AgentSessionModelCatalogResult,
+  AgentSessionModelOption,
+  AgentSessionOptionsResult
+} from './agent-session-wire'
 import type { SessionOptionDescriptor } from './native-chat-session-options'
 
 export function applyStructuredAgentFastModeAvailability(args: {
@@ -48,4 +52,45 @@ export function applyStructuredAgentFastModeAvailability(args: {
         }
       : descriptor
   )
+}
+
+type StructuredAgentFastModeState = {
+  fastModeSupport?: AgentSessionOptionsResult['fastModeSupport']
+  fastModeModelSupport: ReadonlyMap<string, boolean | undefined>
+}
+
+function modelFastModeSupport(
+  models: readonly AgentSessionModelOption[]
+): ReadonlyMap<string, boolean | undefined> {
+  return new Map(models.map((model) => [model.id, model.supportsFastMode]))
+}
+
+/** A saved catalog never confirms Claude account permission for Fast. */
+export function catalogFastModeState(
+  agent: string,
+  catalog: Exclude<AgentSessionModelCatalogResult, { origin: 'unknown' }>
+): StructuredAgentFastModeState {
+  return {
+    fastModeModelSupport: modelFastModeSupport(catalog.models),
+    fastModeSupport:
+      agent === 'claude'
+        ? { supported: false, reason: 'availability-unconfirmed' }
+        : catalog.fastModeSupport
+  }
+}
+
+/** A live Claude answer offers Fast only once the host verified the account. */
+export function liveFastModeState(
+  agent: string,
+  result: AgentSessionOptionsResult
+): StructuredAgentFastModeState {
+  return {
+    fastModeModelSupport: modelFastModeSupport(result.models),
+    fastModeSupport:
+      agent === 'claude' &&
+      result.fastModeSupport?.supported !== false &&
+      result.fastModeSupport?.accountVerified !== true
+        ? { supported: false, reason: 'availability-unconfirmed' }
+        : result.fastModeSupport
+  }
 }
