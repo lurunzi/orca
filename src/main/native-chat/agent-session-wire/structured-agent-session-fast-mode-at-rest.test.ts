@@ -29,7 +29,7 @@ it('refuses enabling Claude Fast at rest despite an older catalog claiming suppo
         ],
         fastModeSupport: { supported: true }
       }),
-      retainedLiveModelIds: () => [],
+      retainedLiveModelIds: async () => [],
       recordLiveListing: () => {},
       prewarm: async () => {},
       stop: () => {},

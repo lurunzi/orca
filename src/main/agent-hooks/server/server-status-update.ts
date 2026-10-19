@@ -1,3 +1,4 @@
+import { deriveCliWriterTopology } from './cli-writer-observation'
 import { transitionHookPresence } from '../../../shared/agent-hook-presence-transition'
 import {
   reconcileRemoteCodexState,
@@ -22,6 +23,7 @@ import { isStaleGrokTurnEnd } from './server-grok-status-rules'
 import { resolveCancelVerdictLatch } from './server-cancel-verdict-latch'
 import { AgentHookServerStatusApplication } from './server-status-application'
 import { claimsPaneAfterExit } from './agent-exit-evidence'
+import { nestedHookIdentityPayload } from './server-nested-hook-identity'
 
 export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusApplication {
   protected readonly claudeOwedNotificationExpiry = new ClaudeOwedNotificationExpiryTimers(
@@ -49,7 +51,8 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusA
     onAccepted?: () => void,
     origin: AgentStatusObservationOrigin = 'hook',
     observedAt?: number,
-    mutationBefore?: EnrichedAgentHookEventPayload
+    mutationBefore?: EnrichedAgentHookEventPayload,
+    newRun = false
   ): EnrichedAgentHookEventPayload | undefined {
     const transitioned = transitionHookPresence(
       incoming,
@@ -139,10 +142,16 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusA
     if (terminalOwnedPayload.providerSessionOnly) {
       // Why: identity-only rows survive replay but must not emit prompt telemetry or a fabricated status.
       onAccepted?.()
-      const enriched = {
-        ...this.attachStatusTiming(terminalOwnedPayload, now),
-        observation: this.stampObservation(terminalOwnedPayload, origin, now)
-      }
+      const enriched = deriveCliWriterTopology(
+        {
+          ...this.attachStatusTiming(terminalOwnedPayload, now),
+          observation: this.stampObservation(terminalOwnedPayload, origin, now)
+        },
+        rowBefore,
+        this.cliWriterExecutionMatches,
+        newRun,
+        incoming.agentPresence?.process
+      )
       this.clearAssistantMessageRetry(enriched.paneKey)
       this.runtimeObservedStatusPaneKeys.delete(enriched.paneKey)
       if (!this.writeLegacyStatusRow(enriched)) {
@@ -196,18 +205,7 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusA
     const identityResolvedPayload =
       identity.agentType === rootContextPreservingPayload.payload.agentType
         ? rootContextPreservingPayload
-        : {
-            ...rootContextPreservingPayload,
-            // Nested hooks must not pair the parent's agent type with a child's transcript.
-            ...(identity.inheritedFromActivePane
-              ? { providerSession: previous?.providerSession }
-              : {}),
-            payload: {
-              ...rootContextPreservingPayload.payload,
-              agentType: identity.agentType,
-              ...(identity.inheritedFromActivePane ? { model: previous?.payload.model } : {})
-            }
-          }
+        : nestedHookIdentityPayload(rootContextPreservingPayload, identity, previous)
     const attachedPayload = attachClaudePermissionToolUseId(previous, identityResolvedPayload)
     // Why before the permission hold: that hold adopts the event's `mainAgent`, and a relay's
     // restatement of a main agent the desktop cancelled must not replace the cancel.
@@ -276,10 +274,16 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusA
       runningNonAgentTask === undefined
         ? unpairedPayload
         : { ...unpairedPayload, claudeRunningNonAgentTask: runningNonAgentTask }
-    const enriched = {
-      ...this.attachStatusTiming(pairedPayload, now, observedAt),
-      observation: this.stampObservation(pairedPayload, origin, observedAt ?? now)
-    }
+    const enriched = deriveCliWriterTopology(
+      {
+        ...this.attachStatusTiming(pairedPayload, now, observedAt),
+        observation: this.stampObservation(pairedPayload, origin, observedAt ?? now)
+      },
+      rowBefore,
+      this.cliWriterExecutionMatches,
+      newRun,
+      incoming.agentPresence?.process
+    )
     if (
       typeof enriched.payload.turnCompletedAt === 'number' &&
       Number.isFinite(enriched.payload.turnCompletedAt)

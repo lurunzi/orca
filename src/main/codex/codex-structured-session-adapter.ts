@@ -125,9 +125,6 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
     session: CodexSession,
     event: CodexStructuredSessionEvent
   ): CodexJournalTranslationAdmission {
-    if (event.type === 'notification' && !session.backgroundTasks.canObserve(event)) {
-      return { accepted: false, reason: 'failed' }
-    }
     if (event.type === 'notification') {
       noteCodexTurnOpened(session, event.method, event.params)
     }
@@ -332,6 +329,8 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
   closeAll = (): Promise<void> => this.teardown.closeAll()
   releaseAcquisition = (input: { sessionId: string }): Promise<boolean> =>
     this.teardown.close(input.sessionId)
+  hasOwnedAcquisition = (sessionId: string): boolean =>
+    this.acquisitions.get(sessionId) !== undefined || this.sessions.has(sessionId)
 
   private session(sessionId: string): CodexSession {
     return requireLiveCodexSession(this.sessions, sessionId)

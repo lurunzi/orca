@@ -10,7 +10,7 @@ import { addAdditionalValidWorkspaceKeys } from '@/lib/workspace-session-hydrati
 import {
   buildValidWorktreeIdsForSessionHydration,
   collectPersistedWorktreeIdsForSessionHydration
-} from '../slices/degraded-repo-worktree-validity'
+} from '../../../../shared/worktree/degraded-repo-worktree-validity'
 import type { TerminalSlice, TerminalStoreGet, TerminalStoreSet } from './terminal-state'
 import { buildRuntimeSessionPlaceholders } from './workspace-terminal-placeholders'
 import {
@@ -178,6 +178,12 @@ export function createWorkspaceTerminalHydrationActions(
           // pull merge's session does not, so re-hydrating from it must not clear the mirror.
           closedTerminalTabTombstonesByTabId:
             session.closedTerminalTabTombstonesByTabId ?? s.closedTerminalTabTombstonesByTabId,
+          // Why keep the store's when absent: as above, a pull merge's session carries no intents.
+          // Replaced wholesale, not through the replay's reveal path: only the startup read carries
+          // them, before any snapshot can have hidden a tab.
+          pairedTerminalTabCloseIntentsByEnvironment:
+            session.pairedTerminalTabCloseIntentsByEnvironment ??
+            s.pairedTerminalTabCloseIntentsByEnvironment,
           automaticAgentResumeClaimsByTabId: {},
           sleepingAgentSessionsByPaneKey,
           pendingReconnectWorktreeIds,

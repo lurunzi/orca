@@ -6,7 +6,7 @@ import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { AGENT_PROMPT_POST_PASTE_SUBMIT_DELAY_MS } from '../../../shared/agent-prompt-injection'
 import { resolveDraftPasteReadyTimeoutMs } from '../../../shared/draft-paste-ready-timeout'
 import { resolvePasteReadySignal } from '../../../shared/draft-paste-ready-scanner'
-import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-inspection'
+import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-verified-input'
 import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START

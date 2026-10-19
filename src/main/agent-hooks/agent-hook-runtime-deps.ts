@@ -16,6 +16,7 @@ export function agentHookRuntimeDeps(
     // place `worktree.ps` and the mobile projection read from.
     onTerminalAgentStatus: (event) => server.ingestTerminalStatus(event),
     onTerminalScreenPermission: (event) => server.ingestAntigravityScreenPermission(event),
+    onTerminalProgramStatusFacet: (event) => server.ingestProgramStatusFacet(event),
     onClaudeTerminalEvidence: (paneKey, evidence) =>
       server.observeClaudeTerminalEvidence(paneKey, evidence),
     getAgentStatusSnapshot: () =>
@@ -38,6 +39,7 @@ export function agentHookRuntimeDeps(
       readChildWorkRecords: (subject) => server.getStructuredChildWork(subject),
       readChildWorkHandles: (subject) => server.getStructuredChildWorkHandles(subject)
     },
+    readHookCliWriterObservation: (row) => server.readCliWriterObservation(row),
     checkHookAgentPresence: (paneKey, exitedSince) =>
       exitedSince === undefined
         ? server.checkAgentPresence(paneKey)

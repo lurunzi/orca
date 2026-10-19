@@ -34,8 +34,10 @@ vi.mock('@/store', () => ({
   }
 }))
 vi.mock('@/runtime/runtime-terminal-inspection', () => ({
-  sendRuntimePtyInputVerified: mocks.send,
   inspectRuntimeTerminalProcess: mocks.inspect
+}))
+vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+  sendRuntimePtyInputVerified: mocks.send
 }))
 
 describe('Antigravity continuation delivery', () => {

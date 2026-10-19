@@ -12,7 +12,7 @@ import {
   type ClaudeModelSwitchConfirmationObserver
 } from './claude-model-switch-confirmation'
 import type { NativeChatSessionOptionDispatchCommand } from './native-chat-session-option-command-dispatch'
-import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-inspection'
+import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-verified-input'
 import { switchCursorModel } from './cursor-model-switch'
 
 export function useNativeChatSessionOptionCommand(args: {

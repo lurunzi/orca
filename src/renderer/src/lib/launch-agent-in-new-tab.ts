@@ -1,5 +1,9 @@
+import type {
+  AgentSessionLaunchPlan,
+  AgentSessionLaunchRequest
+} from '@/lib/agent-session-launch-plan'
 import { useAppStore } from '@/store'
-import { initialAntigravityChatView } from '../../../shared/antigravity-chat-launch-view'
+import { newTabLaunchFields } from './launch-agent-new-tab-fields'
 import type { AgentStartupPlan } from '@/lib/tui-agent-startup'
 import { planLaunchAgentStartupPrompt } from '@/lib/launch-agent-startup-prompt-plan'
 import { persistAgentLaunchTabOrder } from '@/lib/launch-agent-tab-order'
@@ -10,7 +14,7 @@ import {
   launchNewTabPromptThroughHost,
   newTabPromptLaunchesThroughHost
 } from '@/lib/launch-agent-new-tab-host-route'
-import { getRuntimeEnvironmentIdForWorktree } from '@/lib/worktree-runtime-owner'
+import { runtimeEnvironmentIdWithLegacyFallbackUnlessTwin } from '@/lib/worktree-runtime-owner'
 import { isWebRuntimeSessionActive } from '@/runtime/web-runtime-session-environment'
 import { launchAgentInWebHostTab } from '@/lib/launch-agent-web-host-tab'
 import {
@@ -25,7 +29,6 @@ import { launchStructuredAgentFromNewTab } from '@/lib/launch-agent-in-new-tab-s
 import type { StructuredAgentLaunchSettlement } from '@/lib/structured-agent-launch-settlement'
 import type { StructuredLaunchTerminal } from '@/lib/structured-agent-session-launch-admission'
 import { workspaceKindForWorktreeId } from '@/lib/agent-launch-route-input'
-import type { AgentSessionLaunchPlan } from '@/lib/agent-session-launch-plan'
 import {
   launchOnceHostAnswered,
   routeNewTabLaunch
@@ -44,6 +47,8 @@ type LaunchAgentInNewTabRequest =
     }
 
 export type LaunchAgentInNewTabArgs = LaunchAgentInNewTabRequest & {
+  requestedSurface?: AgentSessionLaunchRequest['requestedSurface']
+  selectedExecutionHostId?: AgentSessionLaunchRequest['selectedExecutionHostId']
   agent: TuiAgent
   worktreeId: string
   /** Captured at a new-chat action before the host can delay route selection. */
@@ -179,6 +184,8 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   // server included, so only a non-structured route falls through to the host-published terminal.
   const route = routeNewTabLaunch(store, args, {
     agent,
+    requestedSurface: args.requestedSurface,
+    selectedExecutionHostId: args.selectedExecutionHostId,
     workspace: { kind: workspaceKind, worktreeId },
     prompt: trimmedPrompt,
     promptDelivery: routePromptDelivery,
@@ -215,13 +222,8 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   }
 
   args.focusIntent?.cancel()
-  const initialViewMode = initialAntigravityChatView({
-    agent,
-    settings: store.settings,
-    connectionId: executionContext.worktreeSshConnectionId,
-    ...(routePromptDelivery === 'draft' && hasPrompt ? { draft: trimmedPrompt } : {})
-  })
-  const runtimeEnvironmentId = getRuntimeEnvironmentIdForWorktree(store, worktreeId)
+  const launchFields = newTabLaunchFields(args, executionContext, routePromptDelivery)
+  const runtimeEnvironmentId = runtimeEnvironmentIdWithLegacyFallbackUnlessTwin(store, worktreeId)
   if (isWebRuntimeSessionActive(runtimeEnvironmentId)) {
     if (beforeSurfaceOpen?.({ kind: 'host-published' }) === false) {
       return null
@@ -240,7 +242,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
       agentArgs,
       // Why: omission means terminal locally, but would let a paired host apply
       // its own default; send the client's resolved view explicitly.
-      viewMode: initialViewMode ?? 'terminal',
+      viewMode: launchFields.viewMode ?? 'terminal',
       onPromptDelivered
     })
     return {
@@ -261,8 +263,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
     newTabPromptLaunchesThroughHost({ promptDelivery, pastesPrompt: true, isRemote })
   ) {
     const launched = launchNewTabPromptThroughHost({
-      agent,
-      ...(initialViewMode ? { viewMode: initialViewMode } : {}),
+      ...launchFields.hostRoute,
       worktreeId,
       ...(groupId ? { groupId } : {}),
       prompt: trimmedPrompt,
@@ -274,7 +275,6 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
       ...(pendingActivationSpawn ? { pendingActivationSpawn: true } : {}),
       pasteContent: pasteDraftAfterLaunch,
       submit: submitPastedPrompt,
-      hostPlatform: resolvedLaunchPlatform,
       ...(onPromptDelivered ? { onPromptDelivered } : {}),
       ...(onPromptDeliveryUnconfirmed ? { onPromptDeliveryUnconfirmed } : {})
     })
@@ -286,8 +286,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
     }
   }
   const tab = store.createTab(worktreeId, groupId, undefined, {
-    launchAgent: agent,
-    ...(initialViewMode ? { viewMode: initialViewMode } : {}),
+    ...launchFields.tab,
     quickCommandLabel,
     ...(pendingActivationSpawn ? { pendingActivationSpawn: true } : {}),
     ...(activate === false ? { activate: false } : {}),

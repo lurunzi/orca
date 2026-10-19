@@ -94,6 +94,10 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
 
   protected readonly onTerminalAgentStatus!: HostBindings['onTerminalAgentStatus'] | null
 
+  protected readonly onTerminalProgramStatusFacet!:
+    | HostBindings['onTerminalProgramStatusFacet']
+    | null
+
   protected readonly onTerminalSideEffects!: HostBindings['onTerminalSideEffects'] | null
 
   protected readonly onClaudeTerminalEvidence!: HostBindings['onClaudeTerminalEvidence'] | null
@@ -336,7 +340,7 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
     getStore: () => this.store,
     resolveRepo: (selector) => this.resolveRepoSelector(selector),
     forgetTerminalTopology: (repoId) => this.terminalTopologyRevisionByRepoId.delete(repoId),
-    stopProjectTerminals: (repo, deadline) => this.stopTerminalsForProject(repo, { deadline }),
+    stopProjectTerminals: (repo, options) => this.stopTerminalsForProject(repo, options),
     invalidateResolvedWorktrees: () => this.invalidateResolvedWorktreeCache(),
     invalidateWorktreeScan: (repoId) => this.invalidateWorktreeScanCacheForRepo(repoId),
     notifyReposChanged: () => this.notifyReposChanged()
@@ -362,7 +366,8 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
     getStore: () => this.store,
     resolveFolderConnectionId: (workspace) => this.resolveFolderWorkspaceConnectionId(workspace),
     hasRuntimeOwnedPtyCandidate: (session, worktreeId, tabs) =>
-      this.workspaceSessionWorktreeHasRuntimeOwnedPtyCandidate(session, worktreeId, tabs)
+      this.workspaceSessionWorktreeHasRuntimeOwnedPtyCandidate(session, worktreeId, tabs),
+    getCachedWorktrees: () => this.resolvedWorktrees.peek()?.worktrees ?? null
   })
 
   protected readonly aiVault = new RuntimeAiVaultCommands(() => this.prepareAiVaultSessionResumeFn)

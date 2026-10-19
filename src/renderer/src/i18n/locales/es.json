@@ -39,7 +39,8 @@
       },
       "providers": {
         "title": "Proveedores",
-        "antigravityDescription": "Los chats de Antigravity usan un servidor que Orca descarga en este host, independiente de la CLI de agy."
+        "antigravityDescription": "Los chats de Antigravity usan un servidor que Orca descarga en este host, independiente de la CLI de agy.",
+        "antigravityNotSignedIn": "No has iniciado sesión. Los chats necesitan un inicio de sesión de Antigravity, independiente de tu cuenta de agy en la terminal."
       }
     },
     "terminal": {
@@ -387,7 +388,8 @@
         "loopbackPairingBlocked": "Este enlace de acceso apunta de nuevo a este dispositivo.",
         "remotePairingUnreachable": "No se puede acceder a Orca en {{endpoint}}.",
         "remotePairingInvalidDetails": "Este enlace de acceso contiene datos de conexión no válidos.",
-        "remotePairingSaveFailed": "Orca verificó al anfitrión, pero no pudo guardarlo. Compruebe el almacenamiento del navegador e inténtelo de nuevo."
+        "remotePairingSaveFailed": "Orca verificó al anfitrión, pero no pudo guardarlo. Compruebe el almacenamiento del navegador e inténtelo de nuevo.",
+        "remotePairingRepairUnavailable": "Re-pairing is not available in the browser. Pair this browser with the server again."
       },
       "web": {
         "preload": {
@@ -547,7 +549,9 @@
           "presenceProfileOverflow": "{{names}} +{{count}} más",
           "removeProjectFailed": "No se ha podido eliminar el proyecto ",
           "wslFilesystemBoundaryTitle": "Este proyecto se almacena en una unidad de Windows",
-          "wslFilesystemBoundaryDescription": "Git para este proyecto se ejecuta en {{distro}}, que llega a las unidades de Windows a través del puente del sistema de archivos WSL. Espera que git sea aproximadamente 20 veces más lento de lo que sería en una copia almacenada dentro de {{distro}}."
+          "wslFilesystemBoundaryDescription": "Git para este proyecto se ejecuta en {{distro}}, que llega a las unidades de Windows a través del puente del sistema de archivos WSL. Espera que git sea aproximadamente 20 veces más lento de lo que sería en una copia almacenada dentro de {{distro}}.",
+          "moveToGroupOtherHost": "No se pudo mover el proyecto al grupo",
+          "moveToGroupOtherHostDesc": "El equipo donde se ejecuta este proyecto no tiene este grupo. Un proyecto solo puede unirse a grupos guardados en su propio equipo."
         },
         "settings": {
           "e12dab333b": "No se pudo cambiar de servidor",
@@ -578,7 +582,8 @@
             "76deec8f58": "Error al cambiar organización",
             "7d4bc516ee": "Error al cambiar perfil",
             "f518e89aa5": "El proyecto ya existe en ese perfil",
-            "f03ae7f27b": "Error al transferir proyecto"
+            "f03ae7f27b": "Error al transferir proyecto",
+            "signInTimedOut": "Se agotó el tiempo de inicio de sesión"
           }
         },
         "runtime": {
@@ -3247,6 +3252,7 @@
             "retry": "Reintentar",
             "retrying": "Reintentando…",
             "retryUnavailable": "Reintentar no pudo volver a conectarse todavía. Vuelve a intentarlo en breve.",
+            "openNewTerminal": "Abrir terminal nueva",
             "ownerUnknown": "Orca no pudo verificar el propietario de esta terminal.",
             "42b283ecfc": "Orca no pudo volver a conectar de manera segura esta terminal porque el host no pudo verificar su sesión guardada. Orca dejó la sesión guardada sin cambios. Haga clic en Reintentar para intentar volver a conectarse ahora. Si aún no puede volver a conectarse, abra una nueva terminal.",
             "e16012e31e": "El demonio de terminal propietario de esta sesión salió, por lo que no se pudo recuperar la sesión y su desplazamiento hacia atrás. Abra una nueva terminal para continuar.",
@@ -3424,7 +3430,9 @@
             "copiedLink": "Enlace copiado",
             "copyLinkFailed": "No se pudo copiar el enlace",
             "downloadOpenWithDefaultApp": "Descargar y abrir con la aplicación predeterminada",
-            "downloadOpenFailed": "No se pudo descargar '{{value0}}'."
+            "downloadOpenFailed": "No se pudo descargar '{{value0}}'.",
+            "openInThisGroup": "Abrir en este grupo",
+            "openInThisGroupRefused": "No se pudo abrir {{value0}} en este grupo"
           },
           "TerminalQuickCommandsSubmenu": {
             "3ccc7981bb": "Anfitrión no disponible",
@@ -3486,7 +3494,7 @@
         "bar": {
           "BrowserTab": {
             "6e0bc8f3a8": "Abrir en el navegador",
-            "9dd880bd56": "Cerrar pestañas a la derecha",
+            "9dd880bd56": "Cerrar todas las pestañas a la derecha",
             "1611a1324b": "Cerrar",
             "5d6e89891f": "Duplicar pestaña",
             "966feb9ad5": "Dividir a la derecha",
@@ -3503,7 +3511,7 @@
             "52ce4f4605": "Copiar ruta relativa",
             "5b85754786": "Copiar ruta",
             "bfd5797ef4": "Abrir vista previa de Markdown",
-            "e5ff31ccaf": "Cerrar pestañas a la derecha",
+            "e5ff31ccaf": "Cerrar todas las pestañas a la derecha",
             "ba1369dd24": "Cerrar todas las pestañas del editor",
             "1ba8492c5b": "Cerrar",
             "68cc610e7f": "Renombrar",
@@ -3536,7 +3544,7 @@
           "SortableTabContextMenu": {
             "35e8892fd0": "Color de pestaña",
             "2f697b3c31": "Cambiar título",
-            "c1ee099c7e": "Cerrar pestañas a la derecha",
+            "c1ee099c7e": "Cerrar todas las pestañas a la derecha",
             "8d16f9cd30": "Cerrar otras",
             "89359a36f7": "Cerrar",
             "21132389e9": "Dividir a la derecha",
@@ -4199,7 +4207,14 @@
             "runtime_unavailable_explanation": "Es posible que el host remoto todavía esté ejecutándose; sólo la conexión en tiempo de ejecución de Orca no está disponible.",
             "contact_note": "Es posible que el host todavía esté ejecutándose; sólo la conexión Orca no está disponible.",
             "last_connected": "Última conexión {{value0}}",
-            "reconnect_attempt": "Intento {{value0}}"
+            "reconnect_attempt": "Intento {{value0}}",
+            "access_revoked": "Access revoked",
+            "access_revoked_summary": "This server revoked access for this computer",
+            "access_revoked_explanation": "Re-pair with a new pairing link from the server to reconnect.",
+            "update_required": "Update required",
+            "update_required_summary": "Orca versions are not compatible",
+            "update_required_explanation": "Update Orca on this computer or on the server, then connect again.",
+            "repair": "Re-pair…"
           },
           "provider": {
             "extra": {
@@ -5416,6 +5431,12 @@
           "00c4235c10": "No hay coincidencias para '{{value0}}'",
           "largeInputNoMatches": "No hay coincidencias para esta entrada larga"
         },
+        "SleepTwinWorkspaceDialog": {
+          "title": "Sleep Workspace",
+          "alsoSleeps": "Also sleeps the copy on {{hosts}}",
+          "cancel": "Cancel",
+          "confirm": "Sleep"
+        },
         "RemoveFolderDialog": {
           "4dc5b5065b": "Quitar",
           "d36883e046": "Cancelar",
@@ -5858,7 +5879,8 @@
           "sidebarRowMissing": "El destino ya no existe",
           "failedUnnestWorkspace": "Error al expandir el espacio de trabajo",
           "groupRenameFailed": "No se pudo cambiar el nombre del grupo",
-          "groupRenameFailedDesc": "Orca no pudo confirmar el nuevo nombre con el anfitrión del grupo. Vuelva a verificar el grupo después de volver a conectarse."
+          "groupRenameFailedDesc": "Orca no pudo confirmar el nuevo nombre con el anfitrión del grupo. Vuelva a verificar el grupo después de volver a conectarse.",
+          "hostRepairRequired": "Re-pair required"
         },
         "WorktreeMetaDialog": {
           "3db0a2a593": "Cancelar",
@@ -6075,6 +6097,9 @@
               "legacy": {
                 "unverified": "The older host runtime could not confirm terminal shutdown. The workspace was kept open; update the host and try again."
               },
+              "twin": {
+                "unattributed": "Orca couldn't tell which host runs this workspace's terminals, so the workspace was kept open. Reconnect its hosts and try again."
+              },
               "host": {
                 "unverified": "The host could not confirm terminal shutdown. The workspace was kept open; check the connection and try again."
               },
@@ -6279,7 +6304,8 @@
           "59b553e2aa": "Desconectar",
           "2d3e4f5a6b": "Verificar conexión",
           "3c4d5e6f7a": "Administrar host…",
-          "6e7f8a9b0c": "Quitar host…"
+          "6e7f8a9b0c": "Quitar host…",
+          "repair": "Re-pair…"
         },
         "WorkspaceKanbanDrawer": {
           "1975a4e480": "Falló la sincronización del estado de la tarea",
@@ -6290,6 +6316,7 @@
           "f4a5b6c7d8": "No se pudo actualizar el issue {{value0}} de Linear.",
           "a5b6c7d8e9": "No se pudo sincronizar el issue {{value0}} de Linear.",
           "b6c7d8e9f0": "No se pudo completar la sincronización del estado de la tarea.",
+          "f0a1b2c3d4": "Se omitió la incidencia de Linear {{value0}}: este espacio de trabajo está en más de un host.",
           "c7d8e9f0a1": "{{value0}} actualizado",
           "d8e9f0a1b2": "{{value0}} omitido",
           "e9f0a1b2c3": "{{value0}} falló"
@@ -6421,8 +6448,7 @@
         },
         "MarkdownImageLightbox": {
           "image": "Image",
-          "expand": "Expand image",
-          "close": "Close"
+          "expand": "Expand image"
         },
         "WorktreeDeveloperMenu": {
           "developer": "Developer",
@@ -8374,7 +8400,11 @@
           "serverWorkspaceWindowClosed": "Ventana del espacio de trabajo cerrada",
           "serverRuntimeUnavailable": "Orca no disponible",
           "serverRuntimeUnavailableDescription": "El transporte SSH está conectado, pero el tiempo de ejecución de Orca no respondió. Es posible que el host todavía esté ejecutándose.",
-          "serverReconnecting": "Reconectando"
+          "serverReconnecting": "Reconectando",
+          "accessRevoked": "{{value0}} no longer accepts this computer. Re-pair it with a new access link.",
+          "repair": "Re-pair…",
+          "serverAccessRevoked": "Access revoked",
+          "orcaVersionLastSeen": "Orca v{{value0}} (last seen)"
         },
         "RuntimePairingGeneratedUrlRows": {
           "0495f68959": "Copiar {{value0}}"
@@ -12065,7 +12095,9 @@
           "networkConnection": "Conexión de red",
           "notAttempted": "No se intentó",
           "saveFailed": "No se pudo guardar el host",
-          "saveFailedHelp": "El anfitrión fue verificado, pero Orca no pudo salvarlo. Verifique el nombre y el almacenamiento de la configuración local y vuelva a intentarlo."
+          "saveFailedHelp": "El anfitrión fue verificado, pero Orca no pudo salvarlo. Verifique el nombre y el almacenamiento de la configuración local y vuelva a intentarlo.",
+          "differentServer": "This link is for a different server",
+          "differentServerHelp": "This pairing link is for a different server. Create the link on the server you are re-pairing."
         },
         "CloudVmSetupGuide": {
           "title": "Crear una VM en la nube",
@@ -12635,6 +12667,13 @@
           "remove": "Quitar",
           "turnOn": "Activar en Experimental",
           "forceUpdate": "Forzar actualización"
+        },
+        "RuntimeRepairDialog": {
+          "title": "Re-pair {{name}}",
+          "description": "{{name}} no longer accepts this computer. On {{name}}, open Settings → Remote Orca Servers → Share this host, create a link for another Orca client, then paste it here.",
+          "submit": "Re-pair",
+          "success": "Re-paired with {{name}}",
+          "failed": "Re-pair failed"
         }
       },
       "right": {
@@ -15643,7 +15682,9 @@
           "1829437fce": "Nuevo Markdown"
         },
         "DiagramViewerModal": {
-          "title": "Diagrama",
+          "title": "Diagrama"
+        },
+        "PanZoomImageDialog": {
           "zoomOut": "Alejar",
           "zoomIn": "Acercar",
           "fit": "Ajustar a la pantalla",
@@ -17908,6 +17949,14 @@
         "a62f9db53d": "Cancel",
         "c77189bc0c": "Update filter",
         "19af906d12": "Save filter"
+      },
+      "OrcaSignInProgress": {
+        "waiting": "Esperando el inicio de sesión en tu navegador",
+        "copyLink": "Copiar enlace de inicio de sesión",
+        "copied": "Enlace de inicio de sesión copiado",
+        "copyFailed": "No se pudo copiar el enlace.",
+        "signingIn": "Iniciando sesión…",
+        "cancel": "Cancelar"
       }
     },
     "i18n": {
@@ -18016,6 +18065,7 @@
         "claudeManagedNotSignedIn": "Esta cuenta de Claude no ha iniciado sesión. Vuelve a iniciar sesión en la configuración de Cuentas de Claude.",
         "codexSystemNotSignedIn": "Codex no ha iniciado sesión. Ejecuta `{{loginCommand}}`.",
         "codexManagedNotSignedIn": "Esta cuenta de Codex no ha iniciado sesión. Vuelve a iniciar sesión en la configuración de Cuentas de Codex.",
+        "antigravityNotSignedIn": "Antigravity no ha iniciado sesión. Inicia sesión en Ajustes → Cuentas → Antigravity.",
         "cliMissing": "No se encontró {{agent}} en el equipo que ejecuta este chat. Instálelo o revise su Comando en Ajustes → Agentes.",
         "signInFirst": "Inicie sesión primero.",
         "signInThenRunCommand": "Inicie sesión y vuelva a ejecutar /{{command}}.",
@@ -18197,6 +18247,8 @@
         "removeImagesToSend": "No se pudieron recuperar algunas imágenes. Quítalas para enviar.",
         "imageAttachAgainLabel": "Adjuntar de nuevo",
         "pastedImageNotKeptLabel": "No se conservó",
+        "imageNumber": "Imagen #{{number}}",
+        "imageReferenceMissing": "Imagen quitada",
         "imagePasteFailed": "Error al pegar imagen.",
         "worktreeNotReady": "Worktree no está listo — intenta de nuevo en un momento.",
         "pasteUnavailable": "No se puede pegar — este chat no acepta entradas en este momento.",
@@ -18250,7 +18302,6 @@
         "imageSaving": "Guardando la imagen pegada…",
         "pendingAttachmentLimit": "Hay demasiados archivos adjuntos en espera. Termina de redactar antes de adjuntar más.",
         "viewAttachment": "Ver imagen",
-        "imagePreview": "Vista previa de la imagen a tamaño completo",
         "workspaceAttachmentMismatch": "Los archivos solo se pueden adjuntar a su espacio de trabajo de origen.",
         "attachmentOwnerChanged": "Este espacio de trabajo cambió de host durante la conexión; vuelve a soltar los archivos.",
         "attachmentUnreadable": "No se pudieron leer los archivos soltados.",
@@ -18717,6 +18768,14 @@
       "visualUnavailable": "Visualización no disponible",
       "visualLoading": "Cargando visualización",
       "visualOpenInNewTab": "Abrir en una pestaña nueva",
+      "resumeCommand": {
+        "description": "Abrir el historial de sesiones de agentes",
+        "argumentHint": "[búsqueda]",
+        "workspaceUnavailable": "El workspace de este chat aún no se ha cargado. Vuelve a probar /resume en un momento.",
+        "replaceTitle": "¿Reemplazar este chat?",
+        "replaceDescription": "Reanudar “{{title}}” aquí detendrá lo que {{agent}} está haciendo en este chat.",
+        "replace": "Reemplazar"
+      },
       "claudeSignIn": {
         "signingIn": "Iniciando sesión…"
       }
@@ -18726,20 +18785,28 @@
         "SortableTabContextMenu": {
           "switchToTerminalView": "Cambiar a la vista de terminal",
           "switchToChatView": "Cambiar a vista de chat",
-          "closeTabsToLeft": "Cerrar pestañas a la izquierda"
+          "closeTabsToLeft": "Cerrar todas las pestañas a la izquierda"
         },
         "BrowserTab": {
           "closeOthers": "Cerrar otras",
-          "closeTabsToLeft": "Cerrar pestañas a la izquierda"
+          "closeTabsToLeft": "Cerrar todas las pestañas a la izquierda"
         },
         "EditorFileTabContextMenu": {
           "closeOthers": "Cerrar otras",
-          "closeTabsToLeft": "Cerrar pestañas a la izquierda"
+          "closeTabsToLeft": "Cerrar todas las pestañas a la izquierda"
         },
         "CopyTabIdMenuItem": {
           "copied": "ID de pestaña copiado",
           "failed": "No se pudo copiar el ID de pestaña",
           "copy": "Copiar ID de pestaña"
+        },
+        "bulkClose": {
+          "others": "¿Cerrar las otras pestañas?",
+          "right": "¿Cerrar las pestañas de la derecha?",
+          "left": "¿Cerrar las pestañas de la izquierda?",
+          "editors": "¿Cerrar todas las pestañas del editor?",
+          "description": "Se cerrarán las pestañas seleccionadas. Las pestañas fijadas permanecerán abiertas.",
+          "confirm": "Cerrar pestañas"
         }
       }
     },
@@ -19179,10 +19246,8 @@
       "keywordIssuePicker": "selector de incidencias"
     },
     "managed-runtime": {
-      "cancel": "Cancelar instalación",
       "cancelled": "Instalación cancelada.",
       "cancelling": "Cancelando…",
-      "chatTitle": "Instala {{agent}} para empezar a chatear.",
       "damaged": "Esta copia de {{agent}} está dañada.",
       "downloadSize": "Descarga de {{size}} MB.",
       "downloading": "Descargando {{done}} MB.",
@@ -19193,15 +19258,45 @@
       "cancelFailed": "No se pudo cancelar la instalación. Inténtalo de nuevo.",
       "install": "Instalar {{agent}}",
       "installManaged": "Instalar la copia de Orca",
-      "installed": "Instalado.",
+      "installed": "Instalado",
       "notInstalled": "No instalado.",
       "progress": "Descarga de {{agent}}",
       "readFailed": "No se pudo comprobar {{agent}} en este host. Reintentando.",
       "reinstall": "Reinstalar {{agent}}",
+      "reinstallShort": "Reinstalar",
+      "remove": "Quitar el runtime descargado",
+      "moreActions": "Más acciones para {{agent}}",
+      "removeConfirm": "Quitar",
+      "removeDescription": "Los chats de {{agent}} en curso se detienen. Su historial se conserva.",
+      "removeKeep": "Cancelar",
+      "removeTitle": "¿Quitar el runtime de {{agent}} descargado de {{host}}?",
+      "removing": "Quitando…",
       "retry": "Reintentar instalación",
+      "thisComputer": "este equipo",
       "unavailable": "{{agent}} no está disponible en este host.",
-      "update": "Actualizar {{agent}}",
-      "verifying": "Comprobando el entorno descargado."
+      "update": "Actualizar",
+      "verifying": "Comprobando el entorno descargado.",
+      "installTitle": "Instala {{agent}} para empezar a chatear",
+      "continueTitle": "Instala {{agent}} para continuar",
+      "heroBody": "Descarga única de {{size}} MB. La comparten los chats de {{agent}} en el equipo que ejecuta este chat.",
+      "heroBodyNoSize": "Descarga única. La comparten los chats de {{agent}} en el equipo que ejecuta este chat.",
+      "stripSize": "Descarga de {{size}} MB en el equipo que ejecuta este chat",
+      "settingsHint": "También en Ajustes › Chat › Proveedores",
+      "installShort": "Instalar",
+      "tryAgain": "Reintentar",
+      "cancelShort": "Cancelar",
+      "failedTitle": "No se pudo instalar {{agent}}",
+      "cancelledTitle": "Instalación cancelada",
+      "cancelledBody": "No se instaló nada.",
+      "downloadingTitle": "Descargando {{agent}}",
+      "unpackingTitle": "Descomprimiendo {{agent}}",
+      "checkingTitle": "Comprobando la descarga",
+      "progressOf": "{{done}} de {{total}} MB",
+      "unpackingDetail": "Descomprimiendo el entorno de ejecución",
+      "checkingDetail": "Comprobando el entorno de ejecución descargado",
+      "stepDownload": "Descargar",
+      "stepUnpack": "Descomprimir",
+      "stepCheck": "Comprobar"
     }
   },
   "dashboardPopout": {
@@ -19608,6 +19703,27 @@
       "cancel": "Cancelar"
     },
     "antigravity": {
+      "chatTitle": "Chats de Antigravity",
+      "chatDescription": "Los chats usan su propio inicio de sesión de Antigravity, independiente de tu cuenta de agy de arriba. Inicia sesión una vez en este dispositivo.",
+      "chatSignIn": "Iniciar sesión",
+      "chatChangeAccount": "Cambiar de cuenta",
+      "chatRetry": "Reintentar inicio de sesión",
+      "chatCancel": "Cancelar",
+      "chatCopyLink": "Copiar enlace de inicio de sesión",
+      "chatCopyFailed": "No se pudo copiar el enlace.",
+      "chatStarting": "Iniciando sesión…",
+      "chatWaiting": "Termina de iniciar sesión en tu navegador.",
+      "chatOpenFailed": "Copia el enlace y ábrelo en tu navegador.",
+      "chatVerifying": "Finalizando el inicio de sesión…",
+      "chatPasteHelp": "Si la última página después de iniciar sesión no carga, copia su dirección completa desde el navegador y pégala aquí.",
+      "chatContinue": "Continuar",
+      "chatSignedInOn": "Sesión iniciada en {{host}}.",
+      "chatCancelled": "Inicio de sesión cancelado.",
+      "chatExpired": "El inicio de sesión caducó. Inténtalo de nuevo.",
+      "chatFailed": "No se pudo iniciar sesión. Inténtalo de nuevo.",
+      "chatNotSignedIn": "No has iniciado sesión en {{host}}.",
+      "chatOtherClient": "Hay un inicio de sesión en curso en otro cliente.",
+      "chatReadFailed": "No se pudo comprobar el inicio de sesión en {{host}}.",
       "retry": "Reintentar",
       "remove": "Eliminar",
       "usage": "Actualizar uso",
@@ -19760,6 +19876,10 @@
       "openInSidebar": "Abrir en la barra lateral",
       "openInSidebarCopy": "Escribe lo que recuerdes o pídele a un agente: «encuentra la sesión donde arreglamos el tiempo de espera de inicio de sesión».",
       "enableOnAll": "Activar en todas las computadoras"
+    },
+    "dialog": {
+      "select": "Seleccionar",
+      "open": "Abrir"
     }
   },
   "common": {

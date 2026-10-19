@@ -13,7 +13,9 @@ import {
 } from '@/components/native-chat/native-chat-pending'
 import type { NativeChatMessage } from '../../../shared/native-chat-types'
 
-vi.mock('@/runtime/runtime-terminal-inspection', () => ({ sendRuntimePtyInputVerified: vi.fn() }))
+vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+  sendRuntimePtyInputVerified: vi.fn()
+}))
 
 describe('Windows launch prompt paste', () => {
   it('preserves the complete continuation so the transcript retires its launch echo', async () => {

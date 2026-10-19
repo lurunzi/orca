@@ -31,8 +31,8 @@ import {
 } from '../mobile-relay-credential-contract'
 import { MobileRelayHostWorktreesParamsSchema } from '../mobile-relay-hosts-contract'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
-import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration-blob-transfer'
-import { OrcadMigrationSnapshotChunkRequestSchema } from '../orcad-migration-scrollback'
+import { OrcadMigrationBlobChunkRequestSchema } from '../orcad-migration/orcad-migration-blob-transfer'
+import { OrcadMigrationSnapshotChunkRequestSchema } from '../orcad-migration/orcad-migration-scrollback'
 import { OrcadTerminalCensusParamsSchema } from '../orcad-terminal-census'
 import { pluginConsentRequestSchema } from '../plugins/plugin-consent-request'
 import {
@@ -69,7 +69,9 @@ import {
 } from './ai-vault-params'
 import {
   AntigravityAccountMutationParams,
-  AntigravityAccountTargetParams
+  AntigravityAccountTargetParams,
+  AntigravityChatSignInCompleteParams,
+  AntigravityChatSignInFlowParams
 } from './antigravity-accounts-params'
 import { ArtifactsDeleteParams, ListOptions, SourceRequest, WriteRequest } from './artifacts-params'
 import {
@@ -143,6 +145,7 @@ import {
   SettingsUpdate
 } from './client-settings-params'
 import { FeatureInteractionIdParam, UiUpdate } from './client-ui-params'
+import { ClientWorkspaceViewParams } from './client-workspace-view-params'
 import {
   AbortImageUpload,
   AppendImageUploadChunk,
@@ -194,7 +197,8 @@ import {
   FileRename,
   FileWrite,
   FileWriteBase64,
-  FileWriteBase64Chunk
+  FileWriteBase64Chunk,
+  FileWriteIfUnchanged
 } from './files-mutation-params'
 import {
   DocPreviewFileRead,
@@ -210,7 +214,7 @@ import {
   ResolveTerminalPath,
   ServerDirectoryBrowse
 } from './files-params'
-import { FileOpen, WorktreeSelector } from './files-target-params'
+import { FileOpen, FileWatch, WorktreeSelector } from './files-target-params'
 import { TerminalArtifactFile, TerminalArtifactFileWrite } from './files-terminal-artifact-params'
 import {
   FolderWorkspaceCreate,
@@ -505,6 +509,7 @@ import {
   UpdatePaneLayout,
   WorktreeTabSelector
 } from './session-tabs-schemas-params'
+import { SidebarSessionBeginParams } from './sidebar-session-params'
 import {
   SkillsCancelInstallParams,
   SkillsDiscoverParams,
@@ -530,6 +535,7 @@ import {
   AcknowledgeAttentionParams,
   AgentsParams,
   AttachParams,
+  AvailabilityParams,
   CancelParams,
   ConversationCommandParams,
   CreateParams,
@@ -548,6 +554,7 @@ import {
   RewindParams,
   SendParams,
   SetOptionParams,
+  SleepWorkspaceParams,
   SubscribeParams,
   SubscribeTurnCompletionsParams,
   ThreadGoalParams,
@@ -582,6 +589,7 @@ import {
   TerminalResolvePane,
   TerminalReveal,
   TerminalSend,
+  TerminalSetPaneTitle,
   TerminalSetViewerColors,
   TerminalSplit,
   TerminalStopExact,
@@ -623,6 +631,8 @@ import {
   WorktreeTeardownMissingTerminalsParams
 } from './worktree-params'
 import { WorktreeAdoptProvisionedRoot } from './worktree-provisioned-root-params'
+import { RepoIconDataUrlsParams } from '../sidebar-list/repo-icon-data-urls-contract'
+import { SidebarInputsReadParams } from '../sidebar-list/sidebar-inputs-feed-contract'
 import { SkillBundleInstallRequestSchema } from '../skill-bundle-install-contract'
 import { SkillDeleteRequestSchema } from '../skill-delete-contract'
 import {
@@ -644,6 +654,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'accounts.addCodexFromHome': AddCodexFromHomeParams,
   'accounts.addDataFromHome': AddDataAccountParams,
   'accounts.antigravityAddCurrent': AntigravityAccountTargetParams,
+  'accounts.antigravityChatSignInCancel': AntigravityChatSignInFlowParams,
+  'accounts.antigravityChatSignInComplete': AntigravityChatSignInCompleteParams,
+  'accounts.antigravityChatSignInStart': null,
+  'accounts.antigravityChatSignInSubscribe': null,
   'accounts.antigravityList': AntigravityAccountTargetParams,
   'accounts.antigravityRemove': AntigravityAccountMutationParams,
   'accounts.antigravitySelect': AntigravityAccountMutationParams,
@@ -700,7 +714,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'agentSession.rewind': RewindParams,
   'agentSession.send': SendParams,
   'agentSession.setOption': SetOptionParams,
+  'agentSession.sleepWorkspace': SleepWorkspaceParams,
   'agentSession.subscribe': SubscribeParams,
+  'agentSession.subscribeAvailability': AvailabilityParams,
   'agentSession.subscribeStatus': null,
   'agentSession.subscribeTurnCompletions': SubscribeTurnCompletionsParams,
   'agentSession.threadGoal': ThreadGoalParams,
@@ -890,10 +906,11 @@ export const RPC_PARAMS_BY_METHOD = {
   'files.searchPaths': FilePathSearch,
   'files.stat': FileTreePath,
   'files.unwatch': FileUnwatch,
-  'files.watch': WorktreeSelector,
+  'files.watch': FileWatch,
   'files.write': FileWrite,
   'files.writeBase64': FileWriteBase64,
   'files.writeBase64Chunk': FileWriteBase64Chunk,
+  'files.writeIfUnchanged': FileWriteIfUnchanged,
   'files.writeTerminalArtifact': TerminalArtifactFileWrite,
   'folderWorkspace.create': FolderWorkspaceCreate,
   'folderWorkspace.delete': FolderWorkspaceSelector,
@@ -1095,6 +1112,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'linear.updateIssue': IssueUpdateOfLinearParams,
   'managedRuntime.cancel': ManagedRuntimeCancelParams,
   'managedRuntime.install': ManagedRuntimeAgentParams,
+  'managedRuntime.remove': ManagedRuntimeAgentParams,
   'managedRuntime.subscribe': ManagedRuntimeAgentParams,
   'managedServer.cancelStop': ManagedServerSelector,
   'managedServer.forget': ManagedServerSelector,
@@ -1252,8 +1270,14 @@ export const RPC_PARAMS_BY_METHOD = {
   'sidebarInputs.activityFacts': null,
   'sidebarInputs.desktopFacts': null,
   'sidebarInputs.pairedServerRows': null,
+  'sidebarInputs.read': SidebarInputsReadParams,
+  'sidebarInputs.repoIcons': RepoIconDataUrlsParams,
+  'sidebarInputs.reportView': ClientWorkspaceViewParams,
   'sidebarInputs.reviewFacts': null,
+  'sidebarInputs.temporal': null,
   'sidebarInputs.workspaceCreations': null,
+  'sidebarInputs.workspaceRows': null,
+  'sidebarSession.begin': SidebarSessionBeginParams,
   'skills.beginUpload': SkillUploadBeginRequestSchema,
   'skills.cancelInstall': SkillsCancelInstallParams,
   'skills.cancelUpload': SkillUploadCommitRequestSchema,
@@ -1319,6 +1343,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'terminal.send': TerminalSend,
   'terminal.setAutoRestoreFit': TerminalSetAutoRestoreFit,
   'terminal.setDisplayMode': TerminalSetDisplayMode,
+  'terminal.setPaneTitle': TerminalSetPaneTitle,
   'terminal.setViewerColors': TerminalSetViewerColors,
   'terminal.show': TerminalHandle,
   'terminal.sleep': TerminalCloseAll,

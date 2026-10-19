@@ -20,11 +20,7 @@ import {
   type AiVaultSession
 } from '../../../../shared/ai-vault-types'
 import { translate } from '@/i18n/i18n'
-import {
-  AiVaultOpenTranscriptButton,
-  cursorTranscriptWorktreeId
-} from './AiVaultOpenTranscriptButton'
-import { FirstPromptCard } from './ai-vault-first-prompt-card'
+import { AiVaultOpenTranscriptButton, FirstPromptCard } from './ai-vault-first-prompt-card'
 import { ResumeInNewCliTooltipText } from './ai-vault-session-cli-fork-copy'
 import { sessionDetailConversationTurns, sessionPromptPreview } from './ai-vault-session-display'
 import { SessionSubagentsSection } from './AiVaultSessionSubagents'
@@ -52,7 +48,8 @@ export function SessionInlineDetails({
   onContinueInNewSession,
   onResumeInNewChat,
   onResumeInNewCli,
-  onOpenLog
+  onOpenLog,
+  actionsHidden = false
 }: {
   id: string
   session: AiVaultSession
@@ -64,11 +61,13 @@ export function SessionInlineDetails({
   }
   onResumeInWorktree: () => void
   onResumeInNewTab: () => void
-  subagentResume?: AiVaultSubagentResumeActions
+  subagentResume?: AiVaultSubagentResumeActions | null
   onContinueInNewSession?: () => void
   onResumeInNewChat?: () => void
   onResumeInNewCli?: () => void
   onOpenLog?: () => void
+  /** Hides the action bar; the details stay. */
+  actionsHidden?: boolean
 }): React.JSX.Element {
   // A zero-turn transcript would resume into an empty conversation, so the plain
   // resume affordances are withheld and a distinct "not saved" state is shown.
@@ -80,7 +79,6 @@ export function SessionInlineDetails({
     (!resumeActions.worktree.worktreeId || Boolean(resumeActions.newTab.worktreeId))
   const promptPreview = sessionPromptPreview(session)
   const detailTurns = sessionDetailConversationTurns(session, 3)
-  const worktreeDisplay = worktreeInfo
 
   return (
     <div
@@ -94,13 +92,13 @@ export function SessionInlineDetails({
         event.stopPropagation()
       }}
     >
-      {showResumeInWorktree ||
-      showResumeInNewTab ||
-      onContinueInNewSession ||
-      onResumeInNewChat ||
-      cursorTranscriptWorktreeId(session, worktreeInfo?.worktreeId) ||
-      onResumeInNewCli ||
-      onOpenLog ? (
+      {!actionsHidden &&
+      (showResumeInWorktree ||
+        showResumeInNewTab ||
+        onContinueInNewSession ||
+        onResumeInNewChat ||
+        onResumeInNewCli ||
+        onOpenLog) ? (
         <div className="flex flex-wrap items-center gap-1.5 border-b border-sidebar-border/80 bg-sidebar-accent/15 px-3 py-2">
           <AiVaultOpenTranscriptButton session={session} worktreeId={worktreeInfo?.worktreeId} />
           {showResumeInWorktree ? (
@@ -230,7 +228,12 @@ export function SessionInlineDetails({
       <div className="space-y-3 p-3">
         {hasResumableContent ? (
           <>
-            <FirstPromptCard key={session.id} session={session} preview={promptPreview} />
+            <FirstPromptCard
+              key={session.id}
+              session={session}
+              preview={promptPreview}
+              copyHidden={actionsHidden}
+            />
             <SessionReceiptSection
               icon={<MessageSquare className="size-3" />}
               label={translate(
@@ -266,20 +269,18 @@ export function SessionInlineDetails({
 
         <SessionSubagentsSection session={session} resume={subagentResume} />
 
-        {shouldShowAiVaultSessionWorktreeLine(worktreeDisplay, {
-          vaultScope
-        }) ? (
+        {shouldShowAiVaultSessionWorktreeLine(worktreeInfo, { vaultScope }) ? (
           <SessionReceiptSection
             icon={
-              isAiVaultFolderWorkspaceId(worktreeDisplay.worktreeId) ? (
+              isAiVaultFolderWorkspaceId(worktreeInfo.worktreeId) ? (
                 <Folder className="size-3" />
               ) : (
                 <FolderGit2 className="size-3" />
               )
             }
-            label={aiVaultSessionWorkspaceHeading(worktreeDisplay.worktreeId)}
+            label={aiVaultSessionWorkspaceHeading(worktreeInfo.worktreeId)}
           >
-            <WorktreeMetadataLines worktreeInfo={worktreeDisplay} vaultScope={vaultScope} />
+            <WorktreeMetadataLines worktreeInfo={worktreeInfo} vaultScope={vaultScope} />
           </SessionReceiptSection>
         ) : null}
       </div>

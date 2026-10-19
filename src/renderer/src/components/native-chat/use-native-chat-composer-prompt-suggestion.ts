@@ -16,15 +16,22 @@ export function useNativeChatComposerPromptSuggestion(args: {
   /** Attached images also hide it. */
   hasImages: boolean
   readTerminalPromptSuggestion: (() => string | null) | undefined
-  textareaRef: RefObject<NativeChatComposerInput | null>
   caret: number
   draft: string
-  setDraft: (value: string) => void
-  setCaret: Dispatch<SetStateAction<number>>
-  setActiveSuggestion: Dispatch<SetStateAction<number>>
+  /** The same editor handles the composer gives its command picker. */
+  editor: {
+    textareaRef: RefObject<NativeChatComposerInput | null>
+    setDraft: (value: string) => void
+    setCaret: Dispatch<SetStateAction<number>>
+    setActiveSuggestion: Dispatch<SetStateAction<number>>
+  }
 }): ReturnType<typeof useNativeChatPromptSuggestion> {
-  const { agent, structuredTransport, textareaRef } = args
-  const { insertTypedText } = useNativeChatTypedInsertion(args)
+  const { agent, structuredTransport, editor } = args
+  const { insertTypedText } = useNativeChatTypedInsertion({
+    ...editor,
+    caret: args.caret,
+    draft: args.draft
+  })
   return useNativeChatPromptSuggestion({
     scopeKey: structuredTransport?.sessionId ?? args.targetPtyId ?? args.paneKey,
     enabled:
@@ -34,7 +41,7 @@ export function useNativeChatComposerPromptSuggestion(args: {
     draft: args.draft,
     suggestion: structuredTransport?.promptSuggestion,
     readTerminalSuggestion: structuredTransport ? undefined : args.readTerminalPromptSuggestion,
-    inputRef: textareaRef,
+    inputRef: editor.textareaRef,
     insertTypedText
   })
 }

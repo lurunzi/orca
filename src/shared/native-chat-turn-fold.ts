@@ -13,7 +13,17 @@
 // Shared because desktop and mobile both draw this disclosure, and a fold that
 // hides a different row on each surface is the same bug twice.
 
-import type { NativeChatRole } from './native-chat-types'
+import { AGENT_SESSION_COMPACTION_SKIPPED_PRESENTATION } from './agent-session-compaction'
+import { AGENT_SESSION_ORCA_STOP_PRESENTATION } from './agent-session-orca-stop'
+import { nativeChatRowRendersContent } from './native-chat-row-content'
+import { isStoppedBeforeStartBlock } from './native-chat-stopped-before-start'
+import { nativeChatRowRendersProse } from './native-chat-trailing-run'
+import {
+  isBackgroundTaskBlock,
+  isSubagentGroupBlock,
+  type NativeChatMessage,
+  type NativeChatRole
+} from './native-chat-types'
 
 /** What the fold needs to know about one transcript row. Deliberately not a
  *  `NativeChatMessage`: each surface derives "renders prose" through its own
@@ -40,6 +50,42 @@ export type NativeChatTurnFoldRow = {
   explainsTurn: boolean
   /** The row follows a hidden delivery, so it opens a new reply in its turn. */
   startsReply?: boolean
+}
+
+/** How the fold reads a transcript row, with the same derivation the row renders from. */
+export function nativeChatTurnFoldRow(
+  message: NativeChatMessage,
+  turnKey: string | undefined,
+  hasReceipt: boolean
+): NativeChatTurnFoldRow {
+  return {
+    turnKey,
+    role: message.role,
+    rendersProse: nativeChatRowRendersProse(message),
+    draws: hasReceipt || nativeChatRowRendersContent(message.blocks),
+    // The raw blocks, not the renderable ones: a childless roster draws no row
+    // and its plain-text twin is then the only record the spawn happened.
+    outlivesTurn: message.blocks.some(
+      (block) =>
+        isSubagentGroupBlock(block) ||
+        isBackgroundTaskBlock(block) ||
+        isStoppedBeforeStartBlock(block)
+    ),
+    // A row about Orca's own stop is stored red for clients that predate it; it reports no failure.
+    reportsFailure: message.blocks.some(
+      (block) =>
+        block.type === 'text' &&
+        block.tone === 'error' &&
+        block.presentation !== AGENT_SESSION_ORCA_STOP_PRESENTATION
+    ),
+    explainsTurn: message.blocks.some(
+      (block) =>
+        block.type === 'text' &&
+        (block.presentation === 'compaction' ||
+          block.presentation === AGENT_SESSION_COMPACTION_SKIPPED_PRESENTATION ||
+          block.presentation === AGENT_SESSION_ORCA_STOP_PRESENTATION)
+    )
+  }
 }
 
 export type NativeChatTurnFold = {

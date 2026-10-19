@@ -1,7 +1,11 @@
+import type { CliWriterObservation } from '../../agent-hooks/server/cli-writer-observation'
 import type { ExecutionHostScope } from '../../../shared/execution-host'
 import type { IPtyProvider } from '../../providers/pty-provider-contract'
 import type { PrepareClaudeAuth } from '../../ipc/pty/host-env/types'
-import type { RuntimeTerminalAgentStatusEvent } from '../runtime-terminal-contracts'
+import type {
+  RuntimeTerminalAgentStatusEvent,
+  RuntimeTerminalProgramStatusFacetEvent
+} from '../runtime-terminal-contracts'
 import type { TerminalSideEffectBatch } from '../../../shared/terminal-side-effect-facts'
 import type { ClaudeTerminalEvidence } from '../../../shared/claude-terminal-interrupt'
 import type { AgentStatusIpcPayload } from '../../../shared/agent-status-types'
@@ -24,6 +28,7 @@ export type RuntimeConstructionDependencies = {
   onPtyStopped?: (ptyId: string) => void
   onTerminalScreenPermission?: (event: AntigravityScreenPermissionObservation) => boolean
   onTerminalAgentStatus?: (event: RuntimeTerminalAgentStatusEvent) => void
+  onTerminalProgramStatusFacet?: (event: RuntimeTerminalProgramStatusFacetEvent) => void
   onTerminalSideEffects?: (batch: TerminalSideEffectBatch) => void
   onClaudeTerminalEvidence?: (paneKey: string, evidence: ClaudeTerminalEvidence) => void
   getAgentStatusSnapshot?: () => AgentStatusIpcPayload[]
@@ -39,6 +44,7 @@ export type RuntimeConstructionDependencies = {
     terminalProvenance: 'current_runtime' | 'restored'
   }) => AgentHookAuthorityAttestation | null
   retireAgentHookCompatibilityAuthority?: (paneKey: string) => void
+  readHookCliWriterObservation?: (row: AgentStatusIpcPayload) => CliWriterObservation | null
   /** `exitedSince`: also answer `exited` for an exit the hook store proved at or after it. */
   checkHookAgentPresence?: (
     paneKey: string,

@@ -22,6 +22,7 @@ import {
   STRUCTURED_LAUNCH_SEED_OPTION_IDS
 } from './native-chat-session-option-defaults'
 import { AGENT_CHAT_PERMISSION_MODE_OPTION_ID } from './agent-chat-permission-mode'
+import { withUnlistedEffort } from './structured-agent-session-unlisted-effort'
 import { structuredAgentSessionPermissionDescriptor } from './structured-agent-session-permission-option'
 import {
   applyStructuredAgentFastModeAvailability,
@@ -44,12 +45,9 @@ export type StructuredAgentSessionOptionState = {
    *  built-in list before the host answered (shown as the quiet placeholder); `builtin` is the
    *  same list once the host said it has none, usable but naming nothing the host may replace. */
   catalogSource: 'seed' | 'builtin' | 'host' | 'live' | null
-  /** The rows of `catalog` its own finished listing names: the only ones that can stand in for a
-   *  model it lacks. Never another listing's, which may come from another CLI version. */
+  /** The rows of a live answer its agent's own listing names; a row outside them is the chat's
+   *  own model, which no list describes. Absent from an older host. */
   verifiedModelIds?: readonly string[]
-  /** What the host's finished account list names, for a live answer from an older host that
-   *  names no listed ids of its own. */
-  hostListedModelIds?: readonly string[]
   record: NativeChatSessionOptionRecord
   /** The permission mode the host or launch last stated; null shows no picker. */
   permissionMode: string | null
@@ -78,20 +76,7 @@ export function createStructuredAgentSessionOptionState(
 export function settleStructuredAgentSessionBuiltinCatalog(
   state: StructuredAgentSessionOptionState
 ): StructuredAgentSessionOptionState {
-  const settled = withHostListedModelIds(state, undefined)
-  return settled.catalogSource === 'seed' ? { ...settled, catalogSource: 'builtin' } : settled
-}
-
-/** The host list's ids, which verify the catalog only while the host's list is what it shows. */
-function withHostListedModelIds(
-  state: StructuredAgentSessionOptionState,
-  ids: readonly string[] | undefined
-): StructuredAgentSessionOptionState {
-  const verified = state.catalogSource === 'live' ? state.verifiedModelIds : ids
-  return String(state.hostListedModelIds) === String(ids) &&
-    String(state.verifiedModelIds) === String(verified)
-    ? state
-    : { ...state, verifiedModelIds: verified, hostListedModelIds: ids }
+  return state.catalogSource === 'seed' ? { ...state, catalogSource: 'builtin' } : state
 }
 
 function isListedModelRow(row: unknown): row is { id: string } {
@@ -120,8 +105,8 @@ export function finishedListingIds(catalog: AgentSessionModelCatalogResult): str
 /**
  * Applies the host's stored model catalog: models only, no current selection
  * and no record writes, so nothing here reads as a committed value — the pick
- * stays provisional until a live options result confirms it. A live catalog,
- * and the ids its own answer verified, are never replaced by this.
+ * stays provisional until a live options result confirms it. A live catalog
+ * is never replaced by this.
  */
 export function applyStructuredAgentSessionModelCatalog(
   state: StructuredAgentSessionOptionState,
@@ -129,9 +114,8 @@ export function applyStructuredAgentSessionModelCatalog(
   catalog: AgentSessionModelCatalogResult,
   options: { newLaunch: boolean }
 ): StructuredAgentSessionOptionState {
-  const hostListedModelIds = finishedListingIds(catalog)
   if (state.catalogSource === 'live') {
-    return withHostListedModelIds(state, hostListedModelIds)
+    return state
   }
   const models =
     catalog.origin === 'unknown' ? [] : catalog.models.map((model) => discoveredModel(model, true))
@@ -153,8 +137,6 @@ export function applyStructuredAgentSessionModelCatalog(
       ...(namesDefault ? { defaultModelIsCliDefault: true } : {})
     },
     catalogSource: 'host',
-    verifiedModelIds: hostListedModelIds,
-    hostListedModelIds,
     ...catalogFastModeState(state.record.agent, catalog)
   }
 }
@@ -232,7 +214,7 @@ function modelOptionSnapshot(state: StructuredAgentSessionOptionState): SessionO
     return [PROVIDER_DEFAULT_MODEL_PLACEHOLDER]
   }
   return applyStructuredAgentFastModeAvailability({
-    snapshot,
+    snapshot: withUnlistedEffort(state.catalog, state.record, state.verifiedModelIds, snapshot),
     agent: state.record.agent,
     modelSupport: state.fastModeModelSupport,
     support: state.fastModeSupport
