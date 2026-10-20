@@ -38,9 +38,6 @@ function providerMaxUsed(sections: UsageSection[]): number {
 
 // Buckets (Gemini Flash/Pro) keep their model name; windows use their duration.
 function shortLabel(p: ProviderRateLimits, section: UsageSection, now = Date.now()): string {
-  if (p.provider === 'antigravity' && p.buckets?.length) {
-    return `${section.label.split(' · ')[0]} · ${formatRateLimitWindowChipLabel(section.window, now)}`
-  }
   if (
     p.buckets?.some((b) => b.name === section.label) &&
     !(p.provider === 'cursor' && section.label === CURSOR_MODELS_BUCKET_NAME)
@@ -85,12 +82,6 @@ export function getUsageHeadlineSection(
   p: ProviderRateLimits,
   now = Date.now()
 ): UsageSection | null {
-  if (p.provider === 'antigravity' && p.buckets?.length) {
-    const primary = getTightestUsageSection(p, now)
-    return primary
-      ? { ...primary, label: formatRateLimitWindowChipLabel(primary.window, now) }
-      : null
-  }
   if (p.provider === 'cursor') {
     const primary =
       usedSections(p).find((section) => section.label === CURSOR_MODELS_BUCKET_NAME) ??
@@ -199,6 +190,9 @@ export function UsageRow({
           <span className="shrink-0 text-[11px] text-muted-foreground">{reset}</span>
         ) : null}
       </div>
+      {state.detail ? (
+        <span className="pl-[30px] text-[11px] text-muted-foreground">{state.detail}</span>
+      ) : null}
       {hasUsage && mode === 'verbose' ? (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 pl-[30px]">
           {sections.map((section) => (

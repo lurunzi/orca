@@ -30,7 +30,7 @@ export function chatUnavailableLabel(reason: ChatUnavailableReason): string {
 }
 
 export function rowTitle(row: NewTabAgentMenuRow, label: string): string {
-  return row.kind === 'chat'
+  return row.kind === 'chat' || (row.kind === 'cli' && row.opensTranscriptChat)
     ? translate(
         'auto.components.tab.bar.QuickLaunchButton.startChat',
         'Start a chat with {{value0}}',
@@ -47,7 +47,7 @@ export function rowTitle(row: NewTabAgentMenuRow, label: string): string {
 
 export function rowLabel(row: NewTabAgentMenuRow): string {
   const label = getAgentCatalog().find((entry) => entry.id === row.agent)?.label ?? row.agent
-  return row.kind === 'cli'
+  return row.kind === 'cli' && !row.opensTranscriptChat
     ? `${label} ${translate('auto.components.tab.bar.QuickLaunchButton.cliTag', '(CLI)')}`
     : label
 }

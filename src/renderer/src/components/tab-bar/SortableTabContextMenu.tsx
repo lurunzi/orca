@@ -198,11 +198,11 @@ export function SortableTabContextMenu({
               {isChatView
                 ? translate(
                     'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
-                    'Switch to terminal view'
+                    'Switch to Terminal Agent'
                   )
                 : translate(
                     'components.tab.bar.SortableTabContextMenu.switchToChatView',
-                    'Switch to chat view'
+                    'Switch to Chat UI'
                   )}
             </DropdownMenuItem>
           </>

@@ -1,9 +1,7 @@
 // A chat's options, live or at rest.
 //
-// At rest nothing here needs a child. The pick is the record's own `options` — what the next start replays —
-// and the list is the host's model catalog, the same one the picker already reads before a chat
-// exists. A pick made at rest is written to the record as intent, through the same transition a live
-// pick takes, so the next start applies it.
+// The record keeps the next message's choices; the catalog names known defaults. A provider's
+// reports remain execution facts and never replace the saved selection.
 
 import {
   refuse,
@@ -12,6 +10,7 @@ import {
   type AgentSessionOptionsResult
 } from '../../../shared/agent-session-wire'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
+import { restingClaudeFastRefusal, restingFastModeSupport } from './claude-resting-fast-gate'
 import type {
   AgentJournalCursor,
   AgentJournalThreadGoal
@@ -145,11 +144,7 @@ async function readStructuredAgentSessionOptionsAtRest(
   return {
     models: listed ? structuredAgentSessionOptionModels(listed, model, (row) => row) : [],
     ...(listedModelIds ? { listedModelIds } : {}),
-    ...(record.provider === 'claude'
-      ? { fastModeSupport: { supported: false, reason: 'availability-unconfirmed' } }
-      : catalog.origin !== 'unknown' && catalog.fastModeSupport
-        ? { fastModeSupport: catalog.fastModeSupport }
-        : {}),
+    ...restingFastModeSupport(record.provider, catalog),
     current: {
       ...(model ? { model } : {}),
       ...(effort ? { effort } : {}),
@@ -179,15 +174,9 @@ export async function recordStructuredAgentSessionOptionIntent(
       )
     }
   }
-  if (record.provider === 'claude' && input.key === 'fastMode' && input.value !== 'false') {
-    return {
-      ok: false,
-      refusal: refuse(
-        'agent_session_operation_invalid',
-        { reason: 'optionRejected' },
-        'Claude Fast mode availability must be confirmed by a running session before enabling it.'
-      )
-    }
+  const fastRefusal = restingClaudeFastRefusal(record.provider, input)
+  if (fastRefusal) {
+    return fastRefusal
   }
   const options = { ...record.options, [input.key]: input.value }
   // The answer still names the mode among the options, as the wire always has.
@@ -281,28 +270,38 @@ export async function readStructuredAgentSessionOptions(
   const permissionMode = record
     ? await structuredAgentSessionLaunchPermission(context.deps, record)
     : null
-  // The saved pick shows, except one the running child could not take (a model its provider says
+  const selected = live ? await atRest() : options
+  // The saved pick shows, except a model the running child could not take (its provider says it
   // does not exist): that shows what the child runs instead.
-  const refused = live ? (adapter.readOptionRestoreFailures?.(sessionId) ?? []) : []
-  const saved = record?.options
-  const shownSaved = (key: 'model' | 'effort'): boolean =>
-    saved?.[key] !== undefined && !refused.includes(key)
-  const selected = live && (shownSaved('model') || shownSaved('effort')) ? await atRest() : options
+  const refusedModel = live && !!adapter.readOptionRestoreFailures?.(sessionId).includes('model')
+  const saved = record?.options ?? {}
+  const { model: _refused, ...selectedWithoutModel } = selected.current
+  const model = refusedModel
+    ? options.current.model
+    : (saved.model ?? (options.current.model || selected.current.model))
   const current = {
+    ...(refusedModel ? selectedWithoutModel : selected.current),
     ...options.current,
-    ...(shownSaved('model') ? { model: selected.current.model } : {}),
-    ...(shownSaved('effort') ? { effort: selected.current.effort } : {})
+    ...(model !== undefined ? { model } : {}),
+    effort: saved.effort ?? options.current.effort,
+    fastMode:
+      saved.fastMode !== undefined
+        ? selected.current.fastMode
+        : (options.current.fastMode ?? selected.current.fastMode),
+    serviceTier: saved.serviceTier ?? options.current.serviceTier ?? selected.current.serviceTier
   }
-  const confirmed = current.confirmed?.filter((key) =>
-    key === 'model'
-      ? current.model === options.current.model
-      : key !== 'effort' || current.effort === options.current.effort
+  const confirmed = options.current.confirmed?.filter((key) =>
+    key === 'model' || key === 'effort' || key === 'fastMode' || key === 'serviceTier'
+      ? current[key] === options.current[key]
+      : false
   )
   return {
     ...options,
     current: {
       ...current,
-      ...(confirmed ? { confirmed } : {}),
+      confirmed,
+      ...(options.current.fastModeState ? { fastModeState: options.current.fastModeState } : {}),
+      ...(confirmed?.length ? { confirmed } : {}),
       ...(permissionMode ? { permissionMode } : {})
     },
     rewind:

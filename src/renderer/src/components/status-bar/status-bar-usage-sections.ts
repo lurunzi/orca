@@ -26,14 +26,17 @@ export function getStatusBarUsageSections(
   if (!p || p.status === 'idle' || p.status === 'unavailable') {
     return []
   }
-  if (mode === 'compact' || p.provider === 'antigravity') {
+  if (mode === 'compact') {
     const headline = getUsageHeadlineSection(p, now)
     return headline ? [{ key: 'headline', ...headline }] : []
   }
   if (p.buckets?.length) {
-    // Gemini's experimental pools stay in the details panel.
+    // Antigravity pool names vary by account tier; Gemini's experimental pools stay hidden.
     const buckets = p.buckets.filter(
-      (bucket) => STATUS_BAR_BUCKET_NAMES.has(bucket.name) || isCursorUsageBucket(bucket.name)
+      (bucket) =>
+        p.provider === 'antigravity' ||
+        STATUS_BAR_BUCKET_NAMES.has(bucket.name) ||
+        isCursorUsageBucket(bucket.name)
     )
     if (buckets.length > 0) {
       return buckets.map((bucket) => ({

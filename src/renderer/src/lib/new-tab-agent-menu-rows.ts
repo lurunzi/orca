@@ -8,6 +8,7 @@ import type { ExecutionHostId } from '../../../shared/execution-host'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import { filterEnabledTuiAgents } from '../../../shared/tui-agent-selection'
 import { orderTabLaunchAgents as orderAgents } from '@/components/tab-bar/tab-agent-launch-options'
+import { opensTranscriptChatFromTerminal } from '@/lib/fork-transcript-chat-menu'
 
 /** What the workspace's machine says about opening an agent as a chat, installation aside. */
 export type HostChatAnswer = 'yes' | 'not-yet-known' | 'ssh' | 'wsl' | 'not-on-host' | 'no-chats'
@@ -17,7 +18,7 @@ export type ChatUnavailableReason = 'check-failed' | 'not-installed' | 'ssh' | '
 export type NewTabAgentMenuRow = (
   | { kind: 'chat'; agent: TuiAgent }
   | { kind: 'chat-unavailable'; agent: TuiAgent; reason: ChatUnavailableReason }
-  | { kind: 'cli'; agent: TuiAgent }
+  | { kind: 'cli'; agent: TuiAgent; opensTranscriptChat?: true }
   | { kind: 'terminal'; agent: TuiAgent }
 ) & { executionHostId?: ExecutionHostId }
 
@@ -62,8 +63,19 @@ export function buildNewTabAgentMenuRows(args: {
       )
     }
   }
+  const transcript = installed.filter(
+    (agent) => !runnable.includes(agent) && opensTranscriptChatFromTerminal(settings, agent)
+  )
+  for (const agent of transcript) {
+    unavailable.delete(agent)
+  }
   return [
     ...orderAgents(defaultAgent, runnable).map((agent) => ({ kind: 'chat' as const, agent })),
+    ...orderAgents(defaultAgent, transcript).map((agent) => ({
+      kind: 'cli' as const,
+      agent,
+      opensTranscriptChat: true as const
+    })),
     ...orderAgents(defaultAgent, [...unavailable.keys()]).map((agent) => ({
       kind: 'chat-unavailable' as const,
       agent,
@@ -71,7 +83,7 @@ export function buildNewTabAgentMenuRows(args: {
     })),
     ...orderAgents(
       defaultAgent,
-      installed.filter((agent) => !runnable.includes(agent))
+      installed.filter((agent) => !runnable.includes(agent) && !transcript.includes(agent))
     ).map((agent) => ({ kind: 'cli' as const, agent }))
   ]
 }

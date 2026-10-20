@@ -61,6 +61,26 @@ describe('UsageRow', () => {
     expect(markup).not.toContain('<button')
   })
 
+  it('renders a row detail line under a placeholder', () => {
+    const markup = renderToStaticMarkup(
+      <UsageRow
+        p={{ ...signedOutCodex, provider: 'minimax', error: 'Not configured on devbox' }}
+        display="used"
+        state={{
+          kind: 'unavailable',
+          statusLabel: 'Not configured on devbox',
+          detail: 'Its sign-in is saved on this computer only.'
+        }}
+        showSignInAction={false}
+        now={mocks.now}
+      />
+    )
+
+    expect(markup).toContain('Not configured on devbox')
+    expect(markup).toContain('Its sign-in is saved on this computer only.')
+    expect(markup).not.toContain('Sign in')
+  })
+
   it('keeps the bar fill consistent with the remaining percentage label', () => {
     const markup = renderToStaticMarkup(
       <UsageRow
@@ -135,38 +155,27 @@ describe('UsageRow', () => {
     expect(markup).toContain('10%')
   })
 
-  it('keeps all model groups and countdowns in the detailed Antigravity roster', () => {
-    const weekly = {
-      usedPercent: 10,
-      windowMinutes: 10080,
-      resetsAt: mocks.now + 3 * 24 * 60 * 60_000,
-      resetDescription: null
-    }
+  it('keeps full Antigravity pool names in the click panel', () => {
     const markup = renderToStaticMarkup(
       <UsageRow
         p={{
-          ...signedOutCodex,
           provider: 'antigravity',
-          status: 'ok',
-          error: null,
-          weekly,
+          session: null,
+          weekly: null,
           buckets: [
-            { ...weekly, name: 'Gemini Models · Weekly Limit Remaining' },
             {
-              ...weekly,
-              name: 'Gemini Models · Five Hour Limit Remaining',
-              windowMinutes: 300,
-              usedPercent: 1,
-              resetsAt: mocks.now + 97 * 60_000
-            },
-            { ...weekly, name: 'Claude and GPT models · Weekly Limit Remaining' },
-            {
-              ...weekly,
-              name: 'Claude and GPT models · Five Hour Limit Remaining',
-              windowMinutes: 300,
-              resetsAt: mocks.now + 4 * 60 * 60_000
+              name: 'Gemini Models · Weekly Limit Remaining',
+              group: 'Gemini Models',
+              windowName: 'Weekly Limit Remaining',
+              usedPercent: 4,
+              windowMinutes: 10_080,
+              resetsAt: null,
+              resetDescription: null
             }
-          ]
+          ],
+          updatedAt: 0,
+          status: 'ok',
+          error: null
         }}
         display="used"
         state={{ kind: 'usage', statusLabel: null }}
@@ -174,13 +183,8 @@ describe('UsageRow', () => {
         now={mocks.now}
       />
     )
-    expect(markup).toContain('Gemini · 3d')
-    expect(markup).toContain('Gemini · 1h 37m')
-    expect(markup).not.toContain('Models')
-    expect(markup).not.toContain('Limit Remaining')
-    expect(markup).toContain('Claude and GPT · 3d')
-    expect(markup).toContain('Claude and GPT · 4h')
-    expect(markup.match(/data-usage-window=/g)).toHaveLength(4)
+
+    expect(markup).toContain('Gemini Models · Weekly Limit Remaining')
   })
 
   it('renders the tightest window inline in compact mode', () => {

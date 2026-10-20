@@ -264,15 +264,15 @@ describe('SortableTabContextMenu', () => {
   it('does not expose a native/terminal view switch', () => {
     const { container } = renderMenu()
 
-    expect(container.textContent).not.toContain('Switch to terminal view')
-    expect(container.textContent).not.toContain('Switch to chat view')
+    expect(container.textContent).not.toContain('Switch to Terminal Agent')
+    expect(container.textContent).not.toContain('Switch to Chat UI')
   })
 
   it('offers the supported transcript chat view from a terminal tab', () => {
     const onToggleViewMode = vi.fn()
     const { container } = renderMenu({ canToggleViewMode: true, onToggleViewMode })
 
-    act(() => getButton(container, 'Switch to chat view').click())
+    act(() => getButton(container, 'Switch to Chat UI').click())
     expect(onToggleViewMode).toHaveBeenCalledOnce()
     expect(getSurfaceSwitchMarker(container).getAttribute('data-leading-separator')).toBe('false')
   })
@@ -286,11 +286,11 @@ describe('SortableTabContextMenu', () => {
     })
     const marker = getSurfaceSwitchMarker(container)
 
-    expect(getButton(container, 'Switch to terminal view').compareDocumentPosition(marker)).toBe(
+    expect(getButton(container, 'Switch to Terminal Agent').compareDocumentPosition(marker)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     )
     expect(marker.getAttribute('data-leading-separator')).toBe('false')
-    act(() => getButton(container, 'Switch to terminal view').click())
+    act(() => getButton(container, 'Switch to Terminal Agent').click())
     expect(onToggleViewMode).toHaveBeenCalled()
   })
 

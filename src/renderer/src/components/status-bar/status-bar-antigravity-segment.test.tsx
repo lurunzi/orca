@@ -48,57 +48,45 @@ function antigravityLimits(overrides: Partial<ProviderRateLimits> = {}): Provide
   }
 }
 
-describe('Antigravity status-bar segment', () => {
-  it.each([
-    [10, 5, 10, 'wk'],
-    [10, 10, 10, 'wk'],
-    [10, 25, 25, '5h'],
-    [0, 0, 0, 'wk']
-  ] as const)(
-    'selects the highest usage across weekly %s / hourly %s without model-group labels',
-    async (weekly, hourly, expected, label) => {
-      const { ProviderSegment } = await import('./StatusBar')
-      const p = antigravityLimits({
-        weekly: weeklyWindow(100),
-        buckets: [
-          {
-            name: 'Gemini Models · Five Hour Limit Remaining',
-            ...weeklyWindow(hourly),
-            windowMinutes: 300
-          },
-          { name: 'Gemini Models · Weekly Limit Remaining', ...weeklyWindow(weekly) },
-          { name: 'Claude and GPT models', ...weeklyWindow(0) }
-        ]
-      })
-      for (const display of ['used', 'remaining'] as const) {
-        for (const mode of ['compact', 'verbose'] as const) {
-          const markup = renderToStaticMarkup(
-            <ProviderSegment p={p} compact={false} display={display} mode={mode} />
-          )
-          const shown = display === 'used' ? expected : 100 - expected
-          expect(markup).toContain(`${shown}% ${label}`)
-          expect(markup).not.toContain('Models')
-          expect(markup).not.toContain('Limit Remaining')
-          expect(markup).not.toContain('Claude')
-          expect(markup.match(/class="tabular-nums"/g)).toHaveLength(1)
-        }
-      }
-    }
-  )
+const FIVE_HOUR_MINUTES = 300
 
-  it('shows the Gemini reset countdown and handles a weekly-only tier', async () => {
+/** A tier with a 5h and a weekly pool per group, from a host that publishes `group`/`windowName`. */
+function groupedLimits(): ProviderRateLimits {
+  const pool = (group: string, windowMinutes: number, usedPercent: number) => {
+    const windowName =
+      windowMinutes === FIVE_HOUR_MINUTES ? '5h Limit Remaining' : 'Weekly Limit Remaining'
+    return {
+      name: `${group} · ${windowName}`,
+      group,
+      windowName,
+      ...weeklyWindow(usedPercent),
+      windowMinutes
+    }
+  }
+  return antigravityLimits({
+    weekly: weeklyWindow(4),
+    buckets: [
+      pool('Gemini Models', WEEKLY_MINUTES, 4),
+      pool('Gemini Models', FIVE_HOUR_MINUTES, 0),
+      pool('Claude and GPT models', WEEKLY_MINUTES, 0),
+      pool('Claude and GPT models', FIVE_HOUR_MINUTES, 0)
+    ]
+  })
+}
+
+describe('Antigravity status-bar segment', () => {
+  it('renders both model-group pools by name', async () => {
+    // Why: the verbose bucket allowlist was written for Gemini's experimental models, so
+    // Antigravity's pools — whose names come from the account's tier and cannot be enumerated
+    // ahead of time — were filtered out and the segment showed no number at all.
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
-      <ProviderSegment
-        p={antigravityLimits({
-          buckets: [{ name: 'Gemini Models', ...weeklyWindow(10), resetsAt: Date.now() + 90_000 }]
-        })}
-        compact={false}
-        display="used"
-        mode="compact"
-      />
+      <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
     )
-    expect(markup).toContain('10% 1m')
+
+    expect(markup).toContain('Gemini Models')
+    expect(markup).toContain('Claude and GPT models')
+    expect(markup).toContain('100%')
   })
 
   it('uses another model group when Gemini is absent', async () => {
@@ -108,44 +96,6 @@ describe('Antigravity status-bar segment', () => {
         antigravityLimits({ buckets: [{ name: 'Claude and GPT models', ...weeklyWindow(100) }] })
       )
     ).toMatchObject({ window: { usedPercent: 100 } })
-  })
-
-  it.each(['used', 'remaining'] as const)(
-    'uses Argon usage and its reset in the %s footer and compact roster',
-    async (display) => {
-      const { ProviderSegment } = await import('./StatusBar')
-      const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
-      const now = Date.now()
-      const argon = {
-        name: 'Gemini 4 Argon · Weekly Limit Remaining',
-        ...weeklyWindow(44),
-        resetsAt: now + 6 * 24 * 60 * 60_000
-      }
-      const p = antigravityLimits({
-        buckets: [
-          { name: 'Gemini Models', ...weeklyWindow(2), windowMinutes: 300 },
-          { name: 'Claude and GPT models', ...weeklyWindow(0) },
-          argon
-        ]
-      })
-      expect(getUsageHeadlineSection(p, now)).toEqual({ label: '6d', window: argon })
-      const markup = renderToStaticMarkup(
-        <ProviderSegment p={p} compact={false} display={display} mode="compact" now={now} />
-      )
-      expect(markup).toContain(`${display === 'used' ? 44 : 56}% 6d`)
-    }
-  )
-
-  it('follows a different pool when it becomes more used than Argon', async () => {
-    const { getUsageHeadlineSection } = await import('./UsageRosterPanel')
-    const claude = { name: 'Claude and GPT models', ...weeklyWindow(61), windowMinutes: 300 }
-    expect(
-      getUsageHeadlineSection(
-        antigravityLimits({
-          buckets: [{ name: 'Gemini 4 Argon', ...weeklyWindow(44) }, claude]
-        })
-      )
-    ).toEqual({ label: '5h', window: claude })
   })
 
   it('prefers weekly on ties in legacy readings without buckets', async () => {
@@ -159,15 +109,42 @@ describe('Antigravity status-bar segment', () => {
     expect(headline?.label).toBe('wk')
   })
 
-  it('renders the highest usage with concise window labels', async () => {
+  it('labels grouped pools by short group and window length', async () => {
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
-      <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
+      <ProviderSegment p={groupedLimits()} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).not.toContain('Gemini Models')
-    expect(markup).not.toContain('Claude and GPT models')
-    expect(markup).toContain('100% wk')
+    // Why '>Gemini<': the group's `title` still holds the full name, so a bare match is vacuous.
+    expect(markup).toContain('>Gemini<')
+    expect(markup).toContain('>Claude/GPT<')
+    expect(markup).toContain('5h')
+    expect(markup).toContain('4%')
+    expect(markup).not.toContain('Gemini Models ·')
+    expect(markup).not.toContain('Limit Remaining')
+    // 5h sorts before wk within a group.
+    expect(markup.indexOf('5h')).toBeLessThan(markup.indexOf('wk'))
+  })
+
+  it('uses the short pool label in compact mode', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={groupedLimits()} compact={false} display="used" mode="compact" />
+    )
+
+    expect(markup).toContain('4%')
+    expect(markup).toContain('Gemini wk')
+    expect(markup).not.toContain('Limit Remaining')
+  })
+
+  it('renders no pool label when the compact bar hides labels', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={groupedLimits()} compact display="used" mode="compact" />
+    )
+
+    expect(markup).toContain('4%')
+    expect(markup).not.toContain('Gemini')
   })
 
   it('shows the weekly window when a tier reports no session pool', async () => {

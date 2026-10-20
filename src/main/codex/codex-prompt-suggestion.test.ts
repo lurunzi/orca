@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { CodexAppServerRequestError } from './codex-app-server-request-error'
 import { CodexAppServerUnsupportedError } from './codex-app-server-session'
 import {
+  acquireReadyCodexForTest,
   acquired,
   adapterFor,
   fakeCodex,
@@ -111,7 +112,7 @@ describe('Codex prompt suggestions', () => {
     const codex = fakeCodex()
     const adapter = adapterFor(codex)
     const sink = { appendItem: vi.fn(), appendTombstone: vi.fn(), publish: vi.fn() }
-    await adapter.acquire({
+    await acquireReadyCodexForTest(adapter, {
       identity: identityFor('session-1'),
       fence: 7,
       spawnToken: 'spawn-9',

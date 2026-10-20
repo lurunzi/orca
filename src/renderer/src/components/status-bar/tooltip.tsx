@@ -159,12 +159,6 @@ export function getWindowSections(
   p: ProviderRateLimits
 ): { label: string; window: RateLimitWindow | null }[] {
   if (p.buckets?.length) {
-    if (p.provider === 'antigravity') {
-      return p.buckets.map((bucket) => ({
-        label: `${bucket.name.split(' · ')[0].replace(/ models$/i, '')} · ${formatWindowLabel(bucket.windowMinutes)}`,
-        window: bucket
-      }))
-    }
     const bucketSections = p.buckets.map((b) => ({ label: b.name, window: b as RateLimitWindow }))
     return [
       ...bucketSections,

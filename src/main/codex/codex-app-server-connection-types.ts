@@ -13,12 +13,12 @@ export type CodexAppServerConnectionHandlers = {
   onExit?: (error: Error, exit?: { expected: boolean }) => void
   /** Awaited once the child has a pid and before the handshake; a rejection reaps the child. */
   onSpawned?: (pid: number) => Promise<void>
-  /** Any stdout or stderr chunk from the child. */
-  onOutput?: () => void
 }
 
 export type CodexAppServerConnection = {
   readonly serverVersion?: string | null
+  /** Fork: the handshake records the version it read, wherever the handshake runs. */
+  noteServerVersion?: (version: string | null) => void
   readonly pid: number | undefined
   readonly closed: boolean
   request: (

@@ -64,7 +64,6 @@ import {
 import type { ClaudeCliFlagSupport } from '../claude/claude-cli-flag-support'
 import { migrateLegacyNativeChatVisualsFolders } from '../native-chat/native-chat-scratch-folder-migration'
 import { scheduleNativeChatVisualsSweep } from '../native-chat/native-chat-visuals-sweep'
-import { readJournalSessionLastActivityAt } from '../native-chat/agent-session-journal/journal-row-table'
 
 export { hasPersistedStructuredAgentSessionStore } from './agent-session-record-store-slot'
 
@@ -82,8 +81,8 @@ export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportO
   /** Which version-gated flags a Claude CLI takes; absent never passes one. */
   claudeCliFlags?: ClaudeCliFlagSupport
   /** Gives each chat a scratch folder and the visuals skill that teaches it, and sweeps folders
-   *  whose chat is gone or long unused. Wired by the real hosts only, so a test runtime never loads
-   *  the bundled skill. */
+   *  whose chat is gone. Wired by the real hosts only, so a test runtime never loads the bundled
+   *  skill. */
   nativeChatVisuals?: {
     /** Read this host's preference when a chat starts a provider process. */
     isEnabled: () => boolean
@@ -346,9 +345,6 @@ async function installOnJournal(
     ? scheduleNativeChatVisualsSweep({
         stateDirectory: deps.stateDirectory,
         listHeldSessionIds: () => (store.readOnly ? null : store.listHeldSessionIds()),
-        lastJournalActivityAt: (sessionId) =>
-          readJournalSessionLastActivityAt(journalDatabase.db, sessionId),
-        runWhileExecutionIdle: host.runWhileExecutionIdle,
         logger: deps.logger
       })
     : undefined

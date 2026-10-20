@@ -50,7 +50,7 @@ type TerminalPaneHeaderOverlayProps = {
   /** The active terminal has a supported, readable transcript. */
   canShowChat?: boolean
   onToggleNativeChat?: () => void
-  /** Offers the tab menu's "Resume in New Native Chat" for the active pane's own conversation. */
+  /** Offers the tab menu's "Switch to Chat" for the active pane's own conversation. */
   canResumeInNewNativeChat?: boolean
   canContinueAgentSessionInNewSession?: boolean
   onContinueAgentSessionInNewSession?: (pane: ManagedPane) => void
@@ -112,7 +112,7 @@ export default function TerminalPaneHeaderOverlay({
   )
   const chatToggleLabel = canShowTerminal
     ? translate('components.native-chat.toggle.showTerminal', 'Show terminal')
-    : translate('components.tab.bar.SortableTabContextMenu.switchToChatView', 'Switch to chat view')
+    : translate('components.tab.bar.SortableTabContextMenu.switchToChatView', 'Switch to Chat UI')
 
   return (
     <div

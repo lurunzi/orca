@@ -21,7 +21,10 @@ export async function initializeCodexAppServerConnection(
     { timeoutMs: HANDSHAKE_TIMEOUT_MS }
   )
   connection.notify('initialized')
-  return isAppServerRecord(result) && typeof result.userAgent === 'string'
-    ? parseCliVersion(result.userAgent)
-    : null
+  const version =
+    isAppServerRecord(result) && typeof result.userAgent === 'string'
+      ? parseCliVersion(result.userAgent)
+      : null
+  connection.noteServerVersion?.(version)
+  return version
 }

@@ -97,6 +97,12 @@ export function useStructuredAgentSessionTransportState(
     /** Working only because the queue is about to send: nothing is in flight to stop yet. */
     queueSendsNext,
     backgroundTasks,
-    conversationBusy: Boolean(turnId || backgroundTasks.isMonitoring)
+    conversationBusy: Boolean(turnId || backgroundTasks.isMonitoring),
+    /** What the composer reads beside the transcript: the `/` list and, in the fork, the next-prompt
+     *  suggestion. Neither is published before the chat reads its host. */
+    composerMetadata: {
+      sessionCommands: enabled ? (state.commands ?? undefined) : undefined,
+      promptSuggestion: enabled ? (state.promptSuggestion ?? null) : null
+    }
   }
 }

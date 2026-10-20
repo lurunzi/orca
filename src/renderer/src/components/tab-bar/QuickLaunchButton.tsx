@@ -231,7 +231,9 @@ export function ProjectedAgentMenuItems({
         const { agent } = row
         const label = getCatalogEntry(agent)?.label ?? agent
         // Chat rows come first; the rows that open a terminal start their own group.
-        const startsCliGroup = row.kind === 'cli' && index > 0 && rows[index - 1]?.kind !== 'cli'
+        const isCli = (r: NewTabAgentMenuRow | undefined): boolean =>
+          r?.kind === 'cli' && !r.opensTranscriptChat
+        const startsCliGroup = isCli(row) && index > 0 && !isCli(rows[index - 1])
         if (row.kind === 'chat-unavailable') {
           return (
             <DropdownMenuItem key={rowId(row)} variant="launch" disabled>

@@ -82,8 +82,6 @@ export type ClaudeStreamJsonConnectionHandlers = {
   /** The root process exited, reported once. `expected`: a close had begun, so it is that close's
    *  end, even one that ran out of its own escalation first and came back unproven. */
   onExit?: (error: Error, exit?: { expected: boolean }) => void
-  /** Any stdout or stderr chunk from the child. */
-  onOutput?: () => void
 }
 
 /**
@@ -140,7 +138,7 @@ export async function openClaudeStreamJsonConnection(
   queryImpl?: typeof ClaudeAgentSdk.query
 ): Promise<ClaudeStreamJsonConnection> {
   const sdk = await loadClaudeAgentSdk()
-  const spawner = createClaudeCodeProcessSpawn(spawnImpl, process.platform, handlers.onOutput)
+  const spawner = createClaudeCodeProcessSpawn(spawnImpl, process.platform)
   const inbox = createClaudeUserMessageQueue()
   const session = (queryImpl ?? sdk.query)({
     prompt: inbox.messages,

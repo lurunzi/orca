@@ -43,7 +43,7 @@ vi.mock('@/store', () => ({
 }))
 vi.mock('./terminal-input-activity', () => ({ recordTerminalUserInputForLeaf: vi.fn() }))
 vi.mock('./TerminalPaneResumeInChatButton', () => ({
-  TerminalPaneResumeInChatButton: () => <button type="button">Resume in New Native Chat</button>
+  TerminalPaneResumeInChatButton: () => <button type="button">Switch to Chat UI</button>
 }))
 
 const mounted: { container: HTMLDivElement; root: Root }[] = []
@@ -200,24 +200,24 @@ describe('TerminalPaneHeaderOverlay', () => {
     const onToggleNativeChat = vi.fn()
     const { container } = renderOverlay({ paneTitles: {}, canShowChat: true, onToggleNativeChat })
     const buttons = container.querySelectorAll<HTMLButtonElement>(
-      'button[aria-label="Switch to chat view"]'
+      'button[aria-label="Switch to Chat UI"]'
     )
     expect(buttons).toHaveLength(1)
     expect(buttons[0].closest('.pane-title-bar')?.hasAttribute('data-active-pane')).toBe(true)
     act(() => buttons[0].click())
     expect(onToggleNativeChat).toHaveBeenCalledOnce()
   })
-  it('offers Resume in New Native Chat instead of a chat view switch, on the active pane only', () => {
+  it('offers Switch to Chat UI instead of a chat view switch, on the active pane only', () => {
     const { container } = renderOverlay({ paneTitles: {}, canResumeInNewNativeChat: true })
 
     const resumeButtons = [...container.querySelectorAll('button')].filter(
-      (button) => button.textContent === 'Resume in New Native Chat'
+      (button) => button.textContent === 'Switch to Chat UI'
     )
     expect(resumeButtons).toHaveLength(1)
     expect(resumeButtons[0]?.closest('.pane-title-bar')?.hasAttribute('data-active-pane')).toBe(
       true
     )
-    expect(container.querySelector('button[aria-label="Switch to chat view"]')).toBeNull()
+    expect(container.querySelector('button[aria-label="Switch to Chat UI"]')).toBeNull()
   })
 
   it('keeps Show terminal as the way back from chat view', () => {
@@ -228,7 +228,7 @@ describe('TerminalPaneHeaderOverlay', () => {
     })
 
     expect(container.querySelector('button[aria-label="Show terminal"]')).not.toBeNull()
-    expect(container.textContent).not.toContain('Resume in New Native Chat')
+    expect(container.textContent).not.toContain('Switch to Chat UI')
   })
 
   it('keeps the titled split-pane X as remove-title only', () => {
