@@ -79,7 +79,7 @@ export function useTabAgentMenuLaunch({
       const result = launchAgentInNewTab({
         requestId: newAgentLaunchRequestId(),
         focusIntent: captureNativeChatComposerFocusIntent(),
-        ...(row.kind === 'chat' || row.kind === 'cli'
+        ...(row.kind === 'chat' || (row.kind === 'cli' && !row.opensTranscriptChat)
           ? {
               requestedSurface: row.kind === 'chat' ? ('chat' as const) : ('terminal' as const),
               selectedExecutionHostId: row.executionHostId

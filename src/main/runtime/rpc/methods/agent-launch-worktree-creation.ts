@@ -10,7 +10,10 @@
  */
 
 import { buildCliWorkspaceProvenance } from '../../../../shared/cli-workspace-provenance'
-import { initialAntigravityChatView } from '../../../../shared/antigravity-chat-launch-view'
+import {
+  initialTranscriptChatView,
+  isTranscriptChatAgent
+} from '../../../../shared/transcript-chat-launch-view'
 import { getRepoSshConnectionId } from '../../../../shared/execution-host'
 import { readAgentLaunchModeSettings } from '../../../agent-launch/agent-launch-mode'
 import type { TuiAgent } from '../../../../shared/tui-agent'
@@ -95,10 +98,10 @@ export function agentLaunchWorkspaceFactory(
             context
           ),
           ...(agentArgs !== undefined ? { startupAgentArgs: agentArgs } : {}),
-          ...(startupAgent === 'antigravity'
+          ...(startupAgent && isTranscriptChatAgent(startupAgent)
             ? {
                 startupViewMode:
-                  initialAntigravityChatView({
+                  initialTranscriptChatView({
                     agent: startupAgent,
                     settings: readAgentLaunchModeSettings(runtime, nativeChatDefault),
                     connectionId: getRepoSshConnectionId(repo)

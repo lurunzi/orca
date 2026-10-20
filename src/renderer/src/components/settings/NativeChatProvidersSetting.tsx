@@ -1,3 +1,4 @@
+import { TRANSCRIPT_CHAT_AGENTS } from '../../../../shared/transcript-chat-launch-view'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
@@ -150,7 +151,12 @@ export function NativeChatProvidersSetting({
 }): React.JSX.Element | null {
   const entry = getChatProvidersSearchEntry()
   useHostStructuredAgentsVersion()
-  const agents = chatProviderAgents(LOCAL_EXECUTION_HOST_ID, undefined)
+  const agents = [
+    ...new Set([
+      ...chatProviderAgents(LOCAL_EXECUTION_HOST_ID, undefined),
+      ...TRANSCRIPT_CHAT_AGENTS
+    ])
+  ]
   const detectedIds = useAppStore(readNativeDetectedAgents)
   const visibleAgents = agents.filter(
     (agent) =>

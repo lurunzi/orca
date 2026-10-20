@@ -2,7 +2,10 @@
  * The host needs the created workspace to answer; a definitive refusal starts a terminal agent. */
 
 import { assertOpenCodeModelLaunchPreferencesAbsent } from '../opencode/opencode-model-startup-plan'
-import { antigravityTerminalViewMode, worktreeCreateLaunchInputs } from './agent-launch-antigravity'
+import {
+  transcriptTerminalViewMode,
+  worktreeCreateLaunchInputs
+} from './agent-launch-transcript-chat'
 import { parsePaneKey } from '../../shared/stable-pane-id'
 import type { AgentLaunchIntent, AgentLaunchResult } from '../../shared/agent-launch-intent'
 import { withoutReservedAgentCreateFields } from '../../shared/agent-launch-intent'
@@ -330,7 +333,7 @@ async function createTerminalSurface(
     agent: intent.agent,
     ...(startupPrompt ? { startupPrompt } : {}),
     ...terminalLaunchInputs(intent),
-    viewMode: antigravityTerminalViewMode(execution, workspace.connectionId)
+    viewMode: transcriptTerminalViewMode(execution, workspace.connectionId)
   })
   return {
     outcome: {

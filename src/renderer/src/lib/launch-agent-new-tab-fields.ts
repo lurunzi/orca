@@ -1,12 +1,17 @@
-import { initialAntigravityChatView } from '../../../shared/antigravity-chat-launch-view'
+import { initialTranscriptChatView } from '../../../shared/transcript-chat-launch-view'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import type { AgentLaunchExecutionContext } from '@/lib/launch-agent-execution-context'
 import { useAppStore } from '@/store'
 
-/** Fork: the launch fields a new agent tab carries beyond upstream's — the Antigravity transcript
+/** Fork: the launch fields a new agent tab carries beyond upstream's — the terminal-backed transcript
  *  view and, for host-routed prompts, the platform that quotes the pasted prompt. */
 export function newTabLaunchFields(
-  args: { agent: TuiAgent; prompt?: string },
+  args: {
+    agent: TuiAgent
+    prompt?: string
+    requestedSurface?: 'chat' | 'terminal'
+    agentSessionLaunchPlan?: { requestedSurface?: 'chat' | 'terminal' }
+  },
   context: AgentLaunchExecutionContext,
   promptDelivery: string
 ): {
@@ -15,8 +20,9 @@ export function newTabLaunchFields(
   hostRoute: { agent: TuiAgent; viewMode?: 'chat'; hostPlatform: NodeJS.Platform }
 } {
   const draft = args.prompt?.trim() ?? ''
-  const viewMode = initialAntigravityChatView({
+  const viewMode = initialTranscriptChatView({
     agent: args.agent,
+    requestedSurface: args.requestedSurface ?? args.agentSessionLaunchPlan?.requestedSurface,
     settings: useAppStore.getState().settings,
     connectionId: context.worktreeSshConnectionId,
     ...(promptDelivery === 'draft' && draft ? { draft } : {})

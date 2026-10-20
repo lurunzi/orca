@@ -90,6 +90,23 @@ function renderChat(
 }
 
 describe('Chat settings page', () => {
+  it.each(['cursor', 'antigravity'] as const)(
+    'offers and saves the %s transcript chat switch',
+    async (agent) => {
+      state.localDetectedAgentIdsByContext = { host: [agent] }
+      const { updateSettings } = renderChat(true)
+      const label = agent === 'cursor' ? 'Cursor' : 'Antigravity'
+      const toggle = screen.getByRole('switch', { name: `Open ${label} as a chat` })
+      expect(toggle.getAttribute('aria-checked')).toBe('true')
+      fireEvent.click(toggle)
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({
+          nativeChatProviders: { [agent]: false }
+        })
+      )
+    }
+  )
+
   it('preserves clicked provider choices while queued saves and inventory changes settle', async () => {
     let latest = getDefaultSettings('/tmp')
     state.settings = latest

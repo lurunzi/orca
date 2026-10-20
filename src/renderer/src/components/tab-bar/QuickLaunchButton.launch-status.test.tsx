@@ -60,7 +60,11 @@ vi.mock('@/lib/launch-agent-in-new-tab', () => ({ launchAgentInNewTab: launchMoc
 
 type DivProps = { disabled?: boolean; title?: string; onSelect?: () => void }
 
-import { QuickLaunchAgentMenuItems, ProjectedAgentMenuItems } from './QuickLaunchButton'
+import {
+  QuickLaunchAgentMenuItems,
+  ProjectedAgentMenuItems,
+  useTabAgentMenuLaunch
+} from './QuickLaunchButton'
 import { useTabBarCreateMenuController } from './use-tab-bar-create-menu-controller'
 import * as menuRows from './use-new-tab-agent-menu-rows'
 import {
@@ -377,3 +381,21 @@ describe('QuickLaunchAgentMenuItems launches', () => {
     expect(launchMock).not.toHaveBeenCalled()
   })
 })
+
+it.each(['cursor', 'antigravity'] as const)(
+  'keeps %s transcript and CLI menu actions distinct',
+  (agent) => {
+    launchMock.mockReturnValue(null)
+    const { result } = renderHook(() =>
+      useTabAgentMenuLaunch({
+        worktreeId: WORKTREE_ID,
+        groupId: 'group-1',
+        onFocusTerminal: vi.fn()
+      })
+    )
+    result.current({ kind: 'cli', agent, opensTranscriptChat: true })
+    expect(launchMock.mock.lastCall?.[0].requestedSurface).toBeUndefined()
+    result.current({ kind: 'cli', agent })
+    expect(launchMock.mock.lastCall?.[0].requestedSurface).toBe('terminal')
+  }
+)

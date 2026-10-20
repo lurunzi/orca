@@ -64,7 +64,10 @@ export function buildNewTabAgentMenuRows(args: {
     }
   }
   const transcript = installed.filter(
-    (agent) => !runnable.includes(agent) && opensTranscriptChatFromTerminal(settings, agent)
+    (agent) =>
+      !runnable.includes(agent) &&
+      !['ssh', 'wsl', 'no-chats'].includes(args.hostChatAnswer(agent)) &&
+      opensTranscriptChatFromTerminal(settings, agent)
   )
   for (const agent of transcript) {
     unavailable.delete(agent)

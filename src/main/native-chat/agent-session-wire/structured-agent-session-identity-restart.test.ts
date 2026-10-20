@@ -30,7 +30,10 @@ import {
   openTestJournalHostDatabase
 } from '../agent-session-journal/journal-host-database-test-support'
 import { codexProviderHandle } from '../../../shared/agent-session-provider-handle-encoding'
-import { NO_STRUCTURED_AGENTS } from './structured-agent-session-adapter-router-test-support'
+import {
+  NO_STRUCTURED_AGENTS,
+  claudeAndCodexRouter
+} from './structured-agent-session-adapter-router-test-support'
 import { startsWhenPublished } from './structured-agent-session-instant-start.test-support'
 
 const REQUESTED_CLOSE_END = { type: 'ended', reason: 'closed', cause: 'requested-close' } as const
@@ -49,11 +52,14 @@ let dispatch: Mock<StructuredAgentSessionAdapter['dispatch']>
 let hostErrors: unknown[]
 let statusSink: StructuredAgentSessionStatusSink
 let clock: number
+let suggestion: string | null
 function adapter(): StructuredAgentSessionAdapter {
-  return startsWhenPublished(
+  const provider = startsWhenPublished(
     {
+      supportsLocation: () => true,
       acquire,
       closeSession,
+      readPromptSuggestion: () => suggestion,
       releaseAcquisition: vi.fn(async () => true),
       dispatch,
       cancelTurn: vi.fn(async () => ({ cancelled: false })),
@@ -62,6 +68,7 @@ function adapter(): StructuredAgentSessionAdapter {
     },
     () => host
   )
+  return claudeAndCodexRouter({ claude: provider, codex: provider }, async () => {})
 }
 
 function openHost(
@@ -115,6 +122,7 @@ beforeEach(async () => {
   resetHostTestOperationIds()
   hostErrors = []
   clock = NOW
+  suggestion = null
   statusSink = { publish: vi.fn(), forget: vi.fn() }
   let generation = 0
   acquire = vi.fn(async ({ fence, spawnToken }) => {
@@ -135,6 +143,7 @@ beforeEach(async () => {
   })
   // Like real adapters, the close reports its own end onto the chat's lane before it returns.
   closeSession = vi.fn(async (sessionId: string) => {
+    suggestion = null
     const child = host['sessions'].get(sessionId)?.child
     if (child?.generation) {
       void host.handleAdapterEvent({
@@ -170,6 +179,23 @@ async function submissionState(clientMessageId: string): Promise<string | undefi
 
 // Fork: the coordinator identity grant restarts the provider child through this recovery path.
 describe('a provider child restarted for a new identity', () => {
+  it('keeps the last suggestion on subscriber frames after an identity restart', async () => {
+    await attach()
+    suggestion = 'Review the changes'
+    const emit = vi.fn()
+    await host.subscribe({ id: 'composer', sessionId: SESSION, emit })
+    expect(emit.mock.calls.some(([frame]) => frame.promptSuggestion === suggestion)).toBe(true)
+    emit.mockClear()
+    expect(await host.eventRecovery.restartProviderChild(SESSION, 'identity granted')).toBe(true)
+    await host.flushStreamedEvents(SESSION)
+    const reconnect = vi.fn()
+    await host.subscribe({ id: 'reconnected-composer', sessionId: SESSION, emit: reconnect })
+    expect(
+      reconnect.mock.calls.some(([frame]) => frame.promptSuggestion === 'Review the changes')
+    ).toBe(true)
+    expect(emit.mock.calls.some(([frame]) => frame.promptSuggestion === null)).toBe(false)
+  })
+
   it('stops an idle child quietly; the next message starts one that re-reads its launch env', async () => {
     await attach()
 

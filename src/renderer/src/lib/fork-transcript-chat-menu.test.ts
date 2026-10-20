@@ -30,3 +30,25 @@ it('keeps Antigravity a CLI row once its own chat switch is off', () => {
     { kind: 'cli', agent: 'antigravity' }
   ])
 })
+
+it('lists installed Cursor with chats even without a structured Cursor adapter', () => {
+  expect(
+    buildNewTabAgentMenuRows({
+      settings: { experimentalNativeChat: true },
+      detectedOnHost: ['cursor'],
+      chatAgents: [],
+      hostChatAnswer: () => 'not-on-host'
+    })
+  ).toEqual([{ kind: 'cli', agent: 'cursor', opensTranscriptChat: true }])
+})
+
+it.each(['ssh', 'wsl'] as const)('keeps transcript agents as CLI on %s', (host) => {
+  expect(
+    buildNewTabAgentMenuRows({
+      settings: { experimentalNativeChat: true },
+      detectedOnHost: ['cursor'],
+      chatAgents: [],
+      hostChatAnswer: () => host
+    })
+  ).toEqual([{ kind: 'cli', agent: 'cursor' }])
+})

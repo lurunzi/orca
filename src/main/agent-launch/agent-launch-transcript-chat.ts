@@ -1,16 +1,16 @@
-import { initialAntigravityChatView } from '../../shared/antigravity-chat-launch-view'
+import { initialTranscriptChatView } from '../../shared/transcript-chat-launch-view'
 import type { AgentLaunchExecution, AgentLaunchSurfaceExecution } from './agent-launch-execution'
 import { createLaunchPromptInputs } from './agent-launch-legacy-host'
 import { readAgentLaunchModeSettings, type AgentLaunchModeReceipt } from './agent-launch-mode'
 
-/** Fork: an Antigravity terminal agent opens as its transcript chat when Chat UI is on. */
-export function antigravityTerminalViewMode(
+/** Fork: a transcript-backed terminal agent opens as its transcript chat when Chat UI is on. */
+export function transcriptTerminalViewMode(
   execution: AgentLaunchSurfaceExecution,
   connectionId: string | null | undefined
 ): 'chat' | 'terminal' {
   const { intent } = execution
   return (
-    initialAntigravityChatView({
+    initialTranscriptChatView({
       agent: intent.agent,
       settings: execution.terminalOnly
         ? undefined
@@ -22,7 +22,7 @@ export function antigravityTerminalViewMode(
 }
 
 /** Fork: a created worktree's prompt inputs plus the desktop's chat default, so the startup
- *  Antigravity it launches opens as its transcript chat too. */
+ *  agent it launches opens as its transcript chat too. */
 export function worktreeCreateLaunchInputs(
   execution: AgentLaunchExecution,
   mode: AgentLaunchModeReceipt['mode']

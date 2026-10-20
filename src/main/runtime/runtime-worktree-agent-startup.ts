@@ -1,5 +1,5 @@
 import { agentStartedTelemetry } from '../agent-launch/agent-started-telemetry'
-import { initialAntigravityChatView } from '../../shared/antigravity-chat-launch-view'
+import { initialTranscriptChatView } from '../../shared/transcript-chat-launch-view'
 import type { AgentLaunchPreferences } from '../../shared/agent-session-host-authority'
 import type { Repo } from '../../shared/repo-types'
 import type { TuiAgent } from '../../shared/tui-agent'
@@ -100,7 +100,7 @@ export async function buildWorktreeStartupForDraft(
     ...(environment.agentArgs !== undefined ? { agentArgs: environment.agentArgs } : {})
   })
   const telemetry = agentStartedTelemetry(agent, environment.launchSource)
-  const viewMode = initialAntigravityChatView({
+  const viewMode = initialTranscriptChatView({
     agent,
     settings,
     connectionId: getRepoSshConnectionId(repo),
@@ -206,7 +206,7 @@ export function buildWorktreeStartupForAgent(
   if (!startupPlan) {
     throw new Error(`Could not build launch command for ${agent}.`)
   }
-  const viewMode = initialAntigravityChatView({
+  const viewMode = initialTranscriptChatView({
     agent,
     settings,
     connectionId: getRepoSshConnectionId(repo)

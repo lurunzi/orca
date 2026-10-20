@@ -1,3 +1,4 @@
+import { RestingPromptSuggestions } from './resting-prompt-suggestions'
 import type { StructuredAgentSessionAtRestCommands } from './structured-agent-session-at-rest-commands'
 import type { AgentSessionJournalIdentity } from '../../../shared/agent-session-journal-types'
 import type {
@@ -20,6 +21,7 @@ import {
 /** Routes each session to the adapter its agent is registered with. Adding an agent is one more
  *  registration; nothing here names one. */
 export class StructuredAgentSessionAdapterRouter implements StructuredAgentSessionAdapter {
+  private readonly restingSuggestions = new RestingPromptSuggestions()
   private readonly routes = new Map<string, SessionRoute>()
   private allAdaptersClosed = false
   private closePromise: Promise<void> | null = null
@@ -45,6 +47,7 @@ export class StructuredAgentSessionAdapterRouter implements StructuredAgentSessi
       throw new Error('structured session adapter router is closed')
     }
     const registration = this.requireAgent(input.identity)
+    this.restingSuggestions.drop(input.identity.sessionId)
     return acquireSessionRoute(input, registration, this.routes, () => this.allAdaptersClosed)
   }
 
@@ -132,7 +135,9 @@ export class StructuredAgentSessionAdapterRouter implements StructuredAgentSessi
   readCommands: NonNullable<StructuredAgentSessionAdapter['readCommands']> = (sessionId) =>
     this.liveOwnerOrNull(sessionId)?.readCommands?.(sessionId)
   readPromptSuggestion = (sessionId: string): string | null =>
-    this.liveOwnerOrNull(sessionId)?.readPromptSuggestion?.(sessionId) ?? null
+    this.restingSuggestions.read(sessionId) ??
+    this.liveOwnerOrNull(sessionId)?.readPromptSuggestion?.(sessionId) ??
+    null
 
   atRestCommands: StructuredAgentSessionAtRestCommands = {
     read: (record) =>
@@ -184,10 +189,14 @@ export class StructuredAgentSessionAdapterRouter implements StructuredAgentSessi
     this.stopSession(sessionId, (adapter) => adapter.closeSession)
 
   forceCloseSession = (sessionId: string): Promise<boolean> =>
-    this.stopSession(sessionId, (adapter) => adapter.forceCloseSession ?? adapter.closeSession)
+    this.restingSuggestions.preserve(sessionId, this.readPromptSuggestion(sessionId), () =>
+      this.stopSession(sessionId, (adapter) => adapter.forceCloseSession ?? adapter.closeSession)
+    )
 
-  disposeSession = (sessionId: string): Promise<boolean> =>
-    this.stopSession(sessionId, (adapter) => adapter.disposeSession ?? adapter.closeSession)
+  disposeSession = (sessionId: string): Promise<boolean> => {
+    this.restingSuggestions.drop(sessionId)
+    return this.stopSession(sessionId, (adapter) => adapter.disposeSession ?? adapter.closeSession)
+  }
 
   private async stopSession(
     sessionId: string,
