@@ -155,19 +155,33 @@ describe('UsageRow', () => {
     expect(markup).toContain('10%')
   })
 
-  it('keeps full Antigravity pool names in the click panel', () => {
+  it('shows concise Antigravity pools without a duplicate aggregate in the click panel', () => {
     const markup = renderToStaticMarkup(
       <UsageRow
         p={{
           provider: 'antigravity',
           session: null,
-          weekly: null,
+          weekly: {
+            usedPercent: 4,
+            windowMinutes: 10_080,
+            resetsAt: null,
+            resetDescription: null
+          },
           buckets: [
             {
               name: 'Gemini Models · Weekly Limit Remaining',
               group: 'Gemini Models',
               windowName: 'Weekly Limit Remaining',
               usedPercent: 4,
+              windowMinutes: 10_080,
+              resetsAt: null,
+              resetDescription: null
+            },
+            {
+              name: 'Claude and GPT models · Weekly Limit Remaining',
+              group: 'Claude and GPT models',
+              windowName: 'Weekly Limit Remaining',
+              usedPercent: 2,
               windowMinutes: 10_080,
               resetsAt: null,
               resetDescription: null
@@ -184,7 +198,12 @@ describe('UsageRow', () => {
       />
     )
 
-    expect(markup).toContain('Gemini Models · Weekly Limit Remaining')
+    expect(markup).toContain('>wk<')
+    expect(markup).toContain('>Other Models wk<')
+    expect(markup).not.toContain('>Gemini')
+    expect(markup).not.toContain('>Claude')
+    expect(markup.match(/data-usage-window=/g)).toHaveLength(2)
+    expect(markup).not.toContain('data-usage-window="Weekly"')
   })
 
   it('renders the tightest window inline in compact mode', () => {

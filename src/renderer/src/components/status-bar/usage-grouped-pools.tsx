@@ -34,7 +34,7 @@ function keyedWindows(
   })
 }
 
-/** Model-group pools as "Gemini 0% 5h · 4% wk │ Claude/GPT …"; children are flex items of the segment row. */
+/** Model-group pools as "0% 5h · 4% wk │ Other Models …". */
 export function GroupedPoolUsage({
   visibleBuckets,
   allBuckets,
@@ -56,14 +56,17 @@ export function GroupedPoolUsage({
     <>
       {[...groups].map(([group, buckets], groupIndex) => {
         const windows = keyedWindows(buckets)
+        const groupLabel = formatPoolGroupLabel(group, allBuckets)
         return (
           <React.Fragment key={group}>
             {groupIndex > 0 ? (
               <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />
             ) : null}
-            <span className="max-w-[120px] truncate" title={group}>
-              {formatPoolGroupLabel(group, allBuckets)}
-            </span>
+            {groupLabel ? (
+              <span className="max-w-[120px] truncate" title={group}>
+                {groupLabel}
+              </span>
+            ) : null}
             {windows.map(({ bucket, key }, index) => {
               const percentage = formatBareUsagePercentage(bucket.usedPercent, display)
               const window = formatPoolWindowLabel(bucket, now)

@@ -17,6 +17,7 @@ import { getProviderDisplayName } from './usage-error-copy'
 import { formatPlanLabel, usageTextColorClass } from './usage-roster-formatting'
 import { getUsageRosterRowState, type UsageRosterRowState } from './usage-roster-row-state'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
+import { formatStatusBarSectionLabel } from './usage-pool-label'
 
 type ProviderId = ProviderRateLimits['provider']
 export type UsageSection = { label: string; window: RateLimitWindow }
@@ -38,6 +39,9 @@ function providerMaxUsed(sections: UsageSection[]): number {
 
 // Buckets (Gemini Flash/Pro) keep their model name; windows use their duration.
 function shortLabel(p: ProviderRateLimits, section: UsageSection, now = Date.now()): string {
+  if (p.provider === 'antigravity' && p.buckets?.length) {
+    return formatStatusBarSectionLabel(p, section, now)
+  }
   if (
     p.buckets?.some((b) => b.name === section.label) &&
     !(p.provider === 'cursor' && section.label === CURSOR_MODELS_BUCKET_NAME)

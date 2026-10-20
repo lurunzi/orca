@@ -23,6 +23,12 @@ export function isGroupedUsagePool(window: RateLimitWindow): window is GroupedUs
 }
 
 function shortenGroup(group: string): string {
+  if (/^Gemini Models$/i.test(group)) {
+    return ''
+  }
+  if (/^Claude and GPT models$/i.test(group)) {
+    return 'Other Models'
+  }
   const short = group
     .replace(/\s+models$/i, '')
     .replace(/\s+and\s+/gi, '/')
@@ -44,7 +50,11 @@ export function formatPoolGroupLabel(group: string, buckets: readonly RateLimitB
 function formatPoolWindowName(bucket: RateLimitBucket): string {
   // An unmapped agy window has no length; formatWindowLabel(0) would invent "0m".
   if (!(bucket.windowMinutes > 0)) {
-    return (bucket.windowName ?? '').replace(/\s*limit remaining$/i, '').trim()
+    return (
+      bucket.windowName ?? (bucket.group ? '' : bucket.name.split(' · ').slice(1).join(' · '))
+    )
+      .replace(/\s*limit remaining$/i, '')
+      .trim()
   }
   if (bucket.windowMinutes === WEEKLY_WINDOW_MINUTES) {
     return translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
@@ -67,10 +77,12 @@ export function formatPoolShortLabel(
   buckets: readonly RateLimitBucket[],
   now?: number
 ): string {
-  if (!bucket.group) {
+  // Older hosts publish only the combined name; recognise their known groups too.
+  const group = bucket.group ?? bucket.name.split(' · ')[0]
+  if (!bucket.group && !/^(Gemini Models|Claude and GPT models)$/i.test(group)) {
     return bucket.name
   }
-  return `${formatPoolGroupLabel(bucket.group, buckets)} ${formatPoolWindowLabel(bucket, now)}`.trim()
+  return `${formatPoolGroupLabel(group, buckets)} ${formatPoolWindowLabel(bucket, now)}`.trim()
 }
 
 export function formatStatusBarSectionLabel(
@@ -78,6 +90,10 @@ export function formatStatusBarSectionLabel(
   section: { label: string; window: RateLimitWindow },
   now?: number
 ): string {
+  const bucket = p.provider === 'antigravity' && p.buckets?.find((b) => b === section.window)
+  if (bucket) {
+    return formatPoolShortLabel(bucket, p.buckets ?? [], now)
+  }
   return isGroupedUsagePool(section.window)
     ? formatPoolShortLabel(section.window, p.buckets ?? [], now)
     : section.label
