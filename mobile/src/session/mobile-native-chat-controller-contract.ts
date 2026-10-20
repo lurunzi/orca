@@ -55,6 +55,7 @@ export type MobileNativeChatController = {
   /** What a refused command's line stands on. */
   nativeChatCommandRefusalCauses: MobileNativeChatCommandRefusalCauses
   nativeChatCanStop: boolean
+  nativeChatPromptSuggestion?: string | null
   nativeChatStreamingText?: string
   /** Agent mid-turn, regardless of whether chat is the visible view. */
   nativeChatStreamLive: boolean
