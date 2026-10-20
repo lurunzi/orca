@@ -127,7 +127,7 @@ export function cursorModelFooterMatches(screen: string, target: CursorModelTarg
     .map((line) => line.trim())
     .filter(Boolean)
   return lines.some((line, index) => {
-    if (!/^(?:[A-Za-z]:[\\/]|\/|~\/|\\\\)/.test(line)) {
+    if (!/^(?:[A-Za-z]:[\\/]|\/|~[\\/]|\\\\)/.test(line)) {
       return false
     }
     const model = lines[index - 1] ?? ''

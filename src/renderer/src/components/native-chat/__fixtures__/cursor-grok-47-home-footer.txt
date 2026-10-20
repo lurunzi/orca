@@ -1,0 +1,7 @@
+[?9001h[?1004h[>1u[?25l[2J[m[H]0;C:\Users\xxxxxxx\AppData\Local\cursor-agent\versions\2026.10.19-6bbf2c4\node.exe[?25h[?25l[K[3;1H  Cursor Agent
+  [2mv2026.10.19-6bbf2c4[22m
+  [2mTip: Use /mcp to connect Cursor to your tools and data sources.[22m[9;1H [48;2;21;21;21m[118X[m
+ [48;2;21;21;21m [2m→ [22m[7mP[2m[27mlan, search, build anything[22m[87X[m
+ [48;2;21;21;21m[118X[m[13;1H  [2mGrok 4.7 256K Low[22m
+  [2m~\AppData\Local\Temp\orca-cursor-model-selector-20261020
+[?25h[?2004h[?2031h[?1004h[22m]0;Cursor Agent[?25l

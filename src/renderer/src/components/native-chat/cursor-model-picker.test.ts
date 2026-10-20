@@ -28,6 +28,16 @@ async function replay(name: string, rows = 50): Promise<string> {
 }
 
 describe('Cursor parameterized model picker captures', () => {
+  it('accepts the Windows home-relative footer from Cursor 2026.10.19', async () => {
+    const screen = await replay('cursor-grok-47-home-footer', 40)
+    expect(
+      cursorModelFooterMatches(screen, cursorModelTarget('grok-4.7-low', 'Grok 4.7 Low'))
+    ).toBe(true)
+    expect(
+      cursorModelFooterMatches(screen, cursorModelTarget('grok-4.8-low', 'Grok 4.8 Low'))
+    ).toBe(false)
+  })
+
   it('recognizes the real no-match dialog instead of claiming the model was applied', async () => {
     const screen = await replay('cursor-model-id-filter', 32)
     expect(cursorModelMenu(screen, 'cursor-grok-4.5-high')).toBe(true)

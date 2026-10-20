@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { parseCursorModels } from '../../../../shared/commit-message-model-parsers'
 import {
   buildModelPickerRows,
   findTieredRow,
@@ -94,7 +97,7 @@ describe('buildModelPickerRows', () => {
     })
   })
 
-  it('groups Cursor speeds together while keeping thinking variants separate', () => {
+  it('groups Cursor speed and thinking variants under the same model', () => {
     const rows = buildModelPickerRows([
       { value: 'claude-opus-5-high', label: 'Claude Opus 5 1M' },
       { value: 'claude-opus-5-low', label: 'Claude Opus 5 1M Low' },
@@ -107,7 +110,6 @@ describe('buildModelPickerRows', () => {
     ])
     expect(rows.map((row) => (row.kind === 'tiered' ? row.baseLabel : row.choice.label))).toEqual([
       'Claude Opus 5 1M',
-      'Claude Opus 5 1M Thinking',
       'Opus 4.6 Thinking'
     ])
     expect(findTieredRow(rows, 'claude-opus-5-high-fast')?.tiers.map(({ value }) => value)).toEqual(
@@ -115,7 +117,9 @@ describe('buildModelPickerRows', () => {
         'claude-opus-5-high',
         'claude-opus-5-low',
         'claude-opus-5-high-fast',
-        'claude-opus-5-low-fast'
+        'claude-opus-5-low-fast',
+        'claude-opus-5-thinking-high',
+        'claude-opus-5-thinking-xhigh'
       ]
     )
   })
@@ -196,6 +200,91 @@ describe('model effort and speed projection', () => {
       default: 'grok-4.7-high',
       fast: 'grok-4.7-high-fast'
     })
+  })
+
+  it('preserves every current Cursor CLI variant and only dispatches listed ids', () => {
+    const choices = parseCursorModels(
+      readFileSync(join(__dirname, '__fixtures__/cursor-model-list.txt'), 'utf8')
+    ).map(({ id, label }) => ({ value: id, label }))
+    const listed = new Set(choices.map((choice) => choice.value))
+    expect(choices.length).toBeGreaterThan(200)
+    for (const choice of choices) {
+      const result = project(choice.value, choices)
+      const model = result.snapshot[0]
+      if (model.kind.type !== 'select') {
+        throw new Error('Expected model select')
+      }
+      expect(model.kind.choices.filter((row) => row.value === choice.value)).toHaveLength(1)
+      expect(model.kind.choices.length).toBeLessThan(50)
+      const effort = result.snapshot.find((option) => option.id === 'effort')
+      if (effort?.kind.type === 'select') {
+        for (const tier of effort.kind.choices) {
+          expect(listed.has(tier.value)).toBe(true)
+        }
+      }
+      for (const value of Object.values({
+        ...result.speedModelValues,
+        ...result.thinkingModelValues
+      })) {
+        expect(listed.has(value)).toBe(true)
+      }
+    }
+  })
+
+  it('orders effort and maps Thinking without changing the effort or speed', () => {
+    const choices = [
+      { value: 'claude-opus-5-thinking-high-fast', label: 'Claude Opus 5 1M Thinking Fast' },
+      { value: 'claude-opus-5-high-fast', label: 'Claude Opus 5 1M Fast' },
+      { value: 'claude-opus-5-thinking-low-fast', label: 'Claude Opus 5 1M Low Thinking Fast' },
+      {
+        value: 'claude-opus-5-thinking-xhigh-fast',
+        label: 'Claude Opus 5 1M Extra High Thinking Fast'
+      }
+    ]
+    const result = project(choices[0].value, choices)
+    expect(result.snapshot[0].kind).toMatchObject({ choices: [{ label: 'Claude Opus 5 1M' }] })
+    expect(result.thinkingModelValues).toEqual({ true: choices[0].value, false: choices[1].value })
+    expect(result.snapshot.find((option) => option.id === 'effort')?.kind).toMatchObject({
+      choices: [{ label: 'Low' }, { label: 'High' }, { label: 'Extra high' }]
+    })
+    const unmatched = project(choices[3].value, choices)
+    expect(unmatched.thinkingModelValues).toBeUndefined()
+    expect(unmatched.snapshot.find((option) => option.id === 'thinking')).toMatchObject({
+      settable: false,
+      kind: { type: 'boolean', currentValue: true }
+    })
+  })
+
+  it('keeps effort and speed when the next model has no Thinking variant', () => {
+    const result = project('claude-opus-5-thinking-high-fast', [
+      { value: 'claude-opus-5-thinking-high-fast', label: 'Claude Opus 5 Thinking Fast' },
+      { value: 'claude-opus-5-high-fast', label: 'Claude Opus 5 Fast' },
+      { value: 'grok-4.7-low-fast', label: 'Grok 4.7 Low Fast' },
+      { value: 'grok-4.7-high-fast', label: 'Grok 4.7 High Fast' }
+    ])
+    expect(result.snapshot[0].kind).toMatchObject({
+      choices: [{ value: 'claude-opus-5-thinking-high-fast' }, { value: 'grok-4.7-high-fast' }]
+    })
+  })
+
+  it('handles Thinking-only suffixes and older effort-before-thinking ids', () => {
+    for (const choices of [
+      [
+        { value: 'claude-4-sonnet', label: 'Claude Sonnet 4' },
+        { value: 'claude-4-sonnet-thinking', label: 'Claude Sonnet 4 Thinking' }
+      ],
+      [
+        { value: 'claude-4.6-sonnet-medium', label: 'Claude Sonnet 4.6 1M' },
+        { value: 'claude-4.6-sonnet-medium-thinking', label: 'Claude Sonnet 4.6 1M Thinking' }
+      ]
+    ]) {
+      const result = project(choices[1].value, choices)
+      expect(result.thinkingModelValues).toEqual({
+        false: choices[0].value,
+        true: choices[1].value
+      })
+      expect(result.snapshot.find((option) => option.id === 'effort')).toBeUndefined()
+    }
   })
 
   it('offers speed without a made-up effort for Composer', () => {

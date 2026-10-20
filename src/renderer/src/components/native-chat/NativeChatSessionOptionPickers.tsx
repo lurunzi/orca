@@ -375,15 +375,17 @@ function NativeChatSessionOptionPickersInner({
         pendingIds={new Set(pending.keys())}
         request={pickerRequest ?? null}
         onSet={(descriptor, value) => {
-          const speedModel =
-            descriptor.id === 'serviceTier' && typeof value === 'string'
-              ? projected.speedModelValues?.[value]
-              : undefined
+          const variantModel =
+            descriptor.id === 'thinking'
+              ? projected.thinkingModelValues?.[String(value)]
+              : descriptor.id === 'serviceTier' && typeof value === 'string'
+                ? projected.speedModelValues?.[value]
+                : undefined
           const id =
-            (descriptor.id === 'effort' || speedModel) && projected.tierModelId
+            (descriptor.id === 'effort' || variantModel) && projected.tierModelId
               ? projected.tierModelId
               : descriptor.id
-          const selection = speedModel ?? value
+          const selection = variantModel ?? value
           if (isWorking && surface.deferWhileWorking) {
             queue(id, selection, id === model.id ? [...queued.keys()] : [])
             return

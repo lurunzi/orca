@@ -20,6 +20,7 @@ export type ModelTierChoice = SessionOptionSelectChoice & {
   tier: string
   tierLabel: string
   speed?: 'default' | 'fast'
+  thinking?: boolean
 }
 
 export type ModelPickerRow =
@@ -44,10 +45,13 @@ function parseTieredChoice(choice: SessionOptionSelectChoice): ParsedTierChoice 
   const suffix = choice.value.match(
     /^(.*?)-(none|minimal|low|medium|high|extra-high|xhigh|max|ultra)(-thinking)?(-fast)?$/
   )
-  if (!suffix) {
+  const thinkingOnly = choice.value.match(/^(.*?)-thinking(-fast)?$/)
+  if (!suffix && !thinkingOnly) {
     return null
   }
-  const groupId = `${suffix[1]}${suffix[3] ?? ''}`
+  const groupId = (suffix?.[1] ?? thinkingOnly?.[1] ?? '').replace(/-thinking$/, '')
+  const effort = suffix?.[2] ?? 'default'
+  const thinking = /-thinking(?:-|$)/.test(choice.value)
   const label = (choice.label === choice.value ? groupId : choice.label)
     .replace(/[\u200b-\u200d\ufeff]/g, '')
     .replace(/\s+fast$/i, '')
@@ -58,11 +62,12 @@ function parseTieredChoice(choice: SessionOptionSelectChoice): ParsedTierChoice 
     ...choice,
     label,
     groupKey: `id:${groupId}`,
-    tier: suffix[2] === 'extra-high' ? 'xhigh' : suffix[2],
-    speed: suffix[4] ? 'fast' : 'default',
-    tierLabel: ['xhigh', 'extra-high'].includes(suffix[2])
+    tier: effort === 'extra-high' ? 'xhigh' : effort,
+    speed: choice.value.endsWith('-fast') ? 'fast' : 'default',
+    thinking,
+    tierLabel: ['xhigh', 'extra-high'].includes(effort)
       ? 'Extra high'
-      : suffix[2][0].toUpperCase() + suffix[2].slice(1)
+      : effort[0].toUpperCase() + effort.slice(1)
   }
 }
 
@@ -89,6 +94,7 @@ export function buildModelPickerRows(
         groupKey: group?.groupKey ?? `id:${baseId}`,
         tier: 'default',
         tierLabel: 'Default',
+        thinking: false,
         speed: entry.choice.value.endsWith('-fast') ? 'fast' : 'default'
       }
     }
@@ -110,7 +116,10 @@ export function buildModelPickerRows(
       rows.push({
         kind: 'tiered',
         source: tiered.groupKey.startsWith('id:') ? 'id' : 'label',
-        baseLabel: tiered.label,
+        baseLabel:
+          new Set(tiers.map((tier) => tier.thinking)).size > 1
+            ? tiered.label.replace(/\s+(?:no )?thinking\b/gi, '').trim()
+            : tiered.label,
         tiers
       })
     }
@@ -135,15 +144,14 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
   snapshot: SessionOptionDescriptor[]
   tierModelId: string | null
   speedModelValues?: Record<string, string>
+  thinkingModelValues?: Record<string, string>
 } {
   const model = snapshot.find((option) => option.category === 'model')
   if (
     !model ||
     model.kind.type !== 'select' ||
     model.action ||
-    snapshot.some(
-      (option) => option.id === 'effort' || option.id === 'serviceTier' || option.id === 'fastMode'
-    )
+    snapshot.some((option) => ['effort', 'serviceTier', 'fastMode', 'thinking'].includes(option.id))
   ) {
     return { snapshot, tierModelId: null }
   }
@@ -153,13 +161,23 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
   const selected = active?.tiers.find((choice) => choice.value === current)
   const tier = selected?.tier
   const speed = selected?.speed ?? 'default'
+  const thinking = selected?.thinking
   const choices = rows.map((row) => {
     if (row.kind === 'model') {
       return row.choice
     }
     const choice =
       row.tiers.find((choice) => choice.value === current) ??
+      row.tiers.find(
+        (choice) =>
+          choice.tier === tier &&
+          (choice.speed ?? 'default') === speed &&
+          choice.thinking === thinking
+      ) ??
       row.tiers.find((choice) => choice.tier === tier && (choice.speed ?? 'default') === speed) ??
+      row.tiers.find(
+        (choice) => (choice.speed ?? 'default') === speed && choice.thinking === thinking
+      ) ??
       row.tiers.find((choice) => (choice.speed ?? 'default') === speed) ??
       row.tiers[0]
     return { ...choice, label: row.baseLabel }
@@ -172,7 +190,12 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
         }
       : option
   )
-  const efforts = active?.tiers.filter((choice) => (choice.speed ?? 'default') === speed) ?? []
+  const efforts =
+    active?.tiers.filter(
+      (choice) => (choice.speed ?? 'default') === speed && choice.thinking === thinking
+    ) ?? []
+  const tierOrder = ['default', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']
+  efforts.sort((a, b) => tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier))
   if (new Set(efforts.map((choice) => choice.tier)).size > 1) {
     projected.push({
       ...model,
@@ -186,7 +209,26 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
       }
     })
   }
-  const speeds = active?.tiers.filter((choice) => choice.tier === tier) ?? []
+  const thoughts =
+    active?.tiers.filter(
+      (choice) => choice.tier === tier && (choice.speed ?? 'default') === speed
+    ) ?? []
+  const thinkingModelValues =
+    new Set(thoughts.map((choice) => choice.thinking)).size > 1
+      ? Object.fromEntries(thoughts.map((choice) => [String(choice.thinking), choice.value]))
+      : undefined
+  if (active && new Set(active.tiers.map((choice) => choice.thinking)).size > 1) {
+    projected.push({
+      ...model,
+      id: 'thinking',
+      label: 'Thinking',
+      category: 'model_config',
+      settable: model.settable && Boolean(thinkingModelValues),
+      kind: { type: 'boolean', currentValue: thinking === true }
+    })
+  }
+  const speeds =
+    active?.tiers.filter((choice) => choice.tier === tier && choice.thinking === thinking) ?? []
   if (new Set(speeds.map((choice) => choice.speed)).size > 1) {
     const speedModelValues = Object.fromEntries(
       speeds.map((choice) => [choice.speed ?? 'default', choice.value])
@@ -207,7 +249,7 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
           }))
       }
     })
-    return { snapshot: projected, tierModelId: model.id, speedModelValues }
+    return { snapshot: projected, tierModelId: model.id, speedModelValues, thinkingModelValues }
   }
-  return { snapshot: projected, tierModelId: active ? model.id : null }
+  return { snapshot: projected, tierModelId: active ? model.id : null, thinkingModelValues }
 }

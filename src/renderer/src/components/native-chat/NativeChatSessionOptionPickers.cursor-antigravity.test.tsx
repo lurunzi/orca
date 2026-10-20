@@ -15,6 +15,44 @@ vi.mock('@/i18n/i18n', () => ({
 }))
 afterEach(cleanup)
 
+it('uses the shared Thinking switch while sending the exact Cursor model id', async () => {
+  const user = userEvent.setup()
+  const dispatch = vi.fn()
+  const surface = createNativeChatPtySessionOptions({
+    agent: 'cursor',
+    scopeKey: 'cursor-thinking-picker-test',
+    mode: 'live',
+    initialModels: [
+      { id: 'claude-opus-5-high-fast', label: 'Claude Opus 5 1M Fast', options: [] },
+      {
+        id: 'claude-opus-5-thinking-high-fast',
+        label: 'Claude Opus 5 1M Thinking Fast',
+        options: []
+      }
+    ],
+    reportedValues: { model: 'claude-opus-5-high-fast' },
+    dispatchCommand: dispatch
+  })!
+  render(
+    <TooltipProvider>
+      <NativeChatSessionOptionPickers
+        surface={surface}
+        snapshot={surface.getSnapshot()}
+        isWorking={false}
+      />
+    </TooltipProvider>
+  )
+  await user.click(screen.getByRole('button', { name: /Model Claude Opus 5/ }))
+  expect(screen.getAllByRole('option')).toHaveLength(1)
+  await user.click(screen.getByRole('switch', { name: 'Thinking' }))
+  await waitFor(() =>
+    expect(dispatch).toHaveBeenCalledWith('/model claude-opus-5-thinking-high-fast', {
+      detectAgentInteraction: 'cursor-model-picker',
+      expectedChoiceLabel: 'Claude Opus 5 1M Thinking Fast'
+    })
+  )
+})
+
 it('sends the exact Cursor Fast variant through the separate Speed row', async () => {
   const user = userEvent.setup()
   const dispatch = vi.fn()
