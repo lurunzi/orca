@@ -108,6 +108,24 @@ describe('useMobileNativeChatAnswerSend', () => {
     })
   }
 
+  it('Antigravity selects the second option with arrows and Enter', async () => {
+    const sendRequest = vi.fn().mockResolvedValue(acceptedResponse())
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: This fixture exercises only the scripted sendRequest port.
+    await mount({ sendRequest } as unknown as RpcClient, vi.fn(), 'antigravity')
+    let result: Promise<boolean> | undefined
+    await act(async () => {
+      result = answerSend?.answerAsk(TABS_OR_SPACES, [{ indices: [1] }])
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    await expect(result).resolves.toBe(true)
+    expect(sendRequest.mock.calls.map((call) => call[1])).toEqual([
+      expect.objectContaining({ text: '\x1b[B', enter: false }),
+      expect.objectContaining({ text: '\r', enter: false })
+    ])
+  })
+
   it.each(['claude', 'opencode', 'opencode2'] as const)(
     '%s single-select: sends the picked option number without a trailing Enter',
     async (agent) => {

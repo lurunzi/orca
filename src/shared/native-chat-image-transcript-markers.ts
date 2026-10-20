@@ -97,6 +97,18 @@ export function stripSentImagePromptMarkers(text: string, imageCount: number): s
   )
 }
 
+/** Hide the attached-image prefix in a sent bubble; keep references within the user's prose. */
+export function stripLeadingSentImagePromptMarkers(text: string, imageCount: number): string {
+  let rest = text
+  while (true) {
+    const marker = /^\s*\[Image #(\d+)\](?=\s|$)/.exec(rest)
+    if (!marker || Number(marker[1]) < 1 || Number(marker[1]) > imageCount) {
+      return rest
+    }
+    rest = rest.slice(marker[0].length).trimStart()
+  }
+}
+
 export function stripImagePromptMarker(text: string): string {
   return withoutStrippedMarkerSpace(text, text.replace(IMAGE_PROMPT_MARKERS, ''))
 }

@@ -146,6 +146,35 @@ describe('MessageRow control visibility', () => {
     })
   })
 
+  it.each(['[Image #1] 顺便把worktree清理了', '[Image #1]'])(
+    'hides sent image prefixes in the bubble: %s',
+    (text) => {
+      render(
+        <MessageRow
+          message={{
+            id: 'image-message',
+            role: 'user',
+            timestamp: 0,
+            source: 'transcript',
+            blocks: [
+              { type: 'text', text },
+              { type: 'image-ref', path: '/tmp/screenshot.png', alt: 'Screenshot' }
+            ]
+          }}
+          expandSignal={false}
+          onScrollMessageToTop={vi.fn()}
+        />
+      )
+      expect(screen.queryByText(/\[Image #1\]/)).toBeNull()
+      expect(screen.getByTitle('Screenshot')).toBeInTheDocument()
+      if (text.includes('顺便')) {
+        expect(screen.getByText('顺便把worktree清理了')).toBeInTheDocument()
+      } else {
+        expect(screen.queryByRole('button', { name: 'Copy message' })).toBeNull()
+      }
+    }
+  )
+
   it('omits the copy button on image-only user messages', () => {
     render(
       <MessageRow

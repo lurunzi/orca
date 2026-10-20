@@ -105,6 +105,19 @@ describe('useNativeChatInteractiveSend', () => {
     expect(mocks.sendNativeChatMessage).not.toHaveBeenCalled()
   })
 
+  it('navigates Antigravity to the selected row before submitting', () => {
+    const { result } = renderHook(() =>
+      useNativeChatInteractiveSend(PANE_KEY, 'pty-1', 'antigravity')
+    )
+    act(() => result.current.sendAnswer(PROMPT, [{ indices: [1] }]))
+    expect(mocks.sendNativeChatAskAnswer).toHaveBeenCalledWith(
+      'pty-1',
+      [{ raw: '\x1b[B' }, { raw: '\r' }],
+      expect.any(Function)
+    )
+    expect(mocks.sendNativeChatMessage).not.toHaveBeenCalled()
+  })
+
   it('infers OpenClaude answers through its Claude-compatible selector path', () => {
     const { result } = renderHook(() =>
       useNativeChatInteractiveSend(PANE_KEY, 'pty-1', 'openclaude')

@@ -1,0 +1,11 @@
+{
+  "agent": "antigravity",
+  "version": "1.4.3",
+  "capturedAt": "2026-10-20",
+  "cols": 100,
+  "rows": 35,
+  "command": "agy --effort low --prompt-interactive <question-only prompt>",
+  "scenario": "Single select Blue; multi select Cat plus write-in Other pet; skip Size with Escape.",
+  "expectedAnswers": ["Blue", "Cat, Other pet", "User Skipped"],
+  "redactions": "Account email and Windows username replaced with same-length placeholders."
+}

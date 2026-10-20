@@ -8,6 +8,7 @@ import {
 import { readFirstString } from '../interactive-tool'
 import { readLastAssistantFromTranscript } from '../transcript-lines'
 import { isAntigravityStopStillBusy } from './antigravity-event-rules'
+import { parseAntigravityAskInput } from '../../native-chat-antigravity-ask'
 
 export function readAntigravityToolCall(hookPayload: Record<string, unknown>): {
   toolName?: string
@@ -34,8 +35,12 @@ export function extractAntigravityToolFields(
     const toolInput =
       deriveToolInputPreview(toolName, toolCall.toolInputSource) ??
       deriveFallbackToolInputPreview(toolCall.toolInputSource)
+    const question =
+      eventName === 'PreToolUse' && toolName === 'ask_question'
+        ? parseAntigravityAskInput(toolCall.toolInputSource)
+        : null
     return toolUpdate(
-      { toolName, toolInput },
+      { toolName, toolInput, interactivePrompt: question ? JSON.stringify(question) : undefined },
       { hasToolInputField: toolCall.toolInputSource !== undefined }
     )
   }

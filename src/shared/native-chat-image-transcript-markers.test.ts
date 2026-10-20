@@ -9,7 +9,8 @@ import {
   normalizeNativeChatUserText,
   normalizedNativeChatUserMessageText,
   stripImagePromptMarker,
-  stripSentImagePromptMarkers
+  stripSentImagePromptMarkers,
+  stripLeadingSentImagePromptMarkers
 } from './native-chat-image-transcript-markers'
 import { formatNativeChatFileReference } from './agent-image-paste'
 
@@ -322,6 +323,26 @@ describe('composer image chips at send and back', () => {
     )
     expect(stripSentImagePromptMarkers('Explain the literal token [Image #1]', 0)).toBe(
       'Explain the literal token [Image #1]'
+    )
+  })
+
+  it('hides only a sent image prefix, preserving prose references and literal markers', () => {
+    expect(stripLeadingSentImagePromptMarkers('[Image #1] 顺便清理工作树', 1)).toBe(
+      '顺便清理工作树'
+    )
+    expect(stripLeadingSentImagePromptMarkers('[Image #1]\n[Image #2] Compare both', 2)).toBe(
+      'Compare both'
+    )
+    expect(stripLeadingSentImagePromptMarkers('Compare [Image #1] with [Image #2]', 2)).toBe(
+      'Compare [Image #1] with [Image #2]'
+    )
+    expect(stripLeadingSentImagePromptMarkers('[Image #2] is a literal marker', 1)).toBe(
+      '[Image #2] is a literal marker'
+    )
+    expect(stripLeadingSentImagePromptMarkers('[Image #1]', 0)).toBe('[Image #1]')
+    expect(stripLeadingSentImagePromptMarkers('[Image #1]', 1)).toBe('')
+    expect(stripLeadingSentImagePromptMarkers('[Image #1](example.png)', 1)).toBe(
+      '[Image #1](example.png)'
     )
   })
 

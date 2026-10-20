@@ -69,6 +69,67 @@ afterEach(() => {
 })
 
 describe('NativeChatImageAttachments', () => {
+  it('recovers a newly sent image when its first read is temporarily unavailable', async () => {
+    vi.useFakeTimers()
+    const container = document.createElement('div')
+    const root = createRoot(container)
+    vi.mocked(window.api.fs.readFile).mockRejectedValueOnce(new Error('Image not ready'))
+    try {
+      await act(async () => {
+        root.render(
+          createElement(NativeChatImageAttachments, {
+            blocks: [{ type: 'image-ref', path: '/repo/orca-paste-new.png' }],
+            runtimeContext: runtimeContext('wt-1')
+          })
+        )
+        await flushPromises()
+      })
+      expect(container.querySelector('img')).toBeNull()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(container.querySelector('img')?.getAttribute('src')).toBe('blob:owner-1')
+      expect(window.api.fs.readFile).toHaveBeenCalledTimes(2)
+    } finally {
+      root.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('bounds failed image retries and cancels them when the preview unmounts', async () => {
+    vi.useFakeTimers()
+    const container = document.createElement('div')
+    const root = createRoot(container)
+    vi.mocked(window.api.fs.readFile).mockRejectedValue(new Error('Unavailable'))
+    const render = (path: string) =>
+      root.render(
+        createElement(NativeChatImageAttachments, {
+          blocks: [{ type: 'image-ref', path }],
+          runtimeContext: runtimeContext('wt-1')
+        })
+      )
+    try {
+      await act(async () => {
+        render('/repo/missing.png')
+        await flushPromises()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(window.api.fs.readFile).toHaveBeenCalledTimes(3)
+      await act(async () => {
+        render('/repo/other.png')
+        await flushPromises()
+      })
+      expect(window.api.fs.readFile).toHaveBeenCalledTimes(4)
+      root.unmount()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(window.api.fs.readFile).toHaveBeenCalledTimes(4)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('opens a pasted transcript image in the full-size dialog', async () => {
     const container = document.createElement('div')
     document.body.append(container)

@@ -11,6 +11,7 @@ import {
   isAsyncAskUserQuestionTool,
   parseAsyncAskInput
 } from './native-chat-async-ask'
+import { parseAntigravityAskInput } from './native-chat-antigravity-ask'
 
 export type { AskAnswerSelection, AskOption, AskPrompt, AskQuestion, InteractiveQuestionParser }
 
@@ -87,9 +88,14 @@ for (const name of ['AskUserQuestion', 'ask_user_question', 'askUserQuestion']) 
   QUESTION_TOOL_PARSERS.set(name, parseCanonicalQuestionsInput)
 }
 QUESTION_TOOL_PARSERS.set(CODEX_ASYNC_ASK_TOOL_NAME, parseAsyncAskInput)
+QUESTION_TOOL_PARSERS.set('ask_question', parseAntigravityAskInput)
 
 function parseToolInput(toolName: string | undefined, input: unknown): AskPrompt | null {
   const parser = toolName ? QUESTION_TOOL_PARSERS.get(toolName) : undefined
+  // Invalid selector entries must not be dropped: their positions determine terminal keys.
+  if (toolName === 'ask_question' && parser) {
+    return parser(input)
+  }
   return (parser ? parser(input) : null) ?? parseCanonicalQuestionsInput(input)
 }
 

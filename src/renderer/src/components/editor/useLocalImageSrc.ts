@@ -126,37 +126,42 @@ export function useLocalImageSrc(
   const [displaySrc, setDisplaySrc] = useState<string | undefined>(
     () => externalSrc ?? (cacheKey ? blobUrlCache.get(cacheKey) : undefined)
   )
+  const retryChatImage = access?.kind === 'chat-image'
 
+  // oxlint-disable-next-line react-doctor/effect-needs-cleanup -- The single reassigned retry timer is cleared below; cancelled also fences pending reads (covered by the unmount test).
   useEffect(() => {
-    if (externalSrc || !cacheKey) {
-      setDisplaySrc(externalSrc)
-      return
-    }
-    const cached = blobUrlCache.get(cacheKey)
-    if (cached) {
-      setDisplaySrc(cached)
-      return
-    }
-
     let cancelled = false
     const effectGeneration = generation
-    readImage()
-      .then((url) => {
-        if (cancelled) {
-          return
-        }
-        setDisplaySrc(getLocalImageCacheGeneration() === effectGeneration && url ? url : undefined)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDisplaySrc(undefined)
-        }
-      })
+    let retries = 0
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    const load = (): void => {
+      void readImage()
+        .catch(() => null)
+        .then((url) => {
+          if (cancelled || getLocalImageCacheGeneration() !== effectGeneration) {
+            return
+          }
+          setDisplaySrc(url ?? undefined)
+          // A new attachment can become readable after its optimistic row first mounts.
+          if (!url && retryChatImage && retries < 2) {
+            retryTimer = setTimeout(load, ++retries * 250)
+          }
+        })
+    }
+    const cached = cacheKey ? blobUrlCache.get(cacheKey) : undefined
+    if (externalSrc || !cacheKey) {
+      setDisplaySrc(externalSrc)
+    } else if (cached) {
+      setDisplaySrc(cached)
+    } else {
+      load()
+    }
 
     return () => {
       cancelled = true
+      clearTimeout(retryTimer)
     }
-  }, [cacheKey, externalSrc, generation])
+  }, [cacheKey, externalSrc, generation, retryChatImage])
 
   return displaySrc
 }

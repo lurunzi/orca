@@ -3,6 +3,7 @@ import { useAppStore } from '../../store'
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
 import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-verified-input'
 import type { AgentType } from '../../../../shared/native-chat-types'
+import { buildAntigravityAskAnswerKeys } from '../../../../shared/native-chat-antigravity-answer'
 import {
   resolveNativeChatTranscriptAgent,
   shouldStepNativeChatAskAnswer
@@ -138,7 +139,7 @@ export function useNativeChatInteractiveSend(
       cancelInFlight()
       // Selector TUIs ignore pasted labels; Codex uses a different key sequence.
       const stepsAnswer = shouldStepNativeChatAskAnswer(agent)
-      const buildsCodexAnswer = resolveNativeChatTranscriptAgent(agent) === 'codex'
+      const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
       // Why: pin the answered question's baseline BEFORE delivery. A late settle
       // callback (paced writes + remote acceptance can span seconds on SSH) must
       // not read the live status and mint a fresh baseline for a replacement
@@ -171,9 +172,11 @@ export function useNativeChatInteractiveSend(
       const handle: NativeChatSendHandle = stepsAnswer
         ? sendNativeChatAskAnswer(
             targetPtyId,
-            buildsCodexAnswer
+            transcriptAgent === 'codex'
               ? buildCodexAskAnswerKeys(prompt, selections)
-              : buildAskAnswerKeys(prompt, selections),
+              : transcriptAgent === 'antigravity'
+                ? buildAntigravityAskAnswerKeys(prompt, selections)
+                : buildAskAnswerKeys(prompt, selections),
             onSettled
           )
         : sendNativeChatMessage(targetPtyId, formatAskAnswer(prompt, selections), {

@@ -1,0 +1,139 @@
+[?9001h[?1004h]7501;?[?25l[2J[m[H]0;C:\Users\xxxxxxx\AppData\Local\agy\bin\agy.exe[?25h[?2004h[>4;2m[>1u[?u[0 q[?25l[K
+      ▄▀▀▄        [1mAntigravity CLI 1.4.3[22m[K
+     ▀▀▀▀▀▀       uuuuu@example.com[K
+    ▀▀▀▀▀▀▀▀      C:/ob-cgui[K
+   ▄▀▀    ▀▀▄[K
+  ▄▀▀      ▀▀▄[K
+[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K
+[K[9;3H[?25h[?25l[4;17H  Gemini 3.8 Flash (Low)[5;19HC:/ob-cgui[2m[11;79HGemini 3.8 Flash · low[9;3H[?25h[22m[?25l[7;1H⣷  Generating...[11;1Hesc to cancel  [9;3H[?25h[?25l[7;3H Ge[9;3H[?25h[?25l[7;1H⣯ [9;3H[?25h[?25l[7;1H⣟  Gen[9;3H[?25h[?25l[7;1H⡿  Gene[9;3H[?25h[?25l[7;1H⢿  Gener[9;3H[?25h[?25l[7;1H⣻  Genera[9;3H[?25h[?25l[7;1H⣽  Generati[9;3H[?25h[?25l[7;1H⣾  Generatin[9;3H[?25h[?25l[7;1H⣷  Generating[9;3H[?25h[?25l[7;1H⣯  Generating.[9;3H[?25h[?25l[7;1H⣟  Generating...[9;3H[?25h[?25l[3;36H (Google AI Pro)[8;1H└ Tip: Press ctrl+g to open an external editor for long prompts.[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[10;3H[?25h[22m[?25l[7;1H⡿  Generatin[10;3H[?25h[?25l[7;1H⢿  Generating[10;3H[?25h[?25l[7;14H..[10;3H[?25h[?25l[7;1H[K
+────────────────────────────────────────────────────────────[K[1m
+> Call ask_question once, three questions: Color single choice Red Blue; Pets multi select Cat Dog;[22m [1m
+  Size single choice Small Large. Wait for answers, then repeat them. No other tools or files.[22m
+⢿  Generating...[K
+└ Tip: Press ctrl+g to open an external editor for long prompts.[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[14;3H[?25h[?25l[22m[11;1H⣻ [14;3H[?25h[?25l[11;15H..[14;3H[?25h[?25l[11;1H⣽  Generating...[14;3H[?25h[?25l[11;1H⣾ [14;3H[?25h[?25l[11;1H⣷ [14;3H[?25h[?25l[11;1H⣯ [14;3H[?25h[?25l[11;1H⣟ [14;3H[?25h[?25l[11;1H⡿ [14;3H[?25h[?25l[11;1H⢿  G[14;3H[?25h[?25l[11;1H⣻  Ge[14;3H[?25h[?25l[11;1H⣽  Gene[14;3H[?25h[?25l[11;1H⣾  Gener[14;3H[?25h[?25l[11;1H⣷  Genera[14;3H[?25h[?25l[11;1H⣯  Generat[14;3H[?25h[?25l[11;1H⣟  Generatin[14;3H[?25h[?25l[11;1H⡿  Generating[14;3H[?25h[?25l[11;1H⢿  Generating.[14;3H[?25h[?25l[11;1H⣻  Generating..[14;3H[?25h[?25l[11;1H⣽  Generating...[14;3H[?25h[?25l[11;1H⣾  Generating[14;3H[?25h[?25l[11;1H⣷  Generating.[14;3H[?25h[?25l[11;1H⣯  Generating..[14;3H[?25h[?25l[11;1H⣟  Generating...[14;3H[?25h[?25l[11;1H⡿ [14;3H[?25h[?25l[11;1H[K
+○ [1mAskQuestion[22m(Color)[K
+⢿  Working...[K
+└ Tip: Press ctrl+g to open an external editor for long prompts.[16;1H>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[16;3H[?25h[22m[0 q[?25l[1m[12;1H?[22m Color[K[1m
+?[22m Pets[K[1m
+?[22m Size[K
+[K[1m
+Question[22m[18;1H[K[1m
+Question 1/3: Color[22m[K[21;1H> 1. (Recommended) Red[K
+  2. Blue
+  3. Write-in...[25;1H  [1m↑/↓[22m Navigate · [1m→[22m Next · [1menter[22m Select · [1mesc[22m Skip
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[22m[21;1H  1. (Recommended) Red[K
+> 2. Blue[K[91C[1m[19;10H2/3: Pets[22m[K[21;1H> 1. [ ] (Recommended) Cat[K
+  2. [ ] Dog[K[1m[25;18H←[22m Back · [1m→[22m Next · [1mspace[22m Toggle · [1menter[22m Submit · [1mesc[22m Skip[21;7Hx]  1. [x] (Recommended) Cat[K
+> 2. [ ] Dog[K[88C  2. [ ] Dog[K
+> 3. Write-in...[K[25;57HWrite-in · [1mesc[22m Skip  Your answer:[K
+  [7m [27m[K[1m[30;3Henter[22m Submit · [1mesc[22m Back
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[22m[26;1H  Other pet[7m [27m [1m[19;10H3/3: Size[22m[21;1H> 1. (Recommended) Small[K[22;6HLarge[K
+  3. Write-in...[K[25;1H  [1m↑/↓[22m Navigate · [1m←[22m Back · [1menter[22m Submit All · [1mesc[22m Skip
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[22m
+[K
+[K
+[K
+[K
+                                                                                                    
+[K
+[K
+[K
+[K[100C[0 q[1m[13;1H> Blue[22m[14;3HPets[1m
+> (Recommended) Cat, Other pet
+?[22m Size[K
+(skipped)[K
+⣽  Working...
+└ Tip: View and review artifacts with /artifact.[K
+────────────────────────────────────────────────────────────────────────────────────────────────────[21;2H[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[22m
+[K
+[K
+                                                                                                    
+[K
+[K
+[K
+[K
+                                                                                                    
+[K
+[K
+[K
+[K[21;3H[?25h[?25l[18;1H⣾  Wo[21;3H[?25h[?25l[18;1H⣷  Work[21;3H[?25h[?25l[18;1H⣯  Worki[21;3H[?25h[?25l[18;1H⣟  Workin[21;3H[?25h[?25l[18;1H⡿  Working[21;3H[?25h[?25l[18;1H⢿  Working..[21;3H[?25h[?25l[18;1H⣻  Working...[21;3H[?25h[?25l[18;1H⣽  Workin[21;3H[?25h[?25l[18;1H⣾  Working[21;3H[?25h[?25l[18;1H⣷  Working..[21;3H[?25h[?25l[18;1H⣯  Working...[21;3H[?25h[?25l[18;1H⣟ [21;3H[?25h[?25l[18;1H⡿ [21;3H[?25h[?25l[18;1H⢿ [21;3H[?25h[?25l[18;1H⣻ [21;3H[?25h[?25l[18;1H⣽ [21;3H[?25h[?25l[18;1H⣾  W[21;3H[?25h[?25l[18;1H⣷  Wor[21;3H[?25h[?25l[18;1H⣯  Work[21;3H[?25h[?25l[18;1H⣟  Generating...[21;3H[?25h[?25l[18;1H⡿ [21;3H[?25h[?25l[18;1H⢿ [21;3H[?25h[?25l[18;1H[K
+  您的回答[K
+⢿  Generating...[K
+└ Tip: View and review artifacts with /artifact.[23;1H>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[23;3H[?25h[22m[?25l[19;1H  您的回答[K
+⣻ [23;3H[?25h[?25l[19;1H  您的回答[K
+⣽  G[23;3H[?25h[?25l[19;1H  您的回答[K
+⣾  Ge[23;3H[?25h[?25l[19;1H  您的回答[K
+⣷  Gene[23;3H[?25h[?25l[19;1H  您的回答[K
+⣯  Gener[23;3H[?25h[?25l[19;1H  您的回答[K
+⣟  Genera[23;3H[?25h[?25l[19;1H  您的回答[K
+⡿  Generat[23;3H[?25h[?25l[19;1H  您的回答[K
+⢿  Generatin[23;3H[?25h[?25l[19;1H  您的回答[K
+⣻  Generating[23;3H[?25h[?25l[19;1H  您的回答[K
+⣽  Generating.[23;3H[?25h[?25l[19;1H  您的回答[K
+⣾  Generating..[23;3H[?25h[?25l[19;1H  您的回答[K
+⣷  Generating...[23;3H[?25h[?25l[19;1H  您的回答如下：[K
+[K
+  •[K
+⣷  Generating...[K
+└ Tip: View and review artifacts with /artifact.[25;1H>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[25;3H[?25h[?25l[22m[19;1H  您的回答如下：[K[1m[21;5HColor[22m: Blue
+  • [1mPets[22m: Cat, Other pet
+  • [1mSize[22m: 跳过 (User Skipped)[K
+⣷  Generating...[K
+└ Tip: View and review artifacts with /artifact.[27;1H>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+esc to cancel                                                                 [K[2mGemini 3.8 Flash · low[27;3H[?25h[?25l[22m[19;1H  您的回答如下：[K[23;1H  • [1mSize[22m: 跳过 (User Skipped)[K
+⣯  Generating[27;3H[?25h[?25l[19;1H  您的回答如下：[K[23;1H  • [1mSize[22m: 跳过 (User Skipped)[K
+[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+>[K
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                               [K[2mGemini 3.8 Flash · low[22m                                                                                                    
+[K
+                                                                                                    
+[K
+[K
+[K
+[K[26;3H[?25h

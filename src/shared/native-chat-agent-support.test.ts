@@ -69,6 +69,7 @@ describe('shouldStepNativeChatAskAnswer', () => {
     expect(shouldStepNativeChatAskAnswer('codex')).toBe(true)
     expect(shouldStepNativeChatAskAnswer('opencode')).toBe(true)
     expect(shouldStepNativeChatAskAnswer('opencode2')).toBe(true)
+    expect(shouldStepNativeChatAskAnswer('antigravity')).toBe(true)
   })
 
   it('does not step other or unknown agents', () => {

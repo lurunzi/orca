@@ -16,6 +16,7 @@ import { NativeChatMessageTimestamp } from './NativeChatMessageTimestamp'
 import { NativeChatAgentMessageSenders } from './NativeChatAgentMessageSenders'
 import { NativeChatImageAttachments } from './NativeChatTranscriptChrome'
 import type { deriveNativeChatRowContent } from '../../../../shared/native-chat-row-content'
+import { stripLeadingSentImagePromptMarkers } from '../../../../shared/native-chat-image-transcript-markers'
 
 const USER_META_REVEAL =
   'transition-opacity can-hover:pointer-events-none can-hover:opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 [.group:has(:focus-visible)_&]:pointer-events-auto [.group:has(:focus-visible)_&]:opacity-100'
@@ -62,7 +63,7 @@ function UserMessageMeta({
 
 export function NativeChatUserMessageRow({
   message,
-  markdown,
+  markdown: originalMarkdown,
   prose,
   rowRef,
   onRefolded,
@@ -87,6 +88,10 @@ export function NativeChatUserMessageRow({
   // left-aligned under its sender rather than as their bubble.
   const from = message.from
   const sending = deliveryNotice?.sending === true
+  const markdown = stripLeadingSentImagePromptMarkers(
+    originalMarkdown,
+    prose.filter((block) => block.type === 'image-ref').length
+  )
   return (
     <div
       ref={rowRef}
