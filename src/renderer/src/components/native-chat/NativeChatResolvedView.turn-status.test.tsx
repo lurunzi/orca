@@ -3,7 +3,7 @@
 import '@testing-library/jest-dom/vitest'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, type RenderResult } from '@testing-library/react'
 import type { AgentStatusEntry, AgentStatusPayload } from '../../../../shared/agent-status-types'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import type { NativeChatLiveSession } from './use-native-chat-live-session'
@@ -109,12 +109,16 @@ function patchStatus(fields: Partial<AgentStatusEntry>): void {
   }))
 }
 
-function renderPane(): void {
-  render(
+function renderPane(
+  onSwitchToTerminal?: () => void,
+  agent: 'claude' | 'antigravity' = 'claude',
+  readTerminalScreen?: (format?: 'text') => string | null
+): RenderResult {
+  return render(
     <TooltipProvider>
       <NativeChatResolvedView
         paneKey={paneKey}
-        agent="claude"
+        agent={agent}
         sessionId="session-state"
         transcriptPath={null}
         isVisible
@@ -122,6 +126,8 @@ function renderPane(): void {
         targetPtyId="pty-state"
         terminalTabId="tab-state"
         ownsTabWideLaunchDraft={false}
+        onSwitchToTerminal={onSwitchToTerminal}
+        readTerminalScreen={readTerminalScreen}
       />
     </TooltipProvider>
   )
@@ -146,6 +152,53 @@ afterEach(() => {
 // UI: the clock bar under the prompt, the live line at the tail, and the row a
 // question uses when the agent waits on the reader.
 describe('NativeChatResolvedView turn status', () => {
+  it.each(['waiting', 'blocked'] as const)(
+    'opens the owning terminal for an unshown %s interaction',
+    (state) => {
+      retained.session = {
+        ...transcript('ready', true, [
+          userTurn,
+          {
+            id: 'report',
+            role: 'assistant',
+            blocks: [{ type: 'text', text: 'The report is saved.' }],
+            timestamp: 2,
+            source: 'transcript'
+          }
+        ]),
+        agent: 'antigravity'
+      }
+      setStatus({ state }, 20_000)
+      patchStatus({ agentType: 'antigravity' })
+      const openTerminal = vi.fn()
+      const readScreen = vi.fn((): string | null => 'Report ready: investigation.md')
+      const view = renderPane(openTerminal, 'antigravity', readScreen)
+      expect(readScreen).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Awaiting user input' }))
+      expect(readScreen).toHaveBeenCalledWith('text')
+      expect(screen.getByText('Report ready: investigation.md')).toBeInTheDocument()
+      expect(screen.getByText('The report is saved.')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /Switch to Terminal Agent/ }))
+      expect(openTerminal).toHaveBeenCalledOnce()
+      fireEvent.click(screen.getByRole('button', { name: 'Awaiting user input' }))
+      expect(screen.queryByText('Report ready: investigation.md')).toBeNull()
+      readScreen.mockReturnValue(null)
+      fireEvent.click(screen.getByRole('button', { name: 'Awaiting user input' }))
+      expect(readScreen).toHaveBeenCalledTimes(2)
+      expect(screen.queryByText('Report ready: investigation.md')).toBeNull()
+      expect(screen.getByRole('button', { name: /Switch to Terminal Agent/ })).toBeVisible()
+      expect(liveActivityLine()).toBeNull()
+      act(() => {
+        retained.session = { ...retained.session!, hookAwaitingInput: false }
+        patchStatus({ state: 'done' })
+      })
+      view.unmount()
+      renderPane(openTerminal, 'antigravity', readScreen)
+      expect(screen.queryByRole('button', { name: /Switch to Terminal Agent/ })).toBeNull()
+      expect(screen.queryByText('Awaiting user input')).toBeNull()
+    }
+  )
+
   it('counts the working turn from the host-stamped epoch, with the live line at the tail', () => {
     retained.session = transcript('working', false)
     setStatus({ state: 'working' }, 75_000)

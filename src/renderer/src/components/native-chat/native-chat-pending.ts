@@ -6,6 +6,8 @@
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import { setBoundedScopeCacheEntry } from '../../../../shared/native-chat-scope-cache'
 import type { NativeChatLaunchPrompt } from '@/lib/native-chat-launch-prompt'
+import { normalizedNativeChatUserMessageText } from '../../../../shared/native-chat-image-transcript-markers'
+import { matchesCursorLaunchPromptEcho } from './cursor-launch-prompt-echo'
 import {
   advancedNativeChatUserContentCounts,
   advancedNativeChatUserRows,
@@ -342,11 +344,7 @@ export function launchPromptAsMessage(
   // Why: a launch prompt seeds a brand-new session, so a matching user turn
   // with no timestamp (e.g. Grok transcripts) can only be its own delivery.
   const represented = matchingNativeChatUserContentCounts(
-    existingMessages.filter(
-      (message) =>
-        message.timestamp === null ||
-        transcriptTimestampAtOrAfterLocal(message.timestamp, entry.createdAt)
-    )
+    launchPromptMatchingMessages(entry, existingMessages)
   )
   if ((represented.get(nativeChatPendingContentKey(entry)) ?? 0) > 0) {
     return null
@@ -367,13 +365,29 @@ export function shouldPruneLaunchPrompt(
   entry: NativeChatLaunchPrompt,
   messages: NativeChatMessage[]
 ): boolean {
+  const relevant = launchPromptMatchingMessages(entry, messages)
+  return (
+    (advancedNativeChatUserContentCounts(relevant).get(nativeChatPendingContentKey(entry)) ?? 0) > 0
+  )
+}
+
+function launchPromptMatchingMessages(
+  entry: NativeChatLaunchPrompt,
+  messages: NativeChatMessage[]
+): NativeChatMessage[] {
   const relevant = messages.filter(
     (message) =>
       message.timestamp === null ||
       transcriptTimestampAtOrAfterLocal(message.timestamp, entry.createdAt)
   )
-  return (
-    (advancedNativeChatUserContentCounts(relevant).get(nativeChatPendingContentKey(entry)) ?? 0) > 0
+  const firstUser = relevant.findIndex((message) => message.role === 'user')
+  // Compare the original only for echo retirement; never rewrite the provider's visible record.
+  return relevant.map((message, index) =>
+    entry.agent === 'cursor' &&
+    index === firstUser &&
+    matchesCursorLaunchPromptEcho(entry.text, normalizedNativeChatUserMessageText(message) ?? '')
+      ? { ...message, blocks: [{ type: 'text', text: entry.text }] }
+      : message
   )
 }
 

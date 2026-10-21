@@ -240,14 +240,30 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
       setTabViewMode(unifiedTabId, 'terminal')
     }
   }, [chatLeafId, setChatLeafId, setTabViewMode, unifiedTabId])
-  const readNativeChatTerminalScreen = useCallback((): string | null => {
-    if (!chatLeafId) {
-      return null
-    }
-    const pane = managerRef.current?.getPanes().find((candidate) => candidate.leafId === chatLeafId)
-    return pane?.serializeAddon.serialize({ scrollback: 0 }) ?? null
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- managerRef is a stable ref container.
-  }, [chatLeafId])
+  const readNativeChatTerminalScreen = useCallback(
+    (format?: 'text'): string | null => {
+      if (!chatLeafId) {
+        return null
+      }
+      const pane = managerRef.current
+        ?.getPanes()
+        .find((candidate) => candidate.leafId === chatLeafId)
+      if (!pane) {
+        return null
+      }
+      if (format === 'text') {
+        const buffer = pane.terminal.buffer.active
+        return Array.from(
+          { length: pane.terminal.rows },
+          (_, row) => buffer.getLine(buffer.baseY + row)?.translateToString(true) ?? ''
+        )
+          .join('\n')
+          .trimEnd()
+      }
+      return pane.serializeAddon.serialize({ scrollback: 0 })
+    },
+    [chatLeafId, managerRef]
+  )
 
   const readNativeChatPromptSuggestion = useCallback((): string | null => {
     const pane = managerRef.current?.getPanes().find((candidate) => candidate.leafId === chatLeafId)

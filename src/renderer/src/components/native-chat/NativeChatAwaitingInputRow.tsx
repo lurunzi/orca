@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
@@ -29,7 +30,9 @@ export function NativeChatAwaitingInputRow({
   subject,
   pending,
   disclosureKey,
-  listsQuestions = true
+  listsQuestions = true,
+  onOpenTerminal,
+  readTerminalScreen
 }: {
   /** Null when the payload named no question; the label carries the row alone. */
   subject: NativeChatAskRowSubject | null
@@ -39,6 +42,9 @@ export function NativeChatAwaitingInputRow({
   disclosureKey?: string
   /** False when the caller already shows each question of a grouped prompt in full. */
   listsQuestions?: boolean
+  /** The terminal owns an interaction the transcript could not describe. */
+  onOpenTerminal?: () => void
+  readTerminalScreen?: (format?: 'text') => string | null
 }): React.JSX.Element {
   // The list and a lone question are separate disclosures: a pending Codex group is
   // keyed by its first question, which becomes its own row once answered.
@@ -52,6 +58,8 @@ export function NativeChatAwaitingInputRow({
   // it, and dropping the toggle as it folds would drop keyboard focus with it.
   const [clipped, measureLine] = useNativeChatClippedLine(open)
 
+  const [terminalText, setTerminalText] = useState<string | null>(null)
+  const terminalWait = pending && subject === null && onOpenTerminal !== undefined
   const question = subject?.kind === 'question' ? subject.text : null
   const questions = subject?.kind === 'questions' && listsQuestions ? subject.questions : null
   // A count always hides its questions, so the list needs no clipping measurement.
@@ -111,7 +119,25 @@ export function NativeChatAwaitingInputRow({
       data-native-chat-ask-row={pending ? 'awaiting' : 'asked'}
       aria-live={pending ? 'polite' : undefined}
     >
-      {toggles ? (
+      {terminalWait ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => {
+            if (!open) {
+              setTerminalText(readTerminalScreen?.('text') ?? null)
+            }
+            setOpen(!open)
+          }}
+          className={cn(
+            ROW_CLASS_NAME,
+            'rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+          )}
+        >
+          {header}
+          <ChevronRight aria-hidden className={cn('size-3.5 shrink-0', open && 'rotate-90')} />
+        </button>
+      ) : toggles ? (
         <button
           type="button"
           onClick={() => setOpen(!open)}
@@ -126,6 +152,25 @@ export function NativeChatAwaitingInputRow({
       ) : (
         <div className={ROW_CLASS_NAME}>{header}</div>
       )}
+      {terminalWait && open ? (
+        <div className="space-y-1 pl-5.5">
+          {terminalText ? (
+            <pre className="scrollbar-sleek max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-sm leading-relaxed text-chat-foreground">
+              {terminalText}
+            </pre>
+          ) : null}
+          <button
+            type="button"
+            onClick={onOpenTerminal}
+            className="rounded-md text-sm text-chat-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {translate(
+              'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
+              'Switch to Terminal Agent'
+            )}
+          </button>
+        </div>
+      ) : null}
       {toggles && open && question !== null ? (
         // Indented to the label, past the icon slot and its gap.
         <p className="whitespace-pre-wrap break-words pl-5.5 text-sm leading-relaxed text-chat-foreground">
