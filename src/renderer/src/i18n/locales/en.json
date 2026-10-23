@@ -18636,6 +18636,12 @@
     },
     "native-chat": {
       "externalTranscript": "External session · Read-only",
+      "cursorTranscript": {
+        "resumeAndSend": "Resume and send",
+        "placeholder": "Continue this conversation in Orca",
+        "terminalUnavailable": "The resumed terminal is not available yet. Your draft has been kept.",
+        "deliveryUnconfirmed": "Message delivery was not confirmed. Your draft has been kept."
+      },
       "openTranscript": "Open conversation",
       "install": {
         "checking": "Checking whether {{agent}} is ready on this host…"

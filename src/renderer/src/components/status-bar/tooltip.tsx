@@ -21,6 +21,7 @@ import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { formatWindowLabel } from '@/lib/window-label-formatter'
 import { CURSOR_MODELS_BUCKET_NAME } from '../../../../shared/cursor-usage-buckets'
 import { barColor, ProviderExtraUsageSection } from './provider-extra-usage-section'
+import { formatStatusBarSectionLabel } from './usage-pool-label'
 
 export {
   barColor,
@@ -160,6 +161,10 @@ export function getWindowSections(
 ): { label: string; window: RateLimitWindow | null }[] {
   if (p.buckets?.length) {
     const bucketSections = p.buckets.map((b) => ({ label: b.name, window: b as RateLimitWindow }))
+    // Antigravity's session/weekly summaries are derived from these same pools.
+    if (p.provider === 'antigravity') {
+      return bucketSections
+    }
     return [
       ...bucketSections,
       // Why: Cursor reports the plan total in `monthly` and its pools as buckets,
@@ -365,9 +370,11 @@ export function ProviderPanel({
           key={s.label}
           window={s.window}
           label={
-            p.provider === 'cursor' && s.label === CURSOR_MODELS_BUCKET_NAME && s.window
-              ? formatWindowLabel(s.window.windowMinutes)
-              : s.label
+            p.provider === 'antigravity' && s.window
+              ? formatStatusBarSectionLabel(p, { label: s.label, window: s.window }, now)
+              : p.provider === 'cursor' && s.label === CURSOR_MODELS_BUCKET_NAME && s.window
+                ? formatWindowLabel(s.window.windowMinutes)
+                : s.label
           }
           textClass={textClass}
           mutedClass={mutedClass}

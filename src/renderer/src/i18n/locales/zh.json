@@ -18329,6 +18329,12 @@
   "components": {
     "native-chat": {
       "externalTranscript": "外部会话 · 只读",
+      "cursorTranscript": {
+        "resumeAndSend": "恢复并发送",
+        "placeholder": "在 Orca 中继续此对话",
+        "terminalUnavailable": "恢复的终端暂不可用，草稿已保留。",
+        "deliveryUnconfirmed": "尚未确认消息送达，草稿已保留。"
+      },
       "openTranscript": "打开会话",
       "install": {
         "checking": "正在检查 {{agent}} 是否已在此主机上就绪…"

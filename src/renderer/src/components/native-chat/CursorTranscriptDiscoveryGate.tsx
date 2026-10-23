@@ -9,7 +9,7 @@ import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { isAiVaultScanCancelledError } from '../../../../shared/ai-vault-types'
 import {
   cursorTranscriptOfferKey,
-  isCursorTranscriptLive,
+  isCursorTranscriptRecent,
   recordCursorTranscriptOffer,
   wasCursorTranscriptOffered
 } from '@/lib/cursor-transcript-discovery-offers'
@@ -52,8 +52,8 @@ export function CursorTranscriptDiscoveryGate(): null {
         const session = result.sessions
           .filter((entry) => cursorSessionMatchesWorkspace(entry, path, host.id))
           .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))[0]
-        // Only a still-running worker is discovered; ended ones stay in History.
-        if (!session || !isCursorTranscriptLive(session)) {
+        // Older conversations remain available in History.
+        if (!session || !isCursorTranscriptRecent(session)) {
           return
         }
         const key = cursorTranscriptOfferKey(host.id, worktreeId, session.sessionId)

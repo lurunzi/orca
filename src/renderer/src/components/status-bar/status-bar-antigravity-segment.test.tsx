@@ -75,7 +75,27 @@ function groupedLimits(): ProviderRateLimits {
 }
 
 describe('Antigravity status-bar segment', () => {
-  it('renders both model-group pools by name', async () => {
+  it.each(['legacy', 'grouped'] as const)(
+    'keeps every %s pool in details without derived aggregate rows',
+    async (shape) => {
+      const { getWindowSections, ProviderPanel } = await import('./tooltip')
+      const p = shape === 'legacy' ? antigravityLimits() : groupedLimits()
+      const sections = getWindowSections(p)
+      expect(sections.map((section) => section.window)).toEqual(p.buckets)
+      const markup = renderToStaticMarkup(<ProviderPanel p={p} />)
+      expect(markup).toContain('>wk<')
+      expect(markup).toContain('>Other Models wk<')
+      expect(markup).not.toContain('Gemini')
+      expect(markup).not.toContain('Claude and GPT')
+      expect(markup).not.toContain('>Weekly<')
+      if (shape === 'grouped') {
+        expect(markup).toContain('>5h<')
+        expect(markup).toContain('>Other Models 5h<')
+      }
+    }
+  )
+
+  it('renders both legacy model pools with concise labels', async () => {
     // Why: the verbose bucket allowlist was written for Gemini's experimental models, so
     // Antigravity's pools — whose names come from the account's tier and cannot be enumerated
     // ahead of time — were filtered out and the segment showed no number at all.
@@ -84,8 +104,9 @@ describe('Antigravity status-bar segment', () => {
       <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).toContain('Gemini Models')
-    expect(markup).toContain('Claude and GPT models')
+    expect(markup).not.toContain('Gemini Models')
+    expect(markup).not.toContain('Claude and GPT models')
+    expect(markup).toContain('Other Models wk')
     expect(markup).toContain('100%')
   })
 
@@ -115,9 +136,8 @@ describe('Antigravity status-bar segment', () => {
       <ProviderSegment p={groupedLimits()} compact={false} display="used" mode="verbose" />
     )
 
-    // Why '>Gemini<': the group's `title` still holds the full name, so a bare match is vacuous.
-    expect(markup).toContain('>Gemini<')
-    expect(markup).toContain('>Claude/GPT<')
+    expect(markup).not.toContain('Gemini')
+    expect(markup).toContain('>Other Models<')
     expect(markup).toContain('5h')
     expect(markup).toContain('4%')
     expect(markup).not.toContain('Gemini Models ·')
@@ -133,7 +153,8 @@ describe('Antigravity status-bar segment', () => {
     )
 
     expect(markup).toContain('4%')
-    expect(markup).toContain('Gemini wk')
+    expect(markup).toContain('4% wk')
+    expect(markup).not.toContain('Gemini')
     expect(markup).not.toContain('Limit Remaining')
   })
 

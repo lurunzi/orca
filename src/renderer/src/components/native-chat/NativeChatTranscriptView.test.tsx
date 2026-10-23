@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import type { NativeChatSessionTransport } from './native-chat-session-transport'
@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => {
     read: vi.fn(),
     unsubscribe: vi.fn(),
     transport: vi.fn(),
+    terminal: vi.fn(),
     resume: { resumable: false, resume: vi.fn() }
   }
 })
@@ -32,10 +33,24 @@ vi.mock('./native-chat-session-transport', () => ({
 vi.mock('./use-cursor-transcript-resume', () => ({
   useCursorTranscriptResume: () => mocks.resume
 }))
+vi.mock('@/lib/cursor-transcript-terminal', () => ({
+  findCursorTranscriptTerminal: mocks.terminal
+}))
+vi.mock('@/lib/worktree-runtime-owner', () => ({
+  getKnownExecutionHostIdForWorktree: () => 'runtime:worker-host'
+}))
+vi.mock('./NativeChatResolvedView', () => ({
+  NativeChatResolvedView: () => <div>Managed chat</div>
+}))
 vi.mock('./native-chat-image-runtime-context', () => ({
   useNativeChatImageRuntimeContext: () => null
 }))
 import { NativeChatTranscriptView } from './NativeChatTranscriptView'
+import {
+  clearNativeChatComposerDraftsForTests,
+  readNativeChatComposerDraft,
+  updateNativeChatComposerDraft
+} from './native-chat-composer-draft-store'
 const source = {
   agent: 'cursor' as const,
   sessionId: 'worker',
@@ -52,6 +67,10 @@ const message = (id: string, text: string): NativeChatMessage => ({
 let restoreViewport = (): void => {}
 beforeEach(() => {
   vi.clearAllMocks()
+  clearNativeChatComposerDraftsForTests()
+  mocks.terminal.mockReturnValue(null)
+  mocks.resume.resumable = false
+  mocks.resume.resume.mockResolvedValue(true)
   restoreViewport = installNativeChatMessageListTestViewport()
   mocks.read.mockResolvedValue({
     messages: [message('one', 'Visible worker response')],
@@ -63,7 +82,7 @@ afterEach(() => {
   restoreViewport()
 })
 
-it('renders the body, follows append frames and never offers worker input', async () => {
+it('keeps an editable draft with the transcript while switching away and back', async () => {
   const view = render(
     <NativeChatTranscriptView
       tabId="worker-tab"
@@ -85,7 +104,7 @@ it('renders the body, follows append frames and never offers worker input', asyn
     mocks.frame?.({ type: 'appended', messages: [message('two', 'Next worker response')] })
   })
   expect(await screen.findByText('Next worker response')).toBeVisible()
-  expect(view.container.querySelector('textarea, [contenteditable="true"]')).toBeNull()
+  expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'true')
   view.rerender(
     <NativeChatTranscriptView
       tabId="worker-tab"
@@ -112,7 +131,37 @@ it('surfaces a read error instead of an indefinite loading page', async () => {
   expect(await screen.findByText('Transcript unavailable on worker host')).toBeVisible()
 })
 
-it('offers Resume in New Tab only once the worker stopped writing', async () => {
+it('waits for delivery before switching to the newly bound terminal composer', async () => {
+  let finish: (sent: boolean) => void = () => undefined
+  mocks.resume.resumable = true
+  mocks.resume.resume.mockImplementation(
+    () =>
+      new Promise<boolean>((resolve) => {
+        finish = resolve
+      })
+  )
+  updateNativeChatComposerDraft('worker-tab', { text: 'continue once' }, 'immediate')
+  const props = {
+    tabId: 'worker-tab',
+    worktreeId: 'wt',
+    source,
+    isVisible: true,
+    isFocusedGroup: true
+  }
+  const view = render(<NativeChatTranscriptView {...props} />)
+  await screen.findByText('Visible worker response')
+  fireEvent.click(screen.getByRole('button', { name: /Resume and send/ }))
+  mocks.terminal.mockReturnValue({ tabId: 'managed', paneKey: 'managed:leaf', ptyId: 'pty' })
+  view.rerender(<NativeChatTranscriptView {...props} />)
+  expect(screen.queryByText('Managed chat')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Resume and send/ })).toBeDisabled()
+  await act(async () => finish(true))
+  expect(await screen.findByText('Managed chat')).toBeVisible()
+  expect(readNativeChatComposerDraft('worker-tab').text).toBe('')
+  expect(mocks.resume.resume).toHaveBeenCalledExactlyOnceWith('continue once')
+})
+
+it('shows the input before resume lookup finishes and enables send once the exact session resolves', async () => {
   const view = render(
     <NativeChatTranscriptView
       tabId="worker-tab"
@@ -123,7 +172,7 @@ it('offers Resume in New Tab only once the worker stopped writing', async () => 
     />
   )
   await screen.findByText('Visible worker response')
-  expect(screen.queryByRole('button', { name: /Resume in New Tab/ })).toBeNull()
+  expect(screen.getByRole('button', { name: /Resume and send/ })).toBeDisabled()
   mocks.resume.resumable = true
   view.rerender(
     <NativeChatTranscriptView
@@ -134,6 +183,7 @@ it('offers Resume in New Tab only once the worker stopped writing', async () => 
       isFocusedGroup
     />
   )
-  screen.getByRole('button', { name: /Resume in New Tab/ }).click()
-  expect(mocks.resume.resume).toHaveBeenCalledOnce()
+  expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'true')
+  fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' })
+  expect(mocks.resume.resume).not.toHaveBeenCalled()
 })

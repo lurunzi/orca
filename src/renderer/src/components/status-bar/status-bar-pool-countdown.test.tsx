@@ -91,7 +91,7 @@ describe('status-bar pool countdown', () => {
         expect(container.textContent).toContain('10% 5h (1h 30m)')
         expect(container.textContent).toContain('5% wk (1h 30m)')
       } else {
-        expect(container.textContent).toBe('5% Gemini wk (1h 30m)')
+        expect(container.textContent).toBe('5% wk (1h 30m)')
       }
     }
   )

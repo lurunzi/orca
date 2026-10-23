@@ -63,6 +63,7 @@ import { formatShortcutLabel } from '@/hooks/useShortcutLabel'
 
 /** Renders the bridge UI after NativeChatSessionGate resolves its agent session. */
 export function NativeChatResolvedView({
+  draftScopeKey,
   paneKey,
   agent,
   sessionId,
@@ -382,6 +383,8 @@ export function NativeChatResolvedView({
             expandSignal={false}
             {...turnTiming}
             awaitingInput={awaitingInput}
+            onOpenTerminal={onSwitchToTerminal}
+            readTerminalScreen={readTerminalScreen}
             onLinkClick={onLinkClick}
             allowFileUriLinks={fileLinkContext !== null}
             deliveryNotices={deliveryNotices}
@@ -412,6 +415,7 @@ export function NativeChatResolvedView({
           detaching the ref keeps root typing, paste and reveal focus off it. */}
       <div hidden={shownPromptCard !== null} className="contents">
         <NativeChatComposer
+          draftScopeKey={draftScopeKey}
           ref={shownPromptCard ? undefined : composerRef}
           inputOwnedByCard={shownPromptCard !== null}
           terminalTabId={terminalTabId}

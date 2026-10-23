@@ -2,8 +2,8 @@ import type { AiVaultSession } from '../../../shared/ai-vault-types'
 
 const STORAGE_KEY = 'orca.cursorTranscript.offeredSessions'
 const MAX_OFFERS = 200
-/** A transcript untouched this long belongs to a worker that is no longer running. */
-export const CURSOR_TRANSCRIPT_LIVE_WINDOW_MS = 15 * 60_000
+/** Limits automatic discovery to recent conversations; it says nothing about process liveness. */
+export const CURSOR_TRANSCRIPT_RECENT_WINDOW_MS = 15 * 60_000
 
 export function cursorTranscriptOfferKey(
   hostId: string,
@@ -13,9 +13,9 @@ export function cursorTranscriptOfferKey(
   return JSON.stringify([hostId, worktreeId, sessionId])
 }
 
-export function isCursorTranscriptLive(session: AiVaultSession, now = Date.now()): boolean {
+export function isCursorTranscriptRecent(session: AiVaultSession, now = Date.now()): boolean {
   const modified = Date.parse(session.modifiedAt)
-  return Number.isFinite(modified) && now - modified <= CURSOR_TRANSCRIPT_LIVE_WINDOW_MS
+  return Number.isFinite(modified) && now - modified <= CURSOR_TRANSCRIPT_RECENT_WINDOW_MS
 }
 
 function readOffers(): string[] {

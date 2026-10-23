@@ -25,7 +25,7 @@ export type NativeChatBridgeViewProps = {
   /** Return this pane to the hosted terminal surface. */
   onSwitchToTerminal?: () => void
   /** Current xterm screen reader used to recover agent-reported session state. */
-  readTerminalScreen?: () => string | null
+  readTerminalScreen?: (format?: 'text') => string | null
   readTerminalPromptSuggestion?: () => string | null
   contextMenuActions?: Omit<NativeChatContextMenuActions, 'onPaste'>
 }
@@ -44,6 +44,7 @@ export type NativeChatStructuredViewProps = {
 }
 
 export type NativeChatResolvedViewProps = {
+  draftScopeKey?: string
   paneKey: string
   agent: NativeChatSession['agent']
   sessionId: string | null
@@ -55,7 +56,7 @@ export type NativeChatResolvedViewProps = {
   terminalTabId: string
   ownsTabWideLaunchDraft: boolean
   onSwitchToTerminal?: () => void
-  readTerminalScreen?: () => string | null
+  readTerminalScreen?: (format?: 'text') => string | null
   readTerminalPromptSuggestion?: () => string | null
   contextMenuActions?: Omit<NativeChatContextMenuActions, 'onPaste'>
 }

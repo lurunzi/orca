@@ -52,27 +52,27 @@ const TWO_GROUPS = [
 describe('pool labels', () => {
   it('shortens two groups with two windows each', () => {
     expect(TWO_GROUPS.map((b) => formatPoolShortLabel(b, TWO_GROUPS))).toEqual([
-      'Gemini 5h',
-      'Gemini wk',
-      'Claude/GPT 5h',
-      'Claude/GPT wk'
+      '5h',
+      'wk',
+      'Other Models 5h',
+      'Other Models wk'
     ])
-    expect(formatPoolGroupLabel('Claude and GPT models', TWO_GROUPS)).toBe('Claude/GPT')
+    expect(formatPoolGroupLabel('Claude and GPT models', TWO_GROUPS)).toBe('Other Models')
   })
 
   it('labels a single-window group by its window length', () => {
     const buckets = [pool('Gemini Models', WEEK, { name: 'Gemini Models' })]
-    expect(formatPoolShortLabel(buckets[0], buckets)).toBe('Gemini wk')
+    expect(formatPoolShortLabel(buckets[0], buckets)).toBe('wk')
   })
 
   it('uses agy’s window name without "Limit Remaining" for an unknown window', () => {
     const daily = pool('Gemini Models', 0, { windowName: 'Daily Limit Remaining' })
-    expect(formatPoolShortLabel(daily, [daily])).toBe('Gemini Daily')
+    expect(formatPoolShortLabel(daily, [daily])).toBe('Daily')
   })
 
-  it('shows the group alone for an unknown window with no window name', () => {
+  it('does not invent a label for an unknown primary window with no name', () => {
     const { windowName: _windowName, ...unnamed } = pool('Gemini Models', 0)
-    expect(formatPoolShortLabel(unnamed, [unnamed])).toBe('Gemini')
+    expect(formatPoolShortLabel(unnamed, [unnamed])).toBe('')
     expect(formatPoolWindowLabel(unnamed)).toBe('')
   })
 
@@ -100,14 +100,18 @@ describe('pool labels', () => {
   it('passes a group name the rule does not match through', () => {
     const buckets = [pool('Gemini Models', WEEK), pool('Gemini models (Preview)', WEEK)]
     expect(buckets.map((b) => formatPoolShortLabel(b, buckets))).toEqual([
-      'Gemini wk',
+      'wk',
       'Gemini models (Preview) wk'
     ])
   })
 
-  it('keeps the full name for a pool with no group (an old host)', () => {
+  it('shortens known pools from an old host without group fields', () => {
     const legacy = pool(undefined, WEEK, { name: 'Gemini Models · Weekly Limit Remaining' })
-    expect(formatPoolShortLabel(legacy, [legacy])).toBe('Gemini Models · Weekly Limit Remaining')
+    expect(formatPoolShortLabel(legacy, [legacy])).toBe('wk')
+    const other = { ...legacy, name: 'Claude and GPT models · Weekly Limit Remaining' }
+    expect(formatPoolShortLabel(other, [legacy, other])).toBe('Other Models wk')
+    const daily = { ...legacy, name: 'Gemini Models · Daily Limit Remaining', windowMinutes: 0 }
+    expect(formatPoolShortLabel(daily, [daily])).toBe('Daily')
   })
 
   it('leaves Gemini CLI’s 60-minute "Pro" pool unchanged', () => {
@@ -167,7 +171,7 @@ describe('formatStatusBarSectionLabel', () => {
 
     const tightest = getTightestUsageSection(p)
     expect(tightest?.window).toBe(buckets[1])
-    expect(formatStatusBarSectionLabel(p, tightest!)).toBe('Gemini wk')
+    expect(formatStatusBarSectionLabel(p, tightest!)).toBe('wk')
   })
 
   it('returns the section label when the window is not a grouped bucket', () => {
