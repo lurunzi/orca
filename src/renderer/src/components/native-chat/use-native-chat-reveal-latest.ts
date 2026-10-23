@@ -23,11 +23,13 @@ export function useNativeChatInteractiveSendReveal(
   return useMemo<NativeChatInteractiveSend>(
     () => ({
       // Only what is written moves the reader: no terminal, or an empty answer, writes nothing.
-      sendAnswer: (prompt, selections, onDeliverySettled) => {
+      sendAnswer: (prompt, selections, onDeliverySettled, delivery) => {
         if (targetPtyId && hasAskAnswer(prompt, selections)) {
           revealLatest()
         }
-        return sendAnswer(prompt, selections, onDeliverySettled)
+        return delivery
+          ? sendAnswer(prompt, selections, onDeliverySettled, delivery)
+          : sendAnswer(prompt, selections, onDeliverySettled)
       },
       sendMessage: (text) => {
         const sent = sendMessage(text)

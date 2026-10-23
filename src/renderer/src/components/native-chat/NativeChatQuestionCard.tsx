@@ -21,7 +21,7 @@ export type NativeChatQuestionCardProps = {
   onAnswer: (selections: AskAnswerSelection[]) => void
   allowOther?: boolean | readonly boolean[]
   freeTextInputs?: readonly (AgentJournalFreeTextInput | undefined)[]
-  /** Dismiss the prompt (sends Escape to the agent). */
+  /** Dismiss the prompt using its provider's cancellation policy. */
   onCancel: () => void
   /** Fold the card to a strip and give the input back, writing nothing; Escape does too. */
   onCollapse?: () => void
@@ -268,7 +268,7 @@ export function NativeChatQuestionCard({
           <div className="flex items-start gap-2 px-3.5 py-2.5">
             <p
               data-testid="native-chat-question-card-title"
-              className="min-w-0 flex-1 break-words text-sm font-semibold text-foreground"
+              className="max-h-40 min-w-0 flex-1 overflow-y-auto break-words text-sm font-semibold text-foreground scrollbar-sleek"
             >
               {q.question}
             </p>

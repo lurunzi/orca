@@ -61,7 +61,13 @@ export function chatApprovalFromJournal(body: AgentJournalApprovalItem): ChatApp
 
 export type InteractivePromptCard =
   /** `async`: answered by an ordinary chat message, never selector keystrokes. */
-  | { kind: 'question'; prompt: AskPrompt; async?: boolean }
+  | {
+      kind: 'question'
+      prompt: AskPrompt
+      async?: boolean
+      replyAsMessage?: boolean
+      sourceMessageId?: string
+    }
   | { kind: 'approval'; approval: ChatApproval }
   | null
 

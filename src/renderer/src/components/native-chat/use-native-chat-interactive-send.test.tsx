@@ -91,6 +91,41 @@ describe('useNativeChatInteractiveSend', () => {
     expect(mocks.sendNativeChatMessage).not.toHaveBeenCalled()
   })
 
+  it('explicit prose delivery bypasses selector keys and question-state inference', () => {
+    const { result } = renderHook(() => useNativeChatInteractiveSend(PANE_KEY, 'pty-1', 'codex'))
+    act(() =>
+      result.current.sendAnswer(PROMPT, [{ indices: [], other: 'tools' }], undefined, 'message')
+    )
+    expect(mocks.sendNativeChatMessage).toHaveBeenCalledWith('pty-1', 'tools', {
+      onDeliverySettled: expect.any(Function)
+    })
+    mocks.sendNativeChatMessage.mock.calls[0]?.[2]?.onDeliverySettled(true)
+    expect(mocks.sendNativeChatAskAnswer).not.toHaveBeenCalled()
+    expect(mocks.inferQuestionAnswered).not.toHaveBeenCalled()
+  })
+
+  it('confirms Antigravity prose replies through the existing composer reader', () => {
+    const readScreen = vi.fn(() => '')
+    const onSettled = vi.fn()
+    const { result } = renderHook(() =>
+      useNativeChatInteractiveSend(PANE_KEY, 'pty-1', 'antigravity', readScreen)
+    )
+    act(() =>
+      result.current.sendAnswer(PROMPT, [{ indices: [], other: 'tools' }], onSettled, 'message')
+    )
+    const options = mocks.sendNativeChatMessage.mock.calls[0]?.[2]
+    expect(options.submitConfirmation).toEqual({
+      submitDelayMs: expect.any(Number),
+      composerHoldsDraft: expect.any(Function)
+    })
+    options.submitConfirmation.composerHoldsDraft()
+    expect(readScreen).toHaveBeenCalledOnce()
+    expect(onSettled).not.toHaveBeenCalled()
+    options.onDeliverySettled(false)
+    expect(onSettled).toHaveBeenCalledExactlyOnceWith(false)
+    expect(mocks.sendNativeChatAskAnswer).not.toHaveBeenCalled()
+  })
+
   it('routes a Claude answer through the option-number keystroke path', () => {
     const { result } = renderHook(() => useNativeChatInteractiveSend(PANE_KEY, 'pty-1', 'claude'))
 
