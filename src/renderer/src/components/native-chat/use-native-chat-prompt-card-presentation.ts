@@ -46,6 +46,7 @@ export function useNativeChatPromptCardPresentation({
     return card && entry?.interactivePrompt ? (entry.stateStartedAt ?? null) : null
   })
   const content = nativeChatCardDismissKey(card)
+  const stableOccurrence = card?.kind === 'question' && card.sourceMessageId !== undefined
   const promptKey =
     content === null || card?.kind !== 'approval' ? content : `${content}@${startedAt}`
   const scopeKey = JSON.stringify([paneKey, targetPtyId])
@@ -73,11 +74,11 @@ export function useNativeChatPromptCardPresentation({
   // Why: with no wait start to tell occurrences apart, an unobserved stretch may hide a new one.
   useLayoutEffect(
     () => () => {
-      if (dismissals.read(paneKey)?.startedAt === null) {
+      if (!stableOccurrence && dismissals.read(paneKey)?.startedAt === null) {
         dismissals.forget(paneKey)
       }
     },
-    [paneKey]
+    [paneKey, stableOccurrence]
   )
   const record = useCallback(
     (state: NativeChatPromptDismissal['state']) => {

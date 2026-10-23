@@ -21,6 +21,7 @@ import {
   type NativeChatSendHandle
 } from './native-chat-runtime-send'
 import { inferQuestionAnsweredFromCurrentStatus } from '../terminal-pane/agent-question-answered-inference'
+import { withAntigravitySubmitConfirmation } from './antigravity-submit-confirmation'
 
 // ESC is the agent-TUI interrupt/cancel key over the PTY (matches how the
 // composer forwards Escape). Used to cancel a question or deny an approval.
@@ -32,7 +33,8 @@ export type NativeChatInteractiveSend = {
   sendAnswer: (
     prompt: AskPrompt,
     selections: AskAnswerSelection[],
-    onDeliverySettled?: (delivered: boolean) => void
+    onDeliverySettled?: (delivered: boolean) => void,
+    delivery?: 'message'
   ) => { settleAfterMs: number }
   /** Reply to a non-blocking (async) question as an ordinary chat message.
    *  False when there is no PTY to write to. */
@@ -61,7 +63,8 @@ export type NativeChatInteractiveSend = {
 export function useNativeChatInteractiveSend(
   paneKey: string,
   targetPtyId: string | null,
-  agent: AgentType
+  agent: AgentType,
+  readTerminalScreen?: () => string | null
 ): NativeChatInteractiveSend {
   // The in-flight answer's cancel handle; cleared on a new send, on Stop, and on
   // unmount so a detached setTimeout chain can't keep writing PTY bytes after
@@ -129,7 +132,8 @@ export function useNativeChatInteractiveSend(
     (
       prompt: AskPrompt,
       selections: AskAnswerSelection[],
-      onDeliverySettled?: (delivered: boolean) => void
+      onDeliverySettled?: (delivered: boolean) => void,
+      delivery?: 'message'
     ): { settleAfterMs: number } => {
       if (!targetPtyId || !hasAskAnswer(prompt, selections)) {
         return { settleAfterMs: 0 }
@@ -137,7 +141,7 @@ export function useNativeChatInteractiveSend(
       // Cancel any prior in-flight answer before starting a new one.
       cancelInFlight()
       // Selector TUIs ignore pasted labels; Codex uses a different key sequence.
-      const stepsAnswer = shouldStepNativeChatAskAnswer(agent)
+      const stepsAnswer = delivery !== 'message' && shouldStepNativeChatAskAnswer(agent)
       const buildsCodexAnswer = resolveNativeChatTranscriptAgent(agent) === 'codex'
       // Why: pin the answered question's baseline BEFORE delivery. A late settle
       // callback (paced writes + remote acceptance can span seconds on SSH) must
@@ -168,6 +172,13 @@ export function useNativeChatInteractiveSend(
         }
         onDeliverySettled?.(delivered)
       }
+      const answerText = formatAskAnswer(prompt, selections)
+      const messageOptions =
+        delivery === 'message'
+          ? withAntigravitySubmitConfirmation(agent, answerText, readTerminalScreen, {
+              onDeliverySettled: onSettled
+            })
+          : { onDeliverySettled: onSettled }
       const handle: NativeChatSendHandle = stepsAnswer
         ? sendNativeChatAskAnswer(
             targetPtyId,
@@ -176,9 +187,7 @@ export function useNativeChatInteractiveSend(
               : buildAskAnswerKeys(prompt, selections),
             onSettled
           )
-        : sendNativeChatMessage(targetPtyId, formatAskAnswer(prompt, selections), {
-            onDeliverySettled: onSettled
-          })
+        : sendNativeChatMessage(targetPtyId, answerText, messageOptions)
       // Why: native-chat answer writes bypass xterm.onData. Infer only after
       // every paced selector write has fired, so an early digit in a multi-step
       // answer cannot dismiss the wait or cancel the remaining writes.
@@ -188,7 +197,7 @@ export function useNativeChatInteractiveSend(
         settleAfterMs: handle.settleAfterMs
       }
     },
-    [paneKey, targetPtyId, agent, cancelInFlight]
+    [paneKey, targetPtyId, agent, cancelInFlight, readTerminalScreen]
   )
 
   const cancelAsk = useCallback(() => {

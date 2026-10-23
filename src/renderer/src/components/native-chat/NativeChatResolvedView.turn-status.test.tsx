@@ -152,6 +152,37 @@ afterEach(() => {
 // UI: the clock bar under the prompt, the live line at the tail, and the row a
 // question uses when the agent waits on the reader.
 describe('NativeChatResolvedView turn status', () => {
+  it('replaces the terminal-preview fallback with an answerable Antigravity prose question', () => {
+    const question = '请告诉我脚本放在哪个仓库。'
+    retained.session = {
+      ...transcript('ready', true, [
+        userTurn,
+        {
+          id: 'prose-question',
+          role: 'assistant',
+          timestamp: 2,
+          source: 'transcript',
+          blocks: [
+            {
+              type: 'text',
+              text: `| 方案 | 说明 |\n| --- | --- |\n| 离线整包 | 固定版本 |\n\n${question}`
+            }
+          ]
+        }
+      ]),
+      agent: 'antigravity'
+    }
+    setStatus({ state: 'waiting' })
+    patchStatus({ agentType: 'antigravity' })
+    const readScreen = vi.fn(() => 'terminal preview')
+    renderPane(vi.fn(), 'antigravity', readScreen)
+    expect(screen.getByRole('group', { name: question })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Awaiting user input' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Switch to Terminal Agent/ })).toBeNull()
+    expect(readScreen).not.toHaveBeenCalled()
+  })
+
   it.each(['waiting', 'blocked'] as const)(
     'opens the owning terminal for an unshown %s interaction',
     (state) => {

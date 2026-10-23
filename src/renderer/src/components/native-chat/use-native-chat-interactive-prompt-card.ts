@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { useAppStore } from '../../store'
 import { resolveNativeChatAsk } from '../../../../shared/native-chat-ask'
 import { extractPendingAsyncAsk } from '../../../../shared/native-chat-async-ask'
-import type { NativeChatMessage } from '../../../../shared/native-chat-types'
+import { extractAntigravityProseQuestion } from '../../../../shared/native-chat-antigravity-prose-question'
+import type { AgentType, NativeChatMessage } from '../../../../shared/native-chat-types'
 import {
   parseInteractivePrompt,
   type InteractivePromptCard
@@ -17,12 +18,16 @@ import {
 export function useNativeChatInteractivePromptCard({
   paneKey,
   messages,
-  transcriptSettled
+  transcriptSettled,
+  agent: paneAgent,
+  awaitingInput = false
 }: {
   paneKey: string
   /** Pass the command-boundary-trimmed messages so an ask abandoned via `/clear` stays gone. */
   messages: readonly NativeChatMessage[]
   transcriptSettled: boolean
+  agent?: AgentType
+  awaitingInput?: boolean
 }): InteractivePromptCard {
   const interactivePrompt = useAppStore(
     (s) => s.agentStatusByPaneKey[paneKey]?.interactivePrompt ?? null
@@ -34,7 +39,8 @@ export function useNativeChatInteractivePromptCard({
     const entry = s.agentStatusByPaneKey[paneKey]
     return entry?.interactivePrompt ? (entry.toolName ?? null) : null
   })
-  const agent = useAppStore((s) => s.agentStatusByPaneKey[paneKey]?.agentType)
+  const statusAgent = useAppStore((s) => s.agentStatusByPaneKey[paneKey]?.agentType)
+  const agent = paneAgent ?? statusAgent
   return useMemo(() => {
     const statusCard = parseInteractivePrompt(
       interactivePrompt,
@@ -54,6 +60,15 @@ export function useNativeChatInteractivePromptCard({
     }
     // A blocking question wins; an async one is answered by a chat message instead.
     const asyncPrompt = transcriptSettled ? extractPendingAsyncAsk(messages) : null
-    return asyncPrompt ? { kind: 'question' as const, prompt: asyncPrompt, async: true } : null
-  }, [interactivePrompt, interactiveToolName, agent, messages, transcriptSettled])
+    if (asyncPrompt) {
+      return { kind: 'question' as const, prompt: asyncPrompt, async: true }
+    }
+    const proseQuestion =
+      agent === 'antigravity' && awaitingInput && transcriptSettled && !interactivePrompt
+        ? extractAntigravityProseQuestion(messages)
+        : null
+    return proseQuestion
+      ? { kind: 'question' as const, ...proseQuestion, replyAsMessage: true }
+      : null
+  }, [interactivePrompt, interactiveToolName, agent, awaitingInput, messages, transcriptSettled])
 }

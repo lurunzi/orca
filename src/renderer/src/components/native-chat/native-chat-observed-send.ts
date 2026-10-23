@@ -6,12 +6,22 @@ import {
   clearUnsubmittedAgentInput,
   type NativeChatSendOptions
 } from './native-chat-input-clear'
+import {
+  confirmNativeChatSubmit,
+  submitConfirmDurationMs,
+  type NativeChatSubmitConfirmation
+} from './native-chat-submit-confirmation'
+import { NATIVE_CHAT_SUBMIT } from './native-chat-send'
 
 /** Observe write refusals without mistaking transport success for provider acceptance. */
 export function sendNativeChatObservedWrites(
   ptyId: string,
   writes: readonly { data: string; delayBeforeMs: number }[],
-  options: NativeChatSendOptions & { stopOnUnconfirmed?: boolean; settleDelayMs?: number }
+  options: NativeChatSendOptions & {
+    stopOnUnconfirmed?: boolean
+    settleDelayMs?: number
+    submitConfirmation?: NativeChatSubmitConfirmation
+  }
 ) {
   let lineTouched = false
   // Why: only an answer that dismisses its card needs the provider's acknowledgment.
@@ -22,8 +32,9 @@ export function sendNativeChatObservedWrites(
     ptyId,
     writes.reduce((total, write) => total + write.delayBeforeMs, 0) +
       clearConfirmDurationMs(options) +
+      submitConfirmDurationMs(options) +
       (options.settleDelayMs ?? 0),
-    ({ isCancelled, delay, markSubmitted }) => {
+    ({ isCancelled, delay, markSubmitted, markSubmitWritten }) => {
       let reportedUnconfirmed = false
       let acknowledged = true
       const writeAt = (index: number): void => {
@@ -32,11 +43,21 @@ export function sendNativeChatObservedWrites(
         }
         const write = writes[index]
         if (!write) {
-          const finish = (): void => {
-            options.onDeliverySettled?.(acknowledged)
+          const finish = (confirmed = true): void => {
+            if (isCancelled()) {
+              return
+            }
+            options.onDeliverySettled?.(acknowledged && confirmed)
             markSubmitted()
           }
-          if (options.settleDelayMs) {
+          if (options.submitConfirmation) {
+            markSubmitWritten()
+            confirmNativeChatSubmit(options.submitConfirmation, { delay, finish }, () =>
+              isCancelled()
+                ? false
+                : sendRuntimePtyInputVerified(ptyId, NATIVE_CHAT_SUBMIT, 'driving', writeOptions)
+            )
+          } else if (options.settleDelayMs) {
             delay(options.settleDelayMs, finish)
           } else {
             finish()

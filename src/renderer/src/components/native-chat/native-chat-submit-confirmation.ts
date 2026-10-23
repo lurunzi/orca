@@ -51,6 +51,22 @@ export function writeNativeChatSubmit(
   }
   // Past this point a cancel must not Ctrl+U: the prompt may already be running.
   ctx.markSubmitWritten()
+  confirmNativeChatSubmit(
+    confirmation,
+    { delay: ctx.delay, finish: () => ctx.markSubmitted() },
+    () => {
+      sendRuntimePtyInput(ptyId, NATIVE_CHAT_SUBMIT, 'driving')
+      return true
+    }
+  )
+}
+
+/** Share the observed-draft retry with reply cards that also require write acknowledgments. */
+export function confirmNativeChatSubmit(
+  confirmation: NativeChatSubmitConfirmation,
+  ctx: { delay: (ms: number, fn: () => void) => void; finish: (confirmed: boolean) => void },
+  writeSubmit: () => boolean | Promise<boolean>
+): void {
   let retries = 0
   const check = (): void => {
     let holdsDraft = false
@@ -58,14 +74,27 @@ export function writeNativeChatSubmit(
       holdsDraft = confirmation.composerHoldsDraft()
     } catch {
       // An unreadable screen is unconfirmed; never press Enter blind.
+      ctx.finish(false)
+      return
     }
     if (!holdsDraft || retries >= NATIVE_CHAT_SUBMIT_RETRY_MAX) {
-      ctx.markSubmitted()
+      ctx.finish(!holdsDraft)
       return
     }
     retries += 1
-    sendRuntimePtyInput(ptyId, NATIVE_CHAT_SUBMIT, 'driving')
-    ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
+    const next = (accepted: boolean): void => {
+      if (accepted) {
+        ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
+      } else {
+        ctx.finish(false)
+      }
+    }
+    const accepted = writeSubmit()
+    if (typeof accepted === 'boolean') {
+      next(accepted)
+    } else {
+      void accepted.then(next, () => ctx.finish(false))
+    }
   }
   ctx.delay(NATIVE_CHAT_SUBMIT_CONFIRM_MS, check)
 }

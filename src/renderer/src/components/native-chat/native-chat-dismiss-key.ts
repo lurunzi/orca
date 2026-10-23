@@ -8,7 +8,8 @@ export function nativeChatCardDismissKey(card: InteractivePromptCard): string | 
     return null
   }
   if (card.kind === 'question') {
-    return nativeChatAskDismissKey(card.prompt)
+    const content = nativeChatAskDismissKey(card.prompt)
+    return card.sourceMessageId ? `${card.sourceMessageId}:${content}` : content
   }
   return `approval:${card.approval.title}:${card.approval.detail ?? ''}`
 }

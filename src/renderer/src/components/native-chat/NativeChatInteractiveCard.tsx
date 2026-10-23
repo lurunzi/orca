@@ -84,7 +84,7 @@ export function NativeChatInteractiveCard({
           }
           submittingRef.current = true
           const attempt = ++attemptRef.current
-          const result = sendAnswer(card.prompt, selections, (delivered) => {
+          const onSettled = (delivered: boolean): void => {
             if (!activeRef.current || attempt !== attemptRef.current) {
               return
             }
@@ -92,7 +92,10 @@ export function NativeChatInteractiveCard({
             if (delivered) {
               onDismiss()
             }
-          })
+          }
+          const result = card.replyAsMessage
+            ? sendAnswer(card.prompt, selections, onSettled, 'message')
+            : sendAnswer(card.prompt, selections, onSettled)
           if (result.settleAfterMs <= 0) {
             // Keep the actionable card visible when its PTY disappeared between
             // render and submit; the next live target update can make it retryable.
@@ -104,6 +107,12 @@ export function NativeChatInteractiveCard({
         onCollapse={onCollapse}
         shouldFocus={shouldFocus}
         onCancel={() => {
+          if (card.replyAsMessage) {
+            if (!submittingRef.current) {
+              onDismiss()
+            }
+            return
+          }
           if (cancellingRef.current) {
             return
           }
