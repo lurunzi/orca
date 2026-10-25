@@ -49,7 +49,7 @@ it('allows a running Codex chat to pick its next model and effort through the re
       <NativeChatSessionOptionPickers
         surface={{
           getSnapshot: () => snapshot,
-          refresh,
+          demandModelCatalog: refresh,
           setOption,
           invokeAction: vi.fn(),
           subscribe: () => () => {}

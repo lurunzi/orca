@@ -3,7 +3,6 @@ import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-labe
 import type { NativeChatComposerHandle } from './native-chat-composer-types'
 import type { NativeChatStructuredViewProps } from './native-chat-view-types'
 import { NativeChatInboxButton } from './NativeChatInboxButton'
-import { useNativeChatFileLinkContext } from './use-native-chat-file-link-context'
 import { useNativeChatInbox } from './use-native-chat-inbox'
 import { nativeChatInboxScopeKey } from './native-chat-inbox-marks'
 import type { NativeChatJumpRequest } from './use-native-chat-jump-request'
@@ -18,9 +17,9 @@ export type StructuredNativeChatInboxController = Pick<
 export function useStructuredNativeChatInbox(
   props: Pick<NativeChatStructuredViewProps, 'agent' | 'sessionId' | 'tabId' | 'target'>,
   controller: StructuredNativeChatInboxController,
-  composerRef: RefObject<NativeChatComposerHandle | null>
+  composerRef: RefObject<NativeChatComposerHandle | null>,
+  root: string | null
 ): { button: React.JSX.Element | null; jumpRequest: NativeChatJumpRequest | null } {
-  const fileLinkContext = useNativeChatFileLinkContext(props.tabId)
   const key = nativeChatInboxScopeKey(props.target, props.sessionId, controller.epoch)
   const [jump, setJump] = useState<{ key: string; request: NativeChatJumpRequest } | null>(null)
   const jumpToMessage = useCallback(
@@ -42,7 +41,7 @@ export function useStructuredNativeChatInbox(
     journalItems: controller.journalItems,
     hasOlder: controller.hasOlder,
     isWorking: controller.isWorking,
-    root: fileLinkContext?.worktreePath ?? null,
+    root,
     send: (text) => controller.send(text, []) !== false,
     insertIntoComposer: (text) => {
       const composer = composerRef.current

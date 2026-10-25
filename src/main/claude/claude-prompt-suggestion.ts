@@ -1,10 +1,13 @@
 import type { ClaudePromptSuggestionMemory } from './claude-prompt-suggestion-store'
 import type { ClaudeSession, ClaudeStructuredSessionEvent } from './claude-structured-session-state'
 
+const pendingWrites = new WeakMap<ClaudeSession, object>()
+
 /** `retire` drops the saved copy too; an ended session keeps it for the next resume. */
 export function clearClaudePromptSuggestion(session: ClaudeSession, retire = true): void {
   session.promptSuggestionResultSequence = undefined
   if (retire) {
+    pendingWrites.delete(session)
     session.promptSuggestionMemory?.forget()
   }
   if (session.promptSuggestion) {
@@ -59,7 +62,22 @@ export function observeClaudePromptSuggestion(
     message.suggestion !== session.promptSuggestion
   ) {
     session.promptSuggestion = message.suggestion
-    session.promptSuggestionMemory?.save(message.suggestion, session.turnEndLeafUuid)
+    const completed = session.resumePointWrite
+    if (completed) {
+      const write = {}
+      const suggestion = message.suggestion
+      pendingWrites.set(session, write)
+      // The journal must accept this turn's output before its suggestion can survive a restart.
+      void completed.settled.then(() => {
+        if (pendingWrites.get(session) !== write) {
+          return
+        }
+        pendingWrites.delete(session)
+        if (session.turnEndLeafUuid === completed.leafUuid) {
+          session.promptSuggestionMemory?.save(suggestion, completed.leafUuid)
+        }
+      })
+    }
     session.events?.publish()
   }
 }

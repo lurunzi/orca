@@ -12,7 +12,10 @@ import {
   resetNativeChatPtySendQueuesForTests,
   sendNativeChatMessage
 } from './native-chat-runtime-send'
-import { buildNativeChatPasteBytes, NATIVE_CHAT_SUBMIT } from './native-chat-send'
+import {
+  buildNativeChatPasteBytes,
+  NATIVE_CHAT_SUBMIT
+} from '../../../../shared/native-chat-paste-bytes'
 import {
   NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_RETRY_MAX

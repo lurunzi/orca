@@ -41,6 +41,7 @@ import {
 import type { RpcContext } from '../core'
 import type { AgentLaunchParams } from '../../../../shared/rpc-contract/agent-launch-params'
 import { agentLaunchOperationCallerKey } from './agent-launch-replay'
+import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../shared/layout-owner-switch'
 
 /** Whether a launch may move the host window at all: a paired device's launch moves only its own
  *  view, as its browser tabs do. The tab shown first and the spawn's own reveal both ask this. */
@@ -148,8 +149,11 @@ export async function publishAgentLaunchTabEarly(
   if (
     params.target.kind !== 'existing' ||
     params.reuseTerminal ||
+    // An explicit chat's tab is the session's; a refusal is answered after admission, not here.
+    params.surface === 'chat' ||
     !readsEarlyLaunchTab(context) ||
-    !runtime.canPublishAgentLaunchTab() ||
+    // Switch point: main writes the tab of a workspace it owns itself, window or not.
+    !(ORCA_LAYOUT_OWNER_IS_MAIN || runtime.canPublishAgentLaunchTab()) ||
     // A running pane is attached to, never launched into; this launch is refused and must not
     // touch the pane another launch's agent is running in.
     (params.paneKey !== undefined && runtime.hasLiveTerminalForPaneKey(params.paneKey))
@@ -171,7 +175,8 @@ export async function publishAgentLaunchTabEarly(
       workspacePath: workspace.path,
       ...(params.cwd ? { cwd: params.cwd } : {})
     },
-    settings
+    settings,
+    ...(params.surface ? { surface: params.surface } : {})
   })
   // A chat's tab is the session's; it appears when the session is created.
   if (preflight.mode !== 'terminal') {
@@ -186,7 +191,7 @@ export async function publishAgentLaunchTabEarly(
   const running = trackRunningAgentLaunchPane({ worktreeId: workspace.id, paneKey })
   let publishing: ReturnType<typeof runtime.publishAgentLaunchTab>
   try {
-    publishing = runtime.publishAgentLaunchTab({
+    const request: Parameters<typeof runtime.publishAgentLaunchTab>[0] = {
       worktreeId: workspace.id,
       tabId: pane.tabId,
       leafId: pane.leafId,
@@ -202,7 +207,11 @@ export async function publishAgentLaunchTabEarly(
       viewer: agentLaunchTabViewerRule(context, params.presentation),
       ...(params.prompt?.text ? { prompt: params.prompt.text } : {}),
       ...(params.operationId ? { operationId: params.operationId } : {})
-    })
+    }
+    // Switch point: a workspace main owns gets its tab in main's layout; any other, the window's.
+    publishing =
+      (ORCA_LAYOUT_OWNER_IS_MAIN ? runtime.publishAgentLaunchTabInMainLayout(request) : null) ??
+      runtime.publishAgentLaunchTab(request)
   } catch (error) {
     running.finish({ kind: 'proceed' })
     throw error
@@ -218,11 +227,15 @@ export async function publishAgentLaunchTabEarly(
     agentBound: () => running.agentBound(),
     paneIsLive: () => runtime.hasLiveTerminalForPaneKey(paneKey),
     closedByUser: () => running.closedByUser(),
-    report: (verdict) =>
-      runtime.reportAgentLaunchPaneVerdict(
-        { worktreeId: workspace.id, tabId: pane.tabId, leafId: pane.leafId },
-        verdict
-      )
+    report: (verdict) => {
+      const address = { worktreeId: workspace.id, tabId: pane.tabId, leafId: pane.leafId }
+      // Switch point: main takes a withdrawn pane of a workspace it owns back itself; the window
+      // still hears the verdict, to drop what it kept for the launch.
+      if (ORCA_LAYOUT_OWNER_IS_MAIN && verdict.kind === 'withdrawn') {
+        runtime.withdrawAgentLaunchPaneInMainLayout(address)
+      }
+      runtime.reportAgentLaunchPaneVerdict(address, verdict)
+    }
   })
 }
 

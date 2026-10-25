@@ -234,6 +234,33 @@ it('keeps the seeded permission mode beside explicit picks on an acquired create
   )
 })
 
+it.each(['true', 'false'] as const)(
+  'checks Claude Fast=%s before creating an at-rest chat',
+  async (fastMode) => {
+    const input = structuredAgentSessionCreateParams({
+      sessionId: SESSION,
+      worktree: 'id:workspace-1',
+      agent: 'claude',
+      randomUuid: () => '00000000-0000-0000-0000-0000000000fa',
+      now: NOW,
+      options: { fastMode }
+    })
+    expect(await call('agentSession.create', input, capable)).toMatchObject({
+      ok: true,
+      result:
+        fastMode === 'true'
+          ? { ok: false, refusal: { details: { reason: 'optionRejected' } } }
+          : { ok: true }
+    })
+    expect(rig.adapter.acquire).not.toHaveBeenCalled()
+    if (fastMode === 'true') {
+      expect(rig.store.getRecord(SESSION)).toBeNull()
+    } else {
+      expect(rig.store.getRecord(SESSION)?.options?.fastMode).toBe('false')
+    }
+  }
+)
+
 it('rejects an explicit option the resting agent would reject before founding', async () => {
   expect(
     await call('agentSession.create', params({ unknownOption: 'yes' }), capable)

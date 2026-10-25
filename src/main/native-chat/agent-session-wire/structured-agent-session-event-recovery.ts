@@ -4,7 +4,6 @@ import {
 } from '../../../shared/agent-session-failure'
 import type { StructuredAgentSessionLifecycleEvent } from './structured-agent-session-adapter'
 import { holdUnsentSends } from '../agent-session-journal/journal-unsent-send-hold'
-import { structuredAgentSessionHostInstance } from './structured-agent-session-queued-pause'
 import { stopAgentSessionProviderRoot } from './structured-agent-session-provider-exit-proof'
 import type {
   StructuredAgentSessionHostDeps,
@@ -47,7 +46,7 @@ export class StructuredAgentSessionEventRecovery {
         sessionId: string,
         child: StructuredAgentSessionProviderChildIdentity,
         error: unknown,
-        openMs?: number
+        openMs: number
       ) => Promise<void>
       trackOpen: <T>(open: Promise<T>) => Promise<T>
     }
@@ -72,12 +71,7 @@ export class StructuredAgentSessionEventRecovery {
       holdUnrunSends: async (sessionId, fence, cause) => {
         const journal = this.context.sessions.get(sessionId)?.journal
         if (journal) {
-          await holdUnsentSends(journal, {
-            fence,
-            hostInstance: structuredAgentSessionHostInstance(),
-            hold: { cause },
-            unrun: true
-          })
+          await holdUnsentSends(journal, { fence, hold: { cause }, unrun: true })
         }
       },
       route: {
@@ -89,7 +83,6 @@ export class StructuredAgentSessionEventRecovery {
     }
   }
 
-  /** The one exit handler, for a caller inside the session's serialize that proved the exit. */
   endExitedChildUnderSerialize = (
     sessionId: string,
     child: StructuredAgentSessionProviderChild,
@@ -98,11 +91,16 @@ export class StructuredAgentSessionEventRecovery {
     endExitedStructuredAgentSessionChildUnderSerialize(this.exitContext, sessionId, child, exit)
 
   recoverAfterSinkFailure(sessionId: string, error: unknown): void {
+    const child = this.context.sessions.get(sessionId)?.child
+    if (!child) {
+      return
+    }
     void this.restartProviderChild(
       sessionId,
       `journal sink failure: ${error instanceof Error ? error.message : String(error)}`,
       // Orca stopped the provider because its own journal failed.
-      agentSessionFailureFact('hostFault')
+      agentSessionFailureFact('hostFault'),
+      { child, heldSends: new Set(child.heldSends?.()) }
     )
   }
 
@@ -110,11 +108,13 @@ export class StructuredAgentSessionEventRecovery {
    * Stops and ends the provider child; the next send re-acquires it, which re-reads the launch
    * environment. Resolves true when a child was stopped. Callers wanting no visible
    * interruption must gate on an idle session: a running turn is settled as interrupted.
+   * `observed` pins the child and the sends it held when the restart was decided.
    */
   restartProviderChild(
     sessionId: string,
     reason: string,
-    failure?: SubmissionRejectionFact
+    failure?: SubmissionRejectionFact,
+    observed?: { child: StructuredAgentSessionProviderChild; heldSends: ReadonlySet<string> }
   ): Promise<boolean> {
     if (this.restarting.has(sessionId)) {
       return Promise.resolve(false)
@@ -125,13 +125,18 @@ export class StructuredAgentSessionEventRecovery {
         const child = this.context.sessions.get(sessionId)?.child
         const stop =
           this.context.deps.adapter.forceCloseSession ?? this.context.deps.adapter.closeSession
-        if (!child || !stop || !(await stopAgentSessionProviderRoot(() => stop(sessionId)))) {
+        if (
+          !child ||
+          (observed && child !== observed.child) ||
+          !stop ||
+          !(await stopAgentSessionProviderRoot(() => stop(sessionId)))
+        ) {
           return false
         }
-        // Ended in the same step as the stop, so no report of that close can end it first as a
-        // quiet rest.
+        // End in this step so later close reports cannot misclassify this shutdown as quiet rest.
         await this.endExitedChildUnderSerialize(sessionId, child, {
           expected: false,
+          ...(observed ? { heldSends: observed.heldSends } : {}),
           reason,
           ...(failure ? { failure } : {})
         })
@@ -147,9 +152,7 @@ export class StructuredAgentSessionEventRecovery {
       .finally(() => this.restarting.delete(sessionId))
   }
 
-  /** Every child's exit ends its record here, expected or not. An exit is settled and shown;
-   *  nothing restarts the child. The next send does, through the delivery loop, which also owns any
-   *  message still queued. */
+  /** Settle/report exits without automatic restart; next-send delivery owns queued work and startup. */
   async handle(event: StructuredAgentSessionLifecycleEvent): Promise<void> {
     if (event.type === 'options-reported') {
       return settleStructuredAgentSessionOptionsReported(this.context, event)

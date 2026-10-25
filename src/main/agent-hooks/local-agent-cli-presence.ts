@@ -147,7 +147,6 @@ async function maybeHydrateShellPath(options: DetectOptions): Promise<void> {
   }
 }
 
-/** Merges the login shell's PATH into this process once (cached), as CLI detection does. */
 export async function hydrateAgentCliShellPath(
   hydratePath: () => Promise<HydrationResult> = hydrateShellPath
 ): Promise<void> {
@@ -157,7 +156,6 @@ export async function hydrateAgentCliShellPath(
       mergePathSegments(result.segments)
     }
   } catch (error) {
-    // Detection failure must never permit config mutation.
     console.warn('[agent-hooks] Shell PATH hydration failed; using inherited PATH:', error)
   }
 }

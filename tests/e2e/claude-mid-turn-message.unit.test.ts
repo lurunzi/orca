@@ -75,9 +75,7 @@ describe('Claude human messages absorbed into a running turn', () => {
     { type: 'task_notification' },
     { commandMode: 'bash' },
     { origin: { kind: 'agent' } },
-    { origin: undefined },
     { humanTurn: false },
-    { humanTurn: undefined },
     { prompt: '' },
     { prompt: '  ' },
     { prompt: null }
@@ -88,6 +86,21 @@ describe('Claude human messages absorbed into a running turn', () => {
     })
     expect(decodeClaudeTranscriptLine(line, 'fallback')).toBeNull()
   })
+
+  it.each([{ origin: undefined }, { humanTurn: undefined }])(
+    'decodes legacy queued prompts with optional metadata absent: %j',
+    (patch) => {
+      const line = JSON.stringify({
+        ...attachmentRecord,
+        attachment: { ...queuedCommand, ...patch }
+      })
+      expect(decodeClaudeTranscriptLine(line, 'fallback')).toMatchObject({
+        id: attachmentRecord.uuid,
+        role: 'user',
+        blocks: [{ type: 'text', text: queuedCommand.prompt }]
+      })
+    }
+  )
 
   it.each(['enqueue', 'dequeue', 'remove'])('does not treat queue %s as delivery', (operation) => {
     const line = JSON.stringify({

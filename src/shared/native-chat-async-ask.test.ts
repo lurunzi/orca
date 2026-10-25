@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  extractPendingAsyncAsk,
-  formatAsyncAskAnswer,
-  parseAsyncAskInput
-} from './native-chat-async-ask'
+import { formatAskAnswer } from './native-chat-ask-answer'
+import { CODEX_ASYNC_QUESTION_TOOL } from './codex-async-question-input'
 import { extractPendingAsk, parseAskFromToolInput } from './native-chat-ask'
 import { nativeChatAskRunSubject } from './native-chat-ask-row'
 import {
@@ -11,6 +8,9 @@ import {
   type NativeChatBlock,
   type NativeChatMessage
 } from './native-chat-types'
+
+const parseAsyncAskInput = (input: unknown) =>
+  parseAskFromToolInput(CODEX_ASYNC_QUESTION_TOOL, input)
 
 // Shape captured from a Codex rollout: arguments stay a JSON string, options are plain strings.
 const ASYNC_ARGS = JSON.stringify({
@@ -33,6 +33,7 @@ const ack = message('ack', 'tool', [{ type: 'tool-result', output: '{"accepted":
 describe('parseAsyncAskInput', () => {
   it('reads titles and string suggestions from JSON-encoded arguments', () => {
     expect(parseAsyncAskInput(ASYNC_ARGS)).toEqual({
+      replyAsMessage: true,
       questions: [
         {
           question: 'Was the backup disk moved?',
@@ -52,6 +53,7 @@ describe('parseAsyncAskInput', () => {
   it('rejects payloads without a usable title', () => {
     expect(parseAsyncAskInput('{"questions":[{"options":["a"]}]}')).toBeNull()
     expect(parseAsyncAskInput('not json')).toBeNull()
+    expect(parseAsyncAskInput({ questions: [{ title: ' ', options: ['a'] }] })).toBeNull()
   })
 
   it('is what the shared tool-input parser and ask row use for the async tool', () => {
@@ -70,9 +72,9 @@ describe('parseAsyncAskInput', () => {
   })
 })
 
-describe('extractPendingAsyncAsk', () => {
+describe('extractPendingAsk', () => {
   it('stays pending after the {"accepted":true} acknowledgement', () => {
-    expect(extractPendingAsyncAsk([asyncCall(), ack])?.questions[0]?.question).toBe(
+    expect(extractPendingAsk([asyncCall(), ack])?.questions[0]?.question).toBe(
       'Was the backup disk moved?'
     )
   })
@@ -83,7 +85,7 @@ describe('extractPendingAsyncAsk', () => {
       { type: 'text', text: 'Checking the other host meanwhile.' }
     ])
     const workResult = message('work-result', 'tool', [{ type: 'tool-result', output: 'ok' }])
-    expect(extractPendingAsyncAsk([asyncCall(), ack, work, workResult])).not.toBeNull()
+    expect(extractPendingAsk([asyncCall(), ack, work, workResult])).not.toBeNull()
   })
 
   it('is superseded by the next user turn or an interrupt', () => {
@@ -91,18 +93,18 @@ describe('extractPendingAsyncAsk', () => {
     const interrupt = message('stop', 'system', [
       { type: 'text', text: NATIVE_CHAT_INTERRUPTED_STATUS_TEXT }
     ])
-    expect(extractPendingAsyncAsk([asyncCall(), ack, user])).toBeNull()
-    expect(extractPendingAsyncAsk([asyncCall(), ack, interrupt])).toBeNull()
+    expect(extractPendingAsk([asyncCall(), ack, user])).toBeNull()
+    expect(extractPendingAsk([asyncCall(), ack, interrupt])).toBeNull()
   })
 
   it('never turns plain assistant prose into a question', () => {
     const prose = message('prose', 'assistant', [
       { type: 'text', text: 'Was the backup disk moved?\n- Moved\n- Not moved' }
     ])
-    expect(extractPendingAsyncAsk([prose])).toBeNull()
+    expect(extractPendingAsk([prose])).toBeNull()
   })
 
-  it('ignores the blocking request_user_input tool', () => {
+  it('keeps blocking request_user_input on keystroke delivery', () => {
     const syncCall = message('sync', 'assistant', [
       {
         type: 'tool-call',
@@ -110,31 +112,34 @@ describe('extractPendingAsyncAsk', () => {
         input: { questions: [{ question: 'Which?', options: [{ label: 'A' }] }] }
       }
     ])
-    expect(extractPendingAsyncAsk([syncCall])).toBeNull()
+    expect(extractPendingAsk([syncCall])).toMatchObject({ questions: [{ question: 'Which?' }] })
+    expect(extractPendingAsk([syncCall])?.replyAsMessage).toBeUndefined()
   })
 
-  it('stays out of the blocking-question resolver that answers with TUI keystrokes', () => {
-    expect(extractPendingAsk([asyncCall()])).toBeNull()
-    expect(extractPendingAsk([asyncCall(), ack])).toBeNull()
+  it('uses the shared resolver with message delivery instead of TUI keystrokes', () => {
+    expect(extractPendingAsk([asyncCall()])).toMatchObject({ replyAsMessage: true })
+    expect(extractPendingAsk([asyncCall(), ack])).toMatchObject({ replyAsMessage: true })
   })
 })
 
-describe('formatAsyncAskAnswer', () => {
+describe('formatAskAnswer', () => {
   const prompt = parseAsyncAskInput(ASYNC_ARGS)!
 
   it('sends the chosen suggestion or typed text for a single question', () => {
-    expect(formatAsyncAskAnswer(prompt, [{ indices: [1] }])).toBe('Not moved')
-    expect(
-      formatAsyncAskAnswer(prompt, [{ indices: [], other: '  it is on the other host ' }])
-    ).toBe('it is on the other host')
+    expect(formatAskAnswer(prompt, [{ indices: [1] }])).toBe(
+      '> Was the backup disk moved?\n\nNot moved'
+    )
+    expect(formatAskAnswer(prompt, [{ indices: [], other: '  it is on the other host ' }])).toBe(
+      '> Was the backup disk moved?\n\nit is on the other host'
+    )
   })
 
   it('pairs each answered question with its title when several were asked', () => {
     const multi = parseAsyncAskInput({
       questions: [{ title: 'Disk?', options: ['Moved'] }, { title: 'Window?' }, { title: 'Skip?' }]
     })!
-    expect(formatAsyncAskAnswer(multi, [{ indices: [0] }, { indices: [], other: 'tonight' }])).toBe(
-      'Q: Disk?\nA: Moved\n\nQ: Window?\nA: tonight'
+    expect(formatAskAnswer(multi, [{ indices: [0] }, { indices: [], other: 'tonight' }])).toBe(
+      '> Disk?\n\nMoved\n\n> Window?\n\ntonight'
     )
   })
 })

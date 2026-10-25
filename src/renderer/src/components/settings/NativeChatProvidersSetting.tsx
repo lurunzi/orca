@@ -1,11 +1,10 @@
 import { TRANSCRIPT_CHAT_AGENTS } from '../../../../shared/transcript-chat-launch-view'
+import { useChatProgramFacts } from '@/lib/host-chat-program-acquisition'
+import { readHostStructuredAgents } from '@/runtime/host-structured-agents'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
-import {
-  buildNativeChatProviderUpdate,
-  isNativeChatProviderDisplayedOn
-} from '../../../../shared/native-chat-providers'
+import { isNativeChatProviderDisplayedOn } from '../../../../shared/native-chat/native-chat-providers'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { isTuiAgentEnabled } from '../../../../shared/tui-agent-selection'
 import { translate } from '@/i18n/i18n'
@@ -14,7 +13,7 @@ import { chatProviderAgents, useHostStructuredAgentsVersion } from '@/lib/chat-p
 import { useManagedRuntimeInstall } from '@/runtime/use-managed-runtime-install'
 import { useAppStore } from '../../store'
 import { readNativeDetectedAgents } from '@/store/slices/local-detected-agent-store-state'
-import { createAgentSettingsUpdateQueue } from './agent-availability-settings'
+import { saveNativeChatProviderChoice } from './native-chat-provider-choice'
 import { Card, CardContent } from '../ui/card'
 import { ManagedRuntimeInstallRow } from '../managed-runtime/ManagedRuntimeInstallRow'
 import { SearchableSetting } from './SearchableSetting'
@@ -27,8 +26,6 @@ import {
   antigravityProviderSignInShown
 } from './AntigravityProviderSignInArea'
 import { getHostRuntimeLabel, getRuntimeSentenceLabel } from './accounts-pane-runtime'
-
-const enqueueProviderUpdate = createAgentSettingsUpdateQueue()
 
 // The agents listed here are this computer's, so their downloaded programs are too.
 const CHAT_HOST: RuntimeClientTarget = { kind: 'local' }
@@ -86,6 +83,8 @@ function ProviderDetail(props: {
   label: string
   installed: readonly TuiAgent[] | null
   enabledInAgents: boolean
+  settings: GlobalSettings
+  updateSettings: (updates: Partial<GlobalSettings>) => void | Promise<void>
 }): React.JSX.Element {
   const runtime = useManagedRuntimeInstall(CHAT_HOST, props.agent, props.enabledInAgents)
   // Install and Remove wait for a running sign-in, which runs the installed server.
@@ -94,6 +93,37 @@ function ProviderDetail(props: {
       ? CHAT_HOST
       : null
   )
+  const state =
+    runtime.kind === 'active' && runtime.snapshot.kind === 'known' ? runtime.snapshot.state : null
+  const on = isNativeChatProviderDisplayedOn(props.settings, props.agent, [
+    ...(props.installed ?? []),
+    ...(state?.source ? [props.agent] : [])
+  ])
+  const unsettled =
+    !on &&
+    props.settings.nativeChatProviders?.[props.agent] === undefined &&
+    (props.installed === null ||
+      runtime.kind === 'pending' ||
+      (runtime.kind === 'active' && runtime.snapshot.kind !== 'known'))
+  const control = unsettled ? (
+    <div className="h-5 w-9 shrink-0 rounded-full bg-muted/50 animate-pulse" aria-hidden="true" />
+  ) : (
+    <SettingsSwitch
+      checked={on}
+      disabled={!props.enabledInAgents}
+      ariaLabel={translate('settings.chat.providers.toggleLabel', 'Open {{value0}} as a chat', {
+        value0: props.label
+      })}
+      onChange={() =>
+        saveNativeChatProviderChoice({
+          agent: props.agent,
+          on: !on,
+          fallbackSettings: props.settings,
+          updateSettings: props.updateSettings
+        })
+      }
+    />
+  )
   const summary = (line: React.ReactNode): React.JSX.Element => (
     <div className="min-w-0 flex-1">
       <div className="text-sm font-medium leading-none">{props.label}</div>
@@ -101,12 +131,17 @@ function ProviderDetail(props: {
     </div>
   )
   if (!props.enabledInAgents || runtime.kind !== 'active') {
-    return summary(
-      <ProviderStatus
-        agent={props.agent}
-        installed={props.installed}
-        enabledInAgents={props.enabledInAgents}
-      />
+    return (
+      <>
+        {summary(
+          <ProviderStatus
+            agent={props.agent}
+            installed={props.installed}
+            enabledInAgents={props.enabledInAgents}
+          />
+        )}
+        {control}
+      </>
     )
   }
   return (
@@ -119,6 +154,7 @@ function ProviderDetail(props: {
         <>
           {summary(line)}
           {actions}
+          {control}
         </>
       )}
     </ManagedRuntimeInstallRow>
@@ -149,6 +185,7 @@ export function NativeChatProvidersSetting({
   updateSettings: (updates: Partial<GlobalSettings>) => void | Promise<void>
   forceVisible?: boolean
 }): React.JSX.Element | null {
+  useChatProgramFacts({ kind: 'floating' })
   const entry = getChatProvidersSearchEntry()
   useHostStructuredAgentsVersion()
   const agents = [
@@ -158,11 +195,13 @@ export function NativeChatProvidersSetting({
     ])
   ]
   const detectedIds = useAppStore(readNativeDetectedAgents)
+  const managed = readHostStructuredAgents(LOCAL_EXECUTION_HOST_ID, undefined)
   const visibleAgents = agents.filter(
     (agent) =>
       detectedIds !== null ||
       BUILT_IN_CHAT_AGENTS.includes(agent) ||
-      settings.nativeChatProviders?.[agent] !== undefined
+      settings.nativeChatProviders?.[agent] !== undefined ||
+      managed?.some((row) => row.agent === agent && row.managedRuntime)
   )
   return (
     <SearchableSetting
@@ -178,7 +217,6 @@ export function NativeChatProvidersSetting({
             {visibleAgents.map((agent) => {
               const label = getAgentLabel(agent)
               const enabledInAgents = isTuiAgentEnabled(agent, settings.disabledTuiAgents)
-              const on = isNativeChatProviderDisplayedOn(settings, agent, detectedIds)
               return (
                 <div key={agent} className="space-y-3 py-3">
                   <div className="flex items-center gap-3">
@@ -190,25 +228,8 @@ export function NativeChatProvidersSetting({
                       label={label}
                       installed={detectedIds}
                       enabledInAgents={enabledInAgents}
-                    />
-                    <SettingsSwitch
-                      checked={on}
-                      disabled={!enabledInAgents}
-                      ariaLabel={translate(
-                        'settings.chat.providers.toggleLabel',
-                        'Open {{value0}} as a chat',
-                        { value0: label }
-                      )}
-                      onChange={() => {
-                        const next = !on
-                        return enqueueProviderUpdate({
-                          getSettings: () => useAppStore.getState().settings,
-                          fallbackSettings: settings,
-                          updateSettings,
-                          buildUpdate: (latest) =>
-                            buildNativeChatProviderUpdate(latest, agent, next)
-                        })
-                      }}
+                      settings={settings}
+                      updateSettings={updateSettings}
                     />
                   </div>
                   {/* Chats sign in on the host they run on, under the program that serves them. */}

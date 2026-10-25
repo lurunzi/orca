@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { initializeCodexAppServerConnection } from './codex-app-server-handshake'
+import { initializeCodexAppServerConnection } from './app-server/codex-app-server-handshake'
 import { CodexAppServerUnsupportedError } from './codex-app-server-session'
 import type { CodexStructuredSessionEvent } from './codex-structured-session-state'
 import { supportsCodexPredictionFork } from './codex-prompt-prediction'
@@ -71,7 +71,9 @@ it('captures the execution host version from its initialize response', async () 
     initialize: () => ({ userAgent: 'codex_vscode/0.162.0-alpha.17.2 (Windows 11)' })
   })
   await acquired(codex)
-  expect(await initializeCodexAppServerConnection(codex.connections[0])).toBe('0.162.0-alpha.17.2')
+  expect(await initializeCodexAppServerConnection(codex.connections[0], null)).toBe(
+    '0.162.0-alpha.17.2'
+  )
 })
 
 it('uses a temporary prediction fork, publishes only the suggested text and releases the fork', async () => {

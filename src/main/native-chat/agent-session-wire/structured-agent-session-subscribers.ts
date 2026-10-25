@@ -1,14 +1,9 @@
-import {
-  promptSuggestionChanged,
-  type AgentSessionComposerMetadata,
-  type AgentSessionComposerMetadataHooks
-} from './structured-agent-session-composer-metadata'
+import { promptSuggestionChanged } from './structured-agent-session-composer-metadata'
+import type * as ComposerMetadata from './structured-agent-session-composer-metadata'
+import type { AgentSessionSubscribeInput } from './agent-session-subscribe-input'
+export type { AgentSessionSubscribeInput } from './agent-session-subscribe-input'
 import type { CurrentRequestsSubscriber } from './agent-session-current-requests'
-// Per-subscriber cursors over one session's journal.
-//
-// Each subscriber advances independently: a client that connected two epochs
-// ago gets a reset while a caught-up one gets a batch from the same publish.
-// Nothing raw reaches a subscriber — every event carries reducer output.
+// Advance subscriber cursors independently, sending resets or reducer-projected batches as needed.
 
 import type { AgentJournalCursor } from '../../../shared/agent-session-journal-types'
 import type {
@@ -39,21 +34,8 @@ import { refreshPublishedWork } from './agent-session-work-refresh'
 import type { StructuredAgentSessionCurrentWork } from './structured-agent-session-current-work'
 
 export type AgentSessionSubscriberEmit = (event: AgentSessionSubscribeEvent) => void
-export type AgentSessionSubscribeInput = {
-  id: string
-  sessionId: string
-  emit: AgentSessionSubscriberEmit
-  cursor?: AgentJournalCursor
-  /** Every frame to fit a phone's bridge frame; the RPC sets it for every phone. */
-  boundedFrames?: boolean
-  projectQueuePublication?: SubscriberFieldState['projectQueuePublication']
-  readsCurrentRequests?: boolean
-  /** False for desktops that need exact replay to keep send echoes and current requests. */
-  snapshotCatchUp?: boolean
-}
-
 export type Subscriber = CurrentRequestsSubscriber &
-  AgentSessionComposerMetadata & {
+  ComposerMetadata.AgentSessionComposerMetadata & {
     id: string
     emit: AgentSessionSubscriberEmit
     cursor: AgentJournalCursor
@@ -61,25 +43,20 @@ export type Subscriber = CurrentRequestsSubscriber &
     boundedFrames: boolean
     projectQueuePublication?: SubscriberFieldState['projectQueuePublication']
     snapshotCatchUp?: boolean
-    /** Canonical publication last sent — never advanced on a page that withheld
-     *  it, or the final replacement would be suppressed by the identity dedup. */
+    /** Last sent publication; withheld pages must not suppress the final replacement. */
     queuePublication?: QueuePublication
-    /** Fingerprint of the background-task roster last SENT. */
     backgroundTasks?: string
-    /** The current-work view the last frame's fields were read under
-     *  (`StructuredAgentSessionCurrentWork.viewKey`); a change with no row still owes a frame. */
+    /** Last frame’s current-work key; row-free changes still require a frame. */
     workView?: string
+    /** Semantic history baseline actually emitted, independent of token/row progress. */
+    historyView?: string
   }
 
-export type AgentSessionSubscribersHooks = AgentSessionComposerMetadataHooks & {
-  /** Revision-stable per emit: an unchanged list keeps its reference, so token
-   *  streams never re-serialize it; any draft-table write changes it. */
+export type AgentSessionSubscribersHooks = ComposerMetadata.AgentSessionComposerMetadataHooks & {
+  /** Stable identity avoids serialization until queue changes. */
   readQueuePublication?: (sessionId: string) => QueuePublication | undefined
   readBackgroundTasks?: SubscriberFieldHooks['readBackgroundTasks']
-  /** Fires after publications that can change journal content. */
   onJournalPublished?: (sessionId: string, journal: AgentSessionJournal) => void
-  /** The host's projection of current work (`structuredAgentSessionCurrentWork`), which every
-   *  page and frame states as its turn and prompt fields. */
   readCurrentWork?: (
     sessionId: string,
     journal: AgentSessionJournal
@@ -131,12 +108,14 @@ export class AgentSessionSubscribers {
         this.hooks.readCurrentWork?.(input.sessionId, input.journal)
       )
     } else {
+      const view = input.journal.publicRead()
       const work = this.hooks.readCurrentWork?.(input.sessionId, input.journal)
       const page = withPublishedWork(
         readAgentSessionHydrationPage(
           input.journal,
           input.fence,
-          subscriberHistoryReader(subscriber)
+          subscriberHistoryReader(subscriber),
+          view.snapshot
         ),
         work
       )
@@ -150,7 +129,7 @@ export class AgentSessionSubscribers {
           hostNow,
           ...this.activityField(input.sessionId)
         },
-        { currentWork: work }
+        { currentWork: work, historyView: view.normalizationKey }
       )
       subscriber.cursor = page.liveCursor ?? page.window.nextCursor
       refreshPublishedWork(this.deliveryPort(), subscriber, input.journal, work, { hostNow })
@@ -191,12 +170,10 @@ export class AgentSessionSubscribers {
     }
   }
 
-  /** The queue as frames publish it, for a history page to read the same. */
   readQueuePublication(sessionId: string): QueuePublication | undefined {
     return this.hooks.readQueuePublication?.(sessionId)
   }
 
-  /** Each subscriber's frame for what changed, with none of a journal write's other edges. */
   deliverFrames(
     sessionId: string,
     journal: AgentSessionJournal,
@@ -208,15 +185,20 @@ export class AgentSessionSubscribers {
     }
   }
 
-  /** Every subscriber back to a bounded tail page. */
   snapshot(sessionId: string, journal: AgentSessionJournal, fence: number): void {
+    const view = journal.publicRead()
     const work = this.hooks.readCurrentWork?.(sessionId, journal)
-    // Read once per item form, since bounded-frame subscribers size their page by theirs.
+    // Cache each stored/bounded form separately; each sizes its own page.
     let storedPage: AgentSessionHistoryPage | undefined
     let boundedPage: AgentSessionHistoryPage | undefined
     const read = (subscriber: Subscriber): AgentSessionHistoryPage =>
       withPublishedWork(
-        readAgentSessionHydrationPage(journal, fence, subscriberHistoryReader(subscriber)),
+        readAgentSessionHydrationPage(
+          journal,
+          fence,
+          subscriberHistoryReader(subscriber),
+          view.snapshot
+        ),
         work
       )
     const pageFor = (subscriber: Subscriber): AgentSessionHistoryPage =>
@@ -236,7 +218,7 @@ export class AgentSessionSubscribers {
           hostNow,
           ...this.activityField(sessionId)
         },
-        { currentWork: work }
+        { currentWork: work, historyView: view.normalizationKey }
       )
       subscriber.cursor = page.liveCursor ?? page.window.nextCursor
       subscriber.fence = fence
@@ -245,8 +227,6 @@ export class AgentSessionSubscribers {
     this.hooks.onJournalPublished?.(sessionId, journal)
   }
 
-  /** Re-sends the strip's roster to each subscriber whose last one differs; the session's child
-   *  records changed. */
   republishBackgroundTasks(sessionId: string, fence: number): void {
     const state = this.hooks.readBackgroundTasks?.(sessionId)
     if (state === undefined) {
@@ -270,7 +250,6 @@ export class AgentSessionSubscribers {
     }
   }
 
-  /** Re-sends the `/` surface to each subscriber whose view of it is out of date. */
   republishCommands(): void {
     const hostNow = this.now()
     for (const sessionId of this.bySession.keys()) {
@@ -299,12 +278,11 @@ export class AgentSessionSubscribers {
     emitCheckpoint = false,
     activity?: AgentSessionTurnActivity | null
   ): void {
-    const checkpoint = emitCheckpoint || promptSuggestionChanged(subscriber, this.hooks)
     deliverToSubscriber(this.deliveryPort(), {
       subscriber,
       journal,
       hostNow,
-      emitCheckpoint: checkpoint,
+      emitCheckpoint: emitCheckpoint || promptSuggestionChanged(subscriber, this.hooks),
       activity
     })
   }
@@ -323,8 +301,7 @@ export class AgentSessionSubscribers {
   private isActive = (subscriber: Subscriber): boolean =>
     this.bySession.get(subscriber.sessionId)?.get(subscriber.id) === subscriber
 
-  /** A dead transport cannot be allowed to turn a durable mutation into an
-   *  unknown outcome or poison every later publication. */
+  /** Dead transports must not obscure durable mutation outcomes or poison later publications. */
   private emit(
     subscriber: Subscriber,
     event: AgentSessionSubscribeEvent,
@@ -332,6 +309,9 @@ export class AgentSessionSubscribers {
   ): void {
     try {
       emitSubscriberFrame(this.hooks, subscriber, event, options)
+      if (options?.historyView !== undefined && this.isActive(subscriber)) {
+        subscriber.historyView = options.historyView
+      }
     } catch {
       this.drop(subscriber)
     }

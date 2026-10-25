@@ -7,8 +7,14 @@ export type AskQuestion = {
   header?: string
   multiSelect: boolean
   options: AskOption[]
+  /** Claude renders its preview selector: digits only move focus, Enter commits, free text is a note. */
+  hasPreviews?: true
 }
-export type AskPrompt = { questions: AskQuestion[] }
+export type AskPrompt = {
+  questions: AskQuestion[]
+  /** The agent kept working after asking, so the answer goes back as an ordinary message. */
+  replyAsMessage?: true
+}
 
 /** One question's chosen answer, normalized for delivery: the selected option
  *  indices (in option order) plus any free-text "other" answer. Index-based (not

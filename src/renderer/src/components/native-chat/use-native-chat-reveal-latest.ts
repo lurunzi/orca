@@ -10,7 +10,6 @@ import type { NativeChatInteractiveSend } from './use-native-chat-interactive-se
 export function useNativeChatInteractiveSendReveal(
   {
     sendAnswer,
-    sendMessage,
     sendRaw,
     sendRawVerified,
     cancelPending,
@@ -31,13 +30,6 @@ export function useNativeChatInteractiveSendReveal(
           ? sendAnswer(prompt, selections, onDeliverySettled, delivery)
           : sendAnswer(prompt, selections, onDeliverySettled)
       },
-      sendMessage: (text) => {
-        const sent = sendMessage(text)
-        if (sent) {
-          revealLatest()
-        }
-        return sent
-      },
       sendRaw,
       sendRawVerified: (raw) => {
         if (targetPtyId) {
@@ -55,7 +47,6 @@ export function useNativeChatInteractiveSendReveal(
       cancelPending,
       revealLatest,
       sendAnswer,
-      sendMessage,
       sendRaw,
       sendRawVerified,
       targetPtyId

@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { extractPendingAsk } from '../../shared/native-chat-ask'
-import { extractPendingAsyncAsk } from '../../shared/native-chat-async-ask'
 import { readNativeChatTranscript } from './transcript-reader'
 
 let tempRoots: string[] = []
@@ -83,13 +82,14 @@ async function readFixture(records: unknown[]): Promise<NativeChatMessagesResult
   }
   return result
 }
-type NativeChatMessagesResult = { messages: Parameters<typeof extractPendingAsyncAsk>[0] }
+type NativeChatMessagesResult = { messages: Parameters<typeof extractPendingAsk>[0] }
 
 describe('Codex async question transcript', () => {
   it('keeps the question answerable after the acknowledgement and the turn end', async () => {
     const { messages } = await readFixture(ROLLOUT)
 
-    expect(extractPendingAsyncAsk(messages)).toEqual({
+    expect(extractPendingAsk(messages)).toEqual({
+      replyAsMessage: true,
       questions: [
         {
           question: QUESTION,
@@ -98,12 +98,10 @@ describe('Codex async question transcript', () => {
         }
       ]
     })
-    // Never routed to the blocking card, whose answer is TUI keystrokes.
-    expect(extractPendingAsk(messages)).toBeNull()
   })
 
   it('clears once the user replies with a follow-up message', async () => {
     const { messages } = await readFixture([...ROLLOUT, USER_REPLY])
-    expect(extractPendingAsyncAsk(messages)).toBeNull()
+    expect(extractPendingAsk(messages)).toBeNull()
   })
 })

@@ -129,8 +129,8 @@ export type NativeChatSessionOptionSettingsMutation =
 export type SessionOptionsSurface = {
   /** The picker may hold choices until the terminal-backed agent finishes its turn. */
   deferWhileWorking?: true
-  /** Recheck provider availability when a reader opens the picker. */
-  refresh?: () => void
+  /** Rereads what the agent offers when a reader opens the picker. */
+  demandModelCatalog?: () => void
   getSnapshot(): SessionOptionDescriptor[]
   /** Apply an absolute target; known flip-only options use their tracked baseline. */
   setOption(id: string, value: SessionOptionValue): Promise<SessionOptionSetResult>

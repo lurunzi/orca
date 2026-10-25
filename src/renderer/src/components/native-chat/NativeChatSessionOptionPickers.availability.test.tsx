@@ -66,7 +66,7 @@ it.each([
   const refresh = vi.fn()
   const setOption = vi.fn(async () => ({ snapshot }))
   const surface = {
-    refresh,
+    demandModelCatalog: refresh,
     setOption,
     getSnapshot: () => snapshot,
     invokeAction: async () => ({ snapshot }),

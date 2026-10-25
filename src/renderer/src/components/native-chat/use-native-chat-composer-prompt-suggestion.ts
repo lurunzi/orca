@@ -16,7 +16,7 @@ export function useNativeChatComposerPromptSuggestion(args: {
   /** Attached images also hide it. */
   hasImages: boolean
   readTerminalPromptSuggestion: (() => string | null) | undefined
-  caret: number
+  isComposing: () => boolean
   draft: string
   /** The same editor handles the composer gives its command picker. */
   editor: {
@@ -29,8 +29,7 @@ export function useNativeChatComposerPromptSuggestion(args: {
   const { agent, structuredTransport, editor } = args
   const { insertTypedText } = useNativeChatTypedInsertion({
     ...editor,
-    caret: args.caret,
-    draft: args.draft
+    isComposing: args.isComposing
   })
   return useNativeChatPromptSuggestion({
     scopeKey: structuredTransport?.sessionId ?? args.targetPtyId ?? args.paneKey,

@@ -3,8 +3,8 @@
 // can never describe the same pending question differently.
 
 import { isAskUserQuestionTool } from './agent-question-answered-intent'
+import { CODEX_ASYNC_QUESTION_TOOL } from './codex-async-question-input'
 import { parseAskFromToolInput } from './native-chat-ask'
-import { isAsyncAskUserQuestionTool } from './native-chat-async-ask'
 import { isToolCallBlock, type NativeChatBlock } from './native-chat-types'
 import { pairToolBlocks } from './native-chat-tool-fold'
 
@@ -28,7 +28,7 @@ export function isNativeChatAskCall(block: NativeChatBlock): boolean {
   return (
     isToolCallBlock(block) &&
     block.state !== 'failed' &&
-    (isAskUserQuestionTool(block.name) || isAsyncAskUserQuestionTool(block.name))
+    (isAskUserQuestionTool(block.name) || block.name === CODEX_ASYNC_QUESTION_TOOL)
   )
 }
 

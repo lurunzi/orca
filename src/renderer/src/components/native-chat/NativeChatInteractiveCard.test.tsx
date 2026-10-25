@@ -69,13 +69,48 @@ function cardElement(
 
 const SEND: NativeChatInteractiveSend = {
   sendAnswer: mocks.sendAnswer,
-  sendMessage: vi.fn(() => true),
   sendRaw: mocks.sendRaw,
   sendRawVerified: mocks.sendRawVerified,
   cancelPending: mocks.cancelPending,
   cancel: mocks.cancel,
   cancelAsk: mocks.cancelAsk
 }
+
+describe('terminal-only question presentation', () => {
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(cleanup)
+  it.each([true, false])(
+    'replaces answer and cancel controls with terminal navigation (%s)',
+    (available) => {
+      const onAnswerInTerminal = vi.fn()
+      const onDismiss = vi.fn()
+      render(
+        <NativeChatInteractiveCard
+          card={{
+            kind: 'question',
+            prompt: {
+              questions: [{ question: 'Pick', options: [{ label: 'A' }], multiSelect: false }]
+            }
+          }}
+          send={SEND}
+          onDismiss={onDismiss}
+          requiresTerminal
+          onAnswerInTerminal={available ? onAnswerInTerminal : undefined}
+        />
+      )
+      const button = screen.getByRole('button', { name: 'Answer in terminal' })
+      expect(screen.getAllByRole('button')).toHaveLength(1)
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(button).toHaveProperty('disabled', !available)
+      fireEvent.click(button)
+      expect(onAnswerInTerminal).toHaveBeenCalledTimes(available ? 1 : 0)
+      expect(mocks.sendAnswer).not.toHaveBeenCalled()
+      expect(mocks.cancelAsk).not.toHaveBeenCalled()
+      expect(mocks.sendRawVerified).not.toHaveBeenCalled()
+      expect(onDismiss).not.toHaveBeenCalled()
+    }
+  )
+})
 
 // Stands in for the view: it derives the shown card and renders it XOR the composer.
 function CardHarness({

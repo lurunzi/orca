@@ -14,6 +14,12 @@ const { copyFiles, FileMatcher } = require('app-builder-lib/out/fileMatcher')
 const FpmTarget = require('app-builder-lib/out/targets/FpmTarget').default
 const electronBuilderNativeRebuild = require('./electron-builder-native-rebuild.cjs')
 
+function appFileFilter() {
+  const matcher = new FileMatcher('/app', '/dest', (value) => value, electronBuilderConfig.files)
+  matcher.prependPattern('**/*')
+  return matcher.createFilter()
+}
+
 describe('electron-builder config', () => {
   it('keeps the packaged app identity aligned with local-build validation', () => {
     expect(electronBuilderConfig.appId).toBe(
@@ -22,35 +28,36 @@ describe('electron-builder config', () => {
   })
 
   it('excludes repo-only source trees from app.asar', () => {
-    expect(electronBuilderConfig.files).toEqual(
-      expect.arrayContaining([
-        '!src{,/**/*}',
-        '!config{,/**/*}',
-        '!cloud{,/**/*}',
-        '!docs{,/**/*}',
-        '!mobile{,/**/*}',
-        '!native{,/**/*}',
-        '!skills{,/**/*}',
-        '!skill-guides{,/**/*}',
-        '!skill-stubs{,/**/*}',
-        '!resources/skills/**',
-        '!tests{,/**/*}',
-        '!examples{,/**/*}',
-        '!pr-evidence{,/**/*}',
-        '!notes{,/**/*}',
-        '!{.claude,.grok,.agents,.codex}{,/**/*}',
-        '!Casks{,/**/*}',
-        '!{AGENTS.md,CLAUDE.md,DEVELOPING.md,bundle-size-progress.md,ORCHESTRATION_IMPLEMENTATION_CHECKLIST.md,ORCHESTRATION_STRUCTURED_OUTPUT_DESIGN.md}',
-        '!out/**/*.test.js',
-        '!resources/plugins/launch/**'
-      ])
-    )
+    const isPacked = appFileFilter()
+    const packs = (repoPath) => isPacked(join('/app', repoPath), { isDirectory: () => false })
+    for (const sourcePath of [
+      'src/main/index.ts',
+      'config/electron-builder.config.cjs',
+      'cloud/apps/relay/index.ts',
+      'docs/README.md',
+      'mobile/app/index.tsx',
+      'native/windows-cli-launcher/main.cpp',
+      'skills/release/SKILL.md',
+      'skill-guides/release.md',
+      'skill-stubs/release.md',
+      'resources/skills/current-manifest.json',
+      'tests/e2e/example.spec.ts',
+      'examples/example.ts',
+      'pr-evidence/example.png',
+      'Casks/orca.rb',
+      'AGENTS.md',
+      'out/main/workspace.test.js',
+      'resources/plugins/launch/example.ts'
+    ]) {
+      expect(packs(sourcePath), sourcePath).toBe(false)
+    }
+    expect(packs('out/main/index.js')).toBe(true)
+    expect(packs('node_modules/example/docs/index.js')).toBe(true)
+    expect(packs('node_modules/example/src/index.js')).toBe(true)
   })
 
   it('keeps release build staging out of app.asar while preserving runtime output', () => {
-    const matcher = new FileMatcher('/app', '/dest', (value) => value, electronBuilderConfig.files)
-    matcher.prependPattern('**/*')
-    const isPacked = matcher.createFilter()
+    const isPacked = appFileFilter()
     expect(isPacked(join('/app', '.build'), { isDirectory: () => true })).toBe(false)
     for (const stagingPath of [
       '.build/release-javascript/release-javascript.tar.gz',
@@ -69,9 +76,7 @@ describe('electron-builder config', () => {
   })
 
   it('keeps local agent tooling out of app.asar', () => {
-    const matcher = new FileMatcher('/app', '/dest', (value) => value, electronBuilderConfig.files)
-    matcher.prependPattern('**/*')
-    const isPacked = matcher.createFilter()
+    const isPacked = appFileFilter()
     const packs = (repoPath) => isPacked(join('/app', repoPath), { isDirectory: () => false })
 
     for (const toolingPath of [
@@ -174,9 +179,7 @@ describe('electron-builder config', () => {
   // Why: out/electron-dev holds `pnpm dev`'s cached Electron.app copies (~270MB per branch).
   // CI never creates it, so only a local package would have hit this -- silently, as bulk.
   it('keeps cached dev Electron bundles and Vite dependencies out of app.asar', () => {
-    const matcher = new FileMatcher('/app', '/dest', (value) => value, electronBuilderConfig.files)
-    matcher.prependPattern('**/*')
-    const isPacked = matcher.createFilter()
+    const isPacked = appFileFilter()
     const packs = (repoPath) => isPacked(join('/app', repoPath), { isDirectory: () => false })
 
     for (const devBundlePath of [
@@ -197,9 +200,7 @@ describe('electron-builder config', () => {
   // compound object, gutting the install (#20966). resources/relay is the only copy
   // a packaged build resolves, so the asar copy was 14MB of pure blast radius.
   it('keeps the relay bundles out of app.asar and ships them only through extraResources', () => {
-    const matcher = new FileMatcher('/app', '/dest', (value) => value, electronBuilderConfig.files)
-    matcher.prependPattern('**/*')
-    const isPacked = matcher.createFilter()
+    const isPacked = appFileFilter()
     const packs = (repoPath) => isPacked(join('/app', repoPath), { isDirectory: () => false })
 
     for (const relayPath of [
@@ -377,12 +378,7 @@ describe('electron-builder config', () => {
 
   it('unpacks the compiled CommonJS boundary with CLI runtime files', () => {
     expect(electronBuilderConfig.asarUnpack).toEqual(
-      expect.arrayContaining([
-        'out/package.json',
-        'out/cli/**',
-        'out/shared/**',
-        'out/main/claude-accounts/keychain.js'
-      ])
+      expect.arrayContaining(['out/package.json', 'out/cli/**', 'out/shared/**'])
     )
   })
 
@@ -637,21 +633,24 @@ describe('arch-aware packaging guard', () => {
     }
   })
 
-  it('requires the other architecture natives to be installed', () => {
-    const otherSherpaInstalled = existsSync(
-      join(REPO_ROOT, 'node_modules', otherSherpa, 'package.json')
-    )
-    const otherSherpaExpected = Object.hasOwn(
-      require('../../package.json').optionalDependencies,
-      otherSherpa
-    )
-    if (otherSherpaExpected && !otherSherpaInstalled) {
-      expect(() => packHost(OTHER_ARCH)).toThrow(otherSherpa)
-      expect(() => packHost(OTHER_ARCH)).toThrow('pnpm install:release')
-    } else if (process.platform !== 'win32') {
-      expect(() => packHost(OTHER_ARCH)).not.toThrow()
+  it.skipIf(process.platform === 'win32')(
+    'requires the other architecture natives to be installed',
+    () => {
+      const otherSherpaInstalled = existsSync(
+        join(REPO_ROOT, 'node_modules', otherSherpa, 'package.json')
+      )
+      const otherSherpaExpected = Object.hasOwn(
+        require('../../package.json').optionalDependencies,
+        otherSherpa
+      )
+      if (otherSherpaExpected && !otherSherpaInstalled) {
+        expect(() => packHost(OTHER_ARCH)).toThrow(otherSherpa)
+        expect(() => packHost(OTHER_ARCH)).toThrow('pnpm install:release')
+      } else {
+        expect(() => packHost(OTHER_ARCH)).not.toThrow()
+      }
     }
-  })
+  )
 
   // The host's own build is the foreign-arch case: a Windows checkout compiles these for its CPU only.
   it.runIf(process.platform === 'win32')(

@@ -212,9 +212,8 @@ describe('granting a user-opened structured chat a coordinator identity', () => 
     // A new process: empty registry, host freshly bound.
     structuredWorkerIdentities.clear()
     resetStructuredSessionCoordinatorIdentitiesForTest()
-    const host = installHost()
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: fake exposes the three members bind reads.
-    bindStructuredSessionCoordinatorIdentities({ ...deps, host: host as never })
+    installHost()
+    bindStructuredSessionCoordinatorIdentities(deps)
 
     expect(structuredSessionChildIdentityEnv(SESSION_ID, {}).ORCA_TERMINAL_HANDLE).toBe(handle)
     expect(resolveStructuredWorkerAuthority(handle, db)?.identity.origin).toBe('session')

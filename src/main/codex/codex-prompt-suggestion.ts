@@ -1,7 +1,7 @@
 import { isProviderRecord as isAppServerRecord } from '../provider-process/provider-json-record'
 import { CodexPromptPrediction, supportsCodexPredictionFork } from './codex-prompt-prediction'
-import type { CodexAppServerServerRequest } from './codex-app-server-connection-types'
-import { isCodexAppServerRequestError } from './codex-app-server-request-error'
+import type { CodexAppServerServerRequest } from './app-server/codex-app-server-connection-types'
+import { isCodexAppServerRequestError } from './app-server/codex-app-server-request-error'
 import {
   isCodexAppServerUnsupportedError,
   isCodexMethodNotFoundError

@@ -14,6 +14,8 @@ export type NativeChatAppearanceSettings = {
 }
 
 export type NativeChatGlobalSettings = {
+  /** Chat UI: leave settled turns expanded instead of folding them behind their status row. */
+  nativeChatExpandFinishedTurns?: boolean
   nativeChatAppearance?: NativeChatAppearanceSettings
   /** Off keeps chats unnamed without running a naming agent. Absent means on. */
   nativeChatAutoName?: boolean

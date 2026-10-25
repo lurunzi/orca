@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -141,6 +141,7 @@ function PickerTrigger(props: {
 }
 
 function SessionOptionPopover(props: {
+  demandModelCatalog?: () => void
   model: SessionOptionDescriptor
   options: readonly SessionOptionDescriptor[]
   isWorking: boolean
@@ -150,29 +151,28 @@ function SessionOptionPopover(props: {
   request: NativeChatOptionPickerRequest | null
   onSet: (descriptor: SessionOptionDescriptor, value: SessionOptionValue) => void
   onAction: (descriptor: SessionOptionDescriptor) => void
-  /** Re-reads the host's options, so an opened picker shows what the account allows now. */
-  onOpen?: () => void
   focusComposer?: () => void
 }): React.JSX.Element {
-  const { model, options, pendingIds } = props
+  const { model, options, pendingIds, demandModelCatalog } = props
   // Why here: this unmounts with the pill, so a picker that went away comes back closed.
-  const [open, setOpenState] = useState(false)
-  const setOpen = (next: boolean): void => {
-    if (next && !open) {
-      props.onOpen?.()
-    }
-    setOpenState(next)
-  }
+  const [open, setOpen] = useState(false)
   const [seenRequest, setSeenRequest] = useState<NativeChatOptionPickerRequest | null>(null)
   // The option a slash command asked for, focused in place of the search by that opening only.
   const [requestedOptionId, setRequestedOptionId] = useState<string | null>(null)
   if (props.request !== seenRequest) {
     setSeenRequest(props.request)
     if (props.request) {
-      setOpenState(true)
+      setOpen(true)
       setRequestedOptionId(props.request.id === model.id ? null : props.request.id)
     }
   }
+  const wasOpen = useRef(false)
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      demandModelCatalog?.()
+    }
+    wasOpen.current = open
+  }, [open, demandModelCatalog])
   const focusReturn = useNativeChatPickerFocusReturn(props.focusComposer)
   const modelTitle = translate('components.native-chat.composer.model', 'Model')
   const modelLabel = nativeChatModelPillLabel(model)
@@ -368,6 +368,7 @@ function NativeChatSessionOptionPickersInner({
   return (
     <div className="flex min-w-0 items-center text-chat-foreground-faint">
       <SessionOptionPopover
+        demandModelCatalog={surface.demandModelCatalog}
         model={model}
         options={options}
         isWorking={isWorking && (!surface.deferWhileWorking || Boolean(model.action))}
@@ -399,7 +400,6 @@ function NativeChatSessionOptionPickersInner({
             surface.invokeAction(descriptor.id)
           )
         }
-        onOpen={surface.refresh}
         focusComposer={focusComposer}
       />
     </div>

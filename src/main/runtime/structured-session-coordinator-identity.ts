@@ -197,20 +197,21 @@ export function installStructuredSessionIdentityLoader(getDb: () => Orchestratio
 export function bindStructuredSessionCoordinatorIdentities(args: {
   getDb: () => OrchestrationDb
   getExistingDb?: () => OrchestrationDb | null
-  host: StructuredAgentSessionHost
+  host?: StructuredAgentSessionHost
   onSessionActivity: (sessionId: string) => void
 }): void {
-  if (watchedHosts.has(args.host)) {
+  const host = args.host ?? getStructuredAgentSessionHost()
+  if (!host || watchedHosts.has(host)) {
     return
   }
-  watchedHosts.add(args.host)
+  watchedHosts.add(host)
   installStructuredSessionIdentityLoader(args.getExistingDb ?? args.getDb)
   const onStatus = (sessionId: string) => {
     if (grantedSessionIds.has(sessionId)) {
       args.onSessionActivity(sessionId)
     }
   }
-  args.host.subscribeStatus({
+  host.subscribeStatus({
     id: 'orchestration:structured-coordinator-redrive',
     emit: (event) => {
       if (event.type === 'status') {

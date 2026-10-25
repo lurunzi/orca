@@ -12,6 +12,17 @@ type ItemProps = { onSelect?: () => void; children?: ReactNode }
 
 const items = vi.hoisted(() => ({ list: [] as ItemProps[] }))
 const callRuntimeRpc = vi.hoisted(() => vi.fn())
+const paneActions = vi.hoisted(() => ({
+  onSplitRight: vi.fn(() => true),
+  onSplitDown: vi.fn(() => true),
+  canClosePane: true,
+  closeLabel: 'Close Pane',
+  onClosePane: vi.fn()
+}))
+const store = vi.hoisted(() => ({
+  keybindings: {},
+  groupsByWorktree: { 'worktree-1': [{ id: 'group-1' }] }
+}))
 
 vi.mock('@/components/ui/dropdown-menu', () => {
   const Pass = ({ children }: { children?: ReactNode }) => children
@@ -40,23 +51,22 @@ vi.mock('@/components/ui/tooltip', () => {
   const Pass = ({ children }: { children?: ReactNode }) => children
   return { Tooltip: Pass, TooltipTrigger: Pass, TooltipContent: () => null }
 })
-vi.mock('@/components/tab-bar/TabWorkspaceLayoutMenuSection', () => ({
-  TabWorkspaceLayoutMenuSection: () => null
-}))
-vi.mock('@/components/tab-bar/tab-move-to-pane-column', () => ({
-  canMoveTabToNewPaneColumn: () => false
+vi.mock('./use-structured-chat-pane-actions', () => ({
+  useStructuredChatPaneActions: () => paneActions
 }))
 vi.mock('@/store', () => ({
-  useAppStore: (select: (state: { keybindings: object }) => unknown) => select({ keybindings: {} })
+  useAppStore: (select: (state: typeof store) => unknown) => select(store)
 }))
 vi.mock('./use-structured-native-chat-inbox', () => ({
   useStructuredNativeChatInbox: () => ({ button: null, jumpRequest: null })
 }))
-vi.mock('./NativeChatAsyncQuestionCard', () => ({
-  useStructuredChatAsyncAsk: () => ({ prompt: null, card: null })
-}))
 vi.mock('./use-structured-chat-session-actions', () => ({
-  useStructuredChatSessionActions: () => ({ header: null, menuItems: null })
+  useStructuredChatSessionActions: () => ({
+    header: null,
+    titleActions: null,
+    dialog: null,
+    menuItems: null
+  })
 }))
 vi.mock('../../runtime/runtime-rpc-client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -78,9 +88,10 @@ function childrenText(children: ReactNode): string {
     .join('')
 }
 
-function StructuredChatTab(): ReactNode {
+function StructuredChatTab({ owner = 'worktree-1' }: { owner?: string | null }): ReactNode {
   const { menu } = useStructuredNativeChatPaneCommands({
     tabId: 'chat-tab',
+    ownerWorktreeId: owner,
     groupId: 'group-1',
     isVisible: true,
     rootRef: createRef<HTMLDivElement>(),
@@ -97,8 +108,7 @@ function StructuredChatTab(): ReactNode {
         hasOlder: false,
         isWorking: false,
         send: () => false,
-        messages: [],
-        prompts: []
+        messages: []
       }
     }
   })
@@ -108,10 +118,41 @@ function StructuredChatTab(): ReactNode {
 describe('a structured chat tab', () => {
   beforeEach(() => {
     items.list = []
+    vi.clearAllMocks()
+    store.groupsByWorktree['worktree-1'] = [{ id: 'group-1' }]
     callRuntimeRpc.mockReset().mockResolvedValue({ orcaSessionId: `orca_session_id:${SESSION}` })
     Object.assign(window, {
       api: { ui: { writeClipboardText: vi.fn().mockResolvedValue(undefined) } }
     })
+  })
+
+  it.each([false, true])('uses the header commands with split panes: %s', (split) => {
+    if (split) {
+      store.groupsByWorktree['worktree-1'].push({ id: 'group-2' })
+    }
+    const markup = renderToStaticMarkup(<StructuredChatTab />)
+    expect(markup).not.toContain('Move Tab to Split')
+    expect(markup).not.toContain('Resume in New CLI')
+    expect(markup).not.toContain('Continue with Terminal Agent')
+    for (const [label, command] of [
+      ['Split Chat Right', paneActions.onSplitRight],
+      ['Split Chat Down', paneActions.onSplitDown]
+    ] as const) {
+      const item = items.list.find((entry) => childrenText(entry.children).startsWith(label))
+      expect(item).toBeDefined()
+      item?.onSelect?.()
+      expect(command).toHaveBeenCalledOnce()
+    }
+    const close = items.list.find((entry) => childrenText(entry.children) === 'Close Pane')
+    expect(Boolean(close)).toBe(split)
+    close?.onSelect?.()
+    expect(paneActions.onClosePane).toHaveBeenCalledTimes(split ? 1 : 0)
+  })
+
+  it.each([null, ''])('keeps the session-ID fallback without a known owner: %s', (owner) => {
+    const markup = renderToStaticMarkup(<StructuredChatTab owner={owner} />)
+    expect(markup).not.toContain('Split Chat')
+    expect(markup).toContain('Copy Orca Session ID')
   })
 
   it("offers Copy Orca Session ID, asking the tab's host for this session's Orca session ID", async () => {

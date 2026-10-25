@@ -20,6 +20,7 @@ export function useNativeChatTranscriptSlots({
 }): { slots: NativeChatTranscriptSlot[]; liveLine: NativeChatLiveLine | null } {
   const {
     messages,
+    unresolvedRowIds,
     typography,
     turnKeys,
     liveTurnKey,
@@ -46,7 +47,8 @@ export function useNativeChatTranscriptSlots({
           isNativeChatRowInLiveWorkingTurn(
             turnKeys[index],
             liveTurnKey,
-            isWorking || lifecycleWorking
+            isWorking || lifecycleWorking,
+            unresolvedRowIds?.has(messages[index]!.id)
           )
       }),
     [
@@ -58,7 +60,8 @@ export function useNativeChatTranscriptSlots({
       messages,
       stopping,
       thinking,
-      turnKeys
+      turnKeys,
+      unresolvedRowIds
     ]
   )
   const liveReasoningId = liveLine?.reasoning?.message.id ?? null
@@ -66,6 +69,7 @@ export function useNativeChatTranscriptSlots({
     () =>
       buildNativeChatTranscriptSlots({
         messages,
+        unresolvedRowIds,
         typography,
         turnKeys,
         liveTurnKey,
@@ -94,7 +98,8 @@ export function useNativeChatTranscriptSlots({
       turnDiffs,
       turnKeys,
       turnStatuses,
-      typography
+      typography,
+      unresolvedRowIds
     ]
   )
   return { slots, liveLine }

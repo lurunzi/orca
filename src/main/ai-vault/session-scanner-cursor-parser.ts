@@ -15,11 +15,11 @@ import type { TranscriptMessageSink } from './session-transcript-consumers'
 import { extractGrokFirstUserPromptText } from './session-scanner-grok-user-text'
 import {
   accumulatorFoldResumeState,
-  addPreviewContent,
   createAccumulator,
   sessionIdFromFileName,
   updateTimeline
 } from './session-scanner-accumulator'
+import { addSessionContent } from './session-scanner-messages'
 import {
   asRecord,
   extractContentText,
@@ -74,7 +74,7 @@ function consumeCursorRecordLine(accumulator: SessionAccumulator, line: string):
         extractContentText(extractGrokFirstUserPromptText(asRecord(record.message)?.content)) ??
         extractContentText(extractGrokFirstUserPromptText(record.content))
     }
-    addPreviewContent(
+    addSessionContent(
       accumulator,
       role,
       asRecord(record.message)?.content ?? record.content,

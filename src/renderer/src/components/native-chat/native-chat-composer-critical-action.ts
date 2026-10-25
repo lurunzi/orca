@@ -22,7 +22,12 @@ export function resolveComposerCriticalAction(
       'sendOut' | 'sendBlockedReason'
     >
   },
-  input: { draft: string; imageAttachments: readonly NativeChatComposerImageAttachment[] }
+  input: {
+    draft: string
+    imageAttachments: readonly NativeChatComposerImageAttachment[]
+    /** A long paste is still being saved as a file the send will reference. */
+    pastedTextSaving?: boolean
+  }
 ): ComposerCriticalAction {
   const transport = session.structuredTransport
   const imageBlock = nativeChatImageSendBlock(input.imageAttachments)
@@ -31,6 +36,7 @@ export function resolveComposerCriticalAction(
     return { kind: 'stop', disabled: !session.hasPty || !session.onStop, sendBlockedReason }
   }
   const sendHeld =
+    input.pastedTextSaving === true ||
     session.disabled ||
     transport?.sendOut === true ||
     imageBlock.holdsSend ||

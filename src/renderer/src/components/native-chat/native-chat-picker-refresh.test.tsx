@@ -17,7 +17,7 @@ it('refreshes the model catalog when the real model dropdown opens', async () =>
     <TooltipProvider>
       <NativeChatSessionOptionPickers
         surface={{
-          refresh,
+          demandModelCatalog: refresh,
           getSnapshot: () => [],
           setOption: vi.fn(),
           invokeAction: vi.fn(),

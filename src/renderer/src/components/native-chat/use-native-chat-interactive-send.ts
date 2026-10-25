@@ -5,6 +5,7 @@ import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-verified
 import type { AgentType } from '../../../../shared/native-chat-types'
 import { buildAntigravityAskAnswerKeys } from '../../../../shared/native-chat-antigravity-answer'
 import {
+  nativeChatAskRequiresTerminal,
   resolveNativeChatTranscriptAgent,
   shouldStepNativeChatAskAnswer
 } from '../../../../shared/native-chat-agent-support'
@@ -37,9 +38,6 @@ export type NativeChatInteractiveSend = {
     onDeliverySettled?: (delivered: boolean) => void,
     delivery?: 'message'
   ) => { settleAfterMs: number }
-  /** Reply to a non-blocking (async) question as an ordinary chat message.
-   *  False when there is no PTY to write to. */
-  sendMessage: (text: string) => boolean
   /** Send a raw control string (e.g. an approval option number or ESC) as-is. */
   sendRaw: (raw: string) => void
   /** `sendRaw` that resolves to whether the write was acknowledged; unknown delivery is false. */
@@ -75,39 +73,9 @@ export function useNativeChatInteractiveSend(
     inFlightRef.current?.cancel()
     inFlightRef.current = null
   }, [])
-  // Why: an async reply outlives its card (dismissed on send), so only a target change stops it.
-  const messagesInFlightRef = useRef(new Set<NativeChatSendHandle>())
   // Why: a split can be rebound without unmounting this view. Cancel during
   // commit so no delayed answer write can race the replacement PTY.
-  useLayoutEffect(() => {
-    const messagesInFlight = messagesInFlightRef.current
-    return () => {
-      cancelInFlight()
-      for (const handle of messagesInFlight) {
-        handle.cancel()
-      }
-      messagesInFlight.clear()
-    }
-  }, [agent, cancelInFlight, paneKey, targetPtyId])
-
-  const sendMessage = useCallback(
-    (text: string): boolean => {
-      if (!targetPtyId || text.trim().length === 0) {
-        return false
-      }
-      const inFlight = messagesInFlightRef.current
-      const handle = sendNativeChatMessage(targetPtyId, text)
-      inFlight.add(handle)
-      const release = (): void => void inFlight.delete(handle)
-      if (handle.settled) {
-        void handle.settled.then(release)
-      } else {
-        setTimeout(release, handle.settleAfterMs)
-      }
-      return true
-    },
-    [targetPtyId]
-  )
+  useLayoutEffect(() => cancelInFlight, [agent, cancelInFlight, paneKey, targetPtyId])
 
   const sendRaw = useCallback(
     (raw: string) => {
@@ -136,13 +104,20 @@ export function useNativeChatInteractiveSend(
       onDeliverySettled?: (delivered: boolean) => void,
       delivery?: 'message'
     ): { settleAfterMs: number } => {
+      if (nativeChatAskRequiresTerminal(agent)) {
+        cancelInFlight()
+        onDeliverySettled?.(false)
+        return { settleAfterMs: 0 }
+      }
       if (!targetPtyId || !hasAskAnswer(prompt, selections)) {
         return { settleAfterMs: 0 }
       }
       // Cancel any prior in-flight answer before starting a new one.
       cancelInFlight()
       // Selector TUIs ignore pasted labels; Codex uses a different key sequence.
-      const stepsAnswer = delivery !== 'message' && shouldStepNativeChatAskAnswer(agent)
+      // A question the agent does not wait on, or a prose one, is answered by an ordinary message.
+      const asMessage = delivery === 'message' || prompt.replyAsMessage === true
+      const stepsAnswer = !asMessage && shouldStepNativeChatAskAnswer(agent)
       const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
       // Why: pin the answered question's baseline BEFORE delivery. A late settle
       // callback (paced writes + remote acceptance can span seconds on SSH) must
@@ -174,12 +149,11 @@ export function useNativeChatInteractiveSend(
         onDeliverySettled?.(delivered)
       }
       const answerText = formatAskAnswer(prompt, selections)
-      const messageOptions =
-        delivery === 'message'
-          ? withAntigravitySubmitConfirmation(agent, answerText, readTerminalScreen, {
-              onDeliverySettled: onSettled
-            })
-          : { onDeliverySettled: onSettled }
+      const messageOptions = asMessage
+        ? withAntigravitySubmitConfirmation(agent, answerText, readTerminalScreen, {
+            onDeliverySettled: onSettled
+          })
+        : { onDeliverySettled: onSettled }
       const handle: NativeChatSendHandle = stepsAnswer
         ? sendNativeChatAskAnswer(
             targetPtyId,
@@ -205,8 +179,11 @@ export function useNativeChatInteractiveSend(
 
   const cancelAsk = useCallback(() => {
     cancelInFlight()
+    if (nativeChatAskRequiresTerminal(agent)) {
+      return Promise.resolve(false)
+    }
     return sendRawVerified(ESC)
-  }, [cancelInFlight, sendRawVerified])
+  }, [agent, cancelInFlight, sendRawVerified])
 
   const cancel = useCallback(() => {
     cancelInFlight()
@@ -220,7 +197,6 @@ export function useNativeChatInteractiveSend(
 
   return {
     sendAnswer,
-    sendMessage,
     sendRaw,
     sendRawVerified,
     cancelPending: cancelInFlight,

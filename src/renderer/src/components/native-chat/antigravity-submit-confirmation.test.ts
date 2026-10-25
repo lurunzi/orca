@@ -26,7 +26,7 @@ import {
   NATIVE_CHAT_SUBMIT_RETRY_MAX
 } from './native-chat-submit-confirmation'
 import { sendNativeChatMessageWithImageAttachments } from './native-chat-runtime-image-send'
-import { NATIVE_CHAT_SUBMIT } from './native-chat-send'
+import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat-paste-bytes'
 
 const RULE = '─'.repeat(120)
 const HEADER = ['      ▄▀▀▄        Antigravity CLI 1.2.8', '─'.repeat(60)]

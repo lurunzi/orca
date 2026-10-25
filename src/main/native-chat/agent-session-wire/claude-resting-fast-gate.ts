@@ -35,3 +35,16 @@ export function restingClaudeFastRefusal(
       }
     : null
 }
+
+/** Only a live answer carries Claude's account verification; a catalog-derived view never does. */
+export function withLiveVerifiedFastMode(
+  view: Pick<AgentSessionOptionsResult, 'fastModeSupport'>,
+  live: Pick<AgentSessionOptionsResult, 'fastModeSupport'> | null
+): Pick<AgentSessionOptionsResult, 'fastModeSupport'> {
+  const verified = live?.fastModeSupport
+  return verified?.supported === true &&
+    verified.accountVerified === true &&
+    view.fastModeSupport?.reason !== 'model-not-supported'
+    ? { fastModeSupport: verified }
+    : view
+}

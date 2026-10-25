@@ -39,7 +39,6 @@ function messages(id = 'reply-1'): NativeChatMessage[] {
 }
 const send = {
   sendAnswer: vi.fn<NativeChatInteractiveSend['sendAnswer']>(),
-  sendMessage: vi.fn<NativeChatInteractiveSend['sendMessage']>(),
   sendRaw: vi.fn<NativeChatInteractiveSend['sendRaw']>(),
   sendRawVerified: vi.fn<NativeChatInteractiveSend['sendRawVerified']>(),
   cancelPending: vi.fn<NativeChatInteractiveSend['cancelPending']>(),

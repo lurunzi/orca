@@ -88,6 +88,7 @@ export type NativeChatMessageSlot = {
 
 export type NativeChatTranscriptSlotsInput = {
   messages: readonly NativeChatMessage[]
+  unresolvedRowIds?: ReadonlySet<string>
   typography?: NativeChatRowTypography
   turnKeys: readonly (string | undefined)[]
   /** The live turn (`nativeChatTurnMembership`): its bar carries the running clock and its rows
@@ -117,6 +118,7 @@ export function buildNativeChatTranscriptSlots(
 ): NativeChatTranscriptSlot[] {
   const {
     messages,
+    unresolvedRowIds,
     typography,
     turnKeys,
     liveTurnKey,
@@ -196,7 +198,8 @@ export function buildNativeChatTranscriptSlots(
     const activeTurnIsWorking = isNativeChatRowInLiveWorkingTurn(
       turnKey,
       liveTurnKey,
-      isWorking || lifecycleWorking
+      isWorking || lifecycleWorking,
+      unresolvedRowIds?.has(message.id)
     )
     const drawsRow =
       receipt !== undefined ||

@@ -11,6 +11,7 @@
 // structured request with the refusal that says why.
 
 import type { AgentSessionAccountKind } from '../../shared/agent-session-availability'
+import { bindAtRestCommandContexts } from '../native-chat/agent-session-wire/at-rest-command-context'
 import type { StructuredAgentSessionTransportOverrides } from './structured-agent-session-transport-overrides'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
 import type { AgentSessionResumeTrigger } from '../../shared/agent-session-resume-marker'
@@ -19,7 +20,7 @@ import {
   structuredAgentSessionTeardownTrigger,
   tearDownRuntime,
   type InstalledRuntime
-} from './structured-agent-session-runtime-teardown'
+} from './agent-session/structured-agent-session-runtime-teardown'
 import { AgentSessionRecoveryCapsule } from './agent-session-recovery-capsule'
 import type { StructuredAgentCommandSettings } from '../native-chat/structured-agent-command-resolution'
 import {
@@ -106,8 +107,7 @@ export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportO
   /** Every structured-session status projection, for host-side reactions such as the first-work
    *  workspace rename that CLI agents get from their hooks. */
   onSessionStatusChanged?: StructuredAgentSessionHostDeps['onSessionStatusChanged']
-  /** The agent-status store; see `StructuredAgentSessionHostDeps.statusSink`. */
-  statusSink?: StructuredAgentSessionHostDeps['statusSink']
+  conversationNaming?: StructuredAgentSessionHostDeps['conversationNaming']
   /** See `StructuredAgentSessionHostDeps.hasOpenDispatch`. */
   hasOpenDispatch?: StructuredAgentSessionHostDeps['hasOpenDispatch']
   resolveCodexAccountKind?: (home: string) => AgentSessionAccountKind | undefined
@@ -120,7 +120,7 @@ export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportO
   /** The account home a structured launch would pin right now, for catalog
    *  reads with no session record. Absent disables the catalog surface. */
   resolveAgentAccountHome?: RuntimeAgentAccountHomeResolver
-}
+} & Pick<StructuredAgentSessionHostDeps, 'onRequestFailure' | 'statusSink'>
 
 let installing: Promise<InstalledRuntime> | null = null
 
@@ -300,8 +300,10 @@ async function installOnJournal(
     probeOwners: createStructuredAgentSessionOwnerProbes(deps.hostId),
     resolveWorkspacePath: deps.resolveWorkspacePath,
     logger: deps.logger,
+    ...(deps.onRequestFailure ? { onRequestFailure: deps.onRequestFailure } : {}),
     ...(deps.onSessionStatusChanged ? { onSessionStatusChanged: deps.onSessionStatusChanged } : {}),
     ...(deps.statusSink ? { statusSink: deps.statusSink } : {}),
+    ...(deps.conversationNaming ? { conversationNaming: deps.conversationNaming } : {}),
     ...(deps.hasOpenDispatch ? { hasOpenDispatch: deps.hasOpenDispatch } : {}),
     ...(deps.startupLimits ? { startupLimits: deps.startupLimits } : {}),
     ...(deps.onSessionTabHidden ? { onSessionTabHidden: deps.onSessionTabHidden } : {}),
@@ -331,7 +333,6 @@ async function installOnJournal(
       onState: delivery.reconcile
     })
   }
-  setStructuredAgentSessionHost(host)
   // The host starts with its runtime, local or remote, so this is the runtime-start listing.
   const modelCatalog = host.deps.modelCatalog
   void modelCatalog?.prewarm()
@@ -348,12 +349,22 @@ async function installOnJournal(
         logger: deps.logger
       })
     : undefined
+  const stopCommands = bindAtRestCommandContexts(
+    registrations.map(({ adapter }) => adapter.atRestCommands)
+  )
+  try {
+    setStructuredAgentSessionHost(host)
+  } catch (error) {
+    stopCommands()
+    throw error
+  }
   return {
     host,
     adapter,
     journalDatabase,
     waitForRecovery: lifecycle.drain,
     stopBackgroundWork: () => {
+      stopCommands()
       stopVisualsSweep?.()
       modelCatalog?.stop()
     }

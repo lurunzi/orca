@@ -2,7 +2,7 @@
 
 import '@testing-library/jest-dom/vitest'
 
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NativeChatBlock, NativeChatMessage } from '../../../../shared/native-chat-types'
@@ -19,12 +19,10 @@ vi.mock('../../store', () => ({
 }))
 
 import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
-import { usePendingAsyncAsk } from './NativeChatAsyncQuestionCard'
 import { useNativeChatInteractivePromptCard } from './use-native-chat-interactive-prompt-card'
 
 const send = {
   sendAnswer: vi.fn<NativeChatInteractiveSend['sendAnswer']>(),
-  sendMessage: vi.fn<NativeChatInteractiveSend['sendMessage']>(),
   sendRaw: vi.fn<NativeChatInteractiveSend['sendRaw']>(),
   sendRawVerified: vi.fn<NativeChatInteractiveSend['sendRawVerified']>(),
   cancelPending: vi.fn<NativeChatInteractiveSend['cancelPending']>(),
@@ -70,36 +68,21 @@ function card(messages: readonly NativeChatMessage[]) {
   return <Pane messages={messages} />
 }
 
+function answered(): { prompt: unknown; selections: unknown } {
+  const [prompt, selections] = send.sendAnswer.mock.calls[0] ?? []
+  return { prompt, selections }
+}
+
 describe('NativeChatInteractiveCard async Codex questions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    send.sendMessage.mockReturnValue(true)
+    send.sendAnswer.mockImplementation((_prompt, _selections, onSettled) => {
+      onSettled?.(true)
+      return { settleAfterMs: 1 }
+    })
   })
 
   afterEach(cleanup)
-
-  it('keeps a dismissed question hidden through streaming updates and resets for a later ask', () => {
-    const { result, rerender } = renderHook(({ messages }) => usePendingAsyncAsk(messages), {
-      initialProps: { messages: WITH_OPTIONS }
-    })
-    act(() => result.current.dismiss())
-    rerender({ messages: [...WITH_OPTIONS] })
-    expect(result.current.prompt).toBeNull()
-    rerender({ messages: [] })
-    rerender({ messages: WITH_OPTIONS })
-    expect(result.current.prompt?.questions[0]?.question).toBe(QUESTION)
-  })
-
-  it('clears dismissal when another question supersedes it', () => {
-    const { result, rerender } = renderHook(({ messages }) => usePendingAsyncAsk(messages), {
-      initialProps: { messages: WITH_OPTIONS }
-    })
-    act(() => result.current.dismiss())
-    rerender({ messages: asyncAsk([{ title: 'Any constraints?' }]) })
-    expect(result.current.prompt?.questions[0]?.question).toBe('Any constraints?')
-    rerender({ messages: WITH_OPTIONS })
-    expect(result.current.prompt?.questions[0]?.question).toBe(QUESTION)
-  })
 
   it('renders an answerable card after the acknowledgement', () => {
     render(card(WITH_OPTIONS))
@@ -109,15 +92,18 @@ describe('NativeChatInteractiveCard async Codex questions', () => {
     expect(screen.getByPlaceholderText('Type your answer')).toBeInTheDocument()
   })
 
-  it('answers with a follow-up chat message, never selector keystrokes', () => {
+  it('answers as a message the agent reads later, never selector keystrokes', () => {
     render(card(WITH_OPTIONS))
 
     fireEvent.click(screen.getByRole('button', { name: /Not moved/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
 
-    expect(send.sendMessage).toHaveBeenCalledExactlyOnceWith('Not moved')
-    expect(send.sendAnswer).not.toHaveBeenCalled()
+    expect(answered()).toEqual({
+      prompt: expect.objectContaining({ replyAsMessage: true }),
+      selections: [expect.objectContaining({ indices: [1] })]
+    })
     expect(send.sendRaw).not.toHaveBeenCalled()
+    expect(send.sendRawVerified).not.toHaveBeenCalled()
     expect(screen.queryByText(QUESTION)).not.toBeInTheDocument()
   })
 
@@ -129,11 +115,14 @@ describe('NativeChatInteractiveCard async Codex questions', () => {
     })
     fireEvent.keyDown(screen.getByPlaceholderText('Type your answer'), { key: 'Enter' })
 
-    expect(send.sendMessage).toHaveBeenCalledExactlyOnceWith('Keep it offline')
+    expect(answered().selections).toEqual([expect.objectContaining({ other: 'Keep it offline' })])
   })
 
   it('keeps the card when the message could not be sent', () => {
-    send.sendMessage.mockReturnValue(false)
+    send.sendAnswer.mockImplementation((_prompt, _selections, onSettled) => {
+      onSettled?.(false)
+      return { settleAfterMs: 1 }
+    })
     render(card(WITH_OPTIONS))
 
     fireEvent.click(screen.getByRole('button', { name: /Moved/ }))
@@ -149,11 +138,22 @@ describe('NativeChatInteractiveCard async Codex questions', () => {
 
     expect(screen.queryByText(QUESTION)).not.toBeInTheDocument()
     expect(send.cancel).not.toHaveBeenCalled()
+    expect(send.cancelAsk).not.toHaveBeenCalled()
     expect(send.sendRaw).not.toHaveBeenCalled()
   })
 
   it('shows no card for plain assistant prose', () => {
-    render(card([message('prose', 'assistant', [{ type: 'text', text: `${QUESTION}\n- Moved` }])]))
+    render(
+      card([
+        message('prose', 'assistant', [
+          {
+            type: 'text',
+            text: `${QUESTION}
+- Moved`
+          }
+        ])
+      ])
+    )
 
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
   })

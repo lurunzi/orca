@@ -64,6 +64,52 @@ describe('useNativeChatSessionOptions model reporting', () => {
     Object.defineProperty(window, 'api', { configurable: true, value: undefined })
   })
 
+  it.each([null, 'gpt-5.6-terra'])(
+    'tracks an unlisted Codex report after %s without inventing effort choices',
+    async (initialModel) => {
+      discoverModels.mockResolvedValue(null)
+      const paneKey = `codex-unlisted-${initialModel}:leaf`
+      const dispatchCommand = vi.fn()
+      storeState.agentStatusByPaneKey[paneKey] = initialModel ? { model: initialModel } : {}
+      const { result, rerender } = renderHook(() =>
+        useNativeChatSessionOptions({
+          agent: 'codex',
+          terminalTabId: paneKey,
+          targetPtyId: paneKey,
+          dispatchCommand,
+          paneKey
+        })
+      )
+      await waitFor(() =>
+        expect(modelDescriptor(result.current.snapshot).currentValue).toBe(
+          initialModel ?? undefined
+        )
+      )
+      storeState.agentStatusByPaneKey[paneKey] = { model: 'gpt-6.1-sol' }
+      rerender()
+      await waitFor(() =>
+        expect(modelDescriptor(result.current.snapshot).currentValue).toBe('gpt-6.1-sol')
+      )
+      expect(result.current.snapshot).toHaveLength(1)
+      expect(result.current.snapshot[0]).toMatchObject({
+        valueSource: 'reported',
+        action: { type: 'agent-picker' }
+      })
+      expect(modelDescriptor(result.current.snapshot).choices).toContainEqual({
+        value: 'gpt-6.1-sol',
+        label: 'gpt-6.1-sol'
+      })
+      const snapshot = result.current.snapshot
+      storeState.agentStatusByPaneKey[paneKey] = {}
+      rerender()
+      storeState.agentStatusByPaneKey[paneKey] = { model: 'gpt-6.1-sol' }
+      rerender()
+      expect(result.current.snapshot).toBe(snapshot)
+      await result.current.surface?.invokeAction('model')
+      expect(dispatchCommand).toHaveBeenCalledWith('/model', { delivery: 'type' })
+    }
+  )
+
   it('names an OMP session by the model its hook reports, before and after discovery', async () => {
     // Why: OMP seeds no models and has no terminal frame to read; the hook's
     // `provider/id` stamp is the only way the pill can name the running model.
@@ -361,7 +407,7 @@ it('updates an open Antigravity surface with new models without dispatching or c
   await waitFor(() =>
     expect(modelDescriptor(result.current.snapshot).currentValue).toBe(initial[0].id)
   )
-  await act(async () => result.current.surface?.refresh?.())
+  await act(async () => result.current.surface?.demandModelCatalog?.())
   expect(discoverModels).toHaveBeenCalledOnce()
   const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + AGENT_MODEL_CATALOG_FRESH_MS)
   try {
@@ -369,7 +415,7 @@ it('updates an open Antigravity surface with new models without dispatching or c
       ...initial,
       { id: 'gemini-4-argon-high', label: 'Gemini 4 Argon (High)', options: [] }
     ])
-    await act(async () => result.current.surface?.refresh?.())
+    await act(async () => result.current.surface?.demandModelCatalog?.())
     await waitFor(() =>
       expect(modelDescriptor(result.current.snapshot).choices.map(({ value }) => value)).toEqual([
         'gemini-3.8-flash-high',

@@ -27,7 +27,7 @@ vi.mock('@/runtime/runtime-rpc-client', async (original) => ({
   callRuntimeRpc: mocks.rpc
 }))
 import { cursorSessionMatchesWorkspace, openCursorTranscriptTab } from './cursor-transcript-tab'
-import { activateStructuredAgentSessionTab } from './structured-agent-session-tab-activation'
+import { activateStructuredAgentSessionTab } from './agent-session/structured-agent-session-tab-activation'
 
 const api = createTabsSliceMockApi()
 const WT = 'folder:worker'

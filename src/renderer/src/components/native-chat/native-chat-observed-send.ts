@@ -11,7 +11,7 @@ import {
   submitConfirmDurationMs,
   type NativeChatSubmitConfirmation
 } from './native-chat-submit-confirmation'
-import { NATIVE_CHAT_SUBMIT } from './native-chat-send'
+import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat-paste-bytes'
 
 /** Observe write refusals without mistaking transport success for provider acceptance. */
 export function sendNativeChatObservedWrites(

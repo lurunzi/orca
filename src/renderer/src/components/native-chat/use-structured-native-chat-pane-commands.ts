@@ -26,11 +26,11 @@ import {
   useStructuredNativeChatInbox,
   type StructuredNativeChatInboxController
 } from './use-structured-native-chat-inbox'
-import { useStructuredChatAsyncAsk } from './NativeChatAsyncQuestionCard'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 
 export function useStructuredNativeChatPaneCommands({
   tabId,
+  ownerWorktreeId,
   groupId,
   isVisible,
   rootRef,
@@ -44,6 +44,7 @@ export function useStructuredNativeChatPaneCommands({
   ...menuTargets
 }: {
   tabId: string
+  ownerWorktreeId: string | null
   groupId?: string
   isVisible: boolean
   rootRef: RefObject<HTMLDivElement | null>
@@ -53,11 +54,10 @@ export function useStructuredNativeChatPaneCommands({
   sessionMenuItems?: ReactNode
   sessionId: string
   target: RuntimeClientTarget
-  /** Fork: the chat behind the header cluster, its session menu items, Inbox and async asks. */
+  /** Fork: the chat behind the header cluster, its session menu items and Inbox. */
   chat: Pick<Parameters<typeof useStructuredChatSessionActions>[0], 'agent' | 'paneKey'> & {
     controller: StructuredNativeChatInboxController & {
       messages: readonly NativeChatMessage[]
-      prompts: readonly unknown[]
     }
   }
 } & NativeChatContextMenuTargetArgs) {
@@ -65,9 +65,9 @@ export function useStructuredNativeChatPaneCommands({
   const inbox = useStructuredNativeChatInbox(
     { agent: chat.agent, sessionId, tabId, target },
     controller,
-    composerRef
+    composerRef,
+    menuTargets.fileLinkContext?.worktreePath ?? null
   )
-  const asyncAsk = useStructuredChatAsyncAsk(controller, controller.prompts.length > 0)
   const sessionActions = useStructuredChatSessionActions({
     agent: chat.agent,
     paneKey: chat.paneKey,
@@ -110,16 +110,9 @@ export function useStructuredNativeChatPaneCommands({
       right: formatShortcutLabel('terminal.splitRight', keybindings),
       down: formatShortcutLabel('terminal.splitDown', keybindings)
     },
-    workspaceLayout:
-      groupId && terminalPaneActions === undefined
-        ? {
-            unifiedTabId: tabId,
-            groupId,
-            shortcutLabels: {
-              right: formatShortcutLabel('terminal.splitRight', keybindings),
-              down: formatShortcutLabel('terminal.splitDown', keybindings)
-            }
-          }
+    chatPane:
+      ownerWorktreeId && groupId && terminalPaneActions === undefined
+        ? { tabId, worktreeId: ownerWorktreeId, groupId }
         : undefined
   })
   const onKeyDownCapture = useCallback<KeyboardEventHandler<HTMLDivElement>>(
@@ -158,8 +151,8 @@ export function useStructuredNativeChatPaneCommands({
     ...contextMenu,
     onKeyDownCapture,
     header: sessionActions.header,
-    inbox,
-    asyncAsk,
-    askOpen: asyncAsk.prompt !== null
+    titleActions: sessionActions.titleActions,
+    headerDialog: sessionActions.dialog,
+    inbox
   }
 }

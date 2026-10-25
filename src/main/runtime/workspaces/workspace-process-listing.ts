@@ -22,10 +22,7 @@ import type { StructuredAgentId } from '../../../shared/agent-session-provider-h
 import type { GlobalSettings } from '../../../shared/global-settings-types'
 import { enrichMissingRepoGitRemoteIdentities } from '../../repo-git-remote-identity-enrichment'
 import { ensureStructuredAgentSessionHost as installStructuredAgentSessionHost } from '../structured-agent-session-runtime'
-import {
-  bindStructuredSessionCoordinatorIdentities,
-  installStructuredSessionIdentityLoader
-} from '../structured-session-coordinator-identity'
+import * as sessionIdentity from '../structured-session-coordinator-identity'
 import {
   createStructuredAttentionMobileDelivery,
   readStructuredAttentionWorkspaceLabels
@@ -42,6 +39,8 @@ import { createStructuredChatNamingHandler } from '../../native-chat/structured-
 import { structuredChatNamingDeps } from '../structured-chat-naming-runtime'
 import { getProfileUserDataPath } from '../../orca-profiles/profile-storage-paths'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../shared/execution-host'
+import { escalateChatWorkerError } from '../orchestration/chat-worker-error-escalation'
+import type { StructuredAgentSessionRequestFailure } from '../../native-chat/agent-session-wire/structured-agent-session-request-failures'
 import { buildWorktreeListingPage } from '../worktree-listing-host-scope'
 import {
   structuredWorkerOpenTaskTitle,
@@ -97,6 +96,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
       tabs: this.tabs,
       session,
       getPaneKey: (leaf) => this.makeRuntimePaneKey(leaf),
+      paneOf: (pty) => this.paneOfPty(pty),
       getTitleDisplayClear: (ptyId) => this.getPtyTitleDisplayClear(ptyId),
       getSummary
     })
@@ -114,6 +114,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
         repoById,
         ptysById: this.ptysById,
         tabs: this.tabs,
+        paneOf: (pty) => this.paneOfPty(pty),
         getTerminalHandlesForPty: (ptyId) => this.getExistingTerminalHandlesForPtyId(ptyId),
         getSummary
       })
@@ -176,7 +177,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
     settings: Pick<GlobalSettings, 'agentDefaultEnv'>
   ) {
     return {
-      ...resolveTuiAgentLaunchEnv(agent, settings.agentDefaultEnv),
+      ...resolveTuiAgentLaunchEnv(agent, settings),
       ...this.accounts.hostLaunchEnvFor(agent)
     }
   }
@@ -233,7 +234,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
    * a launch's admission.
    */
   async ensureStructuredAgentSessionHost(): Promise<void> {
-    installStructuredSessionIdentityLoader(() => this.getExistingOrchestrationDb())
+    sessionIdentity.installStructuredSessionIdentityLoader(() => this.getExistingOrchestrationDb())
     const logger = createStructuredAgentSessionLogger()
     const nameChat = createStructuredChatNamingHandler(
       structuredChatNamingDeps(
@@ -291,6 +292,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
       ...(this.prepareCodexCatalogProbeHomeFn
         ? { prepareCodexCatalogProbeHome: this.prepareCodexCatalogProbeHomeFn }
         : {}),
+      onRequestFailure: (failure) => this.onStructuredRequestFailureForErrorMail(failure),
       // Structured chat has no agent CLI hooks, so this projection is what the first-work
       // workspace rename listens to instead of `agentStatus:set`.
       onSessionStatusChanged: (summary, options) => {
@@ -303,6 +305,7 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
         )
       },
       ...(this.structuredAgentStatusSinkFn ? { statusSink: this.structuredAgentStatusSinkFn } : {}),
+      conversationNaming: nameChat,
       // A closed chat settles the Dispatch it was working, as a closed terminal does.
       onSessionTabHidden: (sessionId) => this.onStructuredSessionTabHidden(sessionId),
       attentionDelivery: createStructuredAttentionMobileDelivery({
@@ -319,14 +322,19 @@ export abstract class OrcaRuntimeWithGetWorktreePs extends OrcaRuntimeWithWorktr
       hasOpenDispatch: (record) =>
         structuredWorkerOwesWork(this.getOrchestrationDbIfAvailable?.() ?? null, record)
     })
-    const host = getStructuredAgentSessionHost()
-    if (host) {
-      bindStructuredSessionCoordinatorIdentities({
-        getDb: () => this.getOrchestrationDb(),
-        getExistingDb: () => this.getExistingOrchestrationDb(),
-        host,
-        onSessionActivity: (sessionId) => this.notifyStructuredSessionJournalActivity(sessionId)
-      })
-    }
+    sessionIdentity.bindStructuredSessionCoordinatorIdentities({
+      getDb: () => this.getOrchestrationDb(),
+      getExistingDb: () => this.getExistingOrchestrationDb(),
+      onSessionActivity: (sessionId) => this.notifyStructuredSessionJournalActivity(sessionId)
+    })
+  }
+
+  /** A chat worker whose request settled failed tells the Run that dispatched it. */
+  onStructuredRequestFailureForErrorMail(failure: StructuredAgentSessionRequestFailure): void {
+    void escalateChatWorkerError(failure, {
+      enabled: () => this.isChatWorkerErrorEscalationEnabled(),
+      db: () => this.getOrchestrationDbIfAvailable(),
+      notify: (handle, messageType) => this.notifyMessageArrived(handle, messageType)
+    })
   }
 }

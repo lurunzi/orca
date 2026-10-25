@@ -4,9 +4,9 @@ import {
   probeAgentSessionProcessIdentities,
   probeAgentSessionProcessIdentity,
   probeAgentSessionReservation
-} from './agent-session-process-identity-probe'
-import { findAgentSessionReservationProcesses } from './agent-session-reservation-command-line-scan'
-import { readEchoedAgentSessionSpawnToken } from './agent-session-spawn-token-readback'
+} from './agent-session/ownership/agent-session-process-identity-probe'
+import { findAgentSessionReservationProcesses } from './agent-session/ownership/agent-session-reservation-command-line-scan'
+import { readEchoedAgentSessionSpawnToken } from './agent-session/ownership/agent-session-spawn-token-readback'
 
 /**
  * The lease's only source of truth about a previous owner. Everything it cannot

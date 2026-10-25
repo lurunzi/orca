@@ -208,6 +208,7 @@ export function NativeChatMessageList({
   const { slots: allSlots, liveLine } = useNativeChatTranscriptSlots({
     typography,
     messages: rows,
+    unresolvedRowIds: turnRows.unresolvedRowIds,
     turnKeys,
     liveTurnKey,
     receipts,

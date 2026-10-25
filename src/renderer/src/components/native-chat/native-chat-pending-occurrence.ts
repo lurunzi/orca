@@ -1,8 +1,15 @@
+import { nativeChatContinuationSendText } from '../../../../shared/native-chat-continuation-send'
 import {
   normalizeNativeChatUserText,
   normalizedNativeChatUserMessageText
 } from '../../../../shared/native-chat-image-transcript-markers'
 import { isImageRefBlock, type NativeChatMessage } from '../../../../shared/native-chat-types'
+import { countPendingTextsGluedAfterTruncatedLead } from './native-chat-pending-text-glue'
+
+export {
+  countLeadingPendingTextsGluedToUserText,
+  countPendingTextsGluedAfterTruncatedLead
+} from './native-chat-pending-text-glue'
 
 export type NativeChatPendingOccurrence = {
   text: string
@@ -134,92 +141,37 @@ export function matchingNativeChatUserRows(
   return rows
 }
 
-/**
- * How many leading pending texts concatenate to exactly `userText`, allowing at
- * most one collapsed space at each send boundary. Covers rapid-send glue
- * ("joke"+"continue" → "joke continue") while still requiring the whole row to
- * be consumed, so unrelated prefixes never match ("hi" ↛ "history").
- *
- * Both sides are whitespace-normalized, so a piece never starts with a space and
- * the boundary space is unambiguous; only the line-continuation form branches.
- */
-export function countLeadingPendingTextsGluedToUserText(
-  pendingTexts: readonly string[],
+// Continuations can finish outside this queue, so only their prefix must be represented.
+function countLeadingPendingTextsRepresentedByUserText(
+  pieces: readonly { text: string; literal: string; continuation: boolean }[],
   userText: string
 ): number {
-  if (pendingTexts.length === 0 || userText.length === 0) {
-    return 0
-  }
-  return countGluedPendingTextsFrom(pendingTexts, userText, 0, 0)
-}
-
-function countGluedPendingTextsFrom(
-  pendingTexts: readonly string[],
-  userText: string,
-  index: number,
-  cursor: number
-): number {
-  const piece = pendingTexts[index]
-  if (!piece) {
-    return 0
-  }
-  const start = index > 0 && userText[cursor] === ' ' ? cursor + 1 : cursor
-  // Why: a send ending in `\` turns the TUI's Enter into a line continuation, so
-  // the agent eats the backslash and the next send lands on the same turn.
-  const forms = piece.length > 1 && piece.endsWith('\\') ? [piece, piece.slice(0, -1)] : [piece]
-  for (const form of forms) {
-    if (!userText.startsWith(form, start)) {
-      continue
+  let cursor = 0
+  let opened = 0
+  for (let index = 0; index < pieces.length; index += 1) {
+    const piece = pieces[index]
+    if (!piece?.text) {
+      return opened
     }
-    const end = start + form.length
-    if (end === userText.length) {
-      if (form === piece) {
-        return index + 1
-      }
-      continue
+    const at = index > 0 && userText[cursor] === ' ' ? cursor + 1 : cursor
+    const literal = piece.continuation && userText.startsWith(piece.literal, at)
+    const text = literal ? piece.literal : piece.text
+    if (!userText.startsWith(text, at)) {
+      return opened
     }
-    const count = countGluedPendingTextsFrom(pendingTexts, userText, index + 1, end)
-    if (count > 0) {
-      return count
+    cursor = at + text.length
+    if (
+      piece.continuation &&
+      !literal &&
+      (cursor === userText.length || userText[cursor] === ' ')
+    ) {
+      opened = index + 1
+    }
+    if (cursor === userText.length) {
+      return index > 0 ? index + 1 : opened
     }
   }
-  return 0
-}
-
-/**
- * Like the leading glue above, but the first send survives only as a truncated
- * lead: its Enter never landed, so the next send's single Ctrl+U killed the
- * wrapped tail row of it before gluing on ("…only if the rest" + "go?" →
- * "…only if go?"). Returns how many pending texts that row represents (≥ 2).
- */
-export function countPendingTextsGluedAfterTruncatedLead(
-  pendingTexts: readonly string[],
-  userText: string
-): number {
-  const lead = pendingTexts[0]
-  if (!lead) {
-    return 0
-  }
-  for (let count = pendingTexts.length; count >= 2; count -= 1) {
-    let end = userText.length
-    for (let index = count - 1; index >= 1 && end >= 0; index -= 1) {
-      const piece = pendingTexts[index]
-      if (!piece || !userText.endsWith(piece, end)) {
-        end = -1
-        break
-      }
-      end -= piece.length
-      // Pieces are trimmed, so a space before one is always a collapsed boundary.
-      if (userText[end - 1] === ' ') {
-        end -= 1
-      }
-    }
-    const kept = end > 0 ? userText.slice(0, end) : ''
-    if (kept && kept.length < lead.length && lead.startsWith(kept)) {
-      return count
-    }
-  }
-  return 0
+  return opened
 }
 
 /** A transcript row a glue match may consume, carrying the send boundaries it
@@ -242,13 +194,19 @@ export function selectPendingIndicesRepresentedByUserRows(
   rows: readonly NativeChatGluedUserRow[]
 ): Set<number> {
   const represented = new Set<number>()
-  if (pending.length < 2 || rows.length === 0) {
+  const remaining = pending.map((entry, index) => {
+    const continuation = nativeChatContinuationSendText(entry.text)
+    return {
+      index,
+      literal: normalizeNativeChatPendingText(entry.text),
+      text: continuation ?? normalizeNativeChatPendingText(entry.text),
+      continuation: continuation !== null
+    }
+  })
+  // A lone continuation can be represented without a second queued send.
+  if (rows.length === 0 || (pending.length < 2 && !remaining.some((entry) => entry.continuation))) {
     return represented
   }
-  const remaining = pending.map((entry, index) => ({
-    index,
-    text: normalizeNativeChatPendingText(entry.text)
-  }))
   for (const row of rows) {
     const open: typeof remaining = []
     for (const entry of remaining) {
@@ -262,15 +220,16 @@ export function selectPendingIndicesRepresentedByUserRows(
       }
       open.push(entry)
     }
-    const openTexts = open.map((entry) => entry.text)
-    const gluedCount =
-      countLeadingPendingTextsGluedToUserText(openTexts, row.text) ||
-      countPendingTextsGluedAfterTruncatedLead(openTexts, row.text)
-    // Why: gluedCount === 1 is an exact match — leave it to occurrence counting.
-    if (gluedCount < 2) {
+    const matched =
+      countLeadingPendingTextsRepresentedByUserText(open, row.text) ||
+      countPendingTextsGluedAfterTruncatedLead(
+        open.map((entry) => entry.text),
+        row.text
+      )
+    if (matched === 0) {
       continue
     }
-    for (let i = 0; i < gluedCount; i += 1) {
+    for (let i = 0; i < matched; i += 1) {
       const entry = open[i]
       if (!entry) {
         continue

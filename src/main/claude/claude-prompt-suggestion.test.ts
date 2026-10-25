@@ -57,7 +57,11 @@ it('publishes only same-session suggestions after a successful result and clears
 const LEAF = '0b7c5d3e-1f2a-4b6c-8d9e-0a1b2c3d4e5f'
 const STALE_LEAF = '9f8e7d6c-5b4a-4321-8fed-cba987654321'
 
-async function acquireWith(store: ClaudePromptSuggestionStore, resumeLeafUuid: string | null) {
+async function acquireWith(
+  store: ClaudePromptSuggestionStore,
+  resumeLeafUuid: string | null,
+  written = async () => ({ ok: true as const })
+) {
   const claude = fakeClaude()
   const adapter = new ClaudeStructuredSessionAdapter({
     resolveLaunch: async () => ({
@@ -80,7 +84,12 @@ async function acquireWith(store: ClaudePromptSuggestionStore, resumeLeafUuid: s
     identity: identityFor(),
     fence: 7,
     spawnToken: `suggestion-${resumeLeafUuid}`,
-    events: { appendItem: vi.fn(), appendTombstone: vi.fn(), publish: vi.fn() }
+    events: {
+      appendItem: vi.fn(),
+      appendTombstone: vi.fn(),
+      publish: vi.fn(),
+      written
+    }
   })
   const message = (body: Record<string, unknown>): void => {
     claude.connections[0].handlers.onMessage?.({ session_id: PROVIDER_SESSION_ID, ...body })
@@ -125,6 +134,40 @@ it('restores the last suggestion after a restart until the next turn starts', as
     expect(again.adapter.readPromptSuggestion(sessionId)).toBeNull()
     await again.adapter.closeSession(sessionId)
   } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+it('does not resurrect a retired suggestion when the previous journal write settles late', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orca-claude-suggestion-late-'))
+  const written = Promise.withResolvers<{ ok: true }>()
+  const store = await loadClaudePromptSuggestionStore(directory)
+  const first = await acquireWith(store, null, () => written.promise)
+  const sessionId = identityFor().sessionId
+  try {
+    first.message({
+      type: 'assistant',
+      uuid: LEAF,
+      message: { role: 'assistant', content: [{ type: 'text', text: 'done' }] }
+    })
+    first.message({ type: 'result', is_error: false })
+    first.message({ type: 'prompt_suggestion', suggestion: 'Add tests' })
+    expect(first.adapter.readPromptSuggestion(sessionId)).toBe('Add tests')
+    expect(store.memory(sessionId).restore(LEAF)).toBeNull()
+    first.message({
+      type: 'assistant',
+      uuid: STALE_LEAF,
+      message: { role: 'assistant', content: [{ type: 'text', text: 'next turn' }] }
+    })
+    written.resolve({ ok: true })
+    await first.adapter.closeSession(sessionId)
+    await store.flush()
+    expect(
+      (await loadClaudePromptSuggestionStore(directory)).memory(sessionId).restore(LEAF)
+    ).toBeNull()
+  } finally {
+    written.resolve({ ok: true })
+    await first.adapter.closeAll()
     rmSync(directory, { recursive: true, force: true })
   }
 })

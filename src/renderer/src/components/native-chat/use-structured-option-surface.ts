@@ -8,16 +8,16 @@ import type {
 export function useStructuredOptionSurface(
   snapshot: SessionOptionDescriptor[],
   setOption: SessionOptionsSurface['setOption'],
-  refresh: () => void
+  demandModelCatalog: () => void
 ): SessionOptionsSurface {
   return useMemo<SessionOptionsSurface>(
     () => ({
       getSnapshot: () => snapshot,
-      refresh,
+      demandModelCatalog,
       setOption,
       invokeAction: async () => ({ snapshot }),
       subscribe: () => () => {}
     }),
-    [setOption, snapshot, refresh]
+    [setOption, snapshot, demandModelCatalog]
   )
 }

@@ -12,11 +12,13 @@ import type {
 } from '../../../../shared/workspace-layout/workspace-layout-command-types'
 import type { WorkspaceSessionState } from '../../../../shared/workspace-session-state-types'
 import type { RuntimePtyWorktreeRecord } from '../../runtime-terminal-state-records'
+import type { PtyPaneOf, PtyPaneSource } from '../surface/pty-pane-query'
 
-type PlacementPty = Pick<
-  RuntimePtyWorktreeRecord,
-  'ptyId' | 'incarnationId' | 'worktreeId' | 'connectionId' | 'runtimeSessionOwned' | 'tabId'
-> & { paneKey: string | null; connected: boolean }
+type PlacementPty = PtyPaneSource &
+  Pick<
+    RuntimePtyWorktreeRecord,
+    'incarnationId' | 'worktreeId' | 'connectionId' | 'runtimeSessionOwned' | 'connected'
+  >
 
 export type LiveTerminalPlacementPorts = {
   /** A fresh census of every local workspace; null when the host could not answer. */
@@ -28,6 +30,7 @@ export type LiveTerminalPlacementPorts = {
   ptys: () => Iterable<PlacementPty>
   /** A spawn still binding its pane (its workspace's spawn lock is held): not proven to have none. */
   isStillBinding: (pty: PlacementPty) => boolean
+  paneOf: PtyPaneOf
   hostIds: () => readonly ExecutionHostId[]
   session: (hostId: ExecutionHostId) => WorkspaceSessionState | null | undefined
   apply: (command: CommandOf<'createTerminalTab'> & { tabId: string }) => Promise<LayoutApplyReply>
@@ -60,9 +63,13 @@ function paneBoundPtyIds(ports: LiveTerminalPlacementPorts): Set<string> {
   return bound
 }
 
-function recordedPaneKeyOf(pty: PlacementPty): string | undefined {
-  const pane = parsePaneKey(pty.paneKey ?? '')
-  return pane && pane.tabId === pty.tabId && pty.paneKey ? pty.paneKey : undefined
+function recordedPaneKeyOf(
+  ports: LiveTerminalPlacementPorts,
+  pty: PlacementPty
+): string | undefined {
+  const { tabId, paneKey } = ports.paneOf(pty)
+  const pane = parsePaneKey(paneKey ?? '')
+  return pane && pane.tabId === tabId && paneKey ? paneKey : undefined
 }
 
 /**
@@ -127,7 +134,7 @@ async function placeOne(
   if (!isUnshown(pty, paneBoundPtyIds(ports), inventory) || ports.isStillBinding(pty)) {
     return
   }
-  const recordedPaneKey = recordedPaneKeyOf(pty)
+  const recordedPaneKey = recordedPaneKeyOf(ports, pty)
   const reply = await ports.apply({
     type: 'createTerminalTab',
     workspace: pty.worktreeId,
@@ -140,10 +147,15 @@ async function placeOne(
     }
   })
   if (reply.ok) {
-    if (reply.result.paneKey) {
-      ports.recordPane(pty.ptyId, reply.result.paneKey)
-    }
+    // Placed once main bound it; recording the pane on its record is a census convenience.
     placement.placed.push(pty.ptyId)
+    if (reply.result.paneKey) {
+      try {
+        ports.recordPane(pty.ptyId, reply.result.paneKey)
+      } catch (error) {
+        console.warn('[layout] placed terminal kept its old pane record:', reasonOf(error))
+      }
+    }
   } else if (reply.code !== 'host_not_owned') {
     placement.declined.push(pty.ptyId)
   }
@@ -153,14 +165,17 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** For startup callers: the pass never stops a server from coming up, whatever fails in it. */
-export async function placeUnshownLiveTerminalsAtStartup(
-  runtime: { placeUnshownLiveTerminals: () => Promise<unknown> } | null | undefined
+/**
+ * For startup, client-attach and terminal-service callers: the pass never stops a server from
+ * coming up or a client from attaching, whatever fails in it.
+ */
+export async function placeUnshownLiveTerminalsBestEffort(
+  runtime: { placeUnshownLiveTerminals?: () => Promise<unknown> } | null | undefined
 ): Promise<void> {
   try {
-    await runtime?.placeUnshownLiveTerminals()
+    await runtime?.placeUnshownLiveTerminals?.()
   } catch (error) {
-    console.warn('[layout] showing live terminals at startup failed:', reasonOf(error))
+    console.warn('[layout] showing live terminals failed:', reasonOf(error))
   }
 }
 

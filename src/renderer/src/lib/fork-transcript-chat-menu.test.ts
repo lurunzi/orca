@@ -4,6 +4,7 @@ import { buildNewTabAgentMenuRows } from './new-tab-agent-menu-rows'
 const input = {
   detectedOnHost: ['claude', 'antigravity', 'gemini'] as const,
   chatAgents: ['claude', 'antigravity'] as const,
+  chatProgram: () => 'available' as const,
   hostChatAnswer: (agent: string): 'not-on-host' | 'yes' =>
     agent === 'antigravity' ? 'not-on-host' : 'yes'
 }
@@ -37,7 +38,8 @@ it('lists installed Cursor with chats even without a structured Cursor adapter',
       settings: { experimentalNativeChat: true },
       detectedOnHost: ['cursor'],
       chatAgents: [],
-      hostChatAnswer: () => 'not-on-host'
+      hostChatAnswer: () => 'not-on-host',
+      chatProgram: () => 'available'
     })
   ).toEqual([{ kind: 'cli', agent: 'cursor', opensTranscriptChat: true }])
 })
@@ -48,7 +50,8 @@ it.each(['ssh', 'wsl'] as const)('keeps transcript agents as CLI on %s', (host) 
       settings: { experimentalNativeChat: true },
       detectedOnHost: ['cursor'],
       chatAgents: [],
-      hostChatAnswer: () => host
+      hostChatAnswer: () => host,
+      chatProgram: () => 'available'
     })
   ).toEqual([{ kind: 'cli', agent: 'cursor' }])
 })

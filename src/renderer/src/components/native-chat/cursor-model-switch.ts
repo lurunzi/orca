@@ -1,4 +1,4 @@
-import { buildNativeChatPasteBytes } from './native-chat-send'
+import { buildNativeChatPasteBytes } from '../../../../shared/native-chat-paste-bytes'
 import {
   cursorModelTarget,
   cursorModelMenu,

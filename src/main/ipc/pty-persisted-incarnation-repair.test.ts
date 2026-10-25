@@ -1,3 +1,4 @@
+import { createPaneBindingStore } from './pty-launch-race-test-fixture'
 import { withDurableRuntimeStore } from '../runtime/runtime-durable-store-fixture'
 import { describe, expect, it, vi } from 'vitest'
 import { statSyncMock } from './pty-ipc-mock-registry'
@@ -106,20 +107,15 @@ describe('registerPtyHandlers', () => {
       seedHeadlessTerminal: vi.fn(),
       onPtyExit: vi.fn()
     }
-    const store = {
-      getWorkspaceSession: vi.fn(() => ({
-        tabsByWorktree: {
-          [worktreeId]: [{ id: tabId, worktreeId, ptyId: 'pty-persisted-owner' }]
-        },
-        terminalLayoutsByTabId: {
-          [tabId]: { ptyIdsByLeafId: { [leafId]: 'pty-persisted-owner' } }
-        },
-        terminalPtyIncarnationsByPaneKey: {
-          [paneKey]: 'inc-stale-owner'
-        }
-      })),
-      persistPtyBinding: vi.fn(() => true)
-    }
+    const store = createPaneBindingStore()
+    await store.persistPtyBinding({
+      worktreeId,
+      tabId,
+      leafId,
+      ptyId: 'pty-persisted-owner',
+      incarnationId: 'inc-stale-owner'
+    })
+    store.persistPtyBinding.mockClear()
 
     registerPtyHandlers(
       mainWindow as never,
@@ -161,9 +157,15 @@ describe('registerPtyHandlers', () => {
         command: undefined
       })
     )
-    expect(runtime.registerPreAllocatedHandleForPty).toHaveBeenCalledWith(
+    expect(runtime.registerPty).toHaveBeenCalledWith(
       'pty-persisted-owner',
-      'term-rebuilt-owner'
+      worktreeId,
+      null,
+      expect.objectContaining({
+        tabId,
+        leafId,
+        incarnationId: 'inc-live-owner'
+      })
     )
     expect(runtime.noteTerminalSpawnCommand).not.toHaveBeenCalled()
     expect(store.persistPtyBinding).toHaveBeenCalledOnce()
@@ -178,7 +180,8 @@ describe('registerPtyHandlers', () => {
           ptyId: 'pty-persisted-owner',
           incarnationId: 'inc-stale-owner'
         }
-      })
+      }),
+      undefined
     )
     expect(
       mainWindow.webContents.send.mock.calls.filter(([channel]) => channel === 'pty:spawned')
@@ -377,7 +380,6 @@ describe('registerPtyHandlers', () => {
         command: 'codex resume exact-dead-provider-session'
       })
       if (ORCA_LAYOUT_OWNER_IS_MAIN) {
-        // The dead binding stays until the fresh spawn's one bind swaps it.
         expect(store.setWorkspaceSession).not.toHaveBeenCalled()
         const [swap] = vi.mocked(store.persistPtyBinding).mock.calls[0] ?? []
         expect(typeof swap === 'function' ? swap() : swap).toMatchObject({
@@ -503,7 +505,6 @@ describe('registerPtyHandlers', () => {
       })
     ).rejects.toThrow('terminal_pane_owner_unverified')
 
-    // The live PTY keeps its pane binding, gets no synthetic exit, and is not duplicated.
     expect(providerSpawn).toHaveBeenCalledOnce()
     expect(providerSpawn.mock.calls[0]?.[0]).toMatchObject({ attachOnly: true })
     expect(runtime.onPtyExit).not.toHaveBeenCalled()

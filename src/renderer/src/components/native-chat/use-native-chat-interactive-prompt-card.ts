@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useAppStore } from '../../store'
 import { resolveNativeChatAsk } from '../../../../shared/native-chat-ask'
-import { extractPendingAsyncAsk } from '../../../../shared/native-chat-async-ask'
 import { extractAntigravityProseQuestion } from '../../../../shared/native-chat-antigravity-prose-question'
 import type { AgentType, NativeChatMessage } from '../../../../shared/native-chat-types'
 import {
@@ -57,11 +56,6 @@ export function useNativeChatInteractivePromptCard({
     })
     if (prompt) {
       return { kind: 'question' as const, prompt }
-    }
-    // A blocking question wins; an async one is answered by a chat message instead.
-    const asyncPrompt = transcriptSettled ? extractPendingAsyncAsk(messages) : null
-    if (asyncPrompt) {
-      return { kind: 'question' as const, prompt: asyncPrompt, async: true }
     }
     const proseQuestion =
       agent === 'antigravity' && awaitingInput && transcriptSettled && !interactivePrompt
