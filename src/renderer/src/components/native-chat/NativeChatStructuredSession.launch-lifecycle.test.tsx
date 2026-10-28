@@ -117,7 +117,6 @@ describe('NativeChatStructuredSession launch lifecycle', () => {
     expect(screen.queryByRole('button', { name: 'Install Codex' })).toBeNull()
     expect(mocks.composerProps?.unavailableHint).toBeUndefined()
 
-    // A new chat gets the install message in its pane; the composer stays, disabled.
     hostSays(notInstalled)
     rerender(sessionView())
     expect(screen.getByRole('button', { name: 'Install Codex' })).toBeTruthy()
@@ -140,7 +139,6 @@ describe('NativeChatStructuredSession launch lifecycle', () => {
     expect(screen.queryByRole('button', { name: /^Install/ })).toBeNull()
     hostSays(notInstalled)
 
-    // With messages, Install is a strip above the composer instead.
     mocks.messages = null
     rerender(sessionView())
     expect(screen.getByRole('button', { name: 'Install' })).toBeTruthy()
@@ -301,7 +299,6 @@ describe('NativeChatStructuredSession launch lifecycle', () => {
     expect(screen.getByText('Chat connection could not be confirmed.')).toBeTruthy()
   })
 
-  // The message rides the restart as its first message, held until the chat exists.
   it('relaunches a failed start on send, with the message as its first message', () => {
     mocks.launchLifecycle = 'failed'
     render(sessionView())
@@ -330,7 +327,6 @@ describe('NativeChatStructuredSession launch lifecycle', () => {
     }
   )
 
-  // Launch Retry relaunches the chat, and the reader may have scrolled up in it.
   it('brings the latest into view when launch Retry relaunches a failed chat', async () => {
     mocks.launchLifecycle = 'failed'
     render(sessionView())

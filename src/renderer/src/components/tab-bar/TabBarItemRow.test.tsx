@@ -9,6 +9,7 @@ import {
   selectClientHostedBrowserRow
 } from '@/lib/pane-manager/client-hosted-browser-row-state'
 import { i18n } from '@/i18n/i18n'
+import { useAppStore } from '@/store'
 import { getTabDragLabel, type TabBarItem } from './tab-bar-item-model'
 import type { WorkspaceVisibleTabType } from '../../../../shared/tab-types'
 import type { AgentType } from '../../../../shared/agent-status-types'
@@ -32,7 +33,6 @@ type TabProps = {
   gitStatus?: string | null
 }
 
-// Every render of every tab, in order, keyed by the id the strip shows it under.
 const tabRenders: { id: string; props: TabProps }[] = []
 
 vi.mock('./SortableTab', () => ({
@@ -288,7 +288,7 @@ describe('tab strip rows', () => {
     renderStrip(inputs)
     expect(lastRender('session-1').tab?.title).toBe('My label')
     const chat = buildItems(inputs).find((item) => item.type === 'agent-session')!
-    expect(getTabDragLabel(chat, false)).toBe('My label')
+    expect(getTabDragLabel(chat, false, useAppStore.getState())).toBe('My label')
     renderStrip({ chatTitle: 'Renamed conversation' })
     expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
   })
@@ -426,10 +426,7 @@ describe('tab strip rows', () => {
   })
 })
 
-/**
- * A client-hosted row covers the pane without moving the group's `activeTabId`, so the strip's two
- * halves would each keep painting an underline — the reported double highlight.
- */
+/** Client-hosted rows overlay panes without changing activeTabId; suppress real-tab underlines while they are selected. */
 describe('real tabs while a client-hosted row is selected', () => {
   const activeFlags = (): boolean[] => TAB_IDS.map((tabId) => lastRender(tabId).isActive)
 

@@ -17,6 +17,7 @@ vi.mock('@/i18n/i18n', () => ({
 }))
 
 import {
+  isClaudeUsageWaitingForClaude,
   getProviderDisplayName,
   getProviderUsageErrorMessage,
   getProviderUsageStatusLabel
@@ -282,8 +283,7 @@ describe('provider usage error copy', () => {
   })
 
   it('classifies the Codex chatgpt-auth-required rate-limits read error as auth, not Limited', () => {
-    // Why: the message mentions "rate limits" only as the object it failed to
-    // read; labeling it "Limited" would wrongly imply the user hit a limit.
+    // Auth failures can mention rate limits as the unread object without indicating exhausted quota.
     const p = provider({
       provider: 'codex',
       error: 'chatgpt authentication required to read rate limits'
@@ -321,34 +321,26 @@ describe('provider usage error copy', () => {
     )
   })
 
-  it('uses structured Claude failure kinds before raw auth regexes', () => {
-    const p = provider({
-      error: 'Invalid OAuth token.',
-      usageMetadata: {
-        failureKind: 'stale-token',
-        attemptedSources: ['oauth', 'cli']
-      }
-    })
+  // Why: an expired access token is not a signed-out login; Claude refreshes it the next time it runs.
+  it.each([undefined, 'system', 'wsl:Ubuntu:system', 'profile:idle'])(
+    'tells every Claude login (%s) calmly that usage updates when Claude next runs',
+    (authProvenance) => {
+      const p = provider({
+        error: 'Invalid OAuth token.',
+        usageMetadata: {
+          failureKind: 'stale-token',
+          attemptedSources: ['oauth'],
+          authProvenance
+        }
+      })
 
-    expect(getProviderUsageStatusLabel(p)).toBe('Sign-in expired')
-    expect(getProviderUsageErrorMessage(p)).toBe(
-      'Claude usage has expired. Start Claude in this account to refresh it.'
-    )
-  })
-
-  it('tells a System Default user calmly that usage updates when Claude next runs', () => {
-    const p = provider({
-      error: 'Invalid OAuth token.',
-      usageMetadata: {
-        failureKind: 'stale-token',
-        attemptedSources: ['oauth'],
-        authProvenance: 'system'
-      }
-    })
-
-    expect(getProviderUsageStatusLabel(p)).toBe('Updates when Claude runs')
-    expect(getProviderUsageErrorMessage(p)).toBe('Claude usage updates the next time Claude runs.')
-  })
+      expect(getProviderUsageStatusLabel(p)).toBe('Updates when Claude runs')
+      expect(getProviderUsageErrorMessage(p)).toBe(
+        'Claude usage updates the next time Claude runs.'
+      )
+      expect(isClaudeUsageWaitingForClaude(p)).toBe(true)
+    }
+  )
 
   it('keeps refresh copy for failure kinds only a refreshing older host reports', () => {
     const p = provider({

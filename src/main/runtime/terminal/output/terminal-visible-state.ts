@@ -8,7 +8,7 @@ import { isAntigravityCommandApprovalScreen } from '../../antigravity-command-ap
 import { AntigravityScreenPermissionPublisher } from '../../antigravity-screen-permission-publisher'
 import type {
   RuntimeHeadlessTerminal,
-  RuntimeVisibleTerminalState
+  RuntimeVisibleTerminalState as VisibleState
 } from '../../runtime-terminal-state-records'
 import {
   VISIBLE_TERMINAL_SNAPSHOT_RETRY_MS,
@@ -35,8 +35,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
       }
       const terminalHandle = this.getAgentStatusTerminalHandleForPaneKey(pty.paneKey)
       const row = this.getAgentProviderSessionRowsForPaneFn?.(pty.paneKey)?.find(
-        (candidate) =>
-          candidate.providerSessionOnly !== true && candidate.agentType === 'antigravity'
+        (row) => row.providerSessionOnly !== true && row.agentType === 'antigravity'
       )
       // Native hooks identify the pane; the runtime owns its live terminal binding.
       return row && terminalHandle ? { ...row, terminalHandle } : null
@@ -109,15 +108,13 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     return projection.lines.length > 0 ? buildPreview(projection.lines, '') : preview
   }
 
-  protected async readVisibleTerminalState(
-    ptyId: string
-  ): Promise<RuntimeVisibleTerminalState | null> {
+  protected async readVisibleTerminalState(ptyId: string): Promise<VisibleState | null> {
     const generation = this.getPtyLifecycleGeneration(ptyId)
     const pending = this.providerVisibleStateReadsByPtyId.get(ptyId)
     if (pending?.generation === generation) {
       return pending.promise
     }
-    let entry: { generation: number; promise: Promise<RuntimeVisibleTerminalState | null> }
+    let entry: { generation: number; promise: Promise<VisibleState | null> }
     const promise = this.loadVisibleTerminalState(ptyId)
       .then((state) => {
         if (
@@ -139,9 +136,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     return promise
   }
 
-  protected async loadVisibleTerminalState(
-    ptyId: string
-  ): Promise<RuntimeVisibleTerminalState | null> {
+  protected async loadVisibleTerminalState(ptyId: string): Promise<VisibleState | null> {
     if (!this.providerSnapshotPreferredPtys.has(ptyId)) {
       return this.readHeadlessVisibleTerminalState(ptyId)
     }
@@ -199,7 +194,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     ) {
       return null
     }
-    const visibleState: RuntimeVisibleTerminalState = {
+    const visibleState: VisibleState = {
       ...projection,
       isAlternateScreen: snapshot.alternateScreen ?? false,
       sequence: snapshot.seq,
@@ -209,9 +204,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     return visibleState
   }
 
-  protected async readHeadlessVisibleTerminalState(
-    ptyId: string
-  ): Promise<RuntimeVisibleTerminalState | null> {
+  protected async readHeadlessVisibleTerminalState(ptyId: string): Promise<VisibleState | null> {
     const state = this.headlessTerminals.get(ptyId)
     if (!state) {
       return null
@@ -237,7 +230,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
 
   protected async readCurrentTerminalWaitScreen(
     ptyId: string
-  ): Promise<RuntimeVisibleTerminalState | null | undefined> {
+  ): Promise<VisibleState | null | undefined> {
     const generation = this.getPtyLifecycleGeneration(ptyId)
     const screen = await withTimeout(
       this.readVisibleTerminalState(ptyId),
@@ -260,6 +253,13 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     const state = this.readWholeScreenModel(ptyId)
     // Why unawaited writeChain: callers are synchronous; a grid one chunk behind is re-read next poll.
     return state ? projectTerminalVisibleLines(state.emulator).lines : null
+  }
+
+  /** The ruled grid only once it has applied every PTY chunk; a lagging grid could miss a new dialog. */
+  protected readCaughtUpRuledScreen(ptyId: string): RuledScreen | null {
+    return this.headlessTerminals.get(ptyId)?.outputSequence === this.getPtyOutputSequence(ptyId)
+      ? this.readRuledScreen(ptyId)
+      : null
   }
 
   /** The grid a screen-ruled agent's rule reads: as painted, and only on the PTY's own size. */
@@ -310,9 +310,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
       return { lines: [] }
     }
     try {
-      // Why: raw PTY tails can be whitespace-only while a full-screen TUI is
-      // visibly nonblank in renderer xterm. Ask the renderer for the active
-      // screen instead of reusing the headless transcript path.
+      // Raw tails can be blank while full-screen TUIs paint visible cells; ask renderer for the active screen.
       const snapshot = await withTimeout(
         controller.serializeBuffer(ptyId, { scrollbackRows: 0 }),
         VISIBLE_TERMINAL_SNAPSHOT_TIMEOUT_MS,

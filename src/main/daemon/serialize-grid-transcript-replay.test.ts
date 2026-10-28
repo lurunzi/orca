@@ -82,6 +82,9 @@ const KNOWN_PREEXISTING_I2_FAILURES: Record<string, number> = {
   'antigravity-composer-multiline-unsent': 2,
   'antigravity-windows-command-approval': 4,
   'claude-prompt-suggestion': 8,
+  'hermes-0-22-slash-setup': 2,
+  // Hermes 0.22's bottom statusbar restores the cursor one column short after shrink.
+  'hermes-0-22-statusbar-bottom': 2,
   // Agy/Cline/Prime reproduce background leaks; Prime also has cursor-row diffs after alt-screen repaint.
   'antigravity-1-2-14-busy-thinking': 2,
   'antigravity-1-2-14-command-palette': 4,

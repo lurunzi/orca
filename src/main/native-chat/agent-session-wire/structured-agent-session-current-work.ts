@@ -1,3 +1,4 @@
+import { isHistoricalProviderTimelineItem } from '../agent-session-timeline/provider-timeline-history'
 import { currentRequestsProjection } from './agent-session-current-requests'
 // Derive operational work from lease, first-hand exit, replaced-runtime and journal evidence.
 // Cleanup writes never gate current work; readers share this projection rather than maintaining rules.
@@ -16,7 +17,11 @@ import type { StructuredAgentSessionWorkScope } from '../../../shared/structured
 import { isUnansweredStructuredAgentSessionDispatch } from '../../../shared/structured-agent-session-unanswered-dispatch'
 import type { AgentSessionJournal } from '../agent-session-journal/journal-store'
 import { DISPATCH_DOUBT_PROVIDER_ENDED_UNANSWERED } from '../agent-session-journal/journal-dispatch-doubt-reasons'
-import { structuredAgentSessionHandingOver } from './structured-agent-session-handing-over'
+import {
+  continuingStructuredAgentSessionInput,
+  finalizingStructuredAgentSessionInput,
+  structuredAgentSessionHandingOver
+} from './structured-agent-session-handing-over'
 
 export type StructuredAgentSessionCurrentWorkJournal = Pick<
   AgentSessionJournal,
@@ -150,9 +155,12 @@ export class StructuredAgentSessionCurrentWork {
 
   private unanswered(submission: AgentJournalSubmission): boolean {
     return (
-      !isQueuedAgentJournalSubmission(submission) &&
-      this.liveFence !== null &&
-      isUnansweredStructuredAgentSessionDispatch(submission, this.liveFence)
+      continuingStructuredAgentSessionInput(this.journal, submission.clientMessageId) ||
+      (submission.dispatchState === 'pending' &&
+        finalizingStructuredAgentSessionInput(this.journal, submission.clientMessageId)) ||
+      (!isQueuedAgentJournalSubmission(submission) &&
+        this.liveFence !== null &&
+        isUnansweredStructuredAgentSessionDispatch(submission, this.liveFence))
     )
   }
 
@@ -176,6 +184,10 @@ export class StructuredAgentSessionCurrentWork {
 
   isCurrentItem(itemId: string): boolean {
     if (this.liveFence === null) {
+      return false
+    }
+    const item = this.journal.item(itemId)
+    if (item && isHistoricalProviderTimelineItem(item, (key) => this.journal.item(key))) {
       return false
     }
     const provenance = this.journal.itemFence(itemId)

@@ -42,8 +42,7 @@ export type NativeChatSessionOptionPickersProps = {
 /** A descriptor write in flight; its value shows until it settles. */
 type PendingPick = { id: string; value?: SessionOptionValue }
 
-// Why: the picker stays open across a pick, so the choice has to land where it was made before
-// the host answers; a refused write falls back to the snapshot.
+// Show pending picks in place while open; refusal restores the host snapshot.
 function withPendingValue(
   descriptor: SessionOptionDescriptor,
   pending: PendingPick | null
@@ -69,8 +68,7 @@ function withPendingValue(
   return descriptor
 }
 
-// Why: value-only visible text must still include the category in the
-// accessible name (WCAG 2.5.3 Label in Name / voice control).
+// Keep visible value text inside the accessible name for voice control (WCAG 2.5.3).
 function pillAccessibleName(title: string, value: string): string {
   return value === title
     ? title
@@ -260,8 +258,7 @@ function SessionOptionPopover(props: {
         }}
         onInteractOutside={focusReturn.onInteractOutside}
         onCloseAutoFocus={focusReturn.onCloseAutoFocus}
-        // Why: a focused level's tooltip is the top layer, so Radix hands it the first Escape and
-        // the picker would take a second. The search is left to Radix, which waits out an IME.
+        // Close through a level tooltip’s first Escape; let Radix handle search Escape after IME.
         onKeyDown={(event) => {
           if (event.key === 'Escape' && !(event.target instanceof HTMLInputElement)) {
             setOpen(false)

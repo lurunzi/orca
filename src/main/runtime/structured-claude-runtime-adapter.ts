@@ -23,7 +23,6 @@ import { prewarmClaudeCliFlags } from '../claude/claude-cli-flag-prewarm'
 export type StructuredClaudeRuntimeAdapterDeps = {
   store: AgentSessionRecordStore
   resolveWorkspacePath: (workspaceId: string) => Promise<string>
-  /** The registration's composed launch: the shared launch path with Claude's part. */
   resolveLaunch: ClaudeStructuredSessionAdapterDeps['resolveLaunch']
   /** The binary and env the startup version prewarm asks, as a launch would. */
   resolveClaudeCommand?: typeof resolveClaudeCommand
@@ -138,8 +137,7 @@ export function createStructuredClaudeRuntimeAdapter(
   })
 }
 
-/** The child's connection, watched for a CLI refusing a version-gated flag, so the start that
- *  failed on it is the last one to pass it. */
+/** Watch flag-refusal exits so the next start omits the unsupported flag. */
 export function openClaudeConnectionOf(
   deps: Pick<StructuredClaudeRuntimeAdapterDeps, 'openClaudeConnection' | 'claudeCliFlags'>
 ): Pick<ClaudeStructuredSessionAdapterDeps, 'openConnection'> {

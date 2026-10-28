@@ -1,18 +1,16 @@
 # Useful Commands
 
+- **Before handoff**: `pnpm check:changed --maxWorkers=2` (format, lint, typecheck, affected tests, ratchets; cached when nothing changed)
 - **Local source checks**: `pnpm ci:local` runs lint, typecheck and unit tests using CI commands. `pnpm ci:local --focused [test paths]` scopes lint and tests; packaging, rendered Electron, mobile and other operating systems remain separate.
 - **Real Claude CLI**: when changing Claude structured-session code, run `ORCA_REAL_CLAUDE_CLI_TEST=1 pnpm test src/main/claude/claude-structured-real-cli.test.ts src/main/claude/claude-structured-real-cli-fold.test.ts`.
 
 - **Typecheck**: `pnpm tc` (or `tc:node` / `tc:cli` / `tc:web`)
-- Local typechecks use incremental tsrs on Apple Silicon macOS and x64/arm64 Linux; other platforms use Bun. Keep `.cache/typecheck/` between checks; delete it to force a fresh local check. `pnpm typecheck:ci` explicitly uses Bun; `pnpm tc --compiler=native` uses TypeScript.
-- **Test**: `pnpm test [path/to/file.test.ts]`
-- **Affected tests**: `pnpm test:changed [path] --maxWorkers=2` for uncommitted edits, or `pnpm test --changed=origin/main` for branch changes. Local runs cache loaded imports; cold caches run all tests in scope. Filesystem/subprocess inputs need explicit tests; see [test targeting](.github/CONTRIBUTING.md#targeting-local-tests).
-- **Lint**: `oxlint`, or `pnpm run check:code-quality:changed` for changed files (full `pnpm lint` is slow); format with `pnpm format`
-- **Design system**: `pnpm run lint:design-system` for the full renderer report (not a gate); the changed-lines gate above is what CI enforces
+- **Test**: `pnpm test [path/to/file.test.ts]`; affected only: `pnpm test:changed [path] --maxWorkers=2` ([details](.github/CONTRIBUTING.md#targeting-local-tests))
+- **Lint**: `oxlint`; format: `pnpm format`
 
 # Design System
 
-All UI work — layout, color, typography, spacing, component selection, UX behavior — must follow [`docs/STYLEGUIDE.md`](./docs/STYLEGUIDE.md). Use the tokens defined in `src/renderer/src/assets/main.css` (the canonical source) and the shadcn primitives in `src/renderer/src/components/ui/`. Don't invent new color values, font sizes, or shadow tiers when a documented one already covers the role. When STYLEGUIDE.md is silent, follow the resolution order in its final section.
+All UI work — layout, color, typography, spacing, component selection, UX behavior — must follow [`docs/STYLEGUIDE.md`](./docs/STYLEGUIDE.md). Use the tokens defined in `src/renderer/src/assets/main.css` (the canonical source) and the shadcn primitives in `src/renderer/src/components/ui/`. Don't invent new color values, font sizes, or shadow tiers when a documented one already covers the role. Read the `docs/styleguide/` deep dive it links only when your change touches that topic. When STYLEGUIDE.md is silent, follow the resolution order in its final section.
 
 # Electron UI Validation
 
@@ -22,6 +20,7 @@ Never steal monitor focus or reveal test windows: no `show()`, `showInactive()`,
 Rebuild modified launch-policy code before running an app; stale build wrappers are not safe.
 
 Use the `$electron` skill and Playwright CDP for rendered Orca UI checks. Do not use computer-use for Orca UI validation.
+Screenshot presentational components without Electron: `pnpm fixtures:shot <id>`.
 
 # Code Style
 
@@ -48,7 +47,7 @@ Every change must consider these areas:
 
 ## Cross-Platform Support
 
-Support macOS, Linux, and Windows. Guard platform-specific behavior at runtime; use platform-aware shortcuts, paths, and existing process wrappers. Before changing platform-specific code, processes, shells, shortcuts, paths, or native modules, read [`docs/reference/cross-platform-support.md`](./docs/reference/cross-platform-support.md).
+Support macOS, Linux, and Windows. Guard platform-specific behavior at runtime; use platform-aware shortcuts, paths, and existing process wrappers.
 
 ## Remote Use Case
 
@@ -72,13 +71,13 @@ Pending, failed, cancelled, or missing required checks block agent merges even w
 
 CI changes must exercise the affected checks in the PR. Required check names must be unique across workflows, and workflow changes must preserve the full aggregate's failure handling and conditional job requirements.
 
-If changing code around `git`, `gh`, source-control, or review behavior read [`docs/reference/git-workflow.md`](./docs/reference/git-workflow.md).
+If changing code around `git`, `gh`, source-control, or review behavior, follow the repository's existing conventions.
 
 For a failed GitHub Actions run, inspect the failed jobs and retry with `gh run rerun <run-id> --failed --repo stablyai/orca`. Preserve successful jobs; use a full rerun only when the failure requires revalidating them. A code fix needs a new push and fresh checks, not a retry of the old SHA.
 
 # Tests
 
-Avoid adding low-value tests. These might be fine for development but offer low value when checked in. [Anti-patterns](./docs/reference/test-antipatterns.md)
+Avoid adding low-value tests. These might be fine for development but offer low value when checked in.
 
 ## Worktree Safety
 

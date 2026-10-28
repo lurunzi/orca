@@ -11,7 +11,6 @@ import { getExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { structuredAgentSessionOwnerForTab } from '@/runtime/structured-agent-session-owner'
 import type { AppState } from '@/store/types'
 
-/** The conversation a tab's pane runs, for an agent `isAgent` accepts. */
 export type AgentPaneConversation<Agent extends AgentType> = {
   agent: Agent
   executionHostId: ExecutionHostId
@@ -130,7 +129,6 @@ export function collectAiVaultTitleRequests(state: AppState): AiVaultTitleReques
   )
 }
 
-/** Each tab's conversation of an agent `isAgent` accepts: live agent, then sleeping, then retained. */
 export function collectAgentPaneConversations<Agent extends AgentType>(
   state: AppState,
   isAgent: (agent: AgentType | null | undefined) => agent is Agent,
@@ -179,7 +177,6 @@ export function collectAgentPaneConversations<Agent extends AgentType>(
   return [...candidates.values()].map(({ priority: _priority, ...request }) => request)
 }
 
-/** One pane's running agent, mapped as above, so a pane's action finds that pane's own conversation. */
 export function resolvePaneAgentConversation<Agent extends AgentType>(
   state: AppState,
   pane: { worktreeId: string; paneKey: string },

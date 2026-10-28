@@ -40,8 +40,7 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
     suppressPtyExit,
     toggleTabViewMode
   } = useTerminalPaneStoreActions()
-  // Why one selector: five separate subscriptions each re-read the same unified
-  // tab, so one publication paid the lookup five times per mounted tab.
+  // Bundle unified-tab reads to reduce lookups and subscriptions per mounted tab.
   const { unifiedTabId, isChatViewMode, unifiedTabLabel, isTabPinned } = useAppStore(
     useShallow((store) =>
       selectUnifiedTerminalTabFields(store.unifiedTabsByWorktree, worktreeId, tabId)
@@ -73,8 +72,7 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
   const getNativeChatLeafIds = useCallback((): string[] => {
     const mountedLeafIds = managerRef.current?.getPanes().map((pane) => pane.leafId) ?? []
     return [...new Set([...expectedLayoutLeafIds, ...mountedLeafIds])]
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Preserve the pre-split dependency contract.
-  }, [expectedLayoutLeafIds])
+  }, [expectedLayoutLeafIds, managerRef])
   const getTabWideAgentHintLeafId = useCallback((): string | null => {
     if (tabWideAgentHintLeafId !== undefined) {
       return tabWideAgentHintLeafId
@@ -95,8 +93,7 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
       return
     }
     setTabWideAgentHintLeafId(leafIds.length === 1 ? leafIds[0] : null)
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Preserve the pre-split dependency contract.
-  }, [getNativeChatLeafIds, paneCount, tabWideAgentHintLeafId])
+  }, [getNativeChatLeafIds, paneCount, tabWideAgentHintLeafId, setTabWideAgentHintLeafId])
   const resolveTitleAgentForLeaf = useCallback(
     (leafId: string | null) => {
       const hasSingleKnownLeaf =
@@ -109,13 +106,13 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
         terminalTitle: hasSingleKnownLeaf ? terminalTab?.title : null
       })
     },
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Preserve the pre-split dependency contract.
     [
       getNativeChatLeafIds,
       getTabWideAgentHintLeafId,
       runtimePaneTitlesByPaneId,
       terminalTab?.title,
-      unifiedTabLabel
+      unifiedTabLabel,
+      managerRef
     ]
   )
   const isChatEligibleForLeaf = useCallback(
@@ -173,8 +170,16 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
         setTabViewMode(unifiedTabId, 'terminal')
       }
     },
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Preserve the pre-split dependency contract.
-    [chatLeafId, isChatViewMode, setTabLayout, setTabViewMode, tabId, unifiedTabId, worktreeId]
+    [
+      chatLeafId,
+      isChatViewMode,
+      setTabLayout,
+      setTabViewMode,
+      tabId,
+      unifiedTabId,
+      worktreeId,
+      setChatLeafId
+    ]
   )
   const handleConfirmedAgentExit = useCallback(
     (leafId: string): void => {
@@ -194,13 +199,11 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
         })
       )
     },
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Preserve the pre-split dependency contract.
-    [applyNativeChatLeafRoute, chatLeafId, isChatEligibleForLeaf, isChatViewMode]
+    [applyNativeChatLeafRoute, chatLeafId, isChatEligibleForLeaf, isChatViewMode, managerRef]
   )
   useEffect(() => {
     onAgentExitedRef.current = handleConfirmedAgentExit
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Preserve the pre-split dependency contract.
-  }, [handleConfirmedAgentExit])
+  }, [handleConfirmedAgentExit, onAgentExitedRef])
   const canToggleChatForLeaf = useCallback(
     (leafId: string | null): boolean => {
       // Scope the "always allow toggling back" rule to the leaf showing chat; must not make an unsupported sibling look eligible.
@@ -232,8 +235,7 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
       return
     }
     toggleNativeChatForLeaf(activeLeafId)
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- managerRef is a stable ref container.
-  }, [toggleNativeChatForLeaf])
+  }, [toggleNativeChatForLeaf, managerRef])
   const switchNativeChatToTerminal = useCallback(() => {
     if (chatLeafId && unifiedTabId) {
       setChatLeafId(null)
@@ -245,9 +247,7 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
       if (!chatLeafId) {
         return null
       }
-      const pane = managerRef.current
-        ?.getPanes()
-        .find((candidate) => candidate.leafId === chatLeafId)
+      const pane = managerRef.current?.getPanes().find((item) => item.leafId === chatLeafId)
       if (!pane) {
         return null
       }
@@ -268,8 +268,7 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
   const readNativeChatPromptSuggestion = useCallback((): string | null => {
     const pane = managerRef.current?.getPanes().find((candidate) => candidate.leafId === chatLeafId)
     return pane ? readClaudeTerminalPromptSuggestion(pane.terminal) : null
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- managerRef is a stable ref container.
-  }, [chatLeafId])
+  }, [chatLeafId, managerRef])
 
   return {
     readNativeChatPromptSuggestion,

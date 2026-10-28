@@ -5,22 +5,19 @@ import type { StructuredAgentSessionLogger } from '../native-chat/agent-session-
 import type { AgentJournalDispatchRejection } from '../../shared/agent-session-failure-words'
 import type { SubmissionRejectionFact } from '../../shared/agent-session-failure'
 import type { AgentJournalItemIdentity } from '../../shared/agent-session-journal-types'
-import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
-import type { StructuredAgentSessionOptionsReportedEvent } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
-import type {
-  ClaudeStreamJsonConnection,
-  openClaudeStreamJsonConnection
-} from './claude-stream-json-connection'
+import type { StructuredAgentSessionEventSink as EventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
+import type * as Adapter from '../native-chat/agent-session-wire/structured-agent-session-adapter'
+import type * as Connection from './claude-stream-json-connection'
 import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
 import type { StructuredLaunchRequest } from '../runtime/structured-agent-launch-composition'
 import type { ClaudeJournalTranslator } from './claude-journal-translator-contract'
-import type { ClaudePendingPrompt, ClaudePromptRegistry } from './claude-structured-prompt-replies'
+import type {
+  ClaudePendingPrompt,
+  ClaudePromptRegistry as PromptRegistry
+} from './claude-structured-prompt-replies'
 import { cancelProcessAcquisition } from '@orca/process-host/cancel-process-acquisition'
 import { randomUUID } from 'node:crypto'
-import type {
-  AgentSessionFastModeState,
-  AgentSessionFastModeSupport
-} from '../../shared/agent-session-wire'
+import type * as AgentWire from '../../shared/agent-session-wire'
 import type { AgentChildWorkEvidence } from '../../shared/agent-status-child-work-evidence'
 import type { ClaudeBackgroundTaskTracker } from './claude-background-task-tracker'
 import type { ClaudeChildWorkDecoder } from './claude-child-work-decoder'
@@ -35,6 +32,13 @@ export type ClaudeAuthDiagnostic = {
   authTokenConfigured: boolean
   apiKeyConfigured: boolean
   settingSources: readonly string[]
+}
+
+type ClaudeResumePoint = {
+  sessionId: string
+  providerSessionId: string
+  leafUuid: string | null
+  fence: number
 }
 
 export type ClaudeStructuredSessionEvent =
@@ -57,15 +61,9 @@ export type ClaudeStructuredSessionEvent =
   | { type: 'prompt'; sessionId: string; prompt: ClaudePendingPrompt }
   | { type: 'prompt-cancelled'; sessionId: string; promptKey: string }
   | { type: 'options'; sessionId: string; models: unknown[] }
-  | {
-      type: 'handle'
-      sessionId: string
-      providerSessionId: string
-      leafUuid: string | null
-      fence: number
-    }
+  | ({ type: 'handle' } & ClaudeResumePoint)
   | { type: 'auth-diagnostic'; sessionId: string; diagnostic: ClaudeAuthDiagnostic }
-  | StructuredAgentSessionOptionsReportedEvent
+  | Adapter.StructuredAgentSessionOptionsReportedEvent
   | {
       type: 'ended'
       sessionId: string
@@ -104,26 +102,16 @@ export type ClaudeStructuredSessionAdapterDeps = {
     evidence: AgentChildWorkEvidence[],
     producer?: StructuredAgentSessionChildWorkProducer
   ) => void
-  openConnection?: typeof openClaudeStreamJsonConnection
+  openConnection?: typeof Connection.openClaudeStreamJsonConnection
   readProcessStartTime?: (pid: number) => Promise<number | null>
   mintLinkId?: () => string
   mintAcquisitionGeneration?: () => string
   now?: () => number
   requestTimeoutMs?: number
-  persistHandle?: (input: {
-    sessionId: string
-    providerSessionId: string
-    leafUuid: string | null
-    fence: number
-  }) => Promise<void>
+  persistHandle?: (input: ClaudeResumePoint) => Promise<void>
   logger?: StructuredAgentSessionLogger
   /** Advance the durable resume point in place at a turn end; bookkeeping, never a turn failure. */
-  persistResumePoint?: (input: {
-    sessionId: string
-    providerSessionId: string
-    leafUuid: string
-    fence: number
-  }) => Promise<void>
+  persistResumePoint?: (input: ClaudeResumePoint & { leafUuid: string }) => Promise<void>
   /** Keeps the last suggestion across app restarts. */
   promptSuggestionStore?: Suggestions.ClaudePromptSuggestionStore
 }
@@ -150,7 +138,7 @@ export type ClaudeDispatchWaiter = {
 }
 
 export type ClaudeSession = {
-  connection: ClaudeStreamJsonConnection
+  connection: Connection.ClaudeStreamJsonConnection
   providerSessionId: string
   /** Latest main-chain message seen on the live stream, mid-turn included. */
   leafUuid: string | null
@@ -158,7 +146,7 @@ export type ClaudeSession = {
   turnEndLeafUuid: string | null
   fence: number
   acquisitionGeneration: string
-  prompts: ClaudePromptRegistry
+  prompts: PromptRegistry
   dispatchWaiters: ClaudeDispatchWaiter[]
   /** Sends the frame being handled settled, until their settlements reach the host. */
   unreportedSettlements?: ReadonlySet<string>
@@ -167,17 +155,22 @@ export type ClaudeSession = {
   /** Once a retired waiter is evicted, legacy content-only replay matching is unsafe. */
   replayContentFallbackBlocked: boolean
   options: Map<string, string>
-  reportedOptions: { model?: string; effort?: string; fastMode?: boolean }
+  reportedOptions: {
+    model?: string
+    effort?: string
+    fastMode?: boolean
+    reportedPermissionMode?: string | null
+  }
   /** CLI-resolved env/settings for the next request; lower priority than held options and turn reports. */
   appliedOptions?: { model?: string; effort?: string }
-  fastModeAccountSupport?: AgentSessionFastModeSupport
+  fastModeAccountSupport?: AgentWire.AgentSessionFastModeSupport
   readFastModeAccountSupport?: FastMode.ClaudeSessionFastModeAccountReader
   fastModeAccountRead?: Promise<void>
   /** CLI settings resolved before a turn changed them, when no launch override hid that value. */
   configuredDefaults?: { model?: string; effort?: string }
   /** Mutation at which the provider last reported its Fast routing state. */
   fastModeReportedMutation?: number
-  fastModeState?: AgentSessionFastModeState
+  fastModeState?: AgentWire.AgentSessionFastModeState
   fastModeDisabledReason?: string
   fastModePerSessionOptIn?: boolean
   /** Mutation sequence of the last model report; newer writes outrank it. */
@@ -216,7 +209,7 @@ export type ClaudeSession = {
   /** Set once `ended` has been emitted, so a persistence retry cannot repeat it. */
   closeEnded?: boolean
   translator: ClaudeJournalTranslator | null
-  events: StructuredAgentSessionEventSink | undefined
+  events: EventSink | undefined
   unbindReadingControl?: () => void
   /** Provider identity and initialize proof retained for the host-awaited open. */
   link: AgentSessionProviderHandleLink
@@ -239,7 +232,7 @@ export function mintClaudeAcquisitionGeneration(deps: ClaudeStructuredSessionAda
 /** Retain observed exits until settlement so delayed acquisition cleanup can find their proof. */
 export type ClaudeSessionExit = {
   observedAt: number
-  connection: ClaudeStreamJsonConnection
+  connection: Connection.ClaudeStreamJsonConnection
   session: ClaudeSession
   error: Error
   /** The exit path's first proof attempt; retries must observe this result. */
@@ -251,8 +244,8 @@ export type ClaudeSessionExit = {
 }
 
 export type ClaudeAcquisitionAttempt = {
-  connection: ClaudeStreamJsonConnection | null
-  prompts: ClaudePromptRegistry
+  connection: Connection.ClaudeStreamJsonConnection | null
+  prompts: PromptRegistry
   buffered: (() => void)[]
   published: boolean
   cancelled: boolean
@@ -263,9 +256,7 @@ export type ClaudeAcquisitionAttempt = {
   account?: ClaudeStructuredLaunch['account']
 }
 
-export function createClaudeAcquisitionAttempt(
-  prompts: ClaudePromptRegistry
-): ClaudeAcquisitionAttempt {
+export function createClaudeAcquisitionAttempt(prompts: PromptRegistry): ClaudeAcquisitionAttempt {
   let finish = (): void => {}
   const finished = new Promise<void>((resolve) => {
     finish = resolve
@@ -292,7 +283,7 @@ export class ClaudeAcquisitionRegistry {
 
   start(
     sessionId: string,
-    prompts: ClaudePromptRegistry
+    prompts: PromptRegistry
   ): {
     previous: ClaudeAcquisitionAttempt | undefined
     attempt: ClaudeAcquisitionAttempt
@@ -357,11 +348,20 @@ export async function cancelClaudeAcquisitionAttempt(
   })
 }
 
+export type ClaudeSessionAcquisitionInput = {
+  input: Adapter.StructuredAgentSessionAcquireInput
+  deps: ClaudeStructuredSessionAdapterDeps
+  sessions: Map<string, ClaudeSession>
+  acquisitions: ClaudeAcquisitionRegistry
+  exits: Map<string, ClaudeSessionExit>
+  callbacks: ClaudeAcquireCallbacks
+}
+
 export type ClaudeAcquireCallbacks = {
   deliver: (attempt: ClaudeAcquisitionAttempt, sessionId: string, event: () => void) => void
   emit: (
     session: ClaudeSession | null,
-    events: StructuredAgentSessionEventSink | undefined,
+    events: EventSink | undefined,
     event: ClaudeStructuredSessionEvent
   ) => void
   handleExit: (sessionId: string, attempt: ClaudeAcquisitionAttempt, error: Error) => void

@@ -294,8 +294,7 @@ describe('pendingSendsAsMessages', () => {
     expect(prunePendingSends(pending, history)).toEqual(pending)
   })
 
-  // #11519: a first send into a settled empty transcript has no row to compare, and the
-  // host that writes the transcript may run a clock behind this one.
+  // Empty-transcript sends cannot compare row boundaries or assume host/client clock alignment (#11519).
   it('retires a send into a settled empty transcript whatever the host clock says', () => {
     const fiveMinutes = 5 * 60_000
     const pending = [
@@ -462,9 +461,7 @@ describe('launchPromptAsMessage', () => {
     ).toBe(true)
   })
 
-  // Grok transcripts carry no timestamps; before the null-matchable rule the
-  // seeded bubble was never hidden or pruned and sat rank-pinned at the list
-  // tail forever, reading as the conversation reordering.
+  // Grok has no timestamps; excluding its rows stranded launch echoes at the transcript tail.
   it('hides and prunes the launch prompt against a timestampless transcript (grok)', () => {
     const entry = { tabId: 'tab-1', agent: 'grok' as const, text: 'rename it', createdAt: 42 }
     const transcript = [
@@ -626,9 +623,7 @@ describe('applyCommandMarkerBoundaries', () => {
 })
 
 describe('scope-cache key counts stay bounded (memory-leak regression)', () => {
-  // The per-key arrays were capped at 8, but the KEY count (paneKey/agent/session,
-  // all ephemeral) was unbounded, so distinct panes/sessions accumulated forever.
-  // Both caches now LRU-bound the key count at 128 (shared helper, #7566).
+  // Per-key limits alone leaked ephemeral scope keys; both caches also cap keys at 128 (#7566).
   const CAP = 128
 
   it('appendCommandMarkerCache evicts the oldest scope key past the cap', () => {
@@ -639,7 +634,6 @@ describe('scope-cache key counts stay bounded (memory-leak regression)', () => {
         '/clear'
       )
     }
-    // Oldest sessions evicted; the most-recent CAP survive.
     expect(
       readCommandMarkerCache({ paneKey: 'tab:leaf', agent: 'claude', sessionId: 's0' })
     ).toEqual([])
@@ -670,7 +664,6 @@ describe('commandMarkersAsMessages with a host answer', () => {
       { id: 'c2', command: '/context', sentAt: 9, output: 'Context: 54.6k / 200k tokens (27%)' }
     ])
     expect(message?.role).toBe('system')
-    // Plain text: it draws as the muted aside the Ran line would have been.
     expect(message?.blocks).toEqual([{ type: 'text', text: 'Context: 54.6k / 200k tokens (27%)' }])
   })
 })

@@ -5,7 +5,10 @@ import type {
   Options as ClaudeAgentSdkOptions,
   PermissionMode
 } from '@anthropic-ai/claude-agent-sdk'
-import type { AgentChatPermissionMode } from '../../shared/agent-chat-permission-mode'
+import type {
+  AgentChatPermissionChoice,
+  AgentChatPermissionMode
+} from '../../shared/agent-chat-permission-mode'
 import {
   agentSessionProviderHandleKey,
   agentSessionProviderHandleRoot
@@ -39,6 +42,10 @@ export { claudeSessionIdForOrcaSession }
 export const CLAUDE_DEFAULT_SETTING_SOURCES = ['user', 'project', 'local'] as const
 export const CLAUDE_SESSION_STATE_EVENTS_ENV = 'CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS'
 
+type ClaudePermissionOptions = Pick<ClaudeAgentSdkOptions, 'permissionMode' | 'extraArgs'> & {
+  resolvePermissionModeInCli?: true
+}
+
 export type ClaudeStructuredSdkOptions = Pick<
   ClaudeAgentSdkOptions,
   | 'includePartialMessages'
@@ -46,12 +53,10 @@ export type ClaudeStructuredSdkOptions = Pick<
   | 'systemPrompt'
   | 'settingSources'
   | 'supportedDialogKinds'
-  | 'extraArgs'
   | 'additionalDirectories'
   | 'plugins'
   | 'model'
   | 'effort'
-  | 'permissionMode'
   | 'allowDangerouslySkipPermissions'
   | 'settings'
   | 'sessionId'
@@ -59,7 +64,8 @@ export type ClaudeStructuredSdkOptions = Pick<
   | 'mcpServers'
   | 'resumeSessionAt'
   | 'forkSession'
->
+> &
+  ClaudePermissionOptions
 
 /** Replay acknowledgements require an explicit flag; the SDK supplies the other transport flags. */
 export const CLAUDE_STRUCTURED_BASE_OPTIONS: ClaudeStructuredSdkOptions = {
@@ -81,8 +87,12 @@ const CLAUDE_PERMISSION_MODES = {
 
 /** Full access is the owned CLI flag: the SDK's typed bypass emits a flag older binaries reject. */
 export function claudeStructuredPermissionOptions(
-  mode: AgentChatPermissionMode
-): Pick<ClaudeStructuredSdkOptions, 'permissionMode' | 'extraArgs'> {
+  mode: AgentChatPermissionChoice
+): ClaudePermissionOptions {
+  if (mode === 'own') {
+    // upstream request: https://github.com/anthropics/claude-agent-sdk-typescript/issues/519
+    return { resolvePermissionModeInCli: true }
+  }
   return mode === 'full-access'
     ? { extraArgs: { 'dangerously-skip-permissions': null } }
     : { permissionMode: CLAUDE_PERMISSION_MODES[mode] }

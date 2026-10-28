@@ -135,7 +135,6 @@ describe('countPendingTextsGluedAfterTruncatedLead', () => {
 describe('pending sends typed through an agent TUI', () => {
   beforeEach(() => clearPendingSendCacheForTests())
 
-  // A transcript row carrying the clear byte must match the body-only echo.
   const COMPOSER_TEXT = 'summarize the failing test and propose a fix'
 
   it('prunes the echo of a row carrying the clear byte', () => {

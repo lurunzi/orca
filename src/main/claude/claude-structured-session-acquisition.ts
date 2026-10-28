@@ -1,8 +1,5 @@
 import * as InitProof from './claude-structured-init-proof'
-import type {
-  AgentSessionAcquisition,
-  StructuredAgentSessionAcquireInput
-} from '../native-chat/agent-session-wire/structured-agent-session-adapter'
+import type { AgentSessionAcquisition } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
 import { openClaudeStreamJsonConnection } from './claude-stream-json-connection'
 import { buildClaudePermissionCallbacks } from './claude-structured-inbound-control'
 import { resolveClaudeReplayTurn } from './claude-replay-turn-resolution'
@@ -18,11 +15,8 @@ import { observeClaudeFastModeFacts } from './claude-structured-session-options'
 import { createClaudeSessionPublication } from './claude-structured-session-publication'
 import {
   mintClaudeAcquisitionGeneration,
-  type ClaudeAcquisitionRegistry,
   type ClaudeSession,
-  type ClaudeSessionExit,
-  type ClaudeStructuredSessionAdapterDeps,
-  type ClaudeAcquireCallbacks,
+  type ClaudeSessionAcquisitionInput,
   type ClaudeLateDispatchOutcome
 } from './claude-structured-session-state'
 import { resolveClaudeAcquisitionError } from './claude-structured-session-close'
@@ -42,14 +36,7 @@ export async function acquireClaudeSession({
   acquisitions,
   exits,
   callbacks
-}: {
-  input: StructuredAgentSessionAcquireInput
-  deps: ClaudeStructuredSessionAdapterDeps
-  sessions: Map<string, ClaudeSession>
-  acquisitions: ClaudeAcquisitionRegistry
-  exits: Map<string, ClaudeSessionExit>
-  callbacks: ClaudeAcquireCallbacks
-}): Promise<AgentSessionAcquisition> {
+}: ClaudeSessionAcquisitionInput): Promise<AgentSessionAcquisition> {
   const sessionId = input.identity.sessionId
   const prompts = new ClaudePromptRegistry()
   const { previous, attempt } = acquisitions.start(sessionId, prompts)
@@ -76,6 +63,7 @@ export async function acquireClaudeSession({
   )
   const contextActivity = translator?.contextActivity ?? 0
   const recordTurnEnd = claudeTurnResumePointWriter(sessionId, sessions, deps)
+  const observedOptions: ClaudeSession['reportedOptions'] = {}
   const onMessage = (message: Record<string, unknown>): void => {
     const init = InitProof.readClaudeInit(message)
     if (InitProof.readClaudeFrameString(message, 'session_id') !== expectedProviderSessionId) {
@@ -85,6 +73,10 @@ export async function acquireClaudeSession({
       }
       return
     }
+    const permissionChanged = InitProof.observeClaudeReportedPermissionMode(
+      observedOptions,
+      message
+    )
     const modelChanged =
       liveSession && init?.model ? observeClaudeExecutionModel(liveSession, init.model) : false
     if (init) {
@@ -127,13 +119,16 @@ export async function acquireClaudeSession({
     }
     try {
       callbacks.deliver(attempt, sessionId, () => {
-        if (modelChanged && liveSession && init?.model) {
+        if (liveSession && (modelChanged || permissionChanged)) {
           callbacks.emit(liveSession, input.events, {
             type: 'options-reported',
             sessionId,
             fence: liveSession.fence,
             acquisitionGeneration: liveSession.acquisitionGeneration,
-            reportedOptions: { model: init.model }
+            reportedOptions: {
+              ...(modelChanged && init?.model ? { model: init.model } : {}),
+              reportedPermissionMode: observedOptions.reportedPermissionMode
+            }
           })
         }
         callbacks.emit(liveSession, input.events, {
@@ -275,6 +270,7 @@ export async function acquireClaudeSession({
       observedAt: deps.now?.() ?? Date.now()
     })
     const session = publication.session
+    session.reportedOptions = observedOptions
     liveSession = session
     adoptClaudeStructuredSpawnOptions(session, launch.savedOptions)
     configureClaudeSessionAccountContext(session, launch, deps)
