@@ -258,11 +258,16 @@ describe('async questions', () => {
     ])
   })
 
-  it('stays open until a user message reaches the agent', () => {
+  it.each([
+    { optimistic: true },
+    { queued: true },
+    { unsent: true },
+    { stoppedBeforeStart: true },
+    { awaitsRetry: true },
+    { sentWhileStopping: true }
+  ] as const)('stays open until a user message reaches the agent: %j', (flags) => {
     const asked = message('a', [asyncCall('call-a', 'A?'), result()])
-    expect(titles([asked, userRow('q', { queued: true }), userRow('u', { unsent: true })])).toEqual(
-      ['A?']
-    )
-    expect(extractPendingAsk([asked, userRow('sent')])).toBeNull()
+    expect(titles([asked, userRow('answer', flags)])).toEqual(['A?'])
+    expect(extractPendingAsk([asked, userRow('answer')])).toBeNull()
   })
 })

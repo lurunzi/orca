@@ -198,6 +198,7 @@ export function projectStructuredAgentSessionMessages(
         id: agentJournalSubmissionKey(entry.clientMessageId),
         role: 'user',
         source: 'transcript',
+        optimistic: true,
         timestamp: entry.queuedAt,
         blocks: entry.body.blocks,
         ...(entry.sentWhileStopping ? { sentWhileStopping: true as const } : {})

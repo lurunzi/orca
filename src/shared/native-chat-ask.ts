@@ -159,6 +159,7 @@ export function extractPendingMessageReplyAsk(
 /** A user row the agent received; a queued, unsent or withdrawn send answers nothing yet. */
 function reachedAgent(message: NativeChatMessage): boolean {
   return (
+    message.optimistic !== true &&
     message.queued !== true &&
     message.unsent !== true &&
     message.stoppedBeforeStart !== true &&

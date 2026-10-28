@@ -268,6 +268,8 @@ export type NativeChatMessage = AgentJournalProducerLinkage & {
   command?: { name: string }
   /** On a user-role message another agent sent through Orca: who, as the journal recorded it. */
   from?: AgentMessageSource
+  /** This client's send before the host records it; not evidence the agent received it. */
+  optimistic?: true
   /** Accepted but not yet handed to the agent: drawn after everything the agent has done. */
   queued?: true
   /** Shown as not sent: in no turn, so a newer turn's bar and clock never land on it. Drawn where
