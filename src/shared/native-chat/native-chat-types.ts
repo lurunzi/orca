@@ -235,6 +235,8 @@ export type NativeChatMessage = AgentJournalProducerLinkage & {
   agentStart?: true
   /** On a creation fact: the agent was launched on its own, not started as a supervised worker. */
   agentHandoff?: true
+  /** This client's send before the host records it; not evidence the agent received it. */
+  optimistic?: true
   /** Accepted but not yet handed to the agent: drawn after everything the agent has done. */
   queued?: true
   /** Unsent rows belong to no turn. Draw at journal position, or after the conversation when unplaced. */

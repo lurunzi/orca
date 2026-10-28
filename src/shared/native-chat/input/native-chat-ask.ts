@@ -152,6 +152,7 @@ export function isDeliveredNativeChatUserMessage(message: NativeChatMessage): bo
   return (
     message.role === 'user' &&
     message.from?.kind !== 'agent' &&
+    message.optimistic !== true &&
     message.queued !== true &&
     message.unsent !== true &&
     message.stoppedBeforeStart !== true &&
