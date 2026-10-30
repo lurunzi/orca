@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import {
+  agentSessionConversationView,
+  type AgentSessionConversationView
+} from '../../shared/agent-session-conversation-view'
 import type { AgentSessionStatusEvent } from '../../shared/agent-session-wire'
 
 const hostRef: { current: unknown } = { current: null }
@@ -37,7 +41,9 @@ type FakeHost = {
   deps: {
     store: {
       getRecord: (sessionId: string) => AgentSessionRecord | null
-      listRecords: () => AgentSessionRecord[]
+      getConversation: (sessionId: string) => AgentSessionConversationView | null
+      listConversations: () => AgentSessionConversationView[]
+      getVisibleSessionTabIndex: () => { present: boolean; sessionIds: string[] }
     }
   }
   hasSession: (sessionId: string) => boolean
@@ -51,7 +57,12 @@ function installHost(options: { attached?: boolean; wslDistro?: string | null } 
   const host: FakeHost = {
     deps: {
       store: {
-        listRecords: () => [],
+        listConversations: () => [],
+        getVisibleSessionTabIndex: () => ({ present: false, sessionIds: [] }),
+        getConversation: (sessionId) => {
+          const record = host.deps.store.getRecord(sessionId)
+          return record ? agentSessionConversationView(record) : null
+        },
         getRecord: (sessionId) =>
           // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test record carries only the fields the grant reads.
           ({

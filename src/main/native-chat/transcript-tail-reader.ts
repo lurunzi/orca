@@ -1,5 +1,5 @@
 import { readOpenCodeNativeChatTranscriptTail } from './transcript-opencode'
-import { isENOENT } from '../ipc/filesystem-path-containment'
+import { isENOENT } from '../ipc/filesystem/filesystem-path-containment'
 import type {
   AgentType,
   NativeChatMessage,
@@ -8,13 +8,9 @@ import type {
 import { resolveNativeChatTranscriptAgent } from '../../shared/native-chat-agent-support'
 import { resolveSessionFilePath, type ResolveSessionFileOptions } from './session-file-resolver'
 import {
-  decodeAntigravityTranscriptLine,
-  decodeClaudeTranscriptLine,
-  decodeCodexTranscriptLine,
-  decodeCursorTranscriptLine,
-  decodeGrokTranscriptLine,
-  decodeOmpTranscriptLine
-} from './transcript-line-decoders'
+  nativeChatLineDecoderForAgent,
+  type NativeChatLineDecoder
+} from './transcript-line-decoder-for-agent'
 import { transcriptFallbackId } from './transcript-fallback-id'
 import { inTranscriptFileOrder } from './transcript-file-order'
 import { extendTranscriptBoundary } from './transcript-file-version'
@@ -37,30 +33,10 @@ import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
 
 export const MAX_NATIVE_CHAT_TRANSCRIPT_RECORD_BYTES = 2 * 1024 * 1024
 
-export type NativeChatLineDecoder = (line: string, fallbackId: string) => NativeChatMessage | null
-
-export function nativeChatLineDecoderForAgent(agent: AgentType): NativeChatLineDecoder | null {
-  const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
-  if (transcriptAgent === 'antigravity') {
-    return decodeAntigravityTranscriptLine
-  }
-  if (transcriptAgent === 'claude') {
-    return decodeClaudeTranscriptLine
-  }
-  if (transcriptAgent === 'codex') {
-    return decodeCodexTranscriptLine
-  }
-  if (transcriptAgent === 'cursor') {
-    return decodeCursorTranscriptLine
-  }
-  if (transcriptAgent === 'grok') {
-    return decodeGrokTranscriptLine
-  }
-  if (transcriptAgent === 'omp') {
-    return decodeOmpTranscriptLine
-  }
-  return null
-}
+export {
+  nativeChatLineDecoderForAgent,
+  type NativeChatLineDecoder
+} from './transcript-line-decoder-for-agent'
 
 export async function readNativeChatTranscriptTailFile(
   filePath: string,
@@ -70,7 +46,8 @@ export async function readNativeChatTranscriptTailFile(
   endOffset?: number,
   decodeLifecycle?: NativeChatTurnLifecycleDecoder | null,
   signal?: AbortSignal,
-  onConsumedBoundary?: (boundary: Buffer) => void
+  onConsumedBoundary?: (boundary: Buffer) => void,
+  sourceOrder = false
 ): Promise<{
   messages: NativeChatMessage[]
   lifecycle?: NativeChatTurnLifecycle
@@ -163,7 +140,11 @@ export async function readNativeChatTranscriptTailFile(
     }
     let latest = Number.NEGATIVE_INFINITY
     const chronological = newestFirst.toReversed().map((entry) => {
-      const ordered = inTranscriptFileOrder(entry.message, latest)
+      const ordered = inTranscriptFileOrder(
+        entry.message,
+        latest,
+        sourceOrder ? entry.offset : undefined
+      )
       latest = ordered.latest
       return { message: ordered.message, offset: entry.offset }
     })
@@ -245,6 +226,7 @@ export async function readNativeChatTranscriptTail(
     filePath?: string
     limit: number
     beforeOffset?: number
+    sourceOrder?: boolean
   },
   signal?: AbortSignal
 ): Promise<
@@ -290,7 +272,9 @@ export async function readNativeChatTranscriptTail(
       true,
       args.beforeOffset,
       decodeLifecycle,
-      signal
+      signal,
+      undefined,
+      args.sourceOrder
     )
     signal?.throwIfAborted()
     return {

@@ -11,7 +11,7 @@
 import type { AgentSessionRecord } from '../../../../shared/agent-session-record'
 import { agentSessionProviderHandleBelongsTo } from '../../../../shared/agent-session-provider-handle-encoding'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
-import { claudeSessionIdForOrcaSession } from '../../../claude/claude-structured-launch-resolution'
+import { claudeSessionIdForOrcaSession } from '../../../claude/structured/claude-structured-session-id'
 import {
   readWindowsProcessTableFresh,
   type WindowsProcessRow

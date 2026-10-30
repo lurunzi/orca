@@ -20,8 +20,8 @@ import {
 import { parsePersistedSidecar } from './session-sidecar-stat'
 
 // Bump for row-layout or cached-semantic changes; mismatched databases are discarded.
-// Fork: 7 supersedes the fork's 5 (unwrapped Cursor titles) and upstream's 6.
-export const SESSION_PARSE_CACHE_SCHEMA_VERSION = 7
+// Fork: 9 supersedes the fork's 7 (unwrapped Cursor titles) and upstream's 8.
+export const SESSION_PARSE_CACHE_SCHEMA_VERSION = 9
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);

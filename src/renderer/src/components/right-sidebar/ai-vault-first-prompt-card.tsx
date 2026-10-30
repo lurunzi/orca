@@ -10,8 +10,7 @@ import type { AiVaultSessionPromptPreview } from './ai-vault-session-display'
 // Fork: re-exported so the session details reach the Cursor transcript button in one import.
 export { AiVaultOpenTranscriptButton } from './AiVaultOpenTranscriptButton'
 
-// Why: the main-process re-parse has no deadline of its own. Without this the
-// card can sit in `loading` forever on a huge or stalled transcript.
+// Main-process reparsing has no deadline; cap loading for huge or stalled transcripts.
 const FULL_FIRST_PROMPT_LOAD_TIMEOUT_MS = 15_000
 
 function canLoadFullFirstPrompt(
@@ -34,8 +33,7 @@ export function FirstPromptCard({
   preview: AiVaultSessionPromptPreview | null
   copyHidden?: boolean
 }): React.JSX.Element {
-  // Loading starts true when an on-demand re-parse is possible so the mount effect
-  // does not need a sync setState (react-doctor: no-adjust-state-on-prop-change).
+  // Initialize loading here to avoid synchronous effect state updates (react-doctor: no-adjust-state-on-prop-change).
   const [fullText, setFullText] = useState<string | null>(null)
   const [loading, setLoading] = useState(() => canLoadFullFirstPrompt(session))
   const [copied, setCopied] = useState(false)
@@ -114,17 +112,12 @@ export function FirstPromptCard({
     return promise
   }, [agent, codexHome, executionHostId, filePath, sessionId])
 
-  // Why: list rows never carry the full first prompt (payload/perf). Load the
-  // untruncated body once when this details card mounts. Parent keys this card by
-  // session.id so session switches remount with fresh state.
+  // List payloads omit full prompts; load on mount, with session.id keys resetting state on switches.
   useEffect(() => {
     void loadFullPrompt()
     return () => {
       generationRef.current += 1
-      // Why: the bump above makes the in-flight request stale, and a stale settle
-      // deliberately skips setLoading(false). Drop the dedupe handle too, or the
-      // next pass (StrictMode's remount, or a prop change) would await that same
-      // stale promise and strand the card on "Loading first prompt…" forever.
+      // Drop the stale dedupe handle so StrictMode remounts/prop changes start a request that can clear loading.
       loadPromiseRef.current = null
     }
   }, [loadFullPrompt])
@@ -136,8 +129,7 @@ export function FirstPromptCard({
 
   const copyFirstPrompt = (): void => {
     setCopying(true)
-    // Why: never copy the 220-char list preview when the full body is still
-    // in flight — wait for the on-demand re-parse, then fall back only if null.
+    // Wait for the full body before falling back to the 220-character list preview.
     void loadFullPrompt()
       .then((loaded) => {
         const copyText = (loaded ?? previewText).trim()

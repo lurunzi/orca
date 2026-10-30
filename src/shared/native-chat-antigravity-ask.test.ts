@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseAntigravityAskInput } from './native-chat-antigravity-ask'
 import { buildAntigravityAskAnswerKeys } from './native-chat-antigravity-answer'
-import { extractPendingAsk, parseAskFromStatus } from './native-chat-ask'
+import { extractPendingAsk, parseAskFromStatus } from './native-chat/input/native-chat-ask'
 import { decodeAntigravityTranscriptLine } from '../main/native-chat/transcript-line-decoders-antigravity'
 
 // Captured agy tool arguments; terminal evidence: antigravity-question-answer.txt.

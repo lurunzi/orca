@@ -3,7 +3,7 @@
 
 import { TUI_AGENT_CONFIG } from '../../../../shared/tui-agent-config'
 import { countAgentTuiInputLines } from '../../../../shared/agent-tui-input-clear'
-import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat-answer-stepping'
+import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
 import { stripScrollbackAnsi } from './native-chat-scrape-fallback'
 import type { NativeChatSendOptions } from './native-chat-runtime-send'
 

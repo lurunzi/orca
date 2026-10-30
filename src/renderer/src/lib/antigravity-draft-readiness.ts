@@ -9,7 +9,7 @@ import { toHostSessionTabId } from '../../../shared/terminal-surface-id'
 import { useAppStore } from '@/store'
 import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabilities'
 import { callRuntimeRpc, runtimeEnvironmentSupportsCapability } from '@/runtime/runtime-rpc-client'
-import { parseRemoteRuntimePtyId } from '../../../shared/remote-runtime-pty-id'
+import { parseRemoteRuntimePtyId } from '../../../shared/remote-runtime/remote-runtime-pty-id'
 import { hasRuntimeRpcErrorCode } from '../../../shared/runtime-rpc-error-code'
 
 /** The host's recorded-screen classifier owns readiness; shell paste mode is not agent input. */

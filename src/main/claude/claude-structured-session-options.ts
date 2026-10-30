@@ -10,7 +10,7 @@ import {
   seedModels,
   text
 } from './claude-structured-model-catalog'
-import type { ClaudeSession } from './claude-structured-session-state'
+import type { ClaudeSession } from './structured/claude-structured-session-state'
 import { structuredAgentSessionOptionModels } from '../native-chat/agent-session-wire/structured-agent-session-option-models'
 import { wireClaudeModels, type WireClaudeModel } from './claude-structured-catalog-listing'
 import type { StructuredAgentSessionLiveOptions } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
@@ -79,9 +79,11 @@ export function observeClaudeFastModeFacts(session: ClaudeSession, value: unknow
   }
   if (facts.disabledReason) {
     session.fastModeDisabledReason = facts.disabledReason
+    session.fastModeDisabledMutation = session.optionMutationSequence
   } else if (facts.state === 'on' || facts.state === 'cooldown' || facts.disabledReasonReported) {
     // Account denials live separately; routing frames can only clear session restrictions.
     delete session.fastModeDisabledReason
+    delete session.fastModeDisabledMutation
   }
 }
 
@@ -118,13 +120,39 @@ export function claudeFallbackModelOptions(): WireClaudeModel[] {
 
 export async function readClaudeStructuredSessionOptions(
   session: ClaudeSession,
-  timeoutMs: number | undefined
+  timeoutMs?: number
 ): Promise<StructuredAgentSessionLiveOptions> {
-  const readMutationSequence = session.optionMutationSequence
-  const settings = await session.connection.getSettings({ timeoutMs }).catch(() => null)
-  await refreshClaudeFastModeAccountSupport(session, settings, timeoutMs)
-  observeClaudeSettingsReadback(session, settings, readMutationSequence)
+  // Fork: each read rechecks the account (coalesced); turn completion owns settings observations.
+  if (session.readFastModeAccountSupport) {
+    const settings = await session.connection.getSettings({ timeoutMs }).catch(() => null)
+    await refreshClaudeFastModeAccountSupport(session, settings, timeoutMs)
+  }
   return claudeStructuredSessionOptionsFrom(session, null)
+}
+
+/** Native turn completion owns optional settings observations, independently of user actions. */
+export async function refreshClaudeStructuredSessionOptions(
+  session: ClaudeSession,
+  timeoutMs: number | undefined,
+  current: () => boolean,
+  report: (options: StructuredAgentSessionLiveOptions) => void
+): Promise<void> {
+  const sequence = session.optionMutationSequence
+  const token = { pending: session.settingsObservation?.pending ?? false }
+  session.settingsObservation = token
+  const connection = session.connection
+  const settings = await connection.getSettings({ timeoutMs }).catch(() => null)
+  if (
+    !current() ||
+    connection.closed ||
+    token.pending ||
+    session.settingsObservation !== token ||
+    sequence !== session.optionMutationSequence
+  ) {
+    return
+  }
+  observeClaudeSettingsReadback(session, settings, sequence)
+  report(claudeStructuredSessionOptionsFrom(session, null))
 }
 
 function observeClaudeSettingsReadback(
@@ -156,6 +184,9 @@ function observeClaudeSettingsReadback(
   }
 }
 
+/** Effort and Fast change through a control this CLI never answers. */
+const CLAUDE_CLI_UPDATE_REQUIRED = { supported: false, reason: 'cli-update-required' }
+
 /** Reuse the initialize catalog and held options without another CLI request. */
 export function claudeStructuredSessionOptionsFrom(
   session: ClaudeSession,
@@ -169,6 +200,7 @@ export function claudeStructuredSessionOptionsFrom(
     ...row,
     resolvedModel: null
   }))
+  const changesLive = session.flagSettingsControl !== 'unsupported'
   const effort =
     session.options.get('effort') ??
     session.reportedOptions.effort ??
@@ -180,7 +212,7 @@ export function claudeStructuredSessionOptionsFrom(
     session.reportedOptions.fastMode ??
     (session.fastModeState === undefined ? undefined : session.fastModeState !== 'off')
   // Fork: a running session offers Fast only once its account permission is verified.
-  const support = claudeFastModeAccountSupport(session)
+  const support = changesLive ? claudeFastModeAccountSupport(session) : CLAUDE_CLI_UPDATE_REQUIRED
   const confirmed = [
     ...(current.confirmed ? ['model'] : []),
     ...(effort && session.confirmedOptions.has('effort') ? ['effort'] : []),
@@ -192,8 +224,10 @@ export function claudeStructuredSessionOptionsFrom(
   return {
     models: wireClaudeModels(models),
     fastModeSupport: support,
+    ...(changesLive ? {} : { effortFixed: true as const }),
     current: {
       model,
+      reportedPermissionMode: session.reportedOptions.reportedPermissionMode,
       ...(effort ? { effort } : {}),
       ...(fastMode !== undefined ? { fastMode } : {}),
       ...(session.fastModeState ? { fastModeState: session.fastModeState } : {}),

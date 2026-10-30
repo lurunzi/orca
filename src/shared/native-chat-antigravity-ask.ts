@@ -1,4 +1,4 @@
-import type { AskOption, AskPrompt, AskQuestion } from './native-chat-ask-types'
+import type { AskOption, AskPrompt, AskQuestion } from './native-chat/input/native-chat-ask-types'
 
 function parseOption(option: unknown): AskOption | null {
   if (typeof option === 'string') {

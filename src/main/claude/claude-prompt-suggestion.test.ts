@@ -72,7 +72,8 @@ async function acquireWith(
       providerSessionId: PROVIDER_SESSION_ID,
       resumeLeafUuid,
       resumesTranscript: resumeLeafUuid !== null,
-      continuesChain: resumeLeafUuid !== null
+      continuesChain: resumeLeafUuid !== null,
+      cliFlag: async () => 'supported' as const
     }),
     openConnection: claude.openConnection,
     readProcessStartTime: async () => 1_700_000_000_000,

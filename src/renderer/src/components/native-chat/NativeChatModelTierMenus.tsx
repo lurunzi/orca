@@ -6,19 +6,20 @@ import {
   DropdownMenuRadioItem
 } from '@/components/ui/dropdown-menu'
 import { translate } from '@/i18n/i18n'
-import type { SessionOptionDescriptor } from '../../../../shared/native-chat-session-options'
+import type { SessionOptionDescriptor } from '../../../../shared/native-chat/input/native-chat-session-options'
 import { ChoiceBody, PickerTrigger } from './NativeChatPickerTrigger'
 import {
   findTieredRow,
   type ModelPickerRow,
   type ModelTierChoice
 } from './native-chat-model-tier-groups'
-import { nativeChatSessionChoiceLabel } from './native-chat-session-option-labels'
+import { nativeChatSessionChoiceLabel } from '../../../../shared/native-chat-session-option-labels'
+import { sayNativeChatSessionOptionTranslated as say } from './native-chat-session-option-labels-text'
 
 type TieredRow = Extract<ModelPickerRow, { kind: 'tiered' }>
 
 function tierChoiceLabel(tier: ModelTierChoice): string {
-  return nativeChatSessionChoiceLabel({ value: tier.tier, label: tier.tierLabel })
+  return nativeChatSessionChoiceLabel({ value: tier.tier, label: tier.tierLabel }, say)
 }
 
 export function ModelTierMenuRows(props: {
@@ -65,7 +66,7 @@ export function ModelTierMenuRows(props: {
             disabled={props.disabled}
           >
             <ChoiceBody
-              label={nativeChatSessionChoiceLabel(row.choice)}
+              label={nativeChatSessionChoiceLabel(row.choice, say)}
               description={row.choice.description}
             />
           </DropdownMenuRadioItem>

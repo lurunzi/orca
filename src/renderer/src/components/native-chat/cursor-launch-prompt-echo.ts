@@ -1,4 +1,4 @@
-import { normalizeNativeChatUserText } from '../../../../shared/native-chat-image-transcript-markers'
+import { normalizeNativeChatUserText } from '../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
 import { getUtf8ByteLengthForCodePoint } from '../../../../shared/utf8-byte-limits'
 
 /** Match the captured Cursor transcript damage: one UTF-8 character became one replacement per byte. */

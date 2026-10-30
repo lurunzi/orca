@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { canToggleNativeChat } from './native-chat-availability'
+import { canToggleNativeChat } from '../../../../shared/native-chat-availability'
 import { resolveNativeChatLeafRoute } from './native-chat-leaf-routing'
-import { isNativeChatTranscriptLocalReadable } from '@/lib/native-chat-transcript-readability'
+import { isNativeChatTranscriptLocalReadable } from '../../../../shared/native-chat/transcript/native-chat-transcript-readability'
 
 describe('native chat startup routing', () => {
   it('preserves a Cursor chat request until its local workspace owner hydrates', () => {

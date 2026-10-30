@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { normalizeHookPayload } from './agent-hook-listener'
 import { createHookListenerState } from './agent-hook-listener/listener-state'
 import { PANE_KEY } from './agent-hook-listener-test-harness'
-import { parseAskFromStatus } from './native-chat-ask'
+import { parseAskFromStatus } from './native-chat/input/native-chat-ask'
 
 describe('Antigravity question hook lifecycle', () => {
   it('publishes the full prompt, then clears it after the answer', () => {

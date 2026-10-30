@@ -1,18 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
+import type { NativeChatPendingSend } from '../../../../shared/native-chat-pending-sends'
 import {
   appendPendingSendCache,
   clearPendingSendCacheForTests,
   isLaunchPromptMessageId,
-  isPendingMessageId,
   launchPromptAsMessage,
   nextNativeChatPendingSendId,
-  pendingSendsAsMessages,
-  prunePendingSends,
   readPendingSendCache,
   shouldPruneLaunchPrompt,
-  writePendingSendCache,
-  type NativeChatPendingSend
+  writePendingSendCache
 } from './native-chat-pending'
 import {
   appendCommandMarkerCache,
@@ -43,338 +40,7 @@ function assistantMessage(id: string, text: string, timestamp = 2): NativeChatMe
   }
 }
 
-function imageMessage(id: string, ...paths: string[]): NativeChatMessage {
-  return {
-    id,
-    role: 'user',
-    blocks: paths.map((path) => ({ type: 'image-ref' as const, path })),
-    timestamp: 1,
-    source: 'transcript'
-  }
-}
-
 const pendingOf = (id: string, text: string): NativeChatPendingSend => ({ id, text, sentAt: 100 })
-
-describe('prunePendingSends', () => {
-  it.each(['/remote/.orca/drops/Screenshot 2026-09-20 at 18.25.43.png', '/tmp/local photo.png'])(
-    'reconciles a pasted attachment path recorded as text: %s',
-    (path) => {
-      const pending = [
-        { ...pendingOf('pending', '看一下'), imagePaths: [path], afterMessageId: null }
-      ]
-      const user = userMessage('real', `${path} 看一下`, 101)
-      expect(pendingSendsAsMessages(pending, [user])).toEqual([])
-      expect(prunePendingSends(pending, [user])).toEqual(pending)
-      expect(prunePendingSends(pending, [user, assistantMessage('reply', '好的', 102)])).toEqual([])
-      expect(
-        prunePendingSends(pending, [
-          userMessage('unrelated', `${path}.other 看一下`, 101),
-          assistantMessage('reply', 'ok', 102)
-        ])
-      ).toEqual(pending)
-    }
-  )
-
-  it('reconciles image-only and multiple attachments without consuming a prior turn', () => {
-    const paths = ['/remote/a.png', '/remote/b.png']
-    const pending = [{ ...pendingOf('pending', ''), imagePaths: paths, afterMessageId: 'old' }]
-    const old = userMessage('old', paths.join(' '), 99)
-    expect(prunePendingSends(pending, [old, assistantMessage('old-reply', 'old', 100)])).toEqual(
-      pending
-    )
-    const messages = [
-      old,
-      userMessage('new', paths.join(''), 101),
-      assistantMessage('reply', 'ok', 102)
-    ]
-    expect(prunePendingSends(pending, messages)).toEqual([])
-  })
-  it('returns the same reference when there is nothing pending', () => {
-    const pending: NativeChatPendingSend[] = []
-    expect(prunePendingSends(pending, [userMessage('m1', 'hi')])).toBe(pending)
-  })
-
-  it('keeps a pending send while only its user turn has landed', () => {
-    const pending = [pendingOf('p1', 'fix the bug')]
-    const next = prunePendingSends(pending, [userMessage('m1', 'fix the bug')])
-    expect(next).toBe(pending)
-  })
-
-  it('drops a pending send once the transcript advances beyond its user turn', () => {
-    const pending = [pendingOf('p1', 'fix the bug')]
-    const next = prunePendingSends(pending, [
-      userMessage('m1', 'fix the bug'),
-      assistantMessage('m2', 'working on it')
-    ])
-    expect(next).toEqual([])
-  })
-
-  it('matches advanced turns ignoring surrounding/collapsed whitespace', () => {
-    const pending = [pendingOf('p1', '  do   the   thing ')]
-    const next = prunePendingSends(pending, [
-      userMessage('m1', 'do the thing'),
-      assistantMessage('m2', 'done')
-    ])
-    expect(next).toEqual([])
-  })
-
-  it('drops an attachment pending send once a prefixed transcript prompt advances', () => {
-    const pending = [
-      { ...pendingOf('p1', 'what do you see'), imagePaths: ['/Users/me/Downloads/3d.png'] }
-    ]
-    const next = prunePendingSends(pending, [
-      userMessage('m1', '[Image #1] what do you see'),
-      assistantMessage('m2', 'an image')
-    ])
-    expect(next).toEqual([])
-  })
-
-  it('drops an attachment pending send once a trailing-marker prompt advances', () => {
-    const pending = [
-      { ...pendingOf('p1', 'what do you see'), imagePaths: ['/Users/me/Downloads/3d.png'] }
-    ]
-    const next = prunePendingSends(pending, [
-      userMessage('m1', 'what do you see[Image #1]'),
-      assistantMessage('m2', 'an image')
-    ])
-    expect(next).toEqual([])
-  })
-
-  it('drops a pending send represented by multiple marker-bearing text blocks', () => {
-    const prompt: NativeChatMessage = {
-      ...userMessage('m1', 'unused'),
-      blocks: [
-        { type: 'text', text: 'what do' },
-        { type: 'image-ref', path: '/tmp/a.png' },
-        { type: 'text', text: '[Image #1] you see' }
-      ]
-    }
-    const next = prunePendingSends(
-      [pendingOf('p1', 'what do you see')],
-      [prompt, assistantMessage('m2', 'an image')]
-    )
-
-    expect(next).toEqual([])
-  })
-
-  it('drops an attachment-only pending send once its image turn advances', () => {
-    const pending = [{ ...pendingOf('p1', ''), imagePaths: ['/tmp/first.png', '/tmp/second.png'] }]
-    const transcript = [
-      imageMessage('m1', '/tmp/first.png', '/tmp/second.png'),
-      assistantMessage('m2', 'two images')
-    ]
-
-    expect(prunePendingSends(pending, transcript)).toEqual([])
-  })
-
-  it('keeps a pending send that has not landed yet', () => {
-    const pending = [pendingOf('p1', 'not yet')]
-    const next = prunePendingSends(pending, [assistantMessage('m1', 'working on it')])
-    expect(next).toBe(pending)
-  })
-
-  it('does not match an assistant message with the same text', () => {
-    const pending = [pendingOf('p1', 'echo me')]
-    const next = prunePendingSends(pending, [assistantMessage('m1', 'echo me')])
-    expect(next).toBe(pending)
-  })
-
-  it('prunes only the matched entry, keeping others', () => {
-    const pending = [pendingOf('p1', 'first'), pendingOf('p2', 'second')]
-    const next = prunePendingSends(pending, [
-      userMessage('m1', 'first'),
-      assistantMessage('m2', 'first answer')
-    ])
-    expect(next).toEqual([pendingOf('p2', 'second')])
-  })
-
-  it('does not prune a repeated prompt against a turn before its send boundary', () => {
-    const oldUser = userMessage('old-user', 'run tests')
-    const oldAnswer = assistantMessage('old-answer', 'passed')
-    const pending = [{ ...pendingOf('new-send', 'run tests'), afterMessageId: oldAnswer.id }]
-
-    expect(prunePendingSends(pending, [oldUser, oldAnswer])).toEqual(pending)
-  })
-
-  it('prunes a first send against a timestampless transcript turn (grok)', () => {
-    const pending = [{ ...pendingOf('p1', 'rename it'), afterMessageId: null }]
-    const transcript = [
-      { ...userMessage('u1', 'rename it'), timestamp: null },
-      { ...assistantMessage('a1', 'done'), timestamp: null }
-    ]
-
-    expect(prunePendingSends(pending, transcript)).toEqual([])
-  })
-
-  it('prunes only one of two identical pending sends for one completed turn', () => {
-    const pending = [pendingOf('p1', 'repeat'), pendingOf('p2', 'repeat')]
-    expect(
-      prunePendingSends(pending, [userMessage('u1', 'repeat'), assistantMessage('a1', 'done')])
-    ).toEqual([pendingOf('p2', 'repeat')])
-  })
-
-  it('does not treat an unrelated longer user turn as a glued match', () => {
-    const pending = [pendingOf('p1', 'hi')]
-    expect(
-      prunePendingSends(pending, [
-        userMessage('u1', 'history of the project'),
-        assistantMessage('a1', 'ok')
-      ])
-    ).toEqual(pending)
-  })
-})
-
-describe('pendingSendsAsMessages', () => {
-  it('returns the empty input without reading existing history', () => {
-    const pending: NativeChatPendingSend[] = []
-    const unreadableHistory = new Proxy([] as NativeChatMessage[], {
-      get: () => {
-        throw new Error('existing history was read')
-      }
-    })
-
-    expect(pendingSendsAsMessages(pending, unreadableHistory)).toEqual([])
-  })
-
-  it('maps pending sends to prefixed scrape-source user messages sorted by sentAt', () => {
-    const messages = pendingSendsAsMessages([{ id: 'p1', text: 'queued text', sentAt: 42 }])
-    expect(messages).toEqual([
-      {
-        id: 'pending:p1',
-        role: 'user',
-        blocks: [{ type: 'text', text: 'queued text' }],
-        timestamp: 42,
-        source: 'scrape'
-      }
-    ])
-  })
-
-  it('includes image refs for pending attachment sends', () => {
-    const messages = pendingSendsAsMessages([
-      { id: 'p1', text: 'what do you see?', imagePaths: ['/tmp/shot.png'], sentAt: 42 }
-    ])
-    expect(messages[0]?.blocks).toEqual([
-      { type: 'image-ref', path: '/tmp/shot.png' },
-      { type: 'text', text: 'what do you see?' }
-    ])
-  })
-
-  it('hides an attachment-only pending send while its real image turn is visible', () => {
-    const pending = [{ ...pendingOf('p1', ''), imagePaths: ['/tmp/shot.png'] }]
-
-    expect(pendingSendsAsMessages(pending, [imageMessage('u1', '/tmp/shot.png')])).toEqual([])
-  })
-
-  it('hides a pending send while its real user turn is visible', () => {
-    const pending = [pendingOf('p1', 'first prompt')]
-
-    expect(pendingSendsAsMessages(pending, [userMessage('u1', 'first prompt')])).toEqual([])
-    expect(pendingSendsAsMessages(pending, [])).toHaveLength(1)
-  })
-
-  it('keeps a repeated prompt visible when its only match predates the send boundary', () => {
-    const history = [userMessage('old-user', 'run tests'), assistantMessage('old-answer', 'passed')]
-    const pending = [{ ...pendingOf('new-send', 'run tests'), afterMessageId: 'old-answer' }]
-
-    expect(pendingSendsAsMessages(pending, history).map((message) => message.id)).toEqual([
-      'pending:new-send'
-    ])
-  })
-
-  it('keeps a loading-time send visible when older matching history arrives later', () => {
-    const history = [
-      { ...userMessage('old-user', 'run tests'), timestamp: 10 },
-      { ...assistantMessage('old-answer', 'passed'), timestamp: 20 }
-    ]
-    const pending = [{ ...pendingOf('new-send', 'run tests'), sentAt: 100, afterMessageId: null }]
-
-    expect(pendingSendsAsMessages(pending, history).map((message) => message.id)).toEqual([
-      'pending:new-send'
-    ])
-    expect(prunePendingSends(pending, history)).toEqual(pending)
-  })
-
-  // #11519: a first send into a settled empty transcript has no row to compare, and the
-  // host that writes the transcript may run a clock behind this one.
-  it('retires a send into a settled empty transcript whatever the host clock says', () => {
-    const fiveMinutes = 5 * 60_000
-    const pending = [
-      {
-        ...pendingOf('first-send', 'run tests'),
-        sentAt: 1_000_000,
-        afterMessageId: null,
-        afterEmptyTranscriptSessionId: 'session-1'
-      }
-    ]
-    const hostBehind = [
-      { ...userMessage('u1', 'run tests'), timestamp: 1_000_000 - fiveMinutes },
-      { ...assistantMessage('a1', 'passed'), timestamp: 1_000_000 - fiveMinutes + 10 }
-    ]
-
-    expect(pendingSendsAsMessages(pending, hostBehind)).toEqual([])
-    expect(prunePendingSends(pending, hostBehind)).toEqual([])
-  })
-
-  it('uses the transcript boundary clock after pagination, not the renderer send clock', () => {
-    const pending = [
-      {
-        ...pendingOf('new-send', 'run tests'),
-        sentAt: 100_000,
-        afterMessageId: 'paged-out-answer',
-        afterMessageTimestamp: 20
-      }
-    ]
-    const remoteTranscript = [
-      { ...userMessage('new-user', 'run tests'), timestamp: 30 },
-      { ...assistantMessage('new-answer', 'passed'), timestamp: 40 }
-    ]
-
-    expect(pendingSendsAsMessages(pending, remoteTranscript)).toEqual([])
-    expect(prunePendingSends(pending, remoteTranscript)).toEqual([])
-  })
-
-  it('retires a first send whose transcript stamp is truncated to the second (antigravity)', () => {
-    const second = Date.parse('2026-09-24T17:06:44Z')
-    const pending = [
-      { ...pendingOf('first-send', 'record state'), sentAt: second + 300, afterMessageId: null }
-    ]
-    const transcript = [
-      { ...userMessage('user', 'record state'), timestamp: second },
-      { ...assistantMessage('answer', 'checking'), timestamp: second }
-    ]
-
-    expect(pendingSendsAsMessages(pending, transcript)).toEqual([])
-    expect(prunePendingSends(pending, transcript)).toEqual([])
-  })
-
-  it('still ignores a whole-second turn from before the send second', () => {
-    const second = Date.parse('2026-09-24T17:06:44Z')
-    const pending = [
-      { ...pendingOf('new-send', 'run tests'), sentAt: second + 300, afterMessageId: null }
-    ]
-    const history = [
-      { ...userMessage('old-user', 'run tests'), timestamp: second - 1000 },
-      { ...assistantMessage('old-answer', 'passed'), timestamp: second - 1000 }
-    ]
-
-    expect(prunePendingSends(pending, history)).toEqual(pending)
-  })
-
-  it('hides a first send while its timestampless transcript turn is visible (grok)', () => {
-    const pending = [{ ...pendingOf('p1', 'rename it'), afterMessageId: null }]
-
-    expect(
-      pendingSendsAsMessages(pending, [{ ...userMessage('u1', 'rename it'), timestamp: null }])
-    ).toEqual([])
-  })
-
-  it('hides only one of two identical pending sends for one real user turn', () => {
-    const pending = [pendingOf('p1', 'repeat'), pendingOf('p2', 'repeat')]
-    expect(pendingSendsAsMessages(pending, [userMessage('u1', 'repeat')]).map((m) => m.id)).toEqual(
-      ['pending:p2']
-    )
-  })
-})
 
 describe('launchPromptAsMessage', () => {
   it('maps a launch prompt to a tab-keyed scrape-source user message', () => {
@@ -462,9 +128,7 @@ describe('launchPromptAsMessage', () => {
     ).toBe(true)
   })
 
-  // Grok transcripts carry no timestamps; before the null-matchable rule the
-  // seeded bubble was never hidden or pruned and sat rank-pinned at the list
-  // tail forever, reading as the conversation reordering.
+  // Grok has no timestamps; excluding its rows stranded launch echoes at the transcript tail.
   it('hides and prunes the launch prompt against a timestampless transcript (grok)', () => {
     const entry = { tabId: 'tab-1', agent: 'grok' as const, text: 'rename it', createdAt: 42 }
     const transcript = [
@@ -520,13 +184,6 @@ describe('pending send cache', () => {
     writePendingSendCache(scope, [])
 
     expect(readPendingSendCache(scope)).toEqual([])
-  })
-})
-
-describe('isPendingMessageId', () => {
-  it('recognizes the pending id prefix', () => {
-    expect(isPendingMessageId('pending:p1')).toBe(true)
-    expect(isPendingMessageId('transcript-123')).toBe(false)
   })
 })
 
@@ -626,9 +283,7 @@ describe('applyCommandMarkerBoundaries', () => {
 })
 
 describe('scope-cache key counts stay bounded (memory-leak regression)', () => {
-  // The per-key arrays were capped at 8, but the KEY count (paneKey/agent/session,
-  // all ephemeral) was unbounded, so distinct panes/sessions accumulated forever.
-  // Both caches now LRU-bound the key count at 128 (shared helper, #7566).
+  // Per-key limits alone leaked ephemeral scope keys; both caches also cap keys at 128 (#7566).
   const CAP = 128
 
   it('appendCommandMarkerCache evicts the oldest scope key past the cap', () => {
@@ -639,7 +294,6 @@ describe('scope-cache key counts stay bounded (memory-leak regression)', () => {
         '/clear'
       )
     }
-    // Oldest sessions evicted; the most-recent CAP survive.
     expect(
       readCommandMarkerCache({ paneKey: 'tab:leaf', agent: 'claude', sessionId: 's0' })
     ).toEqual([])
@@ -670,7 +324,6 @@ describe('commandMarkersAsMessages with a host answer', () => {
       { id: 'c2', command: '/context', sentAt: 9, output: 'Context: 54.6k / 200k tokens (27%)' }
     ])
     expect(message?.role).toBe('system')
-    // Plain text: it draws as the muted aside the Ran line would have been.
     expect(message?.blocks).toEqual([{ type: 'text', text: 'Context: 54.6k / 200k tokens (27%)' }])
   })
 })

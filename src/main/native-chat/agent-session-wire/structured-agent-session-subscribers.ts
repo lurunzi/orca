@@ -1,11 +1,16 @@
 import { promptSuggestionChanged } from './structured-agent-session-composer-metadata'
-import type * as ComposerMetadata from './structured-agent-session-composer-metadata'
 import type { AgentSessionSubscribeInput } from './agent-session-subscribe-input'
 export type { AgentSessionSubscribeInput } from './agent-session-subscribe-input'
-import type { CurrentRequestsSubscriber } from './agent-session-current-requests'
+import type {
+  AgentSessionSubscribersHooks,
+  Subscriber
+} from './structured-agent-session-subscriber-types'
+export type {
+  AgentSessionSubscriberEmit,
+  AgentSessionSubscribersHooks,
+  Subscriber
+} from './structured-agent-session-subscriber-types'
 // Advance subscriber cursors independently, sending resets or reducer-projected batches as needed.
-
-import type { AgentJournalCursor } from '../../../shared/agent-session-journal-types'
 import type {
   AgentSessionHistoryPage,
   AgentSessionSubscribeEvent,
@@ -14,9 +19,7 @@ import type {
 import {
   backgroundTaskFingerprint,
   emitSubscriberFrame,
-  subscriberCommandsChanged,
-  type SubscriberFieldHooks,
-  type SubscriberFieldState
+  subscriberCommandsChanged
 } from './agent-session-subscriber-frame-fields'
 import type { QueuePublication } from './structured-agent-session-queued-publication'
 import {
@@ -31,38 +34,6 @@ import { subscriberHistoryReader } from './agent-session-bounded-frames'
 import { rememberSessionActivity } from './structured-agent-session-activity-retention'
 import { refreshDerivedStopNotes } from './agent-session-stop-note-refresh'
 import { refreshPublishedWork } from './agent-session-work-refresh'
-import type { StructuredAgentSessionCurrentWork } from './structured-agent-session-current-work'
-
-export type AgentSessionSubscriberEmit = (event: AgentSessionSubscribeEvent) => void
-export type Subscriber = CurrentRequestsSubscriber &
-  ComposerMetadata.AgentSessionComposerMetadata & {
-    id: string
-    emit: AgentSessionSubscriberEmit
-    cursor: AgentJournalCursor
-    fence: number
-    boundedFrames: boolean
-    projectQueuePublication?: SubscriberFieldState['projectQueuePublication']
-    snapshotCatchUp?: boolean
-    /** Last sent publication; withheld pages must not suppress the final replacement. */
-    queuePublication?: QueuePublication
-    backgroundTasks?: string
-    /** Last frame’s current-work key; row-free changes still require a frame. */
-    workView?: string
-    /** Semantic history baseline actually emitted, independent of token/row progress. */
-    historyView?: string
-  }
-
-export type AgentSessionSubscribersHooks = ComposerMetadata.AgentSessionComposerMetadataHooks & {
-  /** Stable identity avoids serialization until queue changes. */
-  readQueuePublication?: (sessionId: string) => QueuePublication | undefined
-  readBackgroundTasks?: SubscriberFieldHooks['readBackgroundTasks']
-  onJournalPublished?: (sessionId: string, journal: AgentSessionJournal) => void
-  readCurrentWork?: (
-    sessionId: string,
-    journal: AgentSessionJournal
-  ) => StructuredAgentSessionCurrentWork | undefined
-  now?: () => number
-}
 
 export class AgentSessionSubscribers {
   private readonly bySession = new Map<string, Map<string, Subscriber>>()
@@ -83,6 +54,7 @@ export class AgentSessionSubscribers {
   ): () => void {
     const liveCursor = input.journal.cursor()
     const subscriber: Subscriber = {
+      commandsOnRequest: input.commandsOnRequest,
       id: input.id,
       sessionId: input.sessionId,
       emit: input.emit,
@@ -250,17 +222,19 @@ export class AgentSessionSubscribers {
     }
   }
 
-  republishCommands(): void {
+  republishCommands(retired?: (sessionId: string) => boolean): void {
     const hostNow = this.now()
     for (const sessionId of this.bySession.keys()) {
       for (const subscriber of this.subscribers(sessionId)) {
-        if (subscriberCommandsChanged(this.hooks, subscriber)) {
+        const invalidated = subscriber.commandsOnRequest && retired?.(sessionId)
+        if (invalidated || subscriberCommandsChanged(this.hooks, subscriber)) {
           this.emit(subscriber, {
             type: 'batch',
             sessionId,
             batch: emptyAgentSessionBatch(subscriber.cursor),
             fence: subscriber.fence,
-            hostNow
+            hostNow,
+            ...(invalidated ? { commandsChanged: true as const } : {})
           })
         }
       }

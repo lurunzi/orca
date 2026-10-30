@@ -5,7 +5,7 @@ import {
   agentSessionLeaseFixture,
   agentSessionRecordFixture
 } from '../../../../shared/agent-session-record.test-fixture'
-import { claudeSessionIdForOrcaSession } from '../../../claude/claude-structured-launch-resolution'
+import { claudeSessionIdForOrcaSession } from '../../../claude/structured/claude-structured-session-id'
 import type { WindowsProcessRow } from '../../../windows/windows-process-table'
 import {
   agentSessionReservationCommandLineIds,

@@ -11,6 +11,7 @@ import type { ManagedPane, PaneManager } from '@/lib/pane-manager/pane-manager'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { translate } from '@/i18n/i18n'
+import { canCloseTerminalPane, terminalPaneCloseLabel } from './terminal-pane-close-affordance'
 import { isImeCompositionKeyDown } from '@/lib/ime-composition-keyboard-event'
 import type { PtyTransport } from './pty-transport-types'
 import { TerminalPaneHeaderDropSurface } from './TerminalPaneHeaderDropSurface'
@@ -131,17 +132,13 @@ export default function TerminalPaneHeaderOverlay({
         const isActivePane = activePaneId === pane.id
         const isChromeless = showAlwaysOnHeaders && !title && !isEditing
         const showHeader = overlayRect && (showAlwaysOnHeaders || Boolean(title) || isEditing)
-        const closeLabel =
-          paneCount > 1
-            ? translate(
-                'auto.components.terminal.pane.TerminalContextMenu.8c17d6786d',
-                'Close Pane'
-              )
-            : translate('auto.components.tab.bar.SortableTab.95db5f2f7d', 'Close tab')
-        // Why: a titled split pane keeps its X as remove-title, but a titled single
-        // pane (agent terminals get runtime titles) still needs a close control.
+        const closeLabel = terminalPaneCloseLabel(paneCount)
+        // Titled split panes use X to clear titles; titled single panes still need a close control.
         const showCloseButton =
-          showAlwaysOnHeaders && (paneCount > 1 ? !title : showSplitButton && !isTabPinned)
+          showAlwaysOnHeaders &&
+          (paneCount > 1
+            ? !title
+            : canCloseTerminalPane({ paneCount, showSplitButton, isTabPinned }))
         if (!showHeader || !overlayRect) {
           return null
         }
@@ -181,20 +178,14 @@ export default function TerminalPaneHeaderOverlay({
                 value={renameValue}
                 onChange={(event) => onRenameValueChange(event.target.value)}
                 onKeyDown={(event) => {
-                  // Why: an Enter that only confirms a CJK IME candidate must
-                  // not commit the rename; wait for a non-composition Enter.
+                  // Wait for non-composition Enter so accepting a CJK IME candidate cannot commit the rename.
                   if (isImeCompositionKeyDown(event)) {
                     return
                   }
                   if (event.key === 'Enter') {
                     onRenameSubmit()
                   } else if (event.key === 'Tab') {
-                    // Why: commit on Tab directly instead of relying on the
-                    // browser advancing focus (which fires blur). Headless / no
-                    // window-focus environments (xvfb, some SSH sessions) don't
-                    // always move focus off the input, so the blur-driven commit
-                    // never runs. Submitting closes the editor, so the default
-                    // Tab focus move is moot and any follow-on blur is a no-op.
+                    // Commit Tab explicitly because headless/SSH focus may not blur; submitting closes the editor and makes later blur inert.
                     onRenameSubmit()
                   } else if (event.key === 'Escape') {
                     onRenameCancel()

@@ -12,6 +12,17 @@ import {
   type RestTestRig
 } from './structured-agent-session-rest-test-rig'
 
+function catalogListing(modelSupported: boolean) {
+  return {
+    origin: 'live-session' as const,
+    fetchedAt: 1,
+    models: [
+      { id: 'opus', label: 'Opus', isDefault: true, efforts: [], supportsFastMode: modelSupported }
+    ],
+    fastModeSupport: { supported: true as const }
+  }
+}
+
 let rig: RestTestRig | undefined
 afterEach(async () => {
   await rig?.dispose()
@@ -48,22 +59,13 @@ it.each([
     rig = await createRestTestRig({
       idleSweep: { intervalMs: 3_600_000 },
       modelCatalog: {
+        snapshot: () => catalogListing(modelSupported),
+        demand: async () => {},
+        prepareSaved: async () => catalogListing(modelSupported),
+        captureSource: () => () => true,
+        retireContext: () => {},
         peek: () => null,
-        read: async () => ({
-          origin: 'live-session',
-          fetchedAt: 1,
-          models: [
-            {
-              id: 'opus',
-              label: 'Opus',
-              isDefault: true,
-              efforts: [],
-              supportsFastMode: modelSupported
-            }
-          ],
-          fastModeSupport: { supported: true }
-        }),
-        retainedLiveModelIds: async () => [],
+        read: async () => catalogListing(modelSupported),
         recordLiveListing: () => {},
         prewarm: async () => {},
         stop: () => {},

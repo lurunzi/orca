@@ -89,13 +89,14 @@ export async function resolveSessionFilePath(
   }
   let unavailable: WslTranscriptFsError | undefined
   const hookPath = options.transcriptPath?.trim()
+  const jsonlHookPath = hookPath && extname(hookPath) === '.jsonl' ? hookPath : undefined
   // SSH paths are readable only on their attested host; never fall back to this machine.
   if (hookPath && parseSshTranscriptPath(hookPath)) {
-    return extname(hookPath) === '.jsonl' ? hookPath : null
+    return jsonlHookPath ?? null
   }
-  if (hookPath && extname(hookPath) === '.jsonl') {
+  if (jsonlHookPath) {
     try {
-      const hostReadable = await toHostReadableTranscriptPath(hookPath, {
+      const hostReadable = await toHostReadableTranscriptPath(jsonlHookPath, {
         signal,
         wslDistro: options.wslDistro
       })
@@ -125,7 +126,15 @@ export async function resolveSessionFilePath(
     return null
   }
 
-  const resolved = await resolveSessionFileById(transcriptAgent, sessionId, options, signal)
+  // Host hook paths prove a host-launched agent, so its transcript cannot be in a guest.
+  const wslTier = !jsonlHookPath
+  const resolved = await resolveSessionFileById(
+    transcriptAgent,
+    sessionId,
+    options,
+    wslTier,
+    signal
+  )
   if (!resolved && unavailable) {
     throw unavailable
   }
@@ -136,6 +145,7 @@ async function resolveSessionFileById(
   transcriptAgent: NativeChatTranscriptAgent,
   sessionId: string,
   options: ResolveSessionFileOptions,
+  wslTier: boolean,
   signal?: AbortSignal
 ): Promise<string | null> {
   if (transcriptAgent === 'opencode') {
@@ -150,7 +160,7 @@ async function resolveSessionFileById(
   if (transcriptAgent === 'claude') {
     const override = options.claudeProjectsDir
     return resolveTiered('claude', trimmedId, override ? [override] : claudeProjectsDirs(), {
-      wslTier: !override,
+      wslTier: wslTier && !override,
       signal,
       strictErrors: options.strictErrors
     })
@@ -158,7 +168,7 @@ async function resolveSessionFileById(
   if (transcriptAgent === 'codex') {
     const override = options.codexSessionsDirs
     return resolveTiered('codex', trimmedId, override ?? codexSessionsDirs(), {
-      wslTier: !override,
+      wslTier: wslTier && !override,
       ...(override ? {} : { accountDirs: codexAccountSessionsDirs }),
       signal,
       strictErrors: options.strictErrors
@@ -194,7 +204,7 @@ async function resolveSessionFileById(
   if (transcriptAgent === 'grok') {
     const override = options.grokSessionsDir
     return resolveTiered('grok', trimmedId, [override ?? grokSessionsDir()], {
-      wslTier: !override,
+      wslTier: wslTier && !override,
       signal,
       strictErrors: options.strictErrors
     })
@@ -203,7 +213,7 @@ async function resolveSessionFileById(
     const override = options.ompSessionsDir
     const root = resolveOmpSessionsDir({ sessionsDir: override })
     return resolveTiered('omp', trimmedId, root ? [root] : [], {
-      wslTier: override === undefined,
+      wslTier: wslTier && override === undefined,
       signal,
       strictErrors: options.strictErrors
     })

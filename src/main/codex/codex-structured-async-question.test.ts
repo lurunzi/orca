@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AgentJournalItemBodySchema } from '../../shared/agent-session-journal-schemas'
-import { extractPendingAsk } from '../../shared/native-chat-ask'
+import { extractPendingAsk } from '../../shared/native-chat/input/native-chat-ask'
 import type { NativeChatMessage } from '../../shared/native-chat-types'
 import { codexItemBody, type CodexThreadItem } from './codex-structured-item-translation'
 

@@ -1,6 +1,6 @@
 import type { AgentSessionFastModeSupport } from '../../shared/agent-session-wire'
 import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
-import type { ClaudeSession } from './claude-structured-session-state'
+import type { ClaudeSession } from './structured/claude-structured-session-state'
 
 /** The execution host's account answer for the child one launch started. */
 export type ClaudeFastModeAccountReader = (

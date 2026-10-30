@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import './native-chat-picker-menu-test-fixture'
 import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
 import { useAppStore } from '@/store'
-import type { SessionOptionDescriptor } from '../../../../shared/native-chat-session-options'
+import type { SessionOptionDescriptor } from '../../../../shared/native-chat/input/native-chat-session-options'
 
 const surface = {
   getSnapshot: () => [],

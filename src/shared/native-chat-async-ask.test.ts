@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { formatAskAnswer } from './native-chat-ask-answer'
 import { CODEX_ASYNC_QUESTION_TOOL } from './codex-async-question-input'
-import { extractPendingAsk, parseAskFromToolInput } from './native-chat-ask'
-import { nativeChatAskRunSubject } from './native-chat-ask-row'
+import { extractPendingAsk, parseAskFromToolInput } from './native-chat/input/native-chat-ask'
+import { nativeChatAskRunSubject } from './native-chat/input/native-chat-ask-row'
 import {
   NATIVE_CHAT_INTERRUPTED_STATUS_TEXT,
   type NativeChatBlock,

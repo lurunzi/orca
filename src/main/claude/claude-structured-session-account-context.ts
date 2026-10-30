@@ -2,7 +2,7 @@ import type { ClaudeStructuredLaunch } from './claude-structured-launch-resoluti
 import type {
   ClaudeSession,
   ClaudeStructuredSessionAdapterDeps
-} from './claude-structured-session-state'
+} from './structured/claude-structured-session-state'
 
 export function configureClaudeSessionAccountContext(
   session: ClaudeSession,

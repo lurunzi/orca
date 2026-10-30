@@ -1,5 +1,5 @@
 import type { ClaudePromptSuggestionMemory } from './claude-prompt-suggestion-store'
-import type { ClaudeSession, ClaudeStructuredSessionEvent } from './claude-structured-session-state'
+import type { ClaudeSession, ClaudeStructuredSessionEvent } from './structured/claude-structured-session-state'
 
 const pendingWrites = new WeakMap<ClaudeSession, object>()
 

@@ -1,5 +1,5 @@
 import type { CatalogModel } from './agent-session-option-catalog'
-import type { SessionOptionValue } from './native-chat-session-options'
+import type { SessionOptionValue } from './native-chat/input/native-chat-session-options'
 import { stripAnsiEscapeSequences } from './ansi-escape-sequences'
 
 export function readAntigravityTerminalSessionOptions(

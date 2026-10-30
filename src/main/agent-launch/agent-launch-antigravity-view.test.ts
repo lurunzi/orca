@@ -41,8 +41,7 @@ it.each([
       surfaces: {
         createTerminalAgent,
         createStructuredSession,
-        deliverTerminalPrompt: vi.fn(async () => true),
-        deliverStructuredPrompt: vi.fn(async () => null)
+        deliverTerminalPrompt: vi.fn(async () => true)
       }
     })
     expect(result.outcome).toEqual({ kind: 'terminal', handle: 'terminal-1' })

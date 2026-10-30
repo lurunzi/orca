@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type {
   SessionOptionDescriptor,
   SessionOptionValue
-} from '../../../../shared/native-chat-session-options'
+} from '../../../../shared/native-chat/input/native-chat-session-options'
 
 export type QueuedSessionOptions = ReadonlyMap<string, SessionOptionValue>
 

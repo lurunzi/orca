@@ -63,7 +63,11 @@ async function resolveSession(
   }
   // Why custody's answer: a chat at rest (released lease, tab still listed) is still the user's
   // open chat, and authority resolves its granted handle by the same rule.
-  if (structuredWorkerOwned({ sessionId, record, lineage: [sessionId] }) !== true) {
+  const conversation = host.deps.store.getConversation(sessionId)
+  if (
+    !conversation ||
+    structuredWorkerOwned({ sessionId, record: conversation, lineage: [sessionId] }) !== true
+  ) {
     return { state: 'unavailable', reason: 'missing' }
   }
   return { host, record }

@@ -7,7 +7,7 @@ import {
   findTieredRow,
   projectModelTierOptions
 } from './native-chat-model-tier-groups'
-import type { SessionOptionDescriptor } from '../../../../shared/native-chat-session-options'
+import type { SessionOptionDescriptor } from '../../../../shared/native-chat/input/native-chat-session-options'
 
 // Shape of `agy models` output: each effort tier is its own model id.
 const AGY_CHOICES = [

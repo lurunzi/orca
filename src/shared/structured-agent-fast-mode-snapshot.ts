@@ -3,7 +3,7 @@ import type {
   AgentSessionModelOption,
   AgentSessionOptionsResult
 } from './agent-session-wire'
-import type { SessionOptionDescriptor } from './native-chat-session-options'
+import type { SessionOptionDescriptor } from './native-chat/input/native-chat-session-options'
 
 export function applyStructuredAgentFastModeAvailability(args: {
   snapshot: SessionOptionDescriptor[]

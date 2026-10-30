@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session-option-catalog'
 import { clearNativeChatSessionOptionCacheForTests } from './native-chat-session-option-cache'
-import { createNativeChatPtySessionOptions } from './native-chat-pty-session-options'
+import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat-pty-session-options'
 
 const AGY_MODELS_STDOUT = [
   'Fetching available models...',
@@ -28,6 +28,7 @@ describe('Antigravity model picker', () => {
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
       scopeKey: 'antigravity-model-dropdown',
+      modelLabel: 'Model',
       initialModels: discoveredModels,
       mode: 'live',
       dispatchCommand,
@@ -59,6 +60,7 @@ describe('Antigravity model picker', () => {
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
       scopeKey: 'antigravity-draft-picker',
+      modelLabel: 'Model',
       initialModels: discoveredModels,
       mode: 'draft',
       dispatchCommand: vi.fn()
@@ -72,6 +74,7 @@ describe('Antigravity model picker', () => {
     const surface = createNativeChatPtySessionOptions({
       agent: 'antigravity',
       scopeKey: 'antigravity-no-models',
+      modelLabel: 'Model',
       initialModels: [],
       mode: 'live',
       dispatchCommand,

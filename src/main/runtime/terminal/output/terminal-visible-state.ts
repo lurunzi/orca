@@ -4,8 +4,6 @@ import {
   type RuntimeTerminalProjection
 } from '../../orca-runtime-core'
 import { buildPreview } from '../../terminal-tail-state'
-import { isAntigravityCommandApprovalScreen } from '../../antigravity-command-approval-screen'
-import { AntigravityScreenPermissionPublisher } from '../../antigravity-screen-permission-publisher'
 import type {
   RuntimeHeadlessTerminal,
   RuntimeVisibleTerminalState
@@ -20,77 +18,9 @@ import {
 } from '../../orca-runtime-terminal-projection'
 import { visibleNonBlankTerminalLines } from '../../terminal-tail-read'
 import type { RuledScreen } from '../../screen-input-veto'
-import {
-  classifyTerminalScreenReadiness,
-  type TerminalScreenReadiness
-} from '../../terminal-screen-readiness'
 import { withTimeout } from '../../runtime-async-boundaries'
 
 export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeWithCaptureProviderTerminalBuffer {
-  protected readonly antigravityScreenPermissions = new AntigravityScreenPermissionPublisher({
-    baseline: (ptyId) => {
-      const pty = this.ptysById.get(ptyId)
-      if (!pty?.connected || pty.connectionId || !pty.paneKey) {
-        return null
-      }
-      const terminalHandle = this.getAgentStatusTerminalHandleForPaneKey(pty.paneKey)
-      const row = this.getAgentProviderSessionRowsForPaneFn?.(pty.paneKey)?.find(
-        (candidate) =>
-          candidate.providerSessionOnly !== true && candidate.agentType === 'antigravity'
-      )
-      // Native hooks identify the pane; the runtime owns its live terminal binding.
-      return row && terminalHandle ? { ...row, terminalHandle } : null
-    },
-    readScreen: (ptyId) => this.readVisibleTerminalState(ptyId),
-    isCurrent: (ptyId, screen) =>
-      this.ptysById.get(ptyId)?.connected === true &&
-      this.getPtyLivenessVerdict(ptyId)?.status !== 'unverifiable' &&
-      screen.generation === this.getPtyLifecycleGeneration(ptyId) &&
-      screen.sequence >= this.getPtyOutputSequence(ptyId) &&
-      (!screen.headlessWriteChain ||
-        screen.headlessWriteChain === this.headlessTerminals.get(ptyId)?.writeChain),
-    publish: (event) => this.onTerminalScreenPermission?.(event) ?? false
-  })
-
-  protected getTerminalScreenReadiness(
-    ptyId: string | null | undefined,
-    retainedText: string
-  ): TerminalScreenReadiness | null {
-    const agent = this.getPaneAgentForTuiIdle(ptyId)
-    if (
-      !ptyId ||
-      (agent ? agent !== 'antigravity' : !retainedText.toLowerCase().includes('antigravity cli'))
-    ) {
-      return null
-    }
-    if (this.getPtyLivenessVerdict(ptyId)?.status === 'unverifiable') {
-      return { ready: false, blockedReason: null }
-    }
-    // Measured local grids use the shared rules, including their quiet and reflow gates.
-    if (
-      agent === 'antigravity' &&
-      this.getTerminalSize(ptyId) &&
-      !this.providerSnapshotPreferredPtys.has(ptyId)
-    ) {
-      const screen = this.readRuledScreen(ptyId)
-      return screen && isAntigravityCommandApprovalScreen(screen.lines)
-        ? { ready: false, blockedReason: 'agent-approval-prompt' }
-        : null
-    }
-    const cached = this.providerVisibleStateByPtyId.get(ptyId)
-    if (
-      cached?.generation === this.getPtyLifecycleGeneration(ptyId) &&
-      cached.sequence >= this.getPtyOutputSequence(ptyId) &&
-      (!cached.headlessWriteChain ||
-        cached.headlessWriteChain === this.headlessTerminals.get(ptyId)?.writeChain)
-    ) {
-      return classifyTerminalScreenReadiness({ tail: cached.lines, draft: cached.draft })
-    }
-    // A pending or unreachable screen cannot prove that typing is safe.
-    void this.readVisibleTerminalState(ptyId).catch(() => {})
-    return { ready: false, blockedReason: null }
-  }
-
   protected async visibleSnapshotPreview(ptyId: string, preview: string): Promise<string> {
     const knownAlternateScreen = this.isTerminalAlternateScreen(ptyId)
     const providerModeUnknown =
@@ -262,6 +192,13 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     return state ? projectTerminalVisibleLines(state.emulator).lines : null
   }
 
+  /** The ruled grid only once it has applied every PTY chunk; a lagging grid could miss a new dialog. */
+  protected readCaughtUpRuledScreen(ptyId: string): RuledScreen | null {
+    return this.headlessTerminals.get(ptyId)?.outputSequence === this.getPtyOutputSequence(ptyId)
+      ? this.readRuledScreen(ptyId)
+      : null
+  }
+
   /** The grid a screen-ruled agent's rule reads: as painted, and only on the PTY's own size. */
   protected readRuledScreen(ptyId: string | null | undefined): RuledScreen | null {
     const state = this.readWholeScreenModel(ptyId)
@@ -310,9 +247,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
       return { lines: [] }
     }
     try {
-      // Why: raw PTY tails can be whitespace-only while a full-screen TUI is
-      // visibly nonblank in renderer xterm. Ask the renderer for the active
-      // screen instead of reusing the headless transcript path.
+      // Raw tails can be blank while full-screen TUIs paint visible cells; ask renderer for the active screen.
       const snapshot = await withTimeout(
         controller.serializeBuffer(ptyId, { scrollbackRows: 0 }),
         VISIBLE_TERMINAL_SNAPSHOT_TIMEOUT_MS,

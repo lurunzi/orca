@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type { AgentSessionJournalIdentity } from '../../shared/agent-session-journal-types'
 import { claudeProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
-import { claudeStartupSettled } from './claude-structured-session-test-support'
+import { claudeStartupSettled } from './claude-structured-startup-settled-test-support'
 import { sessionInboxItemId, sessionInboxToolName } from '../../shared/session-inbox-tool-contract'
 import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './claude-structured-launch-resolution'
 import {
@@ -12,10 +12,8 @@ import {
   realClaudeCommand,
   realClaudeLaunchHome
 } from './claude-real-cli-availability-test-support'
-import {
-  ClaudeStructuredSessionAdapter,
-  type ClaudeStructuredSessionEvent
-} from './claude-structured-session-adapter'
+import { ClaudeStructuredSessionAdapter } from './claude-structured-session-adapter'
+import type { ClaudeStructuredSessionEvent } from './structured/claude-structured-session-state'
 
 const suiteTitle = `Claude inbox tools on the real CLI${realClaudeCliGate.skipReason ? ` (skipped: ${realClaudeCliGate.skipReason})` : ''}`
 const SESSION_ID = 'real-cli-inbox'
@@ -54,7 +52,8 @@ describe.skipIf(!realClaudeAvailable)(suiteTitle, () => {
           providerSessionId,
           resumeLeafUuid: null,
           resumesTranscript: false,
-          continuesChain: false
+          continuesChain: false,
+          cliFlag: async () => 'supported' as const
         }),
         onEvent: (event) => events.push(event),
         readProcessStartTime: async () => 1,

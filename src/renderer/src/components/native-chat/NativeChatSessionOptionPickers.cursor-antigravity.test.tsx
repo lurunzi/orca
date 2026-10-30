@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
-import { createNativeChatPtySessionOptions } from './native-chat-pty-session-options'
+import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat-pty-session-options'
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string, values?: Record<string, string | number>) =>
@@ -21,6 +21,7 @@ it('uses the shared Thinking switch while sending the exact Cursor model id', as
   const surface = createNativeChatPtySessionOptions({
     agent: 'cursor',
     scopeKey: 'cursor-thinking-picker-test',
+    modelLabel: 'Model',
     mode: 'live',
     initialModels: [
       { id: 'claude-opus-5-high-fast', label: 'Claude Opus 5 1M Fast', options: [] },
@@ -59,6 +60,7 @@ it('sends the exact Cursor Fast variant through the separate Speed row', async (
   const surface = createNativeChatPtySessionOptions({
     agent: 'cursor',
     scopeKey: 'cursor-speed-picker-test',
+    modelLabel: 'Model',
     mode: 'live',
     initialModels: [
       { id: 'grok-4.7-low', label: 'Grok 4.7 Low', options: [] },
@@ -95,6 +97,7 @@ it('holds Antigravity model and effort picks until idle and sends only the final
   const surface = createNativeChatPtySessionOptions({
     agent: 'antigravity',
     scopeKey: 'antigravity-running-picker-test',
+    modelLabel: 'Model',
     mode: 'live',
     initialModels: [
       { id: 'gemini-4-argon-high', label: 'Gemini 4 Argon (High)', options: [] },

@@ -71,15 +71,18 @@ export class StructuredAgentSessionEventRecovery {
       holdUnrunSends: async (sessionId, fence, cause) => {
         const journal = this.context.sessions.get(sessionId)?.journal
         if (journal) {
-          await holdUnsentSends(journal, { fence, hold: { cause }, unrun: true })
+          await holdUnsentSends(journal, {
+            fence,
+            hold: { cause },
+            unrun: (s) => !finalizingStructuredAgentSessionInput(journal, s.clientMessageId)
+          })
         }
       },
       route: {
         runtimeState,
         acknowledgeRelease: (sessionId) => deps.adapter.acknowledgeSessionRelease?.(sessionId)
       },
-      abortOpen: (sessionId) =>
-        runtimeState.acquireAborts.abort(sessionId, 'provider exited while opening')
+      abortBound: (sessionId) => runtimeState.acquireAborts.abortBound(sessionId)
     }
   }
 
@@ -122,20 +125,33 @@ export class StructuredAgentSessionEventRecovery {
     this.restarting.add(sessionId)
     return this.context
       .serialize(sessionId, async () => {
-        const child = this.context.sessions.get(sessionId)?.child
+        const session = this.context.sessions.get(sessionId)
+        const child = session?.child
         const stop =
           this.context.deps.adapter.forceCloseSession ?? this.context.deps.adapter.closeSession
-        if (
-          !child ||
-          (observed && child !== observed.child) ||
-          !stop ||
-          !(await stopAgentSessionProviderRoot(() => stop(sessionId)))
-        ) {
+        if (!child || !session || (observed && child !== observed.child)) {
+          return false
+        }
+        if (failure) {
+          // Close reports raised while stopping must carry the failure, not read as quiet rest.
+          child.close = {
+            ...(child.close ?? {
+              cause: 'host-stop',
+              recorded: Promise.resolve(null),
+              requestedAt: session.journal.cursor()
+            }),
+            reason,
+            failure
+          }
+        }
+        const stopped = stop && (await stopAgentSessionProviderRoot(() => stop(sessionId)))
+        if (!stopped) {
           return false
         }
         // End in this step so later close reports cannot misclassify this shutdown as quiet rest.
         await this.endExitedChildUnderSerialize(sessionId, child, {
           expected: false,
+          ...(stopped === 'kill-delivered' ? { deathEvidenceKind: stopped } : {}),
           ...(observed ? { heldSends: observed.heldSends } : {}),
           reason,
           ...(failure ? { failure } : {})
@@ -160,3 +176,4 @@ export class StructuredAgentSessionEventRecovery {
     await settleStructuredAgentSessionChildExit(this.exitContext, event)
   }
 }
+import { finalizingStructuredAgentSessionInput } from './structured-agent-session-handing-over'

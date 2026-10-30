@@ -1,6 +1,6 @@
 import type { AgentType } from '../../../../shared/agent-status-types'
 import type { CatalogModel } from '../../../../shared/agent-session-option-catalog'
-import type { SessionOptionValue } from '../../../../shared/native-chat-session-options'
+import type { SessionOptionValue } from '../../../../shared/native-chat/input/native-chat-session-options'
 import { readClaudeSessionOptionsFromTerminalScreen } from './claude-terminal-session-options'
 import { readAntigravityTerminalSessionOptions } from '../../../../shared/antigravity-terminal-session-options'
 

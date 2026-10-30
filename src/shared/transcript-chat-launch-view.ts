@@ -1,5 +1,5 @@
-import { canMirrorLaunchDraftToNativeChat } from './native-chat-launch-draft-mirrorability'
-import { isNativeChatTranscriptLocalReadable } from './native-chat-transcript-readability'
+import { canMirrorLaunchDraftToNativeChat } from './native-chat/input/native-chat-launch-draft-mirrorability'
+import { isNativeChatTranscriptLocalReadable } from './native-chat/transcript/native-chat-transcript-readability'
 import {
   isNativeChatDefaultFor,
   type NativeChatDefaultSettings

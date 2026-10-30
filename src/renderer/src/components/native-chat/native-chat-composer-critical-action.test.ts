@@ -49,6 +49,11 @@ describe('resolveComposerCriticalAction', () => {
         { ...idle, structuredTransport: { sendBlockedReason: 'Host offline' } },
         { ...empty, draft: 'hi' }
       )
-    ).toEqual({ kind: 'send', disabled: true, sendBlockedReason: 'Host offline' })
+    ).toEqual({
+      kind: 'send',
+      disabled: true,
+      sendBlockedReason: 'Host offline',
+      sendHeld: true
+    })
   })
 })

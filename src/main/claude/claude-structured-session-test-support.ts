@@ -1,4 +1,5 @@
 import * as Adapter from './claude-structured-session-adapter'
+import type * as State from './structured/claude-structured-session-state'
 import type {
   AgentJournalMessageItem,
   AgentSessionJournalIdentity
@@ -13,10 +14,6 @@ import type {
 import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
 import { claudeProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
 import { claudeStartupSettled } from './claude-structured-startup-settled-test-support'
-export {
-  claudeStartupSettled,
-  claudeOpened
-} from './claude-structured-startup-settled-test-support'
 
 export const PROVIDER_SESSION_ID = '819cf9f8-e43c-4ad7-b50f-54aa158a726a'
 
@@ -53,6 +50,7 @@ export function fakeClaude(
     initSessionId?: string
     initUuid?: string
     initModel?: string
+    initPermissionMode?: string
     /** Default: live SessionStart proof; 'none': no hook; 'init': unmeasured startup shape. */
     initProof?: 'init' | 'session-start' | 'none'
     initAccount?: unknown
@@ -90,6 +88,7 @@ export function fakeClaude(
         session_id: options.initSessionId ?? PROVIDER_SESSION_ID,
         uuid: options.initUuid ?? 'init-uuid',
         model: options.initModel ?? 'claude-sonnet-5',
+        ...(options.initPermissionMode ? { permissionMode: options.initPermissionMode } : {}),
         apiKeySource: 'none',
         ...(options.capabilities ? { capabilities: options.capabilities } : {})
       })
@@ -241,12 +240,12 @@ export function adapterFor(
 export function adapterAtPublishFor(
   claude: ReturnType<typeof fakeClaude>,
   launch: Partial<Adapter.ClaudeStructuredLaunch> = {},
-  events: Adapter.ClaudeStructuredSessionEvent[] = [],
+  events: State.ClaudeStructuredSessionEvent[] = [],
   persistedHandles: unknown[] = [],
   requestTimeoutMs?: number,
-  persistHandle?: Adapter.ClaudeStructuredSessionAdapterDeps['persistHandle'],
-  onChildWorkEvidence?: Adapter.ClaudeStructuredSessionAdapterDeps['onChildWorkEvidence'],
-  onDispatchSettledLate?: Adapter.ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
+  persistHandle?: State.ClaudeStructuredSessionAdapterDeps['persistHandle'],
+  onChildWorkEvidence?: State.ClaudeStructuredSessionAdapterDeps['onChildWorkEvidence'],
+  onDispatchSettledLate?: State.ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
 ): Adapter.ClaudeStructuredSessionAdapter {
   return new Adapter.ClaudeStructuredSessionAdapter({
     readFastModeAccountSupport: async () => ({ supported: true, accountVerified: true }),
@@ -258,6 +257,7 @@ export function adapterAtPublishFor(
       providerSessionId: PROVIDER_SESSION_ID,
       resumeLeafUuid: null,
       resumesTranscript: false,
+      cliFlag: async () => 'supported' as const,
       continuesChain: false,
       ...launch,
       env: { ...launch.env, [ORCA_AGENT_SESSION_SPAWN_TOKEN_ENV]: spawnToken }
@@ -280,8 +280,8 @@ export function adapterAtPublishFor(
 export async function acquired(
   claude: ReturnType<typeof fakeClaude>,
   launch: Partial<Adapter.ClaudeStructuredLaunch> = {},
-  events: Adapter.ClaudeStructuredSessionEvent[] = [],
-  onDispatchSettledLate?: Adapter.ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
+  events: State.ClaudeStructuredSessionEvent[] = [],
+  onDispatchSettledLate?: State.ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
 ): Promise<Adapter.ClaudeStructuredSessionAdapter> {
   const adapter = adapterFor(
     claude,

@@ -22,9 +22,7 @@ import { formatStatusBarSectionLabel } from './usage-pool-label'
 type ProviderId = ProviderRateLimits['provider']
 export type UsageSection = { label: string; window: RateLimitWindow }
 
-// Windows/buckets that actually carry data — absent limits arrive as null, but a
-// partial/rehydrated provider can also carry an undefined window; both must be
-// dropped so downstream consumers never dereference `window.usedPercent`.
+// Drop null and missing windows from partial/rehydrated snapshots before reading percentages.
 function usedSections(p: ProviderRateLimits): UsageSection[] {
   return getWindowSections(p).filter(
     (s): s is UsageSection => s.window !== null && s.window !== undefined
@@ -48,8 +46,7 @@ function shortLabel(p: ProviderRateLimits, section: UsageSection, now = Date.now
   ) {
     return section.label
   }
-  // fableWeekly shares the 7d window with weekly; label it distinctly so the two
-  // don't both render as "wk".
+  // Distinguish Fable from the other weekly window instead of rendering two wk labels.
   if (section.window === p.fableWeekly) {
     return 'Fable'
   }
@@ -67,8 +64,7 @@ export function getTightestUsageSection(
   if (sections.length === 0) {
     return null
   }
-  // Why: the footer promises one quiet summary per provider; choose urgency by
-  // consumption even when the user displays the complementary “% left” value.
+  // Rank by consumption even when the displayed percentage means remaining allowance; ties prefer the weekly window.
   const tightest = sections.reduce((current, candidate) => {
     const difference =
       clampUsedPercent(candidate.window.usedPercent) - clampUsedPercent(current.window.usedPercent)
@@ -97,7 +93,6 @@ export function getUsageHeadlineSection(
   return getTightestUsageSection(p, now)
 }
 
-// The soonest-resetting window summarizes the agent's next reset in one line.
 function soonestResetLabel(sections: UsageSection[], now: number): string | null {
   const resets = sections
     .map((s) => s.window.resetsAt)
@@ -213,11 +208,7 @@ export function UsageRow({
   )
 }
 
-/**
- * Consolidated "Usage" popover — one row per agent (icon · name · reset ·
- * per-window bars), opened from the status-bar roster pill. Deep per-agent
- * actions route to Settings via the callbacks.
- */
+/** Render one usage row per provider; hosts can wrap rows with account controls or detail menus. */
 export function UsageRosterPanel({
   providers,
   display,
@@ -243,9 +234,7 @@ export function UsageRosterPanel({
   canSignIn: (provider: ProviderId) => boolean
   onManageAccounts: () => void
   onUsageDetails: () => void
-  // Lets the host wrap a provider's row in a richer control (e.g. the
-  // Claude/Codex account-switch drill-in submenu); return null to use the
-  // default clickable row.
+  // Return null to use the default row instead of a host-supplied detail/account wrapper.
   renderRow?: (p: ProviderRateLimits, row: React.ReactNode) => React.ReactNode
 }): React.JSX.Element {
   // Why: one boundary-scheduled clock keeps every open row current without per-provider timers.
@@ -254,7 +243,6 @@ export function UsageRosterPanel({
       usedSections(provider).map((section) => section.window.resetsAt)
     )
   )
-  // Worst-first so the agent nearest a limit sits on top.
   const sorted = [...providers].sort(
     (a, b) => providerMaxUsed(usedSections(b)) - providerMaxUsed(usedSections(a))
   )
@@ -284,8 +272,7 @@ export function UsageRosterPanel({
           </DropdownMenuItem>
         </div>
       </div>
-      {/* Density picker lives at the top of the popover it controls (view-switcher
-          pattern) so both modes are named and discoverable on first open. */}
+      {/* Keep the density picker in the popover so both usage modes are discoverable. */}
       <div className="px-3.5 pb-2.5">
         <SettingsSegmentedControl<StatusBarUsageMode>
           value={statusBarUsageMode}
