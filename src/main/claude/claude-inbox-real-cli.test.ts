@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import type { AgentSessionJournalIdentity } from '../../shared/agent-session-journal-types'
-import { claudeProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
-import { claudeStartupSettled } from './claude-structured-startup-settled-test-support'
+import type { AgentSessionJournalIdentity } from '../../shared/agent-session/journal/agent-session-journal-identity'
+import { claudeProviderHandle } from '../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+import { claudeStartupSettled } from './structured/claude-structured-startup-settled-test-support'
 import { sessionInboxItemId, sessionInboxToolName } from '../../shared/session-inbox-tool-contract'
-import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './claude-structured-launch-resolution'
+import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './structured/launch/claude-structured-launch-resolution'
 import {
   realClaudeAuthenticated,
   realClaudeAvailable,
@@ -12,7 +12,7 @@ import {
   realClaudeCommand,
   realClaudeLaunchHome
 } from './claude-real-cli-availability-test-support'
-import { ClaudeStructuredSessionAdapter } from './claude-structured-session-adapter'
+import { ClaudeStructuredSessionAdapter } from './structured/claude-structured-session-adapter'
 import type { ClaudeStructuredSessionEvent } from './structured/claude-structured-session-state'
 
 const suiteTitle = `Claude inbox tools on the real CLI${realClaudeCliGate.skipReason ? ` (skipped: ${realClaudeCliGate.skipReason})` : ''}`

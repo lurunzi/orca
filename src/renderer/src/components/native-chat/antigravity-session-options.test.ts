@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session-option-catalog'
-import { clearNativeChatSessionOptionCacheForTests } from './native-chat-session-option-cache'
-import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat-pty-session-options'
+import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session/options/agent-session-option-catalog'
+import { clearNativeChatSessionOptionCacheForTests } from '../../../../shared/native-chat/input/native-chat-session-option-cache'
+import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat/input/native-chat-pty-session-options'
 
 const AGY_MODELS_STDOUT = [
   'Fetching available models...',

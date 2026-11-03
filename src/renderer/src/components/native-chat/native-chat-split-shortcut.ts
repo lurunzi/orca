@@ -22,11 +22,10 @@ export function matchNativeChatSplitShortcut(
   return null
 }
 
-/** Runs a terminal pane's split for its shortcut; true when the key was taken. */
-export function runNativeChatTerminalSplitShortcut(
+export function handleNativeChatSplitShortcut(
   event: KeyboardEvent,
   keybindings: KeybindingOverrides,
-  actions: { onSplitRight: () => void; onSplitDown: () => void } | undefined
+  actions?: { onSplitRight: () => void; onSplitDown: () => void }
 ): boolean {
   const direction = event.repeat
     ? null

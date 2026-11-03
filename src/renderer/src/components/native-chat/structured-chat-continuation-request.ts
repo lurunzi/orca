@@ -3,8 +3,11 @@ import {
   type AgentSessionContinuationRequest
 } from '@/lib/agent-session-continuation'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
-import { isNoiseMessage } from '../../../../shared/native-chat-noise'
-import { isTextBlock, type NativeChatMessage } from '../../../../shared/native-chat-types'
+import { isNoiseMessage } from '../../../../shared/native-chat/native-chat-noise'
+import {
+  isTextBlock,
+  type NativeChatMessage
+} from '../../../../shared/native-chat/native-chat-types'
 import { isTuiAgent } from '../../../../shared/tui-agent-config'
 
 function transcriptLine(message: NativeChatMessage): string | null {

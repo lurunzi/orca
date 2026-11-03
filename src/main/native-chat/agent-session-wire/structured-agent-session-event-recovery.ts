@@ -1,7 +1,7 @@
 import {
   agentSessionFailureFact,
   type SubmissionRejectionFact
-} from '../../../shared/agent-session-failure'
+} from '../../../shared/agent-session/failures/agent-session-failure'
 import type { StructuredAgentSessionLifecycleEvent } from './structured-agent-session-adapter'
 import { holdUnsentSends } from '../agent-session-journal/journal-unsent-send-hold'
 import { stopAgentSessionProviderRoot } from './structured-agent-session-provider-exit-proof'

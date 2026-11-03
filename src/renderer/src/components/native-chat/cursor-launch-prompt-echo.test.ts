@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { launchPromptAsMessage, shouldPruneLaunchPrompt } from './native-chat-pending'
 import { matchesCursorLaunchPromptEcho } from './cursor-launch-prompt-echo'
-import type { NativeChatMessage } from '../../../../shared/native-chat-types'
+import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 
 const prefix = 'Continue work from the prior Orca session using the context below.\n'.repeat(3)
 const text = `${prefix}在两次查询之间，保留进程。\nInspect the current repository state.`

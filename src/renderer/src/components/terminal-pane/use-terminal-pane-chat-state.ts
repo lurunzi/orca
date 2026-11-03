@@ -8,7 +8,7 @@ import { sanitizeTerminalLayoutPaneTitles } from '../../../../shared/terminal-pa
 import { resolveNativeChatLeafTitleAgent } from './native-chat-leaf-title-agent'
 import { useTerminalPaneStoreActions } from './use-terminal-pane-store-actions'
 import { selectUnifiedTerminalTabFields } from './terminal-unified-tab-lookup'
-import { canToggleNativeChat } from '../../../../shared/native-chat-availability'
+import { canToggleNativeChat } from '../../../../shared/native-chat/native-chat-availability'
 import {
   nativeChatLaunchAgentForLeaf,
   resolveNativeChatLeafRoute,
@@ -242,8 +242,11 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
       setTabViewMode(unifiedTabId, 'terminal')
     }
   }, [chatLeafId, setChatLeafId, setTabViewMode, unifiedTabId])
-  const { readNativeChatTerminalScreen, readNativeChatPromptSuggestion } =
-    useNativeChatTerminalScreenReaders(managerRef, chatLeafId)
+  const {
+    readNativeChatTerminalScreen,
+    readNativeChatPromptSuggestion,
+    readNativeChatTerminalDraft
+  } = useNativeChatTerminalScreenReaders(managerRef, chatLeafId)
 
   return {
     readNativeChatPromptSuggestion,
@@ -274,7 +277,8 @@ export function useTerminalPaneChatState(controller: TerminalPaneTitleController
     handleToggleNativeChat,
     applyNativeChatLeafRoute,
     switchNativeChatToTerminal,
-    readNativeChatTerminalScreen
+    readNativeChatTerminalScreen,
+    readNativeChatTerminalDraft
   }
 }
 

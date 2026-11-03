@@ -11,7 +11,7 @@ import {
   submitConfirmDurationMs,
   type NativeChatSubmitConfirmation
 } from './native-chat-submit-confirmation'
-import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat-paste-bytes'
+import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/native-chat-paste-bytes'
 
 export function sendNativeChatObservedWrites(
   ptyId: string,

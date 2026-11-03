@@ -1,12 +1,12 @@
 // Fork: Claude Fast is offered only after a running session verified the account, so a chat at
 // rest neither advertises it nor saves an enable it cannot prove.
 
+import type { AgentSessionModelCatalogResult } from '../../../shared/agent-session/agent-session-wire'
+import type { AgentSessionOptionsResult } from '../../../shared/agent-session/options/agent-session-options-result'
 import {
   refuse,
-  type AgentSessionModelCatalogResult,
-  type AgentSessionOptionsResult
-} from '../../../shared/agent-session-wire'
-import type { AgentSessionWireRefusal } from '../../../shared/agent-session-wire-refusals'
+  type AgentSessionWireRefusal
+} from '../../../shared/agent-session/failures/agent-session-wire-refusals'
 
 export function restingFastModeSupport(
   provider: string,

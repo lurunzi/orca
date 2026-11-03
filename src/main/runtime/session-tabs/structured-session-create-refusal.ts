@@ -1,7 +1,7 @@
 import {
   agentSessionRefusalError,
   type AgentSessionRefusalError
-} from '../../../shared/agent-session-wire-refusals'
+} from '../../../shared/agent-session/failures/agent-session-wire-refusals'
 
 /** This host cannot create the requested structured chat. */
 export function hostUnsupportedCreateRefusal(): AgentSessionRefusalError {

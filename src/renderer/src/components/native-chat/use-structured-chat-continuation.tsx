@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AgentSessionContinuationDialog } from '@/components/agent-session-continuation/AgentSessionContinuationDialog'
 import type { AgentSessionContinuationRequest } from '@/lib/agent-session-continuation'
 import { useAppStore } from '@/store'
-import type { NativeChatMessage } from '../../../../shared/native-chat-types'
+import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import {
   prepareStructuredChatContinuation,
   hasStructuredChatTranscriptText

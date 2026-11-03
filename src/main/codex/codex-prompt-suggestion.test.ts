@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { CodexAppServerRequestError } from './app-server/codex-app-server-request-error'
-import { CodexAppServerUnsupportedError } from './codex-app-server-session'
+import { CodexAppServerUnsupportedError } from './app-server/codex-app-server-session'
 import {
   acquireReadyCodexForTest,
   acquired,

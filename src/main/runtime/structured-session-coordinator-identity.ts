@@ -13,13 +13,13 @@
  */
 
 import type { StructuredSessionOrchestrationIdentityStatus as Status } from '../../shared/structured-session-orchestration-identity'
-import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import type { AgentSessionRecord } from '../../shared/agent-session/lifecycle/agent-session-record'
 import { isTuiAgent } from '../../shared/tui-agent-config'
 import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-host'
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-registry'
 import type { OrchestrationDb } from './orchestration/db'
 import { readStructuredSessionGateFacts } from './orchestration/structured-mailbox-pointer-host'
-import { structuredSessionIdentityRegistryRow } from './structured-worker-authority'
+import { structuredSessionIdentityRegistryRow } from './structured-session-identity-registry-row'
 import { structuredWorkerOwned } from './structured-worker-custody'
 import {
   mintStructuredWorkerHandle,
@@ -226,6 +226,19 @@ export function bindStructuredSessionCoordinatorIdentities(args: {
         }
       }
     }
+  })
+}
+
+/** The runtime's wiring of the redrive above, once its host is installed. */
+export function bindRuntimeStructuredSessionCoordinatorIdentities(runtime: {
+  getOrchestrationDb(): OrchestrationDb
+  getExistingOrchestrationDb(): OrchestrationDb | null
+  notifyStructuredSessionJournalActivity(sessionId: string): void
+}): void {
+  bindStructuredSessionCoordinatorIdentities({
+    getDb: () => runtime.getOrchestrationDb(),
+    getExistingDb: () => runtime.getExistingOrchestrationDb(),
+    onSessionActivity: (sessionId) => runtime.notifyStructuredSessionJournalActivity(sessionId)
   })
 }
 

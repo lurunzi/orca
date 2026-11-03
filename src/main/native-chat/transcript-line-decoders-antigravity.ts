@@ -1,6 +1,6 @@
 // Antigravity (AGY) JSONL line → NativeChatMessage decoder.
 
-import type { NativeChatBlock, NativeChatMessage } from '../../shared/native-chat-types'
+import type { NativeChatBlock, NativeChatMessage } from '../../shared/native-chat/native-chat-types'
 import { formatNativeChatFileReference } from '../../shared/agent-image-paste'
 import { isWindowsAbsolutePathLike } from '../../shared/cross-platform-path'
 import { IMAGE_FILE_EXTENSIONS } from '../../shared/image-file-extensions'

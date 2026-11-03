@@ -1,4 +1,4 @@
-import type { CatalogModel } from './agent-session-option-catalog'
+import type { CatalogModel } from './agent-session/options/agent-session-option-catalog-types'
 import type { SessionOptionValue } from './native-chat/input/native-chat-session-options'
 import { stripAnsiEscapeSequences } from './ansi-escape-sequences'
 

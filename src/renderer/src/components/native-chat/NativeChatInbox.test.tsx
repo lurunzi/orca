@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import type {
   AgentJournalRenderItem,
   AgentJournalToolCallState
-} from '../../../../shared/agent-session-journal-types'
+} from '../../../../shared/agent-session/journal/agent-session-journal-types'
 import {
   sessionInboxItemId,
   sessionInboxToolName

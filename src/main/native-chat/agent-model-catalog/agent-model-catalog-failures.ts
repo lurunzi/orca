@@ -1,4 +1,4 @@
-import type { AgentSessionUnavailable } from '../../../shared/agent-session-availability'
+import type { AgentSessionUnavailable } from '../../../shared/agent-session/agent-session-availability'
 import { AGENT_MODEL_CATALOG_FAILURE_TTL_MS } from '../../../shared/agent-model-catalog-refresh-policy'
 import { AgentModelCatalogUnavailableError } from './agent-model-catalog-unavailable'
 

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { AgentSessionRecord } from '../../../../shared/agent-session-record'
-import { codexProviderHandle } from '../../../../shared/agent-session-provider-handle-encoding'
+import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
+import { codexProviderHandle } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import {
   agentSessionLeaseFixture,
   agentSessionRecordFixture
-} from '../../../../shared/agent-session-record.test-fixture'
+} from '../../../../shared/agent-session/lifecycle/agent-session-record.test-fixture'
 import { claudeSessionIdForOrcaSession } from '../../../claude/structured/claude-structured-session-id'
 import type { WindowsProcessRow } from '../../../windows/windows-process-table'
 import {

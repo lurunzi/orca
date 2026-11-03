@@ -15,7 +15,7 @@ import {
 import {
   buildNativeChatPasteBytes,
   NATIVE_CHAT_SUBMIT
-} from '../../../../shared/native-chat-paste-bytes'
+} from '../../../../shared/native-chat/input/native-chat-paste-bytes'
 import {
   NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_RETRY_MAX

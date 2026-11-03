@@ -1,4 +1,7 @@
-import type { AskAnswerKeyGroup, AskAnswerSelection } from './native-chat-ask-answer'
+import type {
+  AskAnswerKeyGroup,
+  AskAnswerSelection
+} from './native-chat/input/native-chat-ask-answer'
 import type { AskPrompt } from './native-chat/input/native-chat-ask-types'
 
 /** Matches captured agy selectors: arrows navigate, Space toggles, Enter advances. */

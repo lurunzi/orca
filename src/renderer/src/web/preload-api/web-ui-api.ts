@@ -1,5 +1,5 @@
 import { subscribeWebWorkspaceSleep } from './web-workspace-sleep-notices'
-import type { AgentSessionAttachmentClipboardTarget } from '../../../../shared/agent-session-attachments'
+import type { AgentSessionAttachmentClipboardTarget } from '../../../../shared/agent-session/agent-session-attachments'
 import { saveClipboardImageAsWebAgentSessionAttachment } from './web-agent-session-attachment-upload'
 import { savePastedTextAsWebAgentSessionAttachment } from './web-pasted-text-upload'
 import { createWebExplorerRootSync } from './web-explorer-root-sync'
@@ -9,14 +9,14 @@ import { assertClipboardTextWithinLimitWithYield } from '../../../../shared/clip
 import type { ReadClipboardTextOptions } from '../../../../shared/clipboard-text'
 import { normalizeFeatureInteractions } from '../../../../shared/feature-interactions'
 import type { FeatureInteractionId } from '../../../../shared/feature-interactions'
-import { omitPairingLocalUiFields } from '../../../../shared/pairing-local-ui-fields'
-import { prepareHostUiUpdates } from './web-status-bar-host-updates'
+import { prepareWebHostUiUpdates } from './web-host-ui-update-preparation'
 import type { PairedUiState } from '../../../../shared/pairing-local-ui-fields'
 import {
   clipboardHasImage,
   readClipboardImagePngBase64,
   readClipboardImageThumbnail,
   saveClipboardImageAsTempFileInRuntime,
+  writeWebClipboardImage,
   writeWebClipboardText
 } from './web-clipboard-api'
 import {
@@ -34,14 +34,8 @@ import { UI_STORAGE_KEY, noopUnsubscribe, writeJson } from './web-storage'
 /** Combines browser-local preferences with host persistence; acknowledged writes remain distinct from best-effort writes. */
 export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
   const explorerRoots = createWebExplorerRootSync()
-  /** Captures the target host and strips browser-local or unsupported fields before sending a UI update. */
-  const prepareHostUpdates = async (updates: Parameters<PreloadApi['ui']['set']>[0]) => {
-    const environmentId = requireActiveEnvironmentOrNull()?.id
-    const hostUpdates = omitPairingLocalUiFields(updates)
-    // Synchronous so the pending-root queue keeps call order; the status-bar probe awaits after.
-    explorerRoots.prepare(environmentId, hostUpdates)
-    return { environmentId, hostUpdates: await prepareHostUiUpdates(hostUpdates) }
-  }
+  const prepareHostUpdates = (updates: Parameters<PreloadApi['ui']['set']>[0]) =>
+    prepareWebHostUiUpdates(explorerRoots, updates)
   let zoomLevel = readLocalWebUIState().uiZoomLevel
   return {
     ...createWebJiraFilterStateApi(),
@@ -188,7 +182,7 @@ export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
     writeTerminalClipboardText: writeWebClipboardText,
     writeSelectionClipboardText: () =>
       Promise.reject(new Error('Selection clipboard is unavailable in the web client')),
-    writeClipboardImage: () => Promise.resolve(),
+    writeClipboardImage: writeWebClipboardImage,
     writeClipboardFile: () => Promise.resolve({ ok: false, reason: 'unsupported-platform' }),
     performNativePaste: () => {
       document.execCommand?.('paste')

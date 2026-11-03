@@ -26,6 +26,7 @@ export function TerminalPaneNativeChatPortal({
     isRendererVisible,
     managedPanes,
     paneTitles,
+    readNativeChatTerminalDraft,
     readNativeChatTerminalScreen,
     readNativeChatPromptSuggestion,
     resolveAgentForLeaf,
@@ -84,6 +85,7 @@ export function TerminalPaneNativeChatPortal({
         onSwitchToTerminal={switchNativeChatToTerminal}
         readTerminalScreen={readNativeChatTerminalScreen}
         readTerminalPromptSuggestion={readNativeChatPromptSuggestion}
+        readTerminalDraft={readNativeChatTerminalDraft}
         contextMenuActions={contextMenuActions}
       />
     </NativeChatPaneCover>,

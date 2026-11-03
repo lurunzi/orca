@@ -2,7 +2,6 @@ import { detectTerminalComposerDraft } from '../../shared/terminal-composer-draf
 import { HeadlessEmulator } from '../daemon/headless-emulator'
 import type { HeadlessTerminalRow } from '../daemon/headless-terminal-rows'
 import type { RuntimeTerminalRowMetadata } from '../../shared/runtime-terminal-contracts'
-import type { RuntimeTerminalProjection } from './orca-runtime-core'
 
 type TerminalProjectionEmulator = Pick<
   HeadlessEmulator,
@@ -113,7 +112,7 @@ export async function parseTerminalVisibleSnapshot(snapshot: {
   data: string
   cols: number
   rows: number
-}): Promise<RuntimeTerminalProjection> {
+}): Promise<{ lines: string[]; tailRows?: RuntimeTerminalRowMetadata[]; draft?: string }> {
   if (snapshot.data.length === 0) {
     return { lines: [] }
   }

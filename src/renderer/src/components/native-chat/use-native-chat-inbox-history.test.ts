@@ -2,7 +2,7 @@
 
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentSessionHistoryResult } from '../../../../shared/agent-session-wire'
+import type { AgentSessionHistoryResult } from '../../../../shared/agent-session/agent-session-wire'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import { useNativeChatInboxHistory } from './use-native-chat-inbox-history'
 

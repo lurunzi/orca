@@ -1,11 +1,12 @@
-// Derive settled-turn answers from the last assistant prose or system failure; the journal has no answer marker.
+// Derive settled-turn answers from the last assistant prose or system failure, plus the prose a Stop hook sent back; the journal has no answer marker.
 // Earlier work/recovered errors fold behind that answer, while failed turns end visibly on their error.
 // A hidden delivery splits a turn into replies, each keeping its own answer.
 
-import { AGENT_SESSION_COMPACTION_SKIPPED_PRESENTATION } from '../../agent-session-compaction'
-import { AGENT_SESSION_ORCA_STOP_PRESENTATION } from '../../agent-session-orca-stop'
-import { AGENT_SESSION_TURN_NOTICE_PRESENTATION } from '../../agent-session-turn-notice'
-import { nativeChatRowRendersContent } from '../../native-chat-row-content'
+import { AGENT_SESSION_COMPACTION_SKIPPED_PRESENTATION } from '../../agent-session/agent-session-compaction'
+import { AGENT_SESSION_HOOK_SENT_BACK_PRESENTATION } from '../../agent-session/journal/agent-session-hook-outcome'
+import { AGENT_SESSION_ORCA_STOP_PRESENTATION } from '../../agent-session/lifecycle/agent-session-orca-stop'
+import { AGENT_SESSION_TURN_NOTICE_PRESENTATION } from '../../agent-session/journal/agent-session-turn-notice'
+import { nativeChatRowRendersContent } from './native-chat-row-content'
 import { isStoppedBeforeStartBlock } from '../native-chat-stopped-before-start'
 import { nativeChatRowRendersProse } from '../native-chat-trailing-run'
 import {
@@ -13,7 +14,7 @@ import {
   isSubagentGroupBlock,
   type NativeChatMessage,
   type NativeChatRole
-} from '../../native-chat-types'
+} from '../native-chat-types'
 
 /** Each surface supplies its own row-content results so folding sees exactly the prose it renders. */
 export type NativeChatTurnFoldRow = {
@@ -30,6 +31,8 @@ export type NativeChatTurnFoldRow = {
   reportsFailure: boolean
   /** Compaction/interruption/turn notices remain visible; hiding them leaves only generic turn status. */
   explainsTurn: boolean
+  /** A Stop hook sent the agent back after it answered, so the prose before this row is an answer too. */
+  sendsBack: boolean
   /** The row follows a hidden delivery, so it opens a new reply in its turn. */
   startsReply?: boolean
 }
@@ -44,14 +47,16 @@ export function nativeChatTurnFoldRow(
     turnKey,
     role: message.role,
     rendersProse: nativeChatRowRendersProse(message),
-    draws: hasReceipt || nativeChatRowRendersContent(message.blocks),
+    draws: hasReceipt || message.agentStart === true || nativeChatRowRendersContent(message.blocks),
     // Use raw roster blocks: empty rosters render no block, making their plain-text twin the sole spawn record.
-    outlivesTurn: message.blocks.some(
-      (block) =>
-        isSubagentGroupBlock(block) ||
-        isBackgroundTaskBlock(block) ||
-        isStoppedBeforeStartBlock(block)
-    ),
+    outlivesTurn:
+      message.agentStart === true ||
+      message.blocks.some(
+        (block) =>
+          isSubagentGroupBlock(block) ||
+          isBackgroundTaskBlock(block) ||
+          isStoppedBeforeStartBlock(block)
+      ),
     // A row about Orca's own stop is stored red for clients that predate it; it reports no failure.
     reportsFailure: message.blocks.some(
       (block) =>
@@ -65,7 +70,12 @@ export function nativeChatTurnFoldRow(
         (block.presentation === 'compaction' ||
           block.presentation === AGENT_SESSION_COMPACTION_SKIPPED_PRESENTATION ||
           block.presentation === AGENT_SESSION_ORCA_STOP_PRESENTATION ||
-          block.presentation === AGENT_SESSION_TURN_NOTICE_PRESENTATION)
+          block.presentation === AGENT_SESSION_TURN_NOTICE_PRESENTATION ||
+          block.presentation === AGENT_SESSION_HOOK_SENT_BACK_PRESENTATION)
+    ),
+    sendsBack: message.blocks.some(
+      (block) =>
+        block.type === 'text' && block.presentation === AGENT_SESSION_HOOK_SENT_BACK_PRESENTATION
     )
   }
 }
@@ -82,32 +92,29 @@ export const NATIVE_CHAT_EMPTY_TURN_FOLD: NativeChatTurnFold = {
   foldableTurnKeys: new Set()
 }
 
-/** Last assistant prose/system failure per reply; a reply with no answer folds whole. */
+/** Last assistant prose/system failure per reply (split by send-backs and deliveries); no answer means fold all work. */
 export function nativeChatTurnAnswerRows(
   rows: readonly NativeChatTurnFoldRow[]
 ): ReadonlySet<number> {
   const answers = new Set<number>()
-  // Each turn's latest candidate in its current reply; a reply start commits it.
-  const replyAnswers = new Map<string, number>()
+  const latest = new Map<string, number>()
   for (const [index, row] of rows.entries()) {
     if (row.turnKey === undefined) {
       continue
     }
-    if (row.startsReply) {
-      const previous = replyAnswers.get(row.turnKey)
-      if (previous !== undefined) {
-        answers.add(previous)
-      }
-      replyAnswers.delete(row.turnKey)
+    const answer = latest.get(row.turnKey)
+    if ((row.sendsBack || row.startsReply) && answer !== undefined) {
+      answers.add(answer)
+      latest.delete(row.turnKey)
     }
     const isCandidate =
       row.rendersProse &&
       (row.role === 'assistant' || (row.role === 'system' && row.reportsFailure))
     if (isCandidate) {
-      replyAnswers.set(row.turnKey, index)
+      latest.set(row.turnKey, index)
     }
   }
-  for (const index of replyAnswers.values()) {
+  for (const index of latest.values()) {
     answers.add(index)
   }
   return answers

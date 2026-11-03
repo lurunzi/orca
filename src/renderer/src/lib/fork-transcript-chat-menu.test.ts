@@ -11,7 +11,7 @@ const input = {
 
 it('lists Antigravity with the chats when its terminal opens the transcript chat', () => {
   expect(
-    buildNewTabAgentMenuRows({ ...input, settings: { experimentalNativeChat: true } })
+    buildNewTabAgentMenuRows({ ...input, settings: { agentDefaultSurface: 'chat' as const } })
   ).toEqual([
     { kind: 'chat', agent: 'claude' },
     { kind: 'cli', agent: 'antigravity', opensTranscriptChat: true },
@@ -23,7 +23,10 @@ it('keeps Antigravity a CLI row once its own chat switch is off', () => {
   expect(
     buildNewTabAgentMenuRows({
       ...input,
-      settings: { experimentalNativeChat: true, nativeChatProviders: { antigravity: false } }
+      settings: {
+        agentDefaultSurface: 'chat' as const,
+        nativeChatProviders: { antigravity: false }
+      }
     })
   ).toEqual([
     { kind: 'chat', agent: 'claude' },
@@ -35,7 +38,7 @@ it('keeps Antigravity a CLI row once its own chat switch is off', () => {
 it('lists installed Cursor with chats even without a structured Cursor adapter', () => {
   expect(
     buildNewTabAgentMenuRows({
-      settings: { experimentalNativeChat: true },
+      settings: { agentDefaultSurface: 'chat' as const },
       detectedOnHost: ['cursor'],
       chatAgents: [],
       hostChatAnswer: () => 'not-on-host',
@@ -47,7 +50,7 @@ it('lists installed Cursor with chats even without a structured Cursor adapter',
 it.each(['ssh', 'wsl'] as const)('keeps transcript agents as CLI on %s', (host) => {
   expect(
     buildNewTabAgentMenuRows({
-      settings: { experimentalNativeChat: true },
+      settings: { agentDefaultSurface: 'chat' as const },
       detectedOnHost: ['cursor'],
       chatAgents: [],
       hostChatAnswer: () => host,

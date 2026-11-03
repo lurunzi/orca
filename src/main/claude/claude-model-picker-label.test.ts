@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { listedModels } from './claude-structured-model-catalog'
+import { listedModels } from './structured/launch/claude-structured-model-catalog'
 import { parseClaudeModelList } from '../../shared/claude-model-list-probe'
 
 it('uses identical version labels in terminal discovery and structured sessions without changing model ids', () => {

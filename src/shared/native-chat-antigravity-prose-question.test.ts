@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { extractAntigravityProseQuestion } from './native-chat-antigravity-prose-question'
-import type { NativeChatMessage } from './native-chat-types'
+import type { NativeChatMessage } from './native-chat/native-chat-types'
 
 function assistant(text: string): NativeChatMessage {
   return {

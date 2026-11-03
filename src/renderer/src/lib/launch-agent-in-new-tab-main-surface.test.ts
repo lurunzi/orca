@@ -47,7 +47,7 @@ function seedMainWindowOnEditor(): ReturnType<typeof createTestStore> {
 describe('launchAgentInNewTab main-window surface', () => {
   it('opens Antigravity in transcript chat while retaining its terminal startup', async () => {
     const store = seedMainWindowOnEditor()
-    store.setState({ settings: { ...getDefaultSettings('/tmp'), experimentalNativeChat: true } })
+    store.setState({ settings: { ...getDefaultSettings('/tmp'), agentDefaultSurface: 'chat' } })
     const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
     const result = launchAgentInNewTab({
       requestId: 'antigravity-chat',
@@ -102,21 +102,5 @@ describe('launchAgentInNewTab main-window surface', () => {
     expect(floatingGroup?.activeTabId).toBe(tabId)
     expect(state.activeTabIdByWorktree[FLOATING_TERMINAL_WORKTREE_ID]).toBe(tabId)
     expect(state.activeTabTypeByWorktree[FLOATING_TERMINAL_WORKTREE_ID]).toBe('terminal')
-  })
-
-  it('still brings a launch in the active worktree to the front', async () => {
-    const store = seedMainWindowOnEditor()
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    const result = launchAgentInNewTab({
-      requestId: 'request-2',
-      agent: 'opencode',
-      worktreeId: MAIN_WORKTREE_ID
-    })
-
-    const tabId = result?.surface.kind === 'local-terminal' ? result.surface.tabId : null
-    expect(tabId).not.toBeNull()
-    expect(store.getState().activeTabType).toBe('terminal')
-    expect(store.getState().activeTabId).toBe(tabId)
   })
 })

@@ -1,5 +1,7 @@
 import { useCallback } from 'react'
 import { readClaudeTerminalPromptSuggestion } from '../../../../shared/claude-terminal-prompt-suggestion'
+import { readTerminalCursorLineContext } from '../../../../shared/terminal-cursor-line-context'
+import { readTerminalComposerTypedText } from '../../../../shared/terminal-composer-draft'
 import type { TerminalPaneTitleController } from './use-terminal-pane-title-state'
 
 /** Reads the chat leaf's live terminal screen for the native chat composer. */
@@ -7,14 +9,17 @@ export function useNativeChatTerminalScreenReaders(
   managerRef: TerminalPaneTitleController['managerRef'],
   chatLeafId: TerminalPaneTitleController['chatLeafId']
 ) {
+  const findNativeChatPane = useCallback(
+    () =>
+      chatLeafId
+        ? managerRef.current?.getPanes().find((candidate) => candidate.leafId === chatLeafId)
+        : undefined,
+    [chatLeafId, managerRef]
+  )
+
   const readNativeChatTerminalScreen = useCallback(
     (format?: 'text'): string | null => {
-      if (!chatLeafId) {
-        return null
-      }
-      const pane = managerRef.current
-        ?.getPanes()
-        .find((candidate) => candidate.leafId === chatLeafId)
+      const pane = findNativeChatPane()
       if (!pane) {
         return null
       }
@@ -29,13 +34,26 @@ export function useNativeChatTerminalScreenReaders(
       }
       return pane.serializeAddon.serialize({ scrollback: 0 })
     },
-    [chatLeafId, managerRef]
+    [findNativeChatPane]
   )
 
   const readNativeChatPromptSuggestion = useCallback((): string | null => {
-    const pane = managerRef.current?.getPanes().find((candidate) => candidate.leafId === chatLeafId)
+    const pane = findNativeChatPane()
     return pane ? readClaudeTerminalPromptSuggestion(pane.terminal) : null
-  }, [chatLeafId, managerRef])
+  }, [findNativeChatPane])
 
-  return { readNativeChatTerminalScreen, readNativeChatPromptSuggestion }
+  const readNativeChatTerminalDraft = useCallback((): string | null => {
+    const pane = findNativeChatPane()
+    return pane
+      ? readTerminalComposerTypedText(
+          readTerminalCursorLineContext(pane.terminal, pane.terminal.rows)
+        )
+      : null
+  }, [findNativeChatPane])
+
+  return {
+    readNativeChatTerminalScreen,
+    readNativeChatPromptSuggestion,
+    readNativeChatTerminalDraft
+  }
 }

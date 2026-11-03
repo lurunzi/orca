@@ -2,9 +2,9 @@ import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { net, session } from 'electron'
-import type { AgentSessionFastModeSupport } from '../../shared/agent-session-wire'
-import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
-import { record, text } from './claude-structured-model-catalog'
+import type { AgentSessionFastModeSupport } from '../../shared/agent-session/agent-session-wire'
+import type { ClaudeStructuredLaunch } from './structured/launch/claude-structured-launch-resolution'
+import { record, text } from './structured/launch/claude-structured-model-catalog'
 import {
   parseClaudeOAuthCredentialsJson,
   readClaudeCredentialsFromStrictKeychain

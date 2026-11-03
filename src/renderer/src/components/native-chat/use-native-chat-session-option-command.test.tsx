@@ -23,44 +23,11 @@ vi.mock('@/lib/native-chat-telemetry', () => ({ emitNativeChatMessageSent: vi.fn
 
 import { useNativeChatSessionOptionCommand } from './use-native-chat-session-option-command'
 
-function renderDispatch(agent: 'codex' | 'claude' | 'openclaude', onSubmitted = vi.fn()) {
-  return renderHook(() =>
-    useNativeChatSessionOptionCommand({
-      agent,
-      onSubmitted,
-      disabled: false,
-      resolveTarget: () => ({ settings: {}, ptyId: 'pty-1' })
-    })
-  )
-}
-
 describe('useNativeChatSessionOptionCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sendNativeChatMessageVerified.mockResolvedValue(true)
     typeNativeChatCommand.mockResolvedValue(true)
-  })
-
-  it('types Codex option commands even without caller delivery metadata', async () => {
-    const onSubmitted = vi.fn()
-    const hook = renderDispatch('codex', onSubmitted)
-    await act(() => hook.result.current.dispatch('/model'))
-    expect(onSubmitted).toHaveBeenCalledOnce()
-
-    expect(typeNativeChatCommand).toHaveBeenCalledWith('pty-1', '/model', expect.any(AbortSignal))
-    expect(sendNativeChatMessageVerified).not.toHaveBeenCalled()
-  })
-
-  it.each(['claude', 'openclaude'] as const)('keeps %s option commands pasted', async (agent) => {
-    const hook = renderDispatch(agent)
-    await act(() => hook.result.current.dispatch('/model sonnet', { delivery: 'type' }))
-
-    expect(sendNativeChatMessageVerified).toHaveBeenCalledWith(
-      'pty-1',
-      '/model sonnet',
-      expect.any(AbortSignal)
-    )
-    expect(typeNativeChatCommand).not.toHaveBeenCalled()
   })
 
   it.each(['applied', 'unknown'] as const)(

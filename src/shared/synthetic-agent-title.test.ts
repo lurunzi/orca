@@ -38,7 +38,7 @@ describe('synthetic agent titles', () => {
     expect(getSyntheticAgentTerminalTitle('cursor', 'blocked')).toBe('Cursor - action required')
   })
 
-  it.each(['opencode', 'omp'] as const)(
+  it.each(['opencode', 'omp', 'pi'] as const)(
     'does not synthesize %s titles over its own session titles',
     (agent) => {
       expect(getSyntheticAgentTerminalTitle(agent, 'done')).toBeNull()

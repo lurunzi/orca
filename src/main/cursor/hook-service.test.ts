@@ -21,7 +21,7 @@ vi.mock('os', async () => {
 })
 
 import { CursorHookService } from './hook-service'
-import { extractAgentProviderSession } from '../../shared/agent-session-resume'
+import { extractAgentProviderSession } from '../../shared/agent-session/lifecycle/agent-session-resume'
 import { POSIX_HOOK_STDIN_READER } from '../agent-hooks/hook-stdin-contract'
 import { CURSOR_EVENTS, type CursorEvent } from './hook-events'
 

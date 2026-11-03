@@ -20,7 +20,7 @@ it.each([
       requireStore: () => ({
         getSettings: () => ({
           ...getDefaultSettings('/tmp'),
-          experimentalNativeChat: scenario.enabled
+          agentDefaultSurface: scenario.enabled ? 'chat' : 'terminal'
         })
       }),
       getStructuredAgentSessionCreateSupport: vi.fn(async () => ({

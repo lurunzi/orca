@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type {
   AgentJournalRenderItem,
   AgentJournalToolCallState
-} from './agent-session-journal-types'
+} from './agent-session/journal/agent-session-journal-types'
 import { projectSessionInbox, sessionInboxRecommendedOption } from './session-inbox-projection'
 import { sessionInboxItemId, sessionInboxToolName } from './session-inbox-tool-contract'
 

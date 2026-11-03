@@ -1,8 +1,8 @@
 import { Lexer, type Token } from 'marked'
-import { isNoiseMessage } from './native-chat-noise'
+import { isNoiseMessage } from './native-chat/native-chat-noise'
 import { nativeChatProseToMarkdown } from './native-chat/transcript/native-chat-prose'
 import type { AskPrompt } from './native-chat/input/native-chat-ask-types'
-import type { NativeChatMessage } from './native-chat-types'
+import type { NativeChatMessage } from './native-chat/native-chat-types'
 
 function inlineText(tokens: readonly Token[]): string {
   return tokens

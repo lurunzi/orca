@@ -1,7 +1,7 @@
 import { projectCodexSessionOptions } from './codex-structured-service-tier'
 import * as codexRewind from './codex-structured-rewind'
 import * as Suggestion from './codex-prompt-suggestion-session'
-import type { AgentSessionBackgroundTaskState } from '../../shared/agent-session-wire'
+import type { AgentSessionBackgroundTaskState } from '../../shared/agent-session/agent-session-background-task-wire'
 import type {
   AgentSessionAcquisition,
   AgentSessionDispatchOutcome,
@@ -11,17 +11,15 @@ import type {
 } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
 import type { StructuredAgentSessionProviderOpenInput } from '../native-chat/agent-session-wire/structured-agent-session-provider-open-contract'
 import type { CodexJournalTranslationAdmission } from './codex-structured-journal-translation'
-import { dispatchCodexTurn, isCodexTurnOptionKey } from './codex-structured-turn-start'
+import { dispatchCodexTurn } from './codex-structured-turn-start'
+import { isCodexTurnOptionKey } from './codex-turn-option-keys'
 import { supportsCodexStructuredLocation } from './codex-structured-location-support'
 import { CodexStructuredSessionTeardown } from './codex-structured-session-teardown'
 import {
   applyCodexStructuredSessionOption,
   readLiveCodexSessionOptions
 } from './codex-structured-session-options'
-import {
-  prepareCodexMessageDispatch,
-  readCodexAppliedInputOptions
-} from './codex-structured-message-options'
+import * as messageOptions from './codex-structured-message-options'
 import {
   CodexAcquisitionRegistry,
   requireLiveCodexSession,
@@ -47,12 +45,7 @@ import {
   answerCodexStructuredPrompt,
   cancelCodexStructuredTurn
 } from './codex-structured-prompt-ownership'
-
-export type {
-  CodexStructuredLaunch,
-  CodexStructuredSessionAdapterDeps,
-  CodexStructuredSessionEvent
-} from './codex-structured-session-state'
+import { renameCodexProviderSession } from './codex-provider-session-rename'
 
 export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdapter {
   private readonly sessions = new Map<string, CodexSession>()
@@ -90,6 +83,15 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
     this.sessions.get(sessionId)?.skillReport?.read()
 
   readonly atRestCommands: CodexStructuredSessionAdapterDeps['atRestCommands']
+
+  renameProviderSession: NonNullable<StructuredAgentSessionAdapter['renameProviderSession']> = (
+    input
+  ) =>
+    renameCodexProviderSession({
+      ...input,
+      session: this.sessions.get(input.record.sessionId),
+      invocation: this.deps.renameInvocation
+    })
 
   permissionModeRequiresAcquisition = (): boolean => false
 
@@ -243,7 +245,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
     try {
       const outcome = await dispatchCodexTurn(
         session,
-        await prepareCodexMessageDispatch(
+        await messageOptions.prepareCodexMessageDispatch(
           session,
           input,
           () => this.sessions.get(input.sessionId) === session
@@ -287,8 +289,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
   recoverRewind: NonNullable<StructuredAgentSessionAdapter['recoverRewind']> = (input) =>
     codexRewind.recoverCodexRewind(this.fresh(input.sessionId), input, this.deps.requestTimeoutMs)
 
-  private fresh = (sessionId: string): CodexSession =>
-    Suggestion.dropCodexPromptSuggestion(this.session(sessionId))
+  private fresh = (id: string) => Suggestion.dropCodexPromptSuggestion(this.session(id))
 
   compact: NonNullable<StructuredAgentSessionAdapter['compact']> = (input) =>
     compactCodexStructuredSession(this.fresh(input.sessionId), input, this.deps.requestTimeoutMs)
@@ -321,7 +322,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
 
   readAppliedInputOptions: NonNullable<StructuredAgentSessionAdapter['readAppliedInputOptions']> = (
     input
-  ) => readCodexAppliedInputOptions(this.sessions.get(input.sessionId), input)
+  ) => messageOptions.readCodexAppliedInputOptions(this.sessions.get(input.sessionId), input)
 
   projectOptions = (sessionId: string, options: Readonly<Record<string, string>>) =>
     projectCodexSessionOptions(this.sessions.get(sessionId), options)
@@ -329,8 +330,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
   closeSession: NonNullable<StructuredAgentSessionAdapter['closeSession']> = (...args) =>
     this.teardown.close(...args)
   forceCloseSession = (sessionId: string): Promise<boolean> => this.teardown.forceClose(sessionId)
-  disposeSession: NonNullable<StructuredAgentSessionAdapter['disposeSession']> = (...args) =>
-    this.teardown.close(...args)
+  disposeSession: NonNullable<StructuredAgentSessionAdapter['disposeSession']> = this.closeSession
   closeAll = (): Promise<void> => this.teardown.closeAll()
   releaseAcquisition = (input: { sessionId: string }): Promise<boolean> =>
     this.teardown.close(input.sessionId)

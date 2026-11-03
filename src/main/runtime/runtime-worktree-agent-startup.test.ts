@@ -69,7 +69,7 @@ describe('buildWorktreeStartupForAgent host resolution', () => {
     ({ connectionId, enabled, expected }) => {
       const result = buildWorktreeStartupForAgent({
         repo: makeRepo({ connectionId }),
-        settings: { ...settings, experimentalNativeChat: enabled },
+        settings: { ...settings, agentDefaultSurface: enabled ? 'chat' : 'terminal' },
         agent: 'antigravity',
         getLaunchRuntime: () => LINUX,
         toSessionOptions: () => undefined
@@ -81,7 +81,7 @@ describe('buildWorktreeStartupForAgent host resolution', () => {
   it('opens an Antigravity startup draft in chat', async () => {
     const result = await buildWorktreeStartupForDraft({
       repo: makeRepo({}),
-      settings: { ...settings, experimentalNativeChat: true },
+      settings: { ...settings, agentDefaultSurface: 'chat' },
       requestedAgent: 'antigravity',
       draft: 'inspect this repository',
       getLaunchRuntime: () => LINUX

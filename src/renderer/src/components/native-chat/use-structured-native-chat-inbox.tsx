@@ -1,5 +1,5 @@
 import { useCallback, useState, type RefObject } from 'react'
-import { structuredAgentLabel } from '@/lib/structured-agent-session-launch-label'
+import { structuredAgentLabel } from '@/lib/agent-session/launch/structured-agent-session-launch-label'
 import type { NativeChatComposerHandle } from './native-chat-composer-types'
 import type { NativeChatStructuredViewProps } from './native-chat-view-types'
 import { NativeChatInboxButton } from './NativeChatInboxButton'

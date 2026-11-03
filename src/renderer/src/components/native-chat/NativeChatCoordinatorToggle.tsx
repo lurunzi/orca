@@ -63,7 +63,7 @@ export function NativeChatCoordinatorToggle({
   unavailableReason?: CoordinatorUnavailableReason
   isWorking: boolean
 }): React.JSX.Element | null {
-  const api = window.api.orchestrationIdentity
+  const api = window.api?.orchestrationIdentity
   const [status, setStatus] = useState<StructuredSessionOrchestrationIdentityStatus | null>(null)
   const [pending, setPending] = useState(false)
   const [readRequest, setReadRequest] = useState(0)

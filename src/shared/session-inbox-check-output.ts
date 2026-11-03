@@ -4,7 +4,7 @@
 
 import { stripAnsiEscapeSequences } from './ansi-escape-sequences'
 import type { SessionInboxCheckOutcome } from './session-inbox-check-types'
-import { stripBoundedTextMarker } from './structured-agent-session-projection'
+import { stripBoundedTextMarker } from './agent-session/view/structured-agent-session-projection'
 
 /** The output as the check printed it: without the engine's `Exit code N` line, Orca's truncation marker and colors. */
 function printed(output: string): { text: string; isTruncated: boolean } {

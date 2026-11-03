@@ -1,8 +1,9 @@
 import { afterEach, expect, it } from 'vitest'
-import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session-mutation-envelope'
-import { claudeProviderHandle } from '../../../shared/agent-session-provider-handle-encoding'
+import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
+import { claudeProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import {
   hostTestAttachParams,
+  hostTestCatalogReadOperation,
   hostTestOperationId
 } from './structured-agent-session-host-test-data'
 import {
@@ -66,6 +67,7 @@ it.each([
         retireContext: () => {},
         peek: () => null,
         read: async () => catalogListing(modelSupported),
+        captureRead: hostTestCatalogReadOperation,
         recordLiveListing: () => {},
         prewarm: async () => {},
         stop: () => {},

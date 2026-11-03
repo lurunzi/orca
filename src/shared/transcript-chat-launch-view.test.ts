@@ -3,7 +3,7 @@ import { initialTranscriptChatView } from './transcript-chat-launch-view'
 
 const local = {
   agent: 'antigravity',
-  settings: { experimentalNativeChat: true },
+  settings: { agentDefaultSurface: 'chat' as const },
   connectionId: null
 }
 
@@ -18,7 +18,10 @@ it('keeps unsupported hosts, disabled chat and other providers on their existing
   expect(initialTranscriptChatView({ ...local, connectionId: 'ssh-target-1' })).toBeUndefined()
   expect(initialTranscriptChatView({ ...local, connectionId: undefined })).toBeUndefined()
   expect(
-    initialTranscriptChatView({ ...local, settings: { experimentalNativeChat: false } })
+    initialTranscriptChatView({
+      ...local,
+      settings: { agentDefaultSurface: 'terminal' as const }
+    })
   ).toBeUndefined()
   expect(initialTranscriptChatView({ ...local, agent: 'codex' })).toBeUndefined()
 })
@@ -30,7 +33,7 @@ it('only opens a draft in chat when the composer can safely mirror it', () => {
 
 it('follows the per-agent chat switch under Chat UI', () => {
   const settings = (antigravity: boolean) => ({
-    experimentalNativeChat: true,
+    agentDefaultSurface: 'chat' as const,
     nativeChatProviders: { antigravity }
   })
   expect(initialTranscriptChatView({ ...local, settings: settings(false) })).toBeUndefined()
@@ -47,7 +50,7 @@ it.each(['cursor', 'antigravity'])('honours the explicit CLI choice for %s', (ag
       ...local,
       agent,
       settings: {
-        experimentalNativeChat: true,
+        agentDefaultSurface: 'chat' as const,
         nativeChatProviders: { [agent]: false }
       }
     })

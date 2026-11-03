@@ -27,6 +27,8 @@ type UseNativeChatComposerPasteAndDropsArgs = Pick<
   > & {
     handle: Parameters<typeof useNativeChatComposerHandle>[0]
     attachments: ReturnType<typeof useNativeChatComposerAttachments>
+    /** The workspace is still being created: nothing can be attached to it yet. */
+    pending: boolean
   }
 
 /** Route file drops and pastes into the composer's draft and attachments. */
@@ -46,7 +48,8 @@ export function useNativeChatComposerPasteAndDrops({
   setDraft,
   setCaret,
   setActiveSuggestion,
-  agent
+  agent,
+  pending
 }: UseNativeChatComposerPasteAndDropsArgs) {
   const { attachResolvedPaths } = attachments
   const {
@@ -63,7 +66,7 @@ export function useNativeChatComposerPasteAndDrops({
     terminalTabId,
     structuredWorktreeId: structuredTransport?.worktreeId,
     structuredSession: structuredTransport,
-    disabled,
+    disabled: disabled || pending,
     attachResolvedPaths,
     pendingChips: attachments.pendingChips,
     setNotice
@@ -95,7 +98,7 @@ export function useNativeChatComposerPasteAndDrops({
     resolvePendingImageAttachment: attachments.pendingChips.resolve,
     revealPendingImageAttachment: attachments.revealPendingImageAttachment,
     dropPendingImageAttachment: attachments.dropPendingImageAttachment,
-    pastedTextEditor: structuredTransport ? attachments.scopeEditor : null,
+    pastedTextEditor: structuredTransport && !pending ? attachments.scopeEditor : null,
     setNotice
   })
   return { pickAttachments, handlePasteEvent }

@@ -26,7 +26,7 @@ import {
   useStructuredNativeChatInbox,
   type StructuredNativeChatInboxController
 } from './use-structured-native-chat-inbox'
-import type { NativeChatMessage } from '../../../../shared/native-chat-types'
+import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 
 export function useStructuredNativeChatPaneCommands({
   pane,

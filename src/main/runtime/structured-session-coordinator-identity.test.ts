@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import type { AgentSessionRecord } from '../../shared/agent-session/lifecycle/agent-session-record'
 import {
   agentSessionConversationView,
   type AgentSessionConversationView
-} from '../../shared/agent-session-conversation-view'
-import type { AgentSessionStatusEvent } from '../../shared/agent-session-wire'
+} from '../../shared/agent-session/lifecycle/agent-session-conversation-view'
+import type { AgentSessionStatusEvent } from '../../shared/agent-session/agent-session-wire'
 
 const hostRef: { current: unknown } = { current: null }
 const gateFacts: { current: { turnRunning: boolean; awaitingHuman: boolean } | null } = {

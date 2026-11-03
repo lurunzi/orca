@@ -5,7 +5,7 @@ import { isCodexAppServerRequestError } from './app-server/codex-app-server-requ
 import {
   isCodexAppServerUnsupportedError,
   isCodexMethodNotFoundError
-} from './codex-app-server-session'
+} from './app-server/codex-app-server-session'
 import type { CodexSession, CodexStructuredSessionEvent } from './codex-structured-session-state'
 import {
   readCodexThreadId,

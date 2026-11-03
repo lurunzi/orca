@@ -7,7 +7,7 @@ vi.mock('electron', () => ({ app: { getPath: () => '/orca-state', isPackaged: tr
 it('launches Antigravity as a terminal where its chat server has no build for this host', () => {
   const mode = decideAgentLaunchMode({
     placement: { agent: 'antigravity' },
-    settings: { experimentalNativeChat: true }
+    settings: { agentDefaultSurface: 'chat' }
   }).mode
   expect(mode).toBe(ANTIGRAVITY_ACP_RUNTIME.pin() === null ? 'terminal' : 'structured')
 })

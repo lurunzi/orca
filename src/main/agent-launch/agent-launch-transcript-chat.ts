@@ -14,7 +14,7 @@ export function transcriptTerminalViewMode(
       agent: intent.agent,
       settings: execution.terminalOnly
         ? undefined
-        : readAgentLaunchModeSettings(execution.runtime, intent.nativeChatDefault),
+        : readAgentLaunchModeSettings(execution.runtime, intent),
       connectionId,
       ...(intent.prompt?.delivery === 'draft' ? { draft: intent.prompt.text } : {})
     }) ?? 'terminal'

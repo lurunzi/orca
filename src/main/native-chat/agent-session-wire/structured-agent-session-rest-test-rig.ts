@@ -2,16 +2,16 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, vi, type Mock } from 'vitest'
-import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session-mutation-envelope'
-import type { AgentJournalMessageItem } from '../../../shared/agent-session-journal-types'
+import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
+import type { AgentJournalMessageItem } from '../../../shared/agent-session/journal/agent-session-journal-types'
 import type {
   AgentSessionMutationEnvelope,
   AgentSessionStatusEvent,
   AgentSessionSubscribeEvent
-} from '../../../shared/agent-session-wire'
+} from '../../../shared/agent-session/agent-session-wire'
 import type { AgentChildWorkView } from '../../../shared/agent-status-child-work-view'
-import type { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
-import { openTestAgentSessionRecordStore } from '../../runtime/agent-session-record-store-test-harness'
+import type { AgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store'
+import { openTestAgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
 import type {
   AgentSessionDispatchOutcome,
   StructuredAgentSessionAdapter
@@ -31,11 +31,11 @@ import {
 } from './structured-agent-session-host-test-data'
 import { STRUCTURED_AGENT_SESSION_IDLE_MS } from './structured-agent-session-idle-sweep'
 import {
-  closeTestJournalHostDatabase,
+  closeTestJournalHostDatabases,
   openTestJournalHostDatabase
 } from '../agent-session-journal/journal-host-database-test-support'
 import { createStructuredAgentSessionLogger } from './structured-agent-session-logger'
-import { codexProviderHandle } from '../../../shared/agent-session-provider-handle-encoding'
+import { codexProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 
 export const REST_TEST_CALLER = { callerKey: 'client-1' }
 export const IDLE_MS = STRUCTURED_AGENT_SESSION_IDLE_MS
@@ -214,7 +214,7 @@ export async function createRestTestRig(
     },
     dispose: async () => {
       await rig.host.flushAllStreamedEvents().catch(() => undefined)
-      closeTestJournalHostDatabase(root)
+      await closeTestJournalHostDatabases()
       await rm(root, { recursive: true, force: true })
     }
   }

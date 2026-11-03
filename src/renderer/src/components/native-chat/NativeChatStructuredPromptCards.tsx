@@ -1,12 +1,15 @@
 import type { ComponentProps, RefObject } from 'react'
-import { agentSessionPromptQuestions } from '../../../../shared/agent-session-question-answer'
-import { chatApprovalFromJournal } from '../../../../shared/native-chat-interactive-prompt'
+import type { AgentType } from '../../../../shared/agent-status-types'
+import { agentSessionPromptQuestions } from '../../../../shared/agent-session/agent-session-question-answer'
+import { chatApprovalFromJournal } from '../../../../shared/native-chat/input/native-chat-interactive-prompt'
 import { NativeChatApprovalCard } from './NativeChatApprovalCard'
 import { NativeChatStructuredQuestionCard } from './NativeChatStructuredQuestionCard'
-import { structuredPromptCancel } from './structured-prompt-cancel'
+import { cancelStructuredPrompt } from './native-chat-structured-stop-controls'
 import type { useStructuredPromptResponseHold } from './use-structured-prompt-response-hold'
+import type { useStructuredAgentSession } from './use-structured-agent-session'
 
-type PromptController = Parameters<typeof structuredPromptCancel>[0]
+type PromptController = Parameters<typeof cancelStructuredPrompt>[0] &
+  Pick<ReturnType<typeof useStructuredAgentSession>, 'prompts'>
 
 type NativeChatStructuredPromptCardsProps = Pick<
   ComponentProps<typeof NativeChatApprovalCard>,
@@ -14,7 +17,7 @@ type NativeChatStructuredPromptCardsProps = Pick<
 > & {
   controller: PromptController
   prompt: PromptController['prompts'][number]
-  agent: string
+  agent: AgentType
   response: ReturnType<typeof useStructuredPromptResponseHold>
   shouldFocus: boolean
   answerInputRef: RefObject<HTMLInputElement | null>
@@ -32,7 +35,7 @@ export function NativeChatStructuredPromptCards({
 }: NativeChatStructuredPromptCardsProps): React.JSX.Element {
   const approval = prompt.body.kind === 'approval' ? chatApprovalFromJournal(prompt.body) : null
   const questionBody = prompt.body.kind === 'question' ? prompt.body : null
-  const cancelPrompt = structuredPromptCancel(controller, prompt, agent)
+  const cancelPrompt = () => cancelStructuredPrompt(controller, prompt, agent)
   return (
     <>
       {approval ? (

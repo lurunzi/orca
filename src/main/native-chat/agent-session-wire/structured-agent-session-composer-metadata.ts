@@ -1,7 +1,7 @@
 import type {
   AgentSessionSlashCommand,
   AgentSessionSubscribeEvent
-} from '../../../shared/agent-session-wire'
+} from '../../../shared/agent-session/agent-session-wire'
 
 export type AgentSessionComposerMetadata = {
   sessionId: string

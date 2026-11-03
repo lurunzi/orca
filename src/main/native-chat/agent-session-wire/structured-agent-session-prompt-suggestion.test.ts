@@ -2,13 +2,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
-import { createStructuredAgentSessionEventCoalescer } from '../../../shared/structured-agent-session-coalescer'
-import { EMPTY_STRUCTURED_AGENT_SESSION } from '../../../shared/structured-agent-session-reducer'
+import { createStructuredAgentSessionEventCoalescer } from '../../../shared/agent-session/structured-agent-session-coalescer'
+import { EMPTY_STRUCTURED_AGENT_SESSION } from '../../../shared/agent-session/structured-agent-session-reducer'
 import { reduceWithPromptSuggestion } from '../../../shared/structured-agent-session-prompt-suggestion-reducer'
 import { createTrackedJournalOpener } from '../agent-session-journal/journal-host-database-test-support'
 import { AgentSessionSubscribers } from './structured-agent-session-subscribers'
-import { identityFor } from '../../claude/claude-structured-session-test-support'
-import type { AgentSessionSubscribeEvent } from '../../../shared/agent-session-wire'
+import { identityFor } from '../../claude/structured/claude-structured-session-test-support'
+import type { AgentSessionSubscribeEvent } from '../../../shared/agent-session/agent-session-wire'
 
 it('carries suggestions through idle checkpoints, coalescing, clearing and reconnect without journal rows', async () => {
   const root = await mkdtemp(join(tmpdir(), 'orca-suggestions-'))

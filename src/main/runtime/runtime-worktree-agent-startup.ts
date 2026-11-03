@@ -1,6 +1,6 @@
 import { agentStartedTelemetry } from '../agent-launch/agent-started-telemetry'
 import { initialTranscriptChatView } from '../../shared/transcript-chat-launch-view'
-import type { AgentLaunchPreferences } from '../../shared/agent-session-host-authority'
+import type { AgentLaunchPreferences } from '../../shared/agent-session/agent-session-host-authority'
 import type { Repo } from '../../shared/repo-types'
 import type { TuiAgent } from '../../shared/tui-agent'
 import type { WorktreeStartupLaunch } from '../../shared/worktree/launch-types'

@@ -1,6 +1,6 @@
 import type * as Suggestions from '../claude-prompt-suggestion-store'
 import type * as FastMode from '../claude-fast-mode-policy'
-import type { AgentSessionFastModeSupport } from '../../../shared/agent-session-wire'
+import type { AgentSessionFastModeSupport } from '../../../shared/agent-session/agent-session-wire'
 
 /** Fork: Fast account checks and restart-surviving prompt suggestions. */
 export type ClaudeAccountSuggestionDeps = {

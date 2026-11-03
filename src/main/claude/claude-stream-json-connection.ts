@@ -20,7 +20,7 @@ import {
   claudeUnwrittenUserMessageError,
   createClaudeUserMessageQueue
 } from './claude-agent-sdk-user-message-queue'
-import type { ClaudeStructuredSdkOptions } from './claude-structured-launch-resolution'
+import type { ClaudeStructuredSdkOptions } from './structured/launch/claude-structured-launch-resolution'
 import { withProviderSpawnAbsence } from '../provider-process/provider-executable-missing'
 import { claudeStreamJsonExitError } from './claude-stream-json-exit-error'
 
@@ -62,6 +62,8 @@ function withoutKeys(env: Record<string, string>, keys: readonly string[]): Reco
 
 export type ClaudeStreamJsonConnectionHandlers = {
   onMessage?: (message: Record<string, unknown>) => void
+  /** Raw stdout before the SDK reads it, for state that must keep wire order with permission requests. */
+  onStdout?: (chunk: Buffer | string) => void
   /** The SDK handles request IDs, aborts and deduplication; cannot combine with permissionPromptToolName. */
   canUseTool?: CanUseTool
   /** `request_user_dialog` control; the CLI only emits kinds declared in `supportedDialogKinds`. */
@@ -100,7 +102,12 @@ export async function openClaudeStreamJsonConnection(
   queryImpl?: typeof ClaudeAgentSdk.query
 ): Promise<ClaudeStreamJsonConnection> {
   const sdk = await loadClaudeAgentSdk()
-  const spawner = createClaudeCodeProcessSpawn(spawnImpl, process.platform, launch)
+  const spawner = createClaudeCodeProcessSpawn(
+    spawnImpl,
+    process.platform,
+    launch,
+    handlers.onStdout
+  )
   // Always supply scrubbed env to prevent ambient auth leaks; only launch.env may pin CLAUDE_CONFIG_DIR.
   const env = await withoutRejectedClaudeApiKey(
     withoutKeys(

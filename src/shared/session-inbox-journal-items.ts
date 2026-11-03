@@ -1,7 +1,7 @@
 // The journal rows the session inbox reads, and the fields it reads from them.
 
-import type { AgentJournalRenderItem } from './agent-session-journal-types'
-import { compareAgentJournalItems } from './agent-session-journal-position'
+import type { AgentJournalRenderItem } from './agent-session/journal/agent-session-journal-types'
+import { compareAgentJournalItems } from './agent-session/journal/agent-session-journal-position'
 import { checksIn } from './session-inbox-check-commands'
 import { readSessionInboxToolCall } from './session-inbox-tool-contract'
 

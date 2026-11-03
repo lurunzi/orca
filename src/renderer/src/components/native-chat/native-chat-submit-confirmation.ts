@@ -3,7 +3,7 @@
 
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
-import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat-paste-bytes'
+import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/native-chat-paste-bytes'
 import type { NativeChatSendOptions } from './native-chat-runtime-send'
 
 export type NativeChatSubmitConfirmation = {

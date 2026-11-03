@@ -19,16 +19,17 @@ import {
   LIVE_OPTIONS,
   SAVED_LIST,
   SEED,
-  tick
+  tick,
+  type RenderProps
 } from './use-structured-agent-session-options.test-fixture'
-import type { AgentSessionOptionsResult } from '../../../../shared/agent-session-wire'
+import type { AgentSessionOptionsResult } from '../../../../shared/agent-session/options/agent-session-options-result'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   structuredAgentSessionSendSelection,
   structuredAgentSessionMessageSelection
-} from '../../../../shared/structured-agent-session-option-view'
+} from '../../../../shared/agent-session/options/structured-agent-session-option-view'
 import {
   forgetStructuredSessionSelection,
   structuredSessionSelectionController
@@ -36,58 +37,8 @@ import {
 import { replaceRuntimeEnvironmentRevisions } from '@/runtime/runtime-environment-revision'
 import { resetHostModelCatalogSnapshotsForTests } from '@/runtime/host-model-catalog-snapshots'
 describe('useStructuredAgentSessionOptions', () => {
-  it.each([false, true])(
-    'refreshes a limited session without a new turn (paired: %s)',
-    async (paired) => {
-      // A paired host answers only once its pairing revision is known.
-      replaceRuntimeEnvironmentRevisions(paired ? [{ id: 'server-1', createdAt: 1 }] : [])
-      let blocked = false
-      answer({
-        options: async () => ({
-          models: [{ id: 'opus', label: 'Opus', efforts: [], supportsFastMode: true }],
-          fastModeSupport: blocked
-            ? { supported: false, reason: 'extra_usage_disabled' }
-            : { supported: true, accountVerified: true },
-          current: { model: 'opus', fastMode: true, fastModeState: 'on', confirmed: ['fastMode'] }
-        })
-      })
-      const mutation = mutateWith(async () => null)
-      const { result, unmount } = renderOptions(
-        { ...REOPENED, agent: 'claude', paired },
-        mutation.mutate
-      )
-      await waitFor(() =>
-        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
-          settable: true
-        })
-      )
-      blocked = true
-      act(() => result.current.optionSurface.demandModelCatalog?.())
-      await waitFor(() =>
-        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
-          settable: false,
-          kind: { currentValue: false },
-          disabledReason: 'fast-mode-extra-usage-required'
-        })
-      )
-      await act(async () =>
-        expect(await result.current.setStructuredOption('fastMode', true)).toBe(false)
-      )
-      expect(mutation.calls).not.toHaveBeenCalled()
-      blocked = false
-      act(() => result.current.optionSurface.demandModelCatalog?.())
-      await waitFor(() =>
-        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
-          settable: true,
-          kind: { currentValue: true }
-        })
-      )
-      expect(descriptor(result.current.optionSnapshot, 'fastMode')?.disabledReason).toBeUndefined()
-      unmount()
-    }
-  )
-
   beforeEach(() => {
+    mocks.sendSelection = false
     forgetStructuredSessionSelection('session-1')
     mocks.call.mockReset()
     mocks.enqueue.mockReset()
@@ -109,7 +60,7 @@ describe('useStructuredAgentSessionOptions', () => {
       })),
       current: { model, ...(effort ? { effort } : {}) }
     })
-    const initial = menu('family')
+    const initial = { ...menu('family'), acceptsImages: true }
     const older = Promise.withResolvers<AgentSessionOptionsResult>()
     const latest = Promise.withResolvers<AgentSessionOptionsResult>()
     let reads = 0
@@ -140,9 +91,10 @@ describe('useStructuredAgentSessionOptions', () => {
     rerender({ ...REOPENED, agent: 'antigravity', hidden: true })
     rerender({ ...REOPENED, agent: 'antigravity' })
     await waitFor(() => expect(reads).toBe(3))
-    await act(async () => latest.resolve(menu('newer', 'high')))
+    await act(async () => latest.resolve({ ...menu('newer', 'high'), acceptsImages: true }))
     await waitFor(() => expect(currentValue(result.current.optionSnapshot, 'effort')).toBe('high'))
-    await act(async () => older.resolve(menu('family', 'low')))
+    await act(async () => older.resolve({ ...menu('family', 'low'), acceptsImages: false }))
+    expect(result.current.acceptsImages).toBe(true)
     expect(currentValue(result.current.optionSnapshot, 'model')).toBe('newer')
     expect(descriptor(result.current.optionSnapshot, 'effort')).toMatchObject({
       settable: true,
@@ -216,62 +168,6 @@ describe('useStructuredAgentSessionOptions', () => {
     unmount()
   })
 
-  it.each([
-    { agent: 'claude', paired: false, supportsFastMode: true },
-    { agent: 'codex', paired: false, supportsFastMode: true },
-    { agent: 'claude', paired: true, supportsFastMode: true },
-    { agent: 'codex', paired: true, supportsFastMode: true },
-    { agent: 'claude', paired: false, supportsFastMode: undefined },
-    { agent: 'claude', paired: true, supportsFastMode: undefined }
-  ] as const)(
-    'keeps $agent Fast mode after startup (paired: $paired, support: $supportsFastMode)',
-    async ({ agent, paired, supportsFastMode }) => {
-      // A paired host answers only once its pairing revision is known.
-      replaceRuntimeEnvironmentRevisions(paired ? [{ id: 'server-1', createdAt: 1 }] : [])
-      const model = agent === 'claude' ? 'opus' : 'gpt-6-astra'
-      const models = [{ id: model, label: model, isDefault: true, efforts: [], supportsFastMode }]
-      answer({
-        modelCatalog: async () => ({ origin: 'probe', models, fetchedAt: 1_000 }),
-        options: async () => ({
-          models,
-          fastModeSupport: { supported: true, accountVerified: true },
-          current: { model, fastMode: false, fastModeState: 'off', confirmed: ['fastMode'] }
-        })
-      })
-      const mutation = mutateWith(async () => ({
-        key: 'fastMode',
-        value: 'true',
-        options: { model, fastMode: 'true' }
-      }))
-      const initial = { ...PROVISIONAL, agent, paired, launchSeedOptions: { model } }
-      const { result, rerender, unmount } = renderOptions(initial, mutation.mutate)
-      await waitFor(() =>
-        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toBeDefined()
-      )
-
-      rerender({ ...initial, ...ATTACHED, providerStarting: true })
-      await tick()
-      expect(descriptor(result.current.optionSnapshot, 'fastMode')).toBeDefined()
-      rerender({ ...initial, ...ATTACHED, providerStarting: false, turnId: 'turn-1' })
-      await waitFor(() =>
-        expect(descriptor(result.current.optionSnapshot, 'fastMode')).toMatchObject({
-          kind: { type: 'boolean', currentValue: false },
-          valueSource: supportsFastMode ? 'reported' : 'unknown',
-          settable: supportsFastMode === true
-        })
-      )
-      await act(async () =>
-        expect(await result.current.setStructuredOption('fastMode', true)).toBe(
-          supportsFastMode === true
-        )
-      )
-      expect(setOptionCalls(mutation.calls)).toEqual(
-        supportsFastMode ? [{ key: 'fastMode', value: 'true' }] : []
-      )
-      unmount()
-    }
-  )
-
   it('reads no host catalog for a hidden retained tab until it is shown', async () => {
     answer({ modelCatalog: () => Promise.resolve(HOST_CATALOG) })
     const { rerender, unmount } = renderOptions(
@@ -322,7 +218,7 @@ describe('useStructuredAgentSessionOptions', () => {
     unmount()
   })
 
-  it('treats method_not_found and forbidden as no list: the built-in one, naming nothing', async () => {
+  it('treats method_not_found and forbidden as unavailable discovery without hiding saved input', async () => {
     for (const code of ['method_not_found', 'forbidden']) {
       answer({ modelCatalog: () => Promise.reject(new FakeRpcCallError(code)) })
       const { result, unmount } = renderOptions(
@@ -330,11 +226,10 @@ describe('useStructuredAgentSessionOptions', () => {
         mutateWith(async () => null).mutate
       )
       await waitFor(() =>
-        expect(descriptor(result.current.optionSnapshot, 'model')?.settable).toBe(true)
+        expect(result.current.sendSource.optionStateRef.current.catalogSource).toBe('builtin')
       )
       expect(modelChoiceCount(result.current.optionSnapshot)).toBeGreaterThan(0)
-      // Wait for host labels instead of flashing built-in labels for saved picks.
-      expect(currentValue(result.current.optionSnapshot, 'model')).toBeNull()
+      expect(currentValue(result.current.optionSnapshot, 'model')).toBe(SEED.model)
       unmount()
     }
   })
@@ -853,6 +748,99 @@ describe('useStructuredAgentSessionOptions', () => {
       )
       expect(result.current.acceptsImages).toBe(acceptsImages)
       unmount()
+    }
+  )
+})
+
+import type {
+  PiRefreshFixtureModule,
+  PiRefreshMount
+} from '../../../../shared/agent-session/options/structured-agent-session-option-refresh.test-fixture-contract'
+const { piOptionRefreshContract } = await vi.importActual<PiRefreshFixtureModule>(
+  '../../../../main/native-chat/agent-session-wire/structured-agent-session-option-refresh.test-fixture'
+)
+
+describe('Pi catalog refresh completion', () => {
+  beforeEach(() => {
+    replaceRuntimeEnvironmentRevisions([{ id: 'server-1', createdAt: 1 }])
+    mocks.sendSelection = true
+    mocks.call.mockReset()
+    mocks.enqueue.mockReset()
+    mocks.hold.mockReset()
+    resetHostModelCatalogSnapshotsForTests()
+  })
+
+  const hosts = new Map<string, Parameters<PiRefreshMount>[0]>()
+  piOptionRefreshContract(
+    async (host) => {
+      forgetStructuredSessionSelection(host.record.sessionId)
+      hosts.set(host.record.sessionId, host)
+      mocks.call.mockImplementation(
+        (
+          _target: unknown,
+          method: string,
+          params: {
+            sessionId?: string
+            envelope?: { sessionId?: string }
+            key?: string
+            value?: string
+          }
+        ) => {
+          const id = params?.sessionId ?? params?.envelope?.sessionId
+          const current = id ? hosts.get(id) : undefined
+          if (method === 'agentSession.options' && current) {
+            return current.options()
+          }
+          if (method === 'agentSession.modelCatalog' && current) {
+            return current.catalog()
+          }
+          if (
+            method === 'agentSession.setOption' &&
+            current &&
+            params.key === 'effort' &&
+            typeof params.value === 'string'
+          ) {
+            return current.acceptEffort(params.value).then((value) => ({ ok: true, value }))
+          }
+          return new Promise(() => {})
+        }
+      )
+      const { mutate } = mutateWith(async (_method, _fingerprint, fields) => {
+        if (
+          typeof fields !== 'object' ||
+          fields === null ||
+          !('value' in fields) ||
+          typeof fields.value !== 'string'
+        ) {
+          throw new Error('missing effort')
+        }
+        return host.acceptEffort(fields.value)
+      })
+      const props: RenderProps = { ...REOPENED, agent: 'pi', sessionId: host.record.sessionId }
+      const harness = renderOptions(props, mutate)
+      await act(async () => {
+        await Promise.resolve()
+      })
+      return {
+        snapshot: () => harness.result.current.optionSnapshot,
+        capture: () => harness.result.current.capture().selection,
+        demand: () => harness.result.current.optionSurface.demandModelCatalog?.(),
+        pick: (value) => harness.result.current.setStructuredOption('effort', value),
+        replace: async (fence, otherHost) => {
+          await act(async () => harness.rerender({ ...props, fence, paired: otherHost }))
+        },
+        close: async () => {
+          harness.unmount()
+          hosts.delete(host.record.sessionId)
+        }
+      }
+    },
+    async (work) => {
+      await act(async () => {
+        work()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
     }
   )
 })

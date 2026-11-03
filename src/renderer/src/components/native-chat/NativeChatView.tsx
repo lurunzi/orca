@@ -49,6 +49,7 @@ function NativeChatBridgeView({
   onSwitchToTerminal,
   readTerminalScreen,
   readTerminalPromptSuggestion,
+  readTerminalDraft,
   contextMenuActions
 }: Exclude<NativeChatViewProps, { mode: 'structured' }>): React.JSX.Element {
   const { entry: agentStatusEntry, paneKey } = useNativeChatStatusEntry(
@@ -83,6 +84,7 @@ function NativeChatBridgeView({
               onSwitchToTerminal={onSwitchToTerminal}
               readTerminalScreen={readTerminalScreen}
               readTerminalPromptSuggestion={readTerminalPromptSuggestion}
+              readTerminalDraft={readTerminalDraft}
               contextMenuActions={contextMenuActions}
             />
           </NativeChatMarkdownImageOwnerProvider>

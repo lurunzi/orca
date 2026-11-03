@@ -1,4 +1,4 @@
-import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
+import type { ClaudeStructuredLaunch } from './structured/launch/claude-structured-launch-resolution'
 import type {
   ClaudeSession,
   ClaudeStructuredSessionAdapterDeps

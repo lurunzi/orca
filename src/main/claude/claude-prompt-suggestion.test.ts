@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, it, vi } from 'vitest'
-import { ClaudeStructuredSessionAdapter } from './claude-structured-session-adapter'
+import { ClaudeStructuredSessionAdapter } from './structured/claude-structured-session-adapter'
 import {
   loadClaudePromptSuggestionStore,
   type ClaudePromptSuggestionStore
@@ -13,7 +13,7 @@ import {
   identityFor,
   PROVIDER_SESSION_ID,
   USER_MESSAGE
-} from './claude-structured-session-test-support'
+} from './structured/claude-structured-session-test-support'
 
 it('publishes only same-session suggestions after a successful result and clears on dispatch', async () => {
   const claude = fakeClaude()

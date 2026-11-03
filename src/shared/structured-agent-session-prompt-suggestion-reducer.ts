@@ -2,7 +2,7 @@ import {
   reduceStructuredAgentSession,
   type StructuredAgentSessionAction,
   type StructuredAgentSessionState
-} from './structured-agent-session-reducer'
+} from './agent-session/structured-agent-session-reducer'
 
 function nextPromptSuggestion(
   state: StructuredAgentSessionState,

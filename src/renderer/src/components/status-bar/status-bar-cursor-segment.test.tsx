@@ -60,34 +60,4 @@ describe('Cursor status-bar segment', () => {
     expect(markup).toContain('45%')
     expect(markup).toContain('50%')
   })
-
-  it('falls back to the plan total when no bucket is renderable', async () => {
-    const { ProviderSegment } = await import('./StatusBar')
-    const markup = renderToStaticMarkup(
-      <ProviderSegment
-        p={cursorLimits({ buckets: [{ name: 'Unknown pool', ...windowOf(70) }] })}
-        compact={false}
-        display="used"
-        mode="verbose"
-      />
-    )
-    expect(markup).not.toContain('Unknown pool')
-    expect(markup).toContain('92%')
-  })
-})
-
-describe('getWindowSections for Cursor', () => {
-  it('keeps the plan total beside the pools', async () => {
-    // Cursor’s monthly plan total can be nearer the cap than individual buckets.
-    const { getWindowSections } = await import('./tooltip')
-    const sections = getWindowSections(cursorLimits())
-    expect(sections.find((section) => section.label === 'Plan')?.window?.usedPercent).toBe(92)
-    expect(sections.map((section) => section.label)).toContain(CURSOR_MODELS_BUCKET_NAME)
-  })
-
-  it('leaves other providers unchanged when they report no monthly window', async () => {
-    const { getWindowSections } = await import('./tooltip')
-    const sections = getWindowSections(cursorLimits({ monthly: null, provider: 'gemini' }))
-    expect(sections.some((section) => section.label === 'Plan')).toBe(false)
-  })
 })

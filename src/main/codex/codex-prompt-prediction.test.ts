@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { initializeCodexAppServerConnection } from './app-server/codex-app-server-handshake'
-import { CodexAppServerUnsupportedError } from './codex-app-server-session'
+import { CodexAppServerUnsupportedError } from './app-server/codex-app-server-session'
 import type { CodexStructuredSessionEvent } from './codex-structured-session-state'
 import { supportsCodexPredictionFork } from './codex-prompt-prediction'
 import {

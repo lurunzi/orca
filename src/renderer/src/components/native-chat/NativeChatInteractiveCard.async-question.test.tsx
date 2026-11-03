@@ -5,7 +5,10 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NativeChatBlock, NativeChatMessage } from '../../../../shared/native-chat-types'
+import type {
+  NativeChatBlock,
+  NativeChatMessage
+} from '../../../../shared/native-chat/native-chat-types'
 import type { NativeChatInteractiveSend } from './use-native-chat-interactive-send'
 
 const storeState = {

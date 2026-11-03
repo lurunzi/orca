@@ -2,7 +2,7 @@
 // tools, and how the checks it ran through Bash last ended. Nothing here is stored, so every
 // client, a resumed conversation and a remote one all read the same inbox from the same rows.
 
-import type { AgentJournalRenderItem } from './agent-session-journal-types'
+import type { AgentJournalRenderItem } from './agent-session/journal/agent-session-journal-types'
 import { checkRun, isTemporary, resolvePath } from './session-inbox-check-commands'
 import { readCheckOutcome } from './session-inbox-check-output'
 import {

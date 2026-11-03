@@ -4,7 +4,7 @@ import { claudeAndCodexRouter } from './structured-agent-session-adapter-router-
 import {
   claudeProviderHandle,
   codexProviderHandle
-} from '../../../shared/agent-session-provider-handle-encoding'
+} from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 
 function harness(agent: 'claude' | 'codex') {
   let suggestion: string | null = 'Inspect the changes'

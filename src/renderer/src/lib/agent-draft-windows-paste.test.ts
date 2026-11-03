@@ -11,7 +11,7 @@ import {
   launchPromptAsMessage,
   shouldPruneLaunchPrompt
 } from '@/components/native-chat/native-chat-pending'
-import type { NativeChatMessage } from '../../../shared/native-chat-types'
+import type { NativeChatMessage } from '../../../shared/native-chat/native-chat-types'
 
 vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
   sendRuntimePtyInputVerified: vi.fn()

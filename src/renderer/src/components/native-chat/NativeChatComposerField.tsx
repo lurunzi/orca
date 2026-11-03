@@ -1,117 +1,28 @@
 import { NativeChatPromptEditor } from './NativeChatPromptEditor'
 import { NativeChatPromptSuggestion } from './NativeChatPromptSuggestion'
+import { notifyNativeChatComposerState } from './native-chat-composer-mount'
 import type { NativeChatComposerInput } from './native-chat-composer-input'
-import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import type { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
 import { cn } from '@/lib/utils'
-import type {
-  ComposerAutocomplete,
-  NativeChatPickerItem
-} from '../../../../shared/native-chat-composer-autocomplete'
+import { useNotificationCardComposerClearance } from '@/lib/notification-card-composer-clearance'
 import { NativeChatMentionMenu, NativeChatPickerMenu } from './NativeChatAutocompleteMenus'
-import type { NativeChatMentionFiles } from './use-native-chat-mention-files'
 import { NativeChatComposerActions } from './NativeChatComposerActions'
 import { NativeChatComposerNotices } from './NativeChatComposerNotices'
-import type { NativeChatComposerNotice } from './native-chat-composer-notice'
-import type { NativeChatContextUsageSummary } from './native-chat-context-usage-summary'
-import {
-  NativeChatCoordinatorToggle,
-  type CoordinatorUnavailableReason
-} from './NativeChatCoordinatorToggle'
-import {
-  nativeChatComposerPlaceholder,
-  type NativeChatAfterStopSend
-} from './native-chat-composer-target'
-import type {
-  SessionOptionDescriptor,
-  SessionOptionsSurface
-} from '../../../../shared/native-chat/input/native-chat-session-options'
-import type { NativeChatOptionPickerRequest } from './native-chat-composer-types'
+import { NativeChatCoordinatorToggle } from './NativeChatCoordinatorToggle'
+import { nativeChatComposerPlaceholder } from './native-chat-composer-target'
 import { NativeChatImageAttachmentPreview } from './NativeChatImageAttachmentPreview'
-import type { NativeChatComposerGoalMode } from './use-native-chat-composer-submit'
 import { translate } from '@/i18n/i18n'
 import { useNativeChatComposerDraftUnsaved } from './use-native-chat-draft-unsaved'
 import { useLatestHandler } from '@/lib/use-latest-handler'
+import type { NativeChatComposerFieldProps } from './native-chat-composer-field-types'
+
+export type {
+  NativeChatComposerFieldProps,
+  NativeChatComposerImageAttachment
+} from './native-chat-composer-field-types'
 
 function noop(): void {}
-
-export type NativeChatComposerFieldProps = {
-  editSession?: { cancel: () => void }
-  /** Own draft persistence and native-drop routing by this pane so drops cannot land in another composer. */
-  draftScopeKey: string
-  textareaRef: RefObject<NativeChatComposerInput | null>
-  draft: string
-  promptSuggestion?: string | null
-  onAcceptPromptSuggestion?: () => void
-  disabled: boolean
-  hasPty: boolean
-  canSend: boolean
-  unavailableHint?: string | undefined
-  autocomplete: ComposerAutocomplete
-  mentionFiles: NativeChatMentionFiles
-  activeSuggestion: number
-  notices: readonly NativeChatComposerNotice[]
-  imageAttachments: readonly NativeChatComposerImageAttachment[]
-  /** A structured chat numbers its images, as its chips in the prompt read. */
-  numberImages?: boolean
-  /** The paired server a structured chat runs on, which reads back files stored there. */
-  attachmentEnvironmentId?: string
-  sendButtonDisabled: boolean
-  /** Why the send button is disabled, when the user can do something about it. */
-  sendBlockedReason?: string | null
-  isWorking: boolean
-  showStop?: boolean
-  /** This client's Stop request is in flight: the Stop control is disabled and says so. */
-  isStopping?: boolean
-  /** After Stop, describe whether the host queues the next message as a card or holds the send. */
-  afterStop?: NativeChatAfterStopSend
-  attachDisabled: boolean
-  dictationDisabled: boolean
-  isDictating: boolean
-  isDictationHoldMode: boolean
-  imeEnterGesture: ReturnType<typeof useImeEnterGestureOwnership>
-  onDraftChange: (value: string, element: NativeChatComposerInput) => void
-  onTextareaSelect: (element: NativeChatComposerInput) => void
-  onKeyDown: KeyboardEventHandler<HTMLElement>
-  onImeSettled: (element: NativeChatComposerInput) => void
-  onPaste: ClipboardEventHandler<HTMLElement>
-  pickerListboxId: string
-  onChoosePickerItem: (item: NativeChatPickerItem) => void
-  onRetrySkills: () => void
-  onChooseMentionFile: (path: string) => void
-  onRemoveImageAttachment: (id: string) => void
-  onAttach: () => void
-  /** Session that can take a coordinator identity, or why this chat cannot. */
-  coordinator?: { sessionId: string | null; unavailableReason?: CoordinatorUnavailableReason }
-  onDictationToggle: () => void
-  onDictationHoldStart: () => void
-  onDictationHoldEnd: () => void
-  onSend: () => void
-  onStop?: () => void
-  sessionOptionsSurface: SessionOptionsSurface | null
-  sessionOptionsSnapshot: SessionOptionDescriptor[]
-  contextUsage?: NativeChatContextUsageSummary | null
-  sessionOptionsPickerRequest?: NativeChatOptionPickerRequest | null
-  goalMode?: NativeChatComposerGoalMode
-  agent?: string
-}
-
-export type NativeChatComposerImageAttachment = {
-  id: string
-  /** Empty while `pending`: the clipboard image has no agent-readable path yet. */
-  path: string
-  connectionId?: string
-  /** Show clipboard thumbnails immediately, without waiting for disk/upload completion. */
-  previewUrl?: string
-  /** True while the pasted image is still being written to disk or uploaded. */
-  pending?: boolean
-  /** The file's name while it uploads: a dropped or picked file, not a pasted image. */
-  pendingName?: string
-  /** Set on an image the draft names but can't send: the file to attach again. */
-  unavailableName?: string
-}
 
 /** After a clear suppressed by IME, preserve only the composed segment; compare both ends because the caret need not be at the end. */
 function imeComposedSegment(base: string, settled: string): string {
@@ -133,6 +44,7 @@ function imeComposedSegment(base: string, settled: string): string {
 export function NativeChatComposerField({
   editSession,
   draftScopeKey,
+  positionTarget,
   textareaRef,
   draft,
   promptSuggestion,
@@ -152,6 +64,8 @@ export function NativeChatComposerField({
   sendBlockedReason,
   isWorking,
   showStop,
+  hasDraft = false,
+  alternateSend,
   isStopping = false,
   afterStop,
   attachDisabled,
@@ -181,7 +95,8 @@ export function NativeChatComposerField({
   contextUsage,
   sessionOptionsPickerRequest,
   goalMode,
-  agent
+  agent,
+  launchPrompt
 }: NativeChatComposerFieldProps): React.JSX.Element {
   const draftNotSaved = useNativeChatComposerDraftUnsaved(draftScopeKey)
   const optionCount =
@@ -224,6 +139,7 @@ export function NativeChatComposerField({
     if (compositionWasActive) {
       settleImeValue(textareaRef.current!)
     }
+    notifyNativeChatComposerState()
   })
   const editorCompositionStart = useLatestHandler(() => {
     if (imeEnterGesture.isComposing()) {
@@ -240,6 +156,7 @@ export function NativeChatComposerField({
     if (compositionWasActive) {
       settleImeValue(textareaRef.current!)
     }
+    notifyNativeChatComposerState()
   })
   const editorPaste = useLatestHandler(onPaste)
   const attach = useLatestHandler(onAttach)
@@ -270,11 +187,20 @@ export function NativeChatComposerField({
 
   // Stable so the memoized option pickers keep their identity.
   const focusComposer = useCallback(() => textareaRef.current?.focus(), [textareaRef])
+  // A launch prompt sits in a popover, so it takes the app's surface instead of the chat's.
+  const launch = launchPrompt !== undefined
+  const paneRef = useRef<HTMLDivElement>(null)
+  const columnRef = useRef<HTMLDivElement>(null)
+  // A launch prompt's popover never covers notification cards, so it needs no clearance.
+  useNotificationCardComposerClearance(paneRef, columnRef, editSession === undefined && !launch)
 
   return (
-    <div className="shrink-0 bg-chat-canvas">
-      <div className="px-3 pt-2 pb-4 sm:px-4">
-        <div className="relative mx-auto w-full max-w-(--chat-content-max-width)">
+    <div ref={paneRef} className={launch ? undefined : 'shrink-0 bg-chat-pane'}>
+      <div className={launch ? undefined : 'px-3 pt-2 pb-4 sm:px-4'}>
+        <div
+          ref={columnRef}
+          className={cn('relative w-full', !launch && 'mx-auto max-w-(--chat-content-max-width)')}
+        >
           {autocomplete.mode === 'slash' ? (
             <NativeChatPickerMenu
               autocomplete={autocomplete}
@@ -310,8 +236,10 @@ export function NativeChatComposerField({
           <div
             className={cn(
               // Use a constant container border so focus changes cannot flash it.
-              'rounded-xl border border-chat-composer-border p-1.5 shadow-xs',
-              'bg-chat-composer-surface',
+              'group/composer rounded-xl border p-1.5 shadow-xs',
+              launch
+                ? 'border-foreground/10 bg-background dark:bg-foreground/[0.04]'
+                : 'border-chat-composer-border bg-chat-composer-surface',
               // Contain caret-blink repaint to the composer; keep 4px slack around overhanging attachment buttons, while menus use portals.
               '[contain:paint]'
             )}
@@ -333,8 +261,10 @@ export function NativeChatComposerField({
               <NativeChatPromptEditor
                 key={draftScopeKey}
                 scopeKey={draftScopeKey}
+                positionTarget={positionTarget}
                 imageRow={imageRow}
                 inputRef={textareaRef}
+                isComposing={imeEnterGesture.isComposing}
                 initialValue={draft}
                 disabled={disabled}
                 onChange={editorChange}
@@ -355,26 +285,35 @@ export function NativeChatComposerField({
                 placeholder={
                   promptSuggestion
                     ? ''
-                    : editSession
-                      ? translate(
-                          'components.native-chat.queuedMessages.editMessage',
-                          'Edit message'
-                        )
-                      : goalMode?.active
+                    : launchPrompt
+                      ? launchPrompt.placeholder
+                      : editSession
                         ? translate(
-                            'components.native-chat.goal.placeholder',
-                            'Describe your goal, define measurable outcomes for best results'
+                            'components.native-chat.queuedMessages.editMessage',
+                            'Edit message'
                           )
-                        : (unavailableHint ??
-                          nativeChatComposerPlaceholder(hasPty, canSend, afterStop))
+                        : goalMode?.active
+                          ? translate(
+                              'components.native-chat.goal.placeholder',
+                              'Describe your goal, define measurable outcomes for best results'
+                            )
+                          : (unavailableHint ??
+                            nativeChatComposerPlaceholder(hasPty, canSend, afterStop))
                 }
-                aria-label={nativeChatComposerPlaceholder(hasPty, canSend, afterStop)}
-                // Let layout handle wrapping and touch targets; scroll after eight lines without JavaScript measurement.
+                aria-label={
+                  launchPrompt?.placeholder ??
+                  nativeChatComposerPlaceholder(hasPty, canSend, afterStop)
+                }
+                // Let layout handle wrapping and touch targets; scroll after eight lines (a launch prompt: one line growing to six) without JavaScript measurement.
+                // An empty launch prompt also grows to fit a placeholder that wraps: its zero-width float keeps its height.
                 className={cn(
-                  'min-h-12 w-full bg-transparent px-2 py-1 text-sm text-chat-foreground-strong outline-none pointer-coarse:min-h-14',
-                  'max-h-[calc(8lh+0.5rem)] overflow-y-auto scrollbar-sleek',
+                  'w-full bg-transparent px-2 py-1 text-sm outline-none',
+                  launch
+                    ? 'min-h-7 max-h-[calc(6lh+0.5rem)] text-foreground placeholder:text-muted-foreground [&_p.is-editor-empty:first-child]:before:!h-auto [&_p.is-editor-empty:first-child]:before:mr-[-100%]'
+                    : 'min-h-12 max-h-[calc(8lh+0.5rem)] text-chat-foreground-strong placeholder:text-chat-foreground-faint pointer-coarse:min-h-14',
+                  'overflow-y-auto scrollbar-sleek',
                   // Why: the editor is a contenteditable, which `:disabled` never matches.
-                  'placeholder:text-chat-foreground-faint [&[contenteditable=false]]:cursor-not-allowed [&[contenteditable=false]]:opacity-50'
+                  '[&[contenteditable=false]]:cursor-not-allowed [&[contenteditable=false]]:opacity-50'
                 )}
               />
               {promptSuggestion ? (
@@ -384,7 +323,17 @@ export function NativeChatComposerField({
                 />
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <div
+              className={cn(
+                'flex flex-wrap items-center gap-2 pt-0.5',
+                // An empty launch prompt is one line; its controls appear once it has focus, content or live dictation.
+                launch &&
+                  !isDictating &&
+                  draft === '' &&
+                  imageAttachments.length === 0 &&
+                  'hidden group-focus-within/composer:flex'
+              )}
+            >
               <NativeChatComposerActions
                 editSession={editSession}
                 attachDisabled={attachDisabled}
@@ -394,6 +343,8 @@ export function NativeChatComposerField({
                 draftNotSaved={draftNotSaved}
                 isWorking={isWorking}
                 showStop={showStop}
+                hasDraft={hasDraft}
+                alternateSend={alternateSend}
                 isStopping={isStopping}
                 isDictating={isDictating}
                 isDictationHoldMode={isDictationHoldMode}
@@ -418,6 +369,7 @@ export function NativeChatComposerField({
                 sessionOptionsPickerRequest={sessionOptionsPickerRequest}
                 focusComposer={focusComposer}
                 onExitGoalMode={goalMode?.active ? exitGoalMode : undefined}
+                launchPrompt={launch}
                 {...(agent ? { agent } : {})}
               />
             </div>

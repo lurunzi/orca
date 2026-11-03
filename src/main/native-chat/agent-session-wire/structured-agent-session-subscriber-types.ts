@@ -1,7 +1,7 @@
 import type * as ComposerMetadata from './structured-agent-session-composer-metadata'
 import type { CurrentRequestsSubscriber } from './agent-session-current-requests'
-import type { AgentJournalCursor } from '../../../shared/agent-session-journal-types'
-import type { AgentSessionSubscribeEvent } from '../../../shared/agent-session-wire'
+import type { AgentJournalCursor } from '../../../shared/agent-session/journal/agent-session-journal-identity'
+import type { AgentSessionSubscribeEvent } from '../../../shared/agent-session/agent-session-wire'
 import type {
   SubscriberFieldHooks,
   SubscriberFieldState

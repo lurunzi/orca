@@ -1,5 +1,5 @@
-import type { AgentSessionFastModeSupport } from '../../shared/agent-session-wire'
-import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
+import type { AgentSessionFastModeSupport } from '../../shared/agent-session/agent-session-wire'
+import type { ClaudeStructuredLaunch } from './structured/launch/claude-structured-launch-resolution'
 import type { ClaudeSession } from './structured/claude-structured-session-state'
 
 /** The execution host's account answer for the child one launch started. */
@@ -21,14 +21,7 @@ export function claudeFastModeAccountSupport(session: ClaudeSession): AgentSessi
   if (!account || (account.supported && account.accountVerified !== true)) {
     return { supported: false, reason: 'availability-unconfirmed' }
   }
-  if (!account.supported) {
-    return account
-  }
-  const reason = session.fastModeDisabledReason
-  if (reason && ['network_error', 'unknown', 'pending'].includes(reason)) {
-    return { supported: false, reason: 'availability-unconfirmed' }
-  }
-  return reason && reason !== 'sdk_opt_in_required' ? { supported: false, reason } : account
+  return account
 }
 
 export async function refreshClaudeFastModeAccountSupport(
@@ -47,15 +40,6 @@ export async function refreshClaudeFastModeAccountSupport(
     }))
     .then((support) => {
       session.fastModeAccountSupport = support
-      if (
-        support.supported &&
-        support.accountVerified &&
-        ['extra_usage_disabled', 'free', 'network_error', 'unknown', 'pending'].includes(
-          session.fastModeDisabledReason ?? ''
-        )
-      ) {
-        delete session.fastModeDisabledReason
-      }
     })
     .finally(() => {
       delete session.fastModeAccountRead

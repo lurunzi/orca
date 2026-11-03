@@ -13,7 +13,7 @@ import {
   type ModelPickerRow,
   type ModelTierChoice
 } from './native-chat-model-tier-groups'
-import { nativeChatSessionChoiceLabel } from '../../../../shared/native-chat-session-option-labels'
+import { nativeChatSessionChoiceLabel } from '../../../../shared/native-chat/input/native-chat-session-option-labels'
 import { sayNativeChatSessionOptionTranslated as say } from './native-chat-session-option-labels-text'
 
 type TieredRow = Extract<ModelPickerRow, { kind: 'tiered' }>

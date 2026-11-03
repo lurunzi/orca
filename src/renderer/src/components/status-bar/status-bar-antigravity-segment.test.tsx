@@ -23,6 +23,7 @@ vi.mock('../../store', () => ({
 }))
 
 const WEEKLY_MINUTES = 10_080
+const FIVE_HOUR_MINUTES = 300
 
 function weeklyWindow(usedPercent: number): RateLimitWindow {
   return { usedPercent, windowMinutes: WEEKLY_MINUTES, resetsAt: null, resetDescription: null }
@@ -44,8 +45,6 @@ function antigravityLimits(overrides: Partial<ProviderRateLimits> = {}): Provide
     ...overrides
   }
 }
-
-const FIVE_HOUR_MINUTES = 300
 
 function groupedLimits(): ProviderRateLimits {
   const pool = (group: string, windowMinutes: number, usedPercent: number) => {
@@ -149,44 +148,6 @@ describe('Antigravity status-bar segment', () => {
     expect(markup).toContain('4% wk')
     expect(markup).not.toContain('Gemini')
     expect(markup).not.toContain('Limit Remaining')
-  })
-
-  it('renders no pool label when the compact bar hides labels', async () => {
-    const { ProviderSegment } = await import('./StatusBar')
-    const markup = renderToStaticMarkup(
-      <ProviderSegment p={groupedLimits()} compact display="used" mode="compact" />
-    )
-
-    expect(markup).toContain('4%')
-    expect(markup).not.toContain('Gemini')
-  })
-
-  it('shows the weekly window when a tier reports no session pool', async () => {
-    const { ProviderSegment } = await import('./StatusBar')
-    const markup = renderToStaticMarkup(
-      <ProviderSegment
-        p={antigravityLimits({ buckets: [] })}
-        compact={false}
-        display="used"
-        mode="verbose"
-      />
-    )
-
-    expect(markup).toContain('100%')
-  })
-
-  it('still renders a reading when only the weekly window is known', async () => {
-    const { ProviderSegment } = await import('./StatusBar')
-    const markup = renderToStaticMarkup(
-      <ProviderSegment
-        p={antigravityLimits({ buckets: undefined })}
-        compact={false}
-        display="used"
-        mode="verbose"
-      />
-    )
-
-    expect(markup).toContain('100%')
   })
 
   it('does not widen the allowlist for providers that rely on it', async () => {

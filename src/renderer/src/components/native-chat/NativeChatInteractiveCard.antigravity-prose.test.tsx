@@ -3,7 +3,8 @@
 import '@testing-library/jest-dom/vitest'
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentType, NativeChatMessage } from '../../../../shared/native-chat-types'
+import type { AgentType } from '../../../../shared/agent-status-types'
+import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import type { NativeChatInteractiveSend } from './use-native-chat-interactive-send'
 
 const state = vi.hoisted(

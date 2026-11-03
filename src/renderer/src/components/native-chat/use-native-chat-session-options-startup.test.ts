@@ -2,9 +2,9 @@
 
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CatalogModel } from '../../../../shared/agent-session-option-catalog'
+import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
 import { clearNativeChatModelEnrichmentForTests } from './native-chat-session-option-enrichment'
-import { clearNativeChatSessionOptionCacheForTests } from './native-chat-session-option-cache'
+import { clearNativeChatSessionOptionCacheForTests } from '../../../../shared/native-chat/input/native-chat-session-option-cache'
 import { useNativeChatSessionOptions } from './use-native-chat-session-options'
 
 const discoverModels = vi.fn<() => Promise<readonly CatalogModel[] | null>>()

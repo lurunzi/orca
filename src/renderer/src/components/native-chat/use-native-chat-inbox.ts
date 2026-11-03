@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { AgentJournalRenderItem } from '../../../../shared/agent-session-journal-types'
+import type { AgentJournalRenderItem } from '../../../../shared/agent-session/journal/agent-session-journal-types'
 import { projectSessionInbox } from '../../../../shared/session-inbox-projection'
 import type {
   SessionInboxCheck,

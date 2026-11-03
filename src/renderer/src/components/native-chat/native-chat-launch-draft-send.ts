@@ -9,40 +9,7 @@ export type NativeChatLaunchDraftSendPlan =
 
 /** Prompt glyphs both supported agent TUIs draw at the start of the input line. */
 const COMPOSER_PROMPT_LINE = /^\s*([❯›])\s?(.*)$/
-const CLAUDE_FRAME_LINE = /^\s*─{3,}\s*$/
 const CODEX_FOOTER_LINE = /^\s*\S.*\s[·•]\s.*$/
-
-function composerContinuationIsEmpty(lines: string[], promptIndex: number, glyph: string): boolean {
-  for (let index = promptIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index]!
-    if (
-      (glyph === '❯' && CLAUDE_FRAME_LINE.test(line)) ||
-      (glyph === '›' && CODEX_FOOTER_LINE.test(line))
-    ) {
-      return true
-    }
-    if (line.trim() !== '') {
-      return false
-    }
-  }
-  return true
-}
-
-/** Only an observably empty prompt confirms clearing; placeholders, edits and unreadable screens do not. */
-export function agentInputLineCleared(screen: string | null | undefined): boolean {
-  if (!screen) {
-    return false
-  }
-  const lines = stripScrollbackAnsi(screen).split('\n')
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const match = COMPOSER_PROMPT_LINE.exec(lines[index]!)
-    if (match) {
-      return match[2]!.trim() === '' && composerContinuationIsEmpty(lines, index, match[1]!)
-    }
-  }
-  return false
-}
-
 /** Claude's composer rule; lenient because Claude can draw labels into it. */
 const CLAUDE_FRAME_RULE_START = /^\s*─{3,}/
 
@@ -84,14 +51,17 @@ export function resolveNativeChatLaunchDraftSend(args: {
   launchDraft: { agent: string; text: string } | null | undefined
   launchDraftResolved: boolean
   agent: string
-  readScreen: () => string | null | undefined
+  /** The user's text on the agent's input line: '' when it is empty, null when unreadable. */
+  readInputLine: () => string | null | undefined
+  /** The agent's screen, read to hold a replacement until its composer is painted. */
+  readScreen?: () => string | null | undefined
 }): {
   plan: NativeChatLaunchDraftSendPlan
   sendOptions:
     | { clearInput: string; confirmCleared: () => boolean; composerReady: () => boolean }
     | undefined
 } {
-  const { launchDraft, launchDraftResolved, agent, readScreen } = args
+  const { launchDraft, launchDraftResolved, agent, readInputLine, readScreen } = args
   // A resolved prefill no longer owns TUI input; clearing again could erase the user’s replacement.
   const seededText =
     launchDraft && launchDraft.agent === agent && !launchDraftResolved ? launchDraft.text : null
@@ -103,11 +73,12 @@ export function resolveNativeChatLaunchDraftSend(args: {
     plan,
     sendOptions: {
       clearInput: plan.clearInput,
-      confirmCleared: () => agentInputLineCleared(readScreen()),
+      // A dim placeholder or suggestion is not residue; only typed text is.
+      confirmCleared: () => readInputLine() === '',
       // Why: a starting TUI discards input, then paints its --prefill draft;
       // an early send vanishes and the next one glues onto that draft.
       composerReady: () => {
-        const screen = readScreen()
+        const screen = readScreen?.()
         return !screen || agentComposerPainted(screen)
       }
     }

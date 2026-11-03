@@ -1,3 +1,5 @@
+import { structuredAgentSessionCatalogScopeOwned } from './structured-agent-session-catalog-reads'
+import { withinAgentModelCatalogRead } from '../agent-model-catalog/agent-model-catalog-operation'
 import { AGENT_MODEL_CATALOG_PICKER_WAIT_MS } from '../agent-model-catalog/agent-model-catalog-listing-waiters'
 import { independentAgentModelCatalog } from '../agent-model-catalog/agent-model-catalog-discovery'
 import {
@@ -10,16 +12,20 @@ import { structuredAgentSessionThreadGoalReport } from './structured-agent-sessi
 // Saved choices, catalog defaults and actual execution reports remain separate facts.
 
 import { restingFastModeSupport, withLiveVerifiedFastMode } from './claude-resting-fast-gate'
-import type { AgentSessionOptionsResult } from '../../../shared/agent-session-wire'
-import type { AgentSessionAcceptedInputSources } from '../../../shared/agent-session-options-result'
+import type {
+  AgentSessionOptionsResult,
+  AgentSessionAcceptedInputSources
+} from '../../../shared/agent-session/options/agent-session-options-result'
 import { journalOpenReadRefusal } from '../agent-session-journal/journal-open-failure'
 import type { StructuredAgentSessionLiveOptions } from './structured-agent-session-adapter'
 import {
+  confirmedCurrentOptions,
   structuredAgentSessionCapabilityView,
   type StructuredAgentSessionRestingOptions as RestingOptions
 } from './structured-agent-session-option-models'
 import { structuredAgentSessionImmediatePermission } from './structured-agent-session-launch-permission'
 import type { StructuredAgentSessionMutationContext } from './structured-agent-session-host-mutations'
+import { readStructuredSessionRecovery } from './structured-agent-session-recovery-read'
 import { structuredAgentSessionNeverSent } from './structured-agent-session-never-sent'
 
 export {
@@ -41,27 +47,55 @@ export async function readStructuredAgentSessionOptions(
     ? reader
     : { ...reader, deadline: reader.deadline ?? Date.now() + AGENT_MODEL_CATALOG_PICKER_WAIT_MS }
   const { adapter, agents, store } = context.deps
+  const operation = context.deps.modelCatalog?.captureRead({
+    agent: context.deps.store.getConversation(sessionId)?.provider ?? '',
+    sessionId,
+    savedOnly: reader.readsWithoutModel,
+    deadline: reader.deadline
+  })
   const readCurrent = (allowJoin: boolean) =>
     context.serialize(sessionId, async () => {
       const session = await context.openConversation(sessionId).catch((error: unknown) => {
         throw journalOpenReadRefusal(error, context.deps.logger, sessionId)
       })
       const child = session?.child
-      if (!child || child.phase === 'starting') {
-        return { kind: 'rest' as const }
-      }
-      if (!adapter.readOptions) {
+      if (child && child.phase !== 'starting' && !adapter.readOptions) {
         throw new Error('structured_agent_session_options_unsupported')
       }
-      const pending = allowJoin ? context.deliveryOrder?.optionsReady(sessionId) : undefined
+      const pending =
+        child && child.phase !== 'starting' && allowJoin
+          ? context.deliveryOrder?.optionsReady(sessionId)
+          : undefined
       if (pending) {
-        return { kind: 'pending' as const, pending }
+        return { kind: 'pending' as const, pending, records: undefined }
+      }
+      const observed =
+        child && child.phase !== 'starting'
+          ? await adapter.readOptions?.({ sessionId, fence: child.fence })
+          : undefined
+      const scope = () =>
+        structuredAgentSessionCatalogScopeOwned(
+          context.deps,
+          {
+            agent: context.deps.store.getConversation(sessionId)?.provider ?? '',
+            sessionId
+          },
+          session ?? undefined
+        )
+      const records = context.deps.modelCatalog
+        ? operation
+          ? await withinAgentModelCatalogRead(operation, scope)
+          : await scope()
+        : undefined
+      if (!child || child.phase === 'starting') {
+        return { kind: 'rest' as const, records }
       }
       return {
         kind: 'live' as const,
+        records,
         session,
         child,
-        options: await adapter.readOptions({ sessionId, fence: child.fence })
+        options: observed ?? null
       }
     })
   let started = await readCurrent(true)
@@ -69,14 +103,20 @@ export async function readStructuredAgentSessionOptions(
     await started.pending.catch(() => undefined)
     started = await readCurrent(false)
   }
+  const catalogScope = { records: started?.records ?? null, operation }
   const live: StructuredAgentSessionLiveOptions | null =
-    started.kind === 'live' ? started.options : null
+    started?.kind === 'live' ? started.options : null
   let rested: RestingOptions | undefined
   const atRest = async (): Promise<RestingOptions> =>
-    (rested ??= await readStructuredAgentSessionOptionsAtRest(context.deps, sessionId, reader))
+    (rested ??= await readStructuredAgentSessionOptionsAtRest(
+      context.deps,
+      sessionId,
+      reader,
+      catalogScope
+    ))
   let options: Omit<AgentSessionOptionsResult, 'rewind'>
   if (live) {
-    const { catalogListing, effortFixed: _fixed, ...answer } = live
+    const { catalogListing, effortFixed: _fixed, projectCurrent: _project, ...answer } = live
     options = answer
     // Fill missing live listings from saved catalog state; absent records keep the child’s answer.
     if (!catalogListing && !answer.listedModelIds && store.getConversation(sessionId)) {
@@ -84,13 +124,11 @@ export async function readStructuredAgentSessionOptions(
       options = listedModelIds ? { ...answer, listedModelIds } : answer
     }
   } else {
-    const { inventory: _inventory, fallback: _fallback, ...answer } = await atRest()
-    options = answer
+    const { inventory, fallback: _fallback, ...answer } = await atRest()
+    options = { ...answer, ...(inventory.origin === 'unknown' ? { modelsKnown: false } : {}) }
   }
   // Earlier reads may have closed/reopened the handle.
   const session = await context.conversation(sessionId)
-  const record = store.getConversation(sessionId)
-  const phase = record?.rewind?.phase
   const agent = session.params.provider
   if (!live && rested) {
     options = { ...options, ...restingFastModeSupport(agent, rested.inventory) }
@@ -98,10 +136,13 @@ export async function readStructuredAgentSessionOptions(
   const capabilities = agents.capabilities(agent)
   const floor = session.journal.context.floor()
   const contextFloor = floor ? { contextFloor: floor } : {}
+  const restingOptions = await atRest()
+  const resting = live ? restingOptions : null
+  const record = store.getConversation(sessionId)
   const permissionMode = record
     ? structuredAgentSessionImmediatePermission(context.deps, record)
     : null
-  const resting = live ? await atRest() : null
+  const phase = record?.rewind?.phase
   const selected = resting ?? options
   const independent = independentAgentModelCatalog(agent)
   const displayDefault =
@@ -112,6 +153,8 @@ export async function readStructuredAgentSessionOptions(
       : undefined
   const saved = record?.options ?? {}
   const model = saved.model ?? (options.current.model || selected.current.model || displayDefault)
+  const projected = live?.projectCurrent?.({ ...saved, ...(model ? { model } : {}) })
+  const reportedEffort = projected?.confirmed?.includes('effort') ? projected.effort : undefined
   const current = {
     ...selected.current,
     ...options.current,
@@ -149,13 +192,9 @@ export async function readStructuredAgentSessionOptions(
   if (saved.fastMode === undefined && selected.current.fastMode === false) {
     acceptedInputSources.fastMode = 'policy'
   }
-  const confirmed = options.current.confirmed?.filter((key) =>
-    key === 'model' || key === 'effort' || key === 'fastMode' || key === 'serviceTier'
-      ? current[key] === options.current[key]
-      : false
-  )
+  const confirmed = confirmedCurrentOptions(current, projected ?? options.current)
   if (independent) {
-    const { inventory, fallback, listedModelIds } = await atRest()
+    const { inventory, fallback, listedModelIds } = restingOptions
     if (saved.model === undefined && current.model && inventory.origin !== 'unknown') {
       current.model =
         inventory.models.find(
@@ -174,7 +213,14 @@ export async function readStructuredAgentSessionOptions(
     const fast = live
       ? withLiveVerifiedFastMode(view, live)
       : restingFastModeSupport(agent, inventory)
-    options = { ...options, ...view, ...fast, listedModelIds, current }
+    options = {
+      ...options,
+      ...view,
+      ...fast,
+      ...(inventory.origin === 'unknown' ? { modelsKnown: false } : {}),
+      listedModelIds,
+      current
+    }
     const projected =
       live && (saved.serviceTier !== undefined || saved.fastMode !== undefined)
         ? adapter.projectOptions?.(sessionId, {
@@ -186,8 +232,10 @@ export async function readStructuredAgentSessionOptions(
       current.serviceTier = projected.options.serviceTier
     }
   }
+  const recovery = await readStructuredSessionRecovery(session, context, sessionId)
   return {
     ...options,
+    ...recovery,
     ...(live?.effortFixed
       ? {
           models: options.models.map(({ effortsKnown: _unknown, ...row }) => ({
@@ -199,6 +247,7 @@ export async function readStructuredAgentSessionOptions(
     current: {
       ...current,
       acceptedInputSources,
+      ...(reportedEffort !== undefined ? { reportedEffort } : {}),
       defaulted,
       confirmed,
       ...(options.current.fastModeState ? { fastModeState: options.current.fastModeState } : {}),

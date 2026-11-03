@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
-import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat-pty-session-options'
+import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat/input/native-chat-pty-session-options'
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string, values?: Record<string, string | number>) =>

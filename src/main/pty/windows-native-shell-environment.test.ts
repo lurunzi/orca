@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as pty from 'node-pty'
-import { spawnShellWithFallback } from '../providers/local-pty-utils'
+import { spawnShellWithFallback } from '../providers/local-pty/local-pty-executable-spawn'
 import { spawnNativeDaemonPty } from '../daemon/pty-subprocess/native-pty-spawn'
 import { normalizeWindowsNativeShellEnvironment } from './windows-native-shell-environment'
 
@@ -8,6 +8,18 @@ vi.mock('node-pty', () => ({ spawn: vi.fn() }))
 vi.mock('../windows/windows-pty-job', () => ({ assignHostProcessToKillOnCloseJob: vi.fn() }))
 
 const originalPlatform = process.platform
+// The daemon route takes physical ownership of the pane; WinPTY skips the ConPTY startup wait.
+const fakePane = (): pty.IPty =>
+  // SAFETY: the spawn route only reads pid and subscribes to data and exit.
+  ({
+    pid: 4242,
+    _agent: { _useConpty: false },
+    onData: () => ({ dispose: () => {} }),
+    onExit: () => ({ dispose: () => {} })
+  }) as unknown as pty.IPty
+beforeEach(() => {
+  vi.mocked(pty.spawn).mockImplementation(fakePane)
+})
 afterEach(() => {
   Object.defineProperty(process, 'platform', { value: originalPlatform })
   vi.restoreAllMocks()
