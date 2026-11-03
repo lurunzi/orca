@@ -13,107 +13,51 @@ afterEach(() => {
 })
 
 describe('terminal agent exit evidence', () => {
-  it.each([
-    { label: 'unavailable process', process: null },
-    { label: 'empty process', process: '' },
-    { label: 'unrecognized wrapper', process: 'node.exe' }
-  ])('keeps Cursor chat on $label and still detects a later shell', async ({ process }) => {
+  it('rescans a Windows ConPTY shell fallback before it counts as an exit', async () => {
+    setPlatform('win32')
     const { runtime, batches } = createSideEffectRuntime()
     syncSinglePty(runtime)
     runtime.ingestSyntheticTitleFrame('pty-1', '\x1b]0;Cursor ready\x07')
-    const getForegroundProcess = vi
+    const confirmForegroundProcess = vi
       .fn()
-      .mockResolvedValueOnce(process)
-      .mockResolvedValue('bash.exe')
-    runtime.setPtyController({ write: () => true, kill: () => true, getForegroundProcess })
+      .mockResolvedValueOnce('cursor-agent')
+      .mockResolvedValue('powershell.exe')
+    runtime.setPtyController({
+      write: () => true,
+      kill: () => true,
+      getForegroundProcess: async () => 'powershell.exe',
+      confirmForegroundProcess
+    })
 
     runtime.onPtyData('pty-1', '\x1b]0;workspace\x07', 100)
-    await vi.waitFor(() => expect(getForegroundProcess).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(confirmForegroundProcess).toHaveBeenCalledOnce())
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
 
+    runtime.ingestSyntheticTitleFrame('pty-1', '\x1b]0;Cursor ready\x07')
     runtime.onPtyData('pty-1', '\x1b]0;other workspace\x07', 101)
     await vi.waitFor(() =>
       expect(batches.flatMap((batch) => batch.facts)).toContainEqual({ kind: 'agent-exited' })
     )
   })
 
-  it('keeps chat when the host has no foreground inspection capability', async () => {
-    const { runtime, batches } = createSideEffectRuntime()
-    syncSinglePty(runtime)
-    runtime.setPtyController(null)
-    runtime.ingestSyntheticTitleFrame('pty-1', '\x1b]0;Cursor ready\x07')
-    runtime.onPtyData('pty-1', '\x1b]0;workspace\x07', 100)
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
-  })
-
-  it('ignores an old host controller result after reconnect', async () => {
-    const { runtime, batches } = createSideEffectRuntime()
-    syncSinglePty(runtime)
-    let resolveRead: (process: string) => void = () => {}
-    const getForegroundProcess = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveRead = resolve
-        })
-    )
-    runtime.setPtyController({ write: () => true, kill: () => true, getForegroundProcess })
-    runtime.ingestSyntheticTitleFrame('pty-1', '\x1b]0;Cursor ready\x07')
-    runtime.onPtyData('pty-1', '\x1b]0;workspace\x07', 100)
-    await vi.waitFor(() => expect(getForegroundProcess).toHaveBeenCalledOnce())
-    runtime.setPtyController({
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => 'cursor-agent'
-    })
-    resolveRead('bash.exe')
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
-  })
-
-  it('keeps Windows Cursor chat when the shell name is only the ConPTY fallback', async () => {
-    setPlatform('win32')
-    const { runtime, batches } = createSideEffectRuntime()
-    syncSinglePty(runtime)
-    runtime.ingestSyntheticTitleFrame('pty-1', ']0;Cursor ready')
-    const confirmShellForeground = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
-    runtime.setPtyController({
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => 'powershell.exe',
-      confirmShellForeground
-    })
-
-    runtime.onPtyData('pty-1', ']0;workspace', 100)
-    await vi.waitFor(() => expect(confirmShellForeground).toHaveBeenCalledOnce())
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
-
-    runtime.onPtyData('pty-1', ']0;other workspace', 101)
-    await vi.waitFor(() =>
-      expect(batches.flatMap((batch) => batch.facts)).toContainEqual({ kind: 'agent-exited' })
-    )
-    expect(confirmShellForeground).toHaveBeenCalledTimes(2)
-  })
-
-  it('does not ask for job proof off Windows, where the shell name is real evidence', async () => {
+  it('takes the shell name as evidence off Windows', async () => {
     setPlatform('linux')
     const { runtime, batches } = createSideEffectRuntime()
     syncSinglePty(runtime)
-    runtime.ingestSyntheticTitleFrame('pty-1', ']0;Cursor ready')
-    const confirmShellForeground = vi.fn().mockResolvedValue(false)
+    runtime.ingestSyntheticTitleFrame('pty-1', '\x1b]0;Cursor ready\x07')
+    const confirmForegroundProcess = vi.fn().mockResolvedValue('cursor-agent')
     runtime.setPtyController({
       write: () => true,
       kill: () => true,
       getForegroundProcess: async () => 'bash',
-      confirmShellForeground
+      confirmForegroundProcess
     })
 
-    runtime.onPtyData('pty-1', ']0;workspace', 100)
+    runtime.onPtyData('pty-1', '\x1b]0;workspace\x07', 100)
     await vi.waitFor(() =>
       expect(batches.flatMap((batch) => batch.facts)).toContainEqual({ kind: 'agent-exited' })
     )
-    expect(confirmShellForeground).not.toHaveBeenCalled()
+    expect(confirmForegroundProcess).not.toHaveBeenCalled()
   })
 })

@@ -493,8 +493,7 @@ describe('terminal side-effect fact channel', () => {
   })
 
   it.each(['wsl.exe', 'tmux'])(
-    // Fork: only a shell in the foreground closes chat (07da011304), so a wrapper keeps it.
-    'keeps chat when the foreground answers with non-agent %s',
+    'confirms an exit when the foreground answers with non-agent %s',
     async (foreground) => {
       const { runtime, batches } = createSideEffectRuntime(async () => null)
       syncSinglePty(runtime)
@@ -507,18 +506,19 @@ describe('terminal side-effect fact channel', () => {
 
       runtime.onPtyData('pty-1', '\x1b]0;~/repo\x07', 100)
 
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      expect(batches.flatMap((batch) => batch.facts)).not.toContainEqual({ kind: 'agent-exited' })
+      await vi.waitFor(() =>
+        expect(batches.flatMap((batch) => batch.facts)).toContainEqual({ kind: 'agent-exited' })
+      )
     }
   )
 
   it.each([
-    { presence: null, exited: false },
+    { presence: null, exited: true },
     { presence: 'unverifiable' as const, exited: false }
   ])(
     'treats synchronous foreground read failures as unavailable (hook presence $presence)',
     async ({ presence, exited }) => {
-      // Fork: silence keeps chat whether or not the pane has an identified owner.
+      // Only identified owners retain agent identity through silence.
       const { runtime, batches } = createSideEffectRuntime(async () => presence)
       syncSinglePty(runtime)
       runtime.ingestSyntheticTitleFrame('pty-1', '\x1b]0;Codex ready\x07')

@@ -1,4 +1,5 @@
 import { recognizeAgentProcess } from '../../shared/agent-process-recognition'
+import { isShellProcess } from '../../shared/shell-process-detection'
 import type { TerminalAgent } from '../../shared/terminal-agent'
 import { withTimeoutResult } from './runtime-async-boundaries'
 import { TERMINAL_INTERACTIVE_WAIT_PROBE_TIMEOUT_MS } from './orca-runtime-core'
@@ -68,6 +69,25 @@ export class RuntimePtyForegroundAgent {
     entry = { controller, startedAfterTitleObservation: afterTitle, promise }
     this.reads.set(ptyId, entry)
     return entry.promise
+  }
+
+  /** Local Windows ConPTY names the spawned shell whenever it cannot see the foreground, so rescan that name. */
+  readConfirmingShellFallback(
+    ptyId: string,
+    afterTitle = 0
+  ): Promise<PtyForegroundProcessRead> | null {
+    const read = this.read(ptyId, afterTitle)
+    const pty = this.deps.getPty(ptyId)
+    if (!read || process.platform !== 'win32' || !pty || pty.connectionId || pty.isWsl === true) {
+      return read
+    }
+    return read.then(async (result) => {
+      if (!result.available || !result.process || !isShellProcess(result.process)) {
+        return result
+      }
+      const confirmed = await this.confirm(result.controller, ptyId)
+      return confirmed ? { ...result, process: confirmed } : result
+    })
   }
 
   refresh(ptyId: string, afterTitle = 0): Promise<boolean> {
