@@ -117,6 +117,11 @@ describe('claude structured launch resolution', () => {
       }))
       const launch = await resolve({ identity: IDENTITY })
       expect(launch.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe('fixture-pool-access')
+      expect(launch.dashboardBinding).toEqual({
+        account_id: 'fixture-pool',
+        binding_revision: 1,
+        credential_version: 1
+      })
       for (const key of [
         'ANTHROPIC_API_KEY',
         'ANTHROPIC_AUTH_TOKEN',
@@ -137,9 +142,14 @@ describe('claude structured launch resolution', () => {
         credential_version: 2,
         access_token: 'fixture-pool-new-access'
       })
-      expect((await resolve({ identity: IDENTITY })).env?.CLAUDE_CODE_OAUTH_TOKEN).toBe(
-        'fixture-pool-new-access'
-      )
+      const refreshed = await resolve({ identity: IDENTITY })
+      expect(refreshed.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe('fixture-pool-new-access')
+      expect(refreshed.dashboardBinding).toEqual({
+        account_id: 'fixture-pool',
+        binding_revision: 1,
+        credential_version: 2
+      })
+      expect(launch.dashboardBinding?.credential_version).toBe(1)
       read.mockRejectedValue(new DashboardAllocationError())
       await expect(resolve({ identity: IDENTITY })).rejects.toThrow(
         'dashboard_allocation_unavailable'

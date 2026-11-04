@@ -113,5 +113,8 @@ async function openStartingClaudeSession(
     current()
   }
   startup.open()
+  if (session.dashboardLaunch) {
+    session.dashboardLaunch.initialized = true
+  }
   return { ...result, link: session.link, newConversation: !resumesTranscript }
 }

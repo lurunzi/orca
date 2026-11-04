@@ -1,4 +1,5 @@
 import type * as ForkFields from './claude-session-account-suggestion-fields'
+import type { DashboardClaudeSessionLaunch } from '../../dashboard-accounts/dashboard-claude-launch-protocol'
 import type { StructuredAgentSessionChildWorkProducer } from '../../native-chat/agent-session-wire/structured-agent-session-subagent-rows'
 import type { ClaudeStartupOutcome } from './claude-structured-startup-outcome'
 import type { ClaudeCliFlagCheck, ClaudeCliFlagFact } from '../claude-cli-flag-support'
@@ -23,19 +24,13 @@ import type { ClaudeBackgroundTaskTracker } from '../claude-background-task-trac
 import type { ClaudeChildWorkDecoder } from '../claude-child-work-decoder'
 import type { ClaudeSlashCommandCatalog } from '../claude-slash-command-catalog'
 import type { ClaudeAtRestCommandCatalog } from '../claude-at-rest-commands'
-import type { ClaudeInitProof } from './claude-structured-init-proof'
+import type { ClaudeAuthDiagnostic, ClaudeInitProof } from './claude-structured-init-proof'
 import type { AgentSessionProviderHandleLink } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type { ClaudeNamingInputs } from '../claude-naming-invocation'
 import type { ClaudeInitializeFacts } from './claude-structured-session-startup'
 
-export type ClaudeAuthDiagnostic = {
-  apiKeySourceConfigured: boolean
-  baseUrlConfigured: boolean
-  authTokenConfigured: boolean
-  apiKeyConfigured: boolean
-  settingSources: readonly string[]
-}
+export type { ClaudeAuthDiagnostic } from './claude-structured-init-proof'
 
 export type ClaudeStructuredSessionEvent =
   | {
@@ -150,6 +145,7 @@ export type ClaudeDispatchWaiter = {
 }
 
 export type ClaudeSession = ForkFields.ClaudeAccountSuggestionSessionFields & {
+  dashboardLaunch?: DashboardClaudeSessionLaunch
   connection: ClaudeStreamJsonConnection
   providerSessionId: string
   /** Latest main-chain message seen on the live stream, mid-turn included. */

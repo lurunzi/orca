@@ -1,6 +1,7 @@
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import { prepareClaudeLaunchAccount } from '../../claude-launch-account'
 import { readDashboardClaudeAllocation } from '../../../dashboard-accounts/dashboard-allocation-reader'
+import type { DashboardClaudeLaunchBinding } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import {
   dashboardClaudeEnvironment,
   DASHBOARD_CLAUDE_ENV_TO_DELETE
@@ -110,6 +111,7 @@ export type ClaudeStructuredLaunch = {
   cwd: string
   env?: Record<string, string>
   envToDelete?: readonly string[]
+  dashboardBinding?: DashboardClaudeLaunchBinding
   claudeConfigDir: string
   accountRecipe?: ClaudeAccountRecipe
   providerSessionId: string
@@ -278,6 +280,15 @@ export function claudeStructuredLaunchPart(
         prefixArgs,
         account: accountRecipe.route === 'managed' ? 'managed' : 'system',
         accountRecipe,
+        ...(allocation
+          ? {
+              dashboardBinding: {
+                account_id: allocation.account_id,
+                binding_revision: allocation.binding_revision,
+                credential_version: allocation.credential_version
+              }
+            }
+          : {}),
         options: {
           ...CLAUDE_STRUCTURED_BASE_OPTIONS,
           ...permission,
