@@ -215,7 +215,12 @@ it.each(['claude', 'codex'] as const)(
             ...(continuing ? { resumeFrom: { providerSessionId } } : {}),
             ...(explicit ? { launchOptions: explicit } : {})
           })
-          if (agent === 'claude' && explicit?.fastMode === 'true') {
+          if (
+            agent === 'claude' &&
+            explicit &&
+            'fastMode' in explicit &&
+            explicit.fastMode === 'true'
+          ) {
             await expect(launch.launchResult).rejects.toMatchObject({
               refusal: { code: 'agent_session_operation_invalid' }
             })
