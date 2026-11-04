@@ -662,6 +662,43 @@ describe('useMobileNativeChatController terminal turn', () => {
     expect(controller?.nativeChatSessionOptions?.isWorking).toBe(false)
   })
 
+  it('shows Antigravity terminal failures on mobile and clears them on retry', () => {
+    const previous = { ...workingTab.agentStatus }
+    const text =
+      'Individual quota reached. Resets in 4h56m48s.\nErrID: 00000000-0000-4000-8000-000000000001-10'
+    try {
+      workingTab.launchAgent = 'antigravity'
+      Object.assign(workingTab.agentStatus, {
+        state: 'done',
+        agentType: 'antigravity',
+        lastAssistantMessage: text,
+        lastAssistantMessageIsToolOutput: true,
+        mainAgent: { state: 'done', outcome: 'failure', stateStartedAt: turnStartedAt }
+      })
+      rerender()
+      expect(controller?.nativeChatSession.messages).toContainEqual(
+        expect.objectContaining({
+          role: 'system',
+          source: 'hook',
+          blocks: [{ type: 'text', text, tone: 'error' }]
+        })
+      )
+      Object.assign(workingTab.agentStatus, {
+        state: 'working',
+        mainAgent: { state: 'working', stateStartedAt: turnStartedAt + 1 }
+      })
+      rerender()
+      expect(
+        controller?.nativeChatSession.messages.some((message) => message.source === 'hook')
+      ).toBe(false)
+    } finally {
+      workingTab.launchAgent = 'claude'
+      Object.assign(workingTab.agentStatus, previous)
+      Reflect.deleteProperty(workingTab.agentStatus, 'mainAgent')
+      Reflect.deleteProperty(workingTab.agentStatus, 'lastAssistantMessageIsToolOutput')
+    }
+  })
+
   it("ends working at the transcript's turn end when the final hook never came", () => {
     Object.assign(sessionState, {
       transcriptLifecycle: { state: 'completed', turnId: 't1', timestamp: turnStartedAt + 30_000 }

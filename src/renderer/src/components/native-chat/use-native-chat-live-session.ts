@@ -20,10 +20,12 @@ import type { NativeChatLiveSession, ReadState } from './native-chat-live-sessio
 import { getNativeChatSessionTransport } from './native-chat-session-transport'
 import { useNativeChatTranscriptLifecycle } from './use-native-chat-transcript-lifecycle'
 import { useNativeChatHookStatus } from './use-native-chat-hook-status'
+import { withNativeChatTerminalError } from '../../../../shared/native-chat/native-chat-terminal-error'
 import { useNativeChatAssembledMessages } from './use-native-chat-assembled-messages'
 import { createNativeChatReadRetryTimer } from './native-chat-read-retry-timer'
 import { openNativeChatTranscriptStream } from './native-chat-stream-teardown'
 import { takeNativeChatOpenWake } from './native-chat-open-wake'
+import { nextNativeChatSubscriptionId } from './native-chat-subscription-id'
 
 export type { NativeChatLiveSession, ReadState } from './native-chat-live-session-contract'
 
@@ -46,13 +48,6 @@ const USER_PAGING = { wakeWslDistro: true } as const
 
 // Keep the base axis stable through non-ready reads.
 const EMPTY_MESSAGES: readonly NativeChatMessage[] = []
-
-let subscriptionCounter = 0
-
-function nextSubscriptionId(): string {
-  subscriptionCounter += 1
-  return `native-chat-${subscriptionCounter}-${Date.now()}`
-}
 
 // New transcripts may take minutes to flush (#8401); explicit host-pending frames override this guessed retry window.
 export const NOTFOUND_RETRY_WINDOW_MS = 60_000
@@ -79,7 +74,8 @@ export function useNativeChatLiveSession(
   const appendMergerRef = useRef<ReturnType<typeof createNativeChatMerger>>(undefined!)
   appendMergerRef.current ??= createNativeChatMerger(NATIVE_CHAT_SOURCE_PRIORITY)
 
-  const [hookState, hookStateStartedAt, hookHasWorkingSubagents] = useNativeChatHookStatus(paneKey)
+  const [hookState, hookStateStartedAt, hookHasWorkingSubagents, terminalError, terminalErrorAt] =
+    useNativeChatHookStatus(paneKey, agent, sessionId)
 
   const latestEnabled = useRef(enabled)
   // Read, not a dependency: the source key below already changes with the pane.
@@ -188,7 +184,7 @@ export function useNativeChatLiveSession(
 
     loadSession(0)
 
-    const subscriptionId = nextSubscriptionId()
+    const subscriptionId = nextNativeChatSubscriptionId()
     const closeStream = openNativeChatTranscriptStream(
       transport,
       {
@@ -311,7 +307,7 @@ export function useNativeChatLiveSession(
 
   return useMemo<NativeChatLiveSession>(() => {
     const session = mergeNativeChatLiveSession({
-      messages: normalizedMessages,
+      messages: withNativeChatTerminalError(normalizedMessages, terminalError, terminalErrorAt),
       sessionId,
       agent,
       hookState,
@@ -341,6 +337,8 @@ export function useNativeChatLiveSession(
     hookStateStartedAt,
     transcriptLifecycle,
     hookHasWorkingSubagents,
+    terminalError,
+    terminalErrorAt,
     hasMore,
     loadingEarlier,
     olderHistoryGeneration,

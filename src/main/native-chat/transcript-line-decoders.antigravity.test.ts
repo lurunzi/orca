@@ -14,6 +14,27 @@ function decode(record: unknown) {
 }
 
 describe('Antigravity transcript records', () => {
+  it('shows subagent failures from system messages without exposing their wrapper', () => {
+    const failure =
+      'The subagent Output researcher (research) with id "child-1" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 4h56m49s.'
+    expect(
+      decode({
+        step_index: 9,
+        source: 'SYSTEM',
+        type: 'SYSTEM_MESSAGE',
+        status: 'DONE',
+        content: `System-provided information.\n<SYSTEM_MESSAGE>\n[Message] timestamp=2026-11-04T17:20:27Z sender=system priority=MESSAGE_PRIORITY_HIGH content=${failure}\n</SYSTEM_MESSAGE>`
+      })
+    ).toMatchObject({
+      id: '9',
+      role: 'system',
+      blocks: [{ type: 'text', text: failure, tone: 'error' }]
+    })
+    expect(
+      decode({ source: 'SYSTEM', type: 'SYSTEM_MESSAGE', content: 'A successful child result' })
+    ).toBeNull()
+  })
+
   it('preserves the recorded prompt, tool arguments, output, and subsequent response', () => {
     const messages = lines.map((line, index) =>
       decodeAntigravityTranscriptLine(line, `line-${index}`)
