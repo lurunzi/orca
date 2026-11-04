@@ -4,7 +4,7 @@ import { formatAgentImagePath } from '../../src/shared/agent-image-paste'
 import {
   pendingSendsAsMessages,
   prunePendingSends
-} from '../../src/renderer/src/components/native-chat/native-chat-pending'
+} from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
 
 function userTurn(paths: string[], text: string) {
   return decodeAntigravityTranscriptLine(

@@ -21,6 +21,7 @@ vi.mock('../../../telemetry/client', () => ({ track: vi.fn() }))
 const SWEPT = FIXTURE_GIT_WORKTREE_ID
 const OTHER = 'repo-local::/fixture/other'
 const directories: string[] = []
+const stores: Store[] = []
 
 type LiveSession = {
   id: string
@@ -46,7 +47,8 @@ class SweepRuntime extends OrcaRuntimeService {
   }
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(stores.splice(0).map((store) => store.freezeWritesAsync()))
   for (const directory of directories.splice(0)) {
     rmSync(directory, { recursive: true, force: true })
   }
@@ -72,6 +74,7 @@ async function hostWith(live: LiveSession[]) {
   const directory = mkdtempSync(join(tmpdir(), 'orca-sweep-placement-'))
   directories.push(directory)
   const store = await openTopologyStore(directory, emptyTerminalSessionProfile())
+  stores.push(store)
   return { store, directory, runtime: runtimeOn(store, live) }
 }
 
@@ -163,6 +166,7 @@ describe('a terminal created by the CLI, across a restart, layout-owner build', 
 
     // Run ownership is not saved; after restart, main must place the surviving unshown terminal as the window-owned sweep would.
     const relaunched = await reopenTopologyStore(store, directory)
+    stores.push(relaunched)
     const restarted = runtimeOn(relaunched, live)
     await restarted.placeUnshownLiveTerminals()
 
@@ -177,6 +181,7 @@ describe('a terminal created by the CLI, across a restart, layout-owner build', 
     expect(boundPtyIds(store, SWEPT)).toEqual(['pty-cli'])
 
     const relaunched = await reopenTopologyStore(store, directory)
+    stores.push(relaunched)
     await runtimeOn(relaunched, live).placeUnshownLiveTerminals()
 
     expect(boundPtyIds(relaunched, SWEPT)).toEqual(['pty-cli'])

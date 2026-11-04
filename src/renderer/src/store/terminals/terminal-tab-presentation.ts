@@ -52,44 +52,44 @@ export function createTerminalTabPresentationActions(
     setAiVaultTabTitle: (tabId, aiVaultTitle) => {
       set((s) => {
         const ownerWorktreeId = getTerminalTabOwnerWorktreeId(s.tabsByWorktree, tabId)
+        let tabsByWorktree = s.tabsByWorktree
+        let unifiedTabsByWorktree = s.unifiedTabsByWorktree
         if (!ownerWorktreeId) {
-          const unifiedTabsByWorktree = applyAgentSessionAiVaultTitle(
+          const updated = applyAgentSessionAiVaultTitle(
             s.unifiedTabsByWorktree,
             tabId,
             aiVaultTitle
           )
-          if (!unifiedTabsByWorktree) {
+          if (!updated) {
             return s
           }
-          scheduleRuntimeGraphSync()
-          return { unifiedTabsByWorktree }
-        }
-        const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
-        const current = tabs.find((tab) => tab.id === tabId)
-        const sameTitle =
-          current?.aiVaultTitle?.agent === aiVaultTitle?.agent &&
-          current?.aiVaultTitle?.sessionId === aiVaultTitle?.sessionId &&
-          current?.aiVaultTitle?.title === aiVaultTitle?.title
-        if (!current || sameTitle) {
-          return s
-        }
-        const ownerTabs = tabs.map((tab) => (tab.id === tabId ? { ...tab, aiVaultTitle } : tab))
-        const nextTabsByWorktree = { ...s.tabsByWorktree, [ownerWorktreeId]: ownerTabs }
-        const unifiedTabs = s.unifiedTabsByWorktree[ownerWorktreeId] ?? []
-        const nextUnifiedTabs = unifiedTabs.map((tab) =>
-          tab.contentType === 'terminal' && tab.entityId === tabId ? { ...tab, aiVaultTitle } : tab
-        )
-        adoptTerminalTabOwnerMetadataOnlyBuckets(s.tabsByWorktree, nextTabsByWorktree, [
-          ownerWorktreeId
-        ])
-        scheduleRuntimeGraphSync()
-        return {
-          tabsByWorktree: nextTabsByWorktree,
-          unifiedTabsByWorktree: {
-            ...s.unifiedTabsByWorktree,
-            [ownerWorktreeId]: nextUnifiedTabs
+          unifiedTabsByWorktree = updated
+        } else {
+          const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
+          const current = tabs.find((tab) => tab.id === tabId)
+          const sameTitle =
+            current?.aiVaultTitle?.agent === aiVaultTitle?.agent &&
+            current?.aiVaultTitle?.sessionId === aiVaultTitle?.sessionId &&
+            current?.aiVaultTitle?.title === aiVaultTitle?.title
+          if (!current || sameTitle) {
+            return s
           }
+          const ownerTabs = tabs.map((tab) => (tab.id === tabId ? { ...tab, aiVaultTitle } : tab))
+          const nextTabsByWorktree = { ...s.tabsByWorktree, [ownerWorktreeId]: ownerTabs }
+          const unifiedTabs = s.unifiedTabsByWorktree[ownerWorktreeId] ?? []
+          const nextUnifiedTabs = unifiedTabs.map((tab) =>
+            tab.contentType === 'terminal' && tab.entityId === tabId
+              ? { ...tab, aiVaultTitle }
+              : tab
+          )
+          adoptTerminalTabOwnerMetadataOnlyBuckets(s.tabsByWorktree, nextTabsByWorktree, [
+            ownerWorktreeId
+          ])
+          tabsByWorktree = nextTabsByWorktree
+          unifiedTabsByWorktree = { ...s.unifiedTabsByWorktree, [ownerWorktreeId]: nextUnifiedTabs }
         }
+        scheduleRuntimeGraphSync()
+        return { tabsByWorktree, unifiedTabsByWorktree }
       })
     },
     setGeneratedTabTitleFromAgentPrompt: (paneKey, prompt, options) => {

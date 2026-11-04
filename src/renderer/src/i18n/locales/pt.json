@@ -3272,7 +3272,6 @@
             "bf2e739f18": "Login indisponível",
             "f8b8dbed85": "Uso indisponível",
             "3d3c9c0c1f": "O uso do Claude será atualizado após o terminal ativo do Claude renovar suas credenciais.",
-            "42fdd4da1d": "O login do Claude está sendo atualizado. As sessões de agente podem continuar conectadas.",
             "c06c1d215d": "Não foi possível atualizar o uso do Claude porque a solicitação de rede falhou.",
             "cabdc2a9e0": "Não foi possível ler as credenciais de login do Claude.",
             "a7517cccb6": "O uso do Claude está indisponível agora.",

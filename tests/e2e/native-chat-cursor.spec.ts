@@ -18,7 +18,7 @@ import {
 async function enableCursorNativeChat(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const nextSettings = await window.api.settings.set({
-      experimentalNativeChat: true,
+      nativeChatProviders: { cursor: true },
       uiLanguage: 'en',
       nativeChatSessionOptions: {
         cursor: {

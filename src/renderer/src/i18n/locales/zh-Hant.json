@@ -4668,7 +4668,6 @@
             "claudeUnknownOnHost": "無法從 {{server}} 取得 Claude 用量。可能尚未在該主機登入，或使用 API 金鑰計費。",
             "remoteOwnerSignInSavedHere": "登入資訊僅儲存在這台電腦上。",
             "3d3c9c0c1f": "正在執行的 Claude 終端機輪替憑證後，Claude 用量會重新整理。",
-            "42fdd4da1d": "正在重新整理 Claude 登入。代理程式工作階段可能仍處於登入狀態。",
             "c06c1d215d": "由於網路請求失敗，無法重新整理 Claude 用量。",
             "cabdc2a9e0": "無法讀取 Claude 登入憑證。",
             "a7517cccb6": "Claude 用量目前不可用。",

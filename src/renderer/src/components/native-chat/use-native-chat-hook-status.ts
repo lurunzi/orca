@@ -1,11 +1,10 @@
 import { useAppStore } from '../../store'
-import type { AgentStatusState } from '../../../../shared/agent-status-types'
+import type { AgentStatusState, AgentType } from '../../../../shared/agent-status-types'
 import {
   nativeChatHookHasWorkingSubagents,
   resolveNativeChatHookState
 } from '../../../../shared/native-chat/native-chat-live-status'
 import { nativeChatTerminalErrorText } from '../../../../shared/native-chat/native-chat-terminal-error'
-import type { AgentType } from '../../../../shared/agent-status-types'
 
 export function useNativeChatHookStatus(
   paneKey: string,

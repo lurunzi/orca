@@ -4284,7 +4284,6 @@
             "bf2e739f18": "Inicio de sesión no disponible",
             "f8b8dbed85": "Uso no disponible",
             "3d3c9c0c1f": "El uso de Claude se actualizará cuando el terminal Claude activo rote sus credenciales.",
-            "42fdd4da1d": "Se está actualizando el inicio de sesión de Claude. Las sesiones de agentes pueden seguir iniciadas.",
             "c06c1d215d": "No se pudo actualizar el uso de Claude porque falló la solicitud de red.",
             "cabdc2a9e0": "No se pudieron leer las credenciales de inicio de sesión de Claude.",
             "a7517cccb6": "El uso de Claude no está disponible ahora.",

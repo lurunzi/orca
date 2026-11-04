@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { TooltipProvider } from '../../../src/renderer/src/components/ui/tooltip'
-import { setRendererUiLanguage } from '../../../src/renderer/src/i18n/i18n'
+import { i18n, loadRendererUiLanguage } from '../../../src/renderer/src/i18n/i18n'
 import { NativeChatInboxButton } from '../../../src/renderer/src/components/native-chat/NativeChatInboxButton'
 import { useNativeChatInbox } from '../../../src/renderer/src/components/native-chat/use-native-chat-inbox'
 import type {
   AgentJournalRenderItem,
   AgentJournalToolCallState
-} from '../../../src/shared/agent-session-journal-types'
+} from '../../../src/shared/agent-session/journal/agent-session-journal-types'
 import { sessionInboxToolName } from '../../../src/shared/session-inbox-tool-contract'
 import './fixture.css'
 
@@ -133,7 +133,8 @@ function App(): React.JSX.Element {
 }
 
 const root = document.getElementById('root')
-void setRendererUiLanguage(language).then(() => {
+void loadRendererUiLanguage(language).then(async (locale) => {
+  await i18n.changeLanguage(locale)
   if (root) {
     createRoot(root).render(<App />)
   }
