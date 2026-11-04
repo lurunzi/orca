@@ -141,7 +141,7 @@ describe('Claude model before the first turn', () => {
     expect(current.effort).toBe('medium')
   })
 
-  it('refreshes what Claude applies at turn completion, without work on an options read', async () => {
+  it('refreshes applied defaults at turn completion while options reads only recheck the account', async () => {
     const settings = structuredClone(SETTINGS.settingsHaiku)
     const claude = startedWithoutATurn(settings)
     const adapter = await acquired(claude)
@@ -157,7 +157,7 @@ describe('Claude model before the first turn', () => {
     expect(current.effort).toBeUndefined()
     expect(
       claude.connections[0]!.calls.filter((call) => call.subtype === 'get_settings')
-    ).toHaveLength(reads)
+    ).toHaveLength(reads + 1)
     claude.connections[0]!.handlers.onMessage?.({
       type: 'result',
       subtype: 'success',

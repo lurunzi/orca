@@ -47,7 +47,9 @@ it.each(['verbose', 'compact'] as const)(
     store.getState().hydratePersistedUI(hydrated)
     store.getState().setStatusBarUsageMode(mode)
 
-    expect(runtime.call).toHaveBeenLastCalledWith('ui.set', { statusBarUsageMode: mode }, 15_000)
+    await vi.waitFor(() =>
+      expect(runtime.call).toHaveBeenLastCalledWith('ui.set', { statusBarUsageMode: mode }, 15_000)
+    )
     expect(olderUI.statusBarUsageMode).toBe(mode)
     expect((await ui.get()).statusBarUsageMode).toBe(mode)
   }

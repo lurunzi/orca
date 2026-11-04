@@ -247,8 +247,10 @@ describe('launch draft moves', () => {
     const storage = createMemoryNativeChatComposerDraftStorage()
     storage.drafts.set(target, { text: 'Already saved', images: [], savedAt: 1 })
     const loaded = Promise.withResolvers<ReadonlyMap<string, unknown>>()
-    setNativeChatComposerDraftStorageForTests({ ...storage, loadAll: () => loaded.promise })
+    const loadAll = vi.fn(() => loaded.promise)
+    setNativeChatComposerDraftStorageForTests({ ...storage, loadAll })
     const hydration = hydrateNativeChatComposerDrafts()
+    await vi.waitFor(() => expect(loadAll).toHaveBeenCalledOnce())
     const snapshot = new Map(storage.drafts)
     const document = {
       type: 'doc',

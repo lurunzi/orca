@@ -98,6 +98,10 @@ export function NativeChatComposerField({
   agent,
   launchPrompt
 }: NativeChatComposerFieldProps): React.JSX.Element {
+  const editMessageLabel = translate(
+    'components.native-chat.queuedMessages.editMessage',
+    'Edit message'
+  )
   const draftNotSaved = useNativeChatComposerDraftUnsaved(draftScopeKey)
   const optionCount =
     autocomplete.mode === 'slash'
@@ -288,10 +292,7 @@ export function NativeChatComposerField({
                     : launchPrompt
                       ? launchPrompt.placeholder
                       : editSession
-                        ? translate(
-                            'components.native-chat.queuedMessages.editMessage',
-                            'Edit message'
-                          )
+                        ? editMessageLabel
                         : goalMode?.active
                           ? translate(
                               'components.native-chat.goal.placeholder',
@@ -302,6 +303,7 @@ export function NativeChatComposerField({
                 }
                 aria-label={
                   launchPrompt?.placeholder ??
+                  (editSession ? editMessageLabel : undefined) ??
                   nativeChatComposerPlaceholder(hasPty, canSend, afterStop)
                 }
                 // Let layout handle wrapping and touch targets; scroll after eight lines (a launch prompt: one line growing to six) without JavaScript measurement.

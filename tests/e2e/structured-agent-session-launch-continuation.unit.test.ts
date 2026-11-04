@@ -215,6 +215,13 @@ it.each(['claude', 'codex'] as const)(
             ...(continuing ? { resumeFrom: { providerSessionId } } : {}),
             ...(explicit ? { launchOptions: explicit } : {})
           })
+          if (agent === 'claude' && explicit?.fastMode === 'true') {
+            await expect(launch.launchResult).rejects.toMatchObject({
+              refusal: { code: 'agent_session_operation_invalid' }
+            })
+            expect(prepared).toBeUndefined()
+            continue
+          }
           await launch.launchResult
           expect(prepared).toBeDefined()
           const params = createParams()
@@ -404,7 +411,7 @@ it('admits paired continuation picks after support, keeps unknown display unsent
   })
   await act(async () => {
     expect(await view.result.current.setStructuredOption('effort', 'high')).toBe(true)
-    expect(await view.result.current.setStructuredOption('fastMode', false)).toBe(true)
+    expect(await view.result.current.setStructuredOption('fastMode', false)).toBe(false)
   })
   capability.resolve(true)
   await vi.waitFor(() =>
@@ -413,8 +420,8 @@ it('admits paired continuation picks after support, keeps unknown display unsent
     ).toHaveLength(1)
   )
   const params = createParams()
-  expect(params.options).toEqual({ model: 'literal-held', effort: 'high', fastMode: 'false' })
-  expect(params.firstMessage?.selection).toEqual(params.options)
+  expect(params.options).toEqual({ model: 'literal-held', effort: 'high' })
+  expect(params.firstMessage?.selection).toEqual({ ...params.options, fastMode: 'false' })
   expect(params.envelope.payloadFingerprint).toBe(
     structuredAgentSessionCreateFingerprint({ sessionId: launch.sessionId, ...params })
   )

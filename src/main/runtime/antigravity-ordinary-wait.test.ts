@@ -104,25 +104,30 @@ describe('Antigravity ordinary waits use the current screen', () => {
     const { runtime, handle } = await createTranscriptPane({
       paneTitle: 'agy',
       foregroundProcess: 'agy',
+      size: { cols: 120, rows: 40 },
       data: ''
     })
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: these protected methods are exercised by the real delivery path; only the final delivery action is spied on.
-    const delivery = runtime as unknown as {
-      checkDeliverySettledAndArmRecheck(leaf: { tabId: string; leafId: string }): boolean
-      deliverPendingMessagesForLeaf(leaf: unknown): void
-    }
-    const deliver = vi.spyOn(delivery, 'deliverPendingMessagesForLeaf').mockImplementation(() => {})
-    const leaf = { tabId: 'tab-1', leafId: '11111111-1111-4111-8111-111111111111' }
-    runtime.seedHeadlessTerminal(TRANSCRIPT_PANE_PTY_ID, '\x1b[0m', { cols: 120, rows: 40 })
     runtime.onPtyData(
       TRANSCRIPT_PANE_PTY_ID,
       capture('antigravity-plan-hint-as-draft-127'),
       Date.now()
     )
-    expect(delivery.checkDeliverySettledAndArmRecheck(leaf)).toBe(false)
     await expect(
       runtime.waitForTerminal(handle, { condition: 'tui-idle', timeoutMs: 3500 })
     ).rejects.toThrow('timeout')
+    runtime.terminalRunFacts.recordInput(TRANSCRIPT_PANE_PTY_ID, 'driving', 'unsent draft')
+    runtime.onPtyData(
+      TRANSCRIPT_PANE_PTY_ID,
+      '\x1b]7501;state=done:app=antigravity\x07',
+      Date.now()
+    )
+    const deliver = vi
+      .spyOn(runtime['orchestrationMailboxNotifications'], 'deliverForTerminal')
+      .mockImplementation(() => {})
+    vi.spyOn(runtime['orchestrationMailboxNotifications'], 'hasDeliverableMail').mockReturnValue(
+      true
+    )
+    expect(runtime['checkDeliverySettledAndArmRecheck'](TRANSCRIPT_PANE_PTY_ID)).toBe(false)
     expect(deliver).not.toHaveBeenCalled()
     runtime.onPtyData(TRANSCRIPT_PANE_PTY_ID, capture('antigravity-ready-plan-127'), Date.now())
     await vi.waitFor(() => expect(deliver).toHaveBeenCalled(), { timeout: 4500 })

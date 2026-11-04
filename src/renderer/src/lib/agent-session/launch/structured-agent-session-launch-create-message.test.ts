@@ -158,7 +158,9 @@ describe('the first message owned by create', () => {
         'resumeFrom' in resume && resume.resumeFrom ? undefined : 'claude-gone'
       )
       expect(createParams().firstMessage?.selection).toEqual(
-        'resumeFrom' in resume && resume.resumeFrom ? {} : { model: 'claude-gone' }
+        'resumeFrom' in resume && resume.resumeFrom
+          ? {}
+          : { model: 'claude-gone', fastMode: 'false' }
       )
     } finally {
       mocks.settings = {}
