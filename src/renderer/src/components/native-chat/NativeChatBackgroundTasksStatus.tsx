@@ -9,6 +9,8 @@ import type { AgentChildWorkView } from '../../../../shared/agent-status-child-w
 import { AgentChildRowContent } from '@/components/AgentChildRowContent'
 import { agentChildRowName } from '@/components/agent-child-row-text'
 import { Button } from '@/components/ui/button'
+import { AgentIcon } from '@/lib/agent-catalog'
+import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import { useNow } from '@/hooks/use-now'
 import {
   backgroundTasksHeaderText,
@@ -66,6 +68,17 @@ function kindIconTone(kind: AgentSessionBackgroundTask['kind'], dimmed: boolean)
   return dimmed ? `${tone}/40` : tone
 }
 
+/** A shell running another agent's CLI shows that agent, so a dispatched worker does not read as a plain command. */
+function BackgroundTaskRowIcon({ row }: { row: AgentChildRowModel }): React.JSX.Element {
+  if (row.kind === 'command' && (isTuiAgent(row.agentType) || row.agentType === 'dsb')) {
+    return <AgentIcon agent={row.agentType} size={14} className="shrink-0" />
+  }
+  const Icon = KIND_ICONS[row.kind]
+  return (
+    <Icon aria-hidden="true" className={`size-3.5 shrink-0 ${kindIconTone(row.kind, false)}`} />
+  )
+}
+
 function BackgroundTaskRow(props: {
   row: AgentChildRowModel
   now: number
@@ -74,13 +87,12 @@ function BackgroundTaskRow(props: {
   onStop: (taskId: string) => void
 }): React.JSX.Element {
   const { row, now } = props
-  const Icon = KIND_ICONS[row.kind]
   const meta = backgroundTaskRowMeta(row, now)
   const stopId = backgroundTaskRowStopId(row, props.supportsTaskStop)
   return (
     <>
       <li className="flex h-6 min-w-0 items-center gap-2 text-foreground">
-        <Icon aria-hidden="true" className={`size-3.5 shrink-0 ${kindIconTone(row.kind, false)}`} />
+        <BackgroundTaskRowIcon row={row} />
         {/* Every attention state states its reason on the row; `unverifiable` is never dropped. */}
         <AgentChildRowContent
           row={row}
