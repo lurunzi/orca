@@ -1,5 +1,10 @@
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import { prepareClaudeLaunchAccount } from '../../claude-launch-account'
+import { readDashboardClaudeAllocation } from '../../../dashboard-accounts/dashboard-allocation-reader'
+import {
+  dashboardClaudeEnvironment,
+  DASHBOARD_CLAUDE_ENV_TO_DELETE
+} from '../../../dashboard-accounts/dashboard-claude-environment'
 import { assertStructuredAgentResolutionCurrent } from '../../../native-chat/structured-agent-command-resolution'
 import { activeProviderContext } from '../../../../shared/agent-session/agent-session-provider-context'
 import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
@@ -266,6 +271,7 @@ export function claudeStructuredLaunchPart(
         hasTranscript: deps.hasTranscript
       })
     }
+    const allocation = await readDashboardClaudeAllocation()
     return {
       launch: {
         pathToClaudeCodeExecutable: command,
@@ -299,8 +305,8 @@ export function claudeStructuredLaunchPart(
           ? { forkedFromKey: agentSessionProviderHandleKey(head) }
           : {})
       },
-      env,
-      inheritedEnvToDelete: [],
+      env: allocation ? dashboardClaudeEnvironment(env, allocation) : env,
+      inheritedEnvToDelete: allocation ? DASHBOARD_CLAUDE_ENV_TO_DELETE : [],
       // The agent runtime follows Orca's CLI directory on PATH so another orca cannot shadow it.
       cliRuntimeCommand: command
     }

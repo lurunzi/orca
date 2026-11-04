@@ -24,6 +24,14 @@ import {
 import { testEventSinkLogging } from '../native-chat/agent-session-wire/structured-agent-session-logger-test-support'
 import { claudeProviderHandle } from '../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import { providerExecutableMissing } from '../provider-process/provider-executable-missing'
+import {
+  dashboardClaudeEnvironment,
+  DASHBOARD_CLAUDE_ENV_TO_DELETE
+} from '../dashboard-accounts/dashboard-claude-environment'
+import {
+  DashboardAllocationState,
+  DashboardToolProvider
+} from '../dashboard-accounts/dashboard-allocation-protocol'
 
 // Exercise the real SDK against a scripted child CLI.
 const FAKE_CLI = join(__dirname, '__fixtures__', 'claude-agent-sdk-scripted-cli.mjs')
@@ -198,6 +206,33 @@ describe('Claude stream-json connection', () => {
     expect(launchedArgv(spawned.at(-1))).toContain(FAKE_CLI)
     expect(report.argv).toContain('--replay-user-messages')
     expect(report.argv).toContain(`--session-id=${SESSION_ID}`)
+  })
+
+  it('passes only pool OAuth authentication through the real SDK to its scripted child', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'fixture-inherited-key')
+    vi.stubEnv('ANTHROPIC_BASE_URL', 'https://fixture.invalid')
+    vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1')
+    const env = dashboardClaudeEnvironment(
+      { ANTHROPIC_AUTH_TOKEN: 'fixture-conflict', HTTPS_PROXY: 'http://proxy.invalid' },
+      {
+        provider: DashboardToolProvider.ClaudeCode,
+        state: DashboardAllocationState.Available,
+        account_id: 'fixture-pool',
+        binding_revision: 1,
+        credential_version: 1,
+        access_token: 'fixture-pool-access',
+        expires_at: null
+      }
+    )
+    const scenario = scriptScenario([HOLD_OPEN])
+    await open({ ...launchFor(scenario, env), envToDelete: DASHBOARD_CLAUDE_ENV_TO_DELETE })
+    await until(() => readReportSafely(scenario), 'the pool child report')
+    expect(childEnv().CLAUDE_CODE_OAUTH_TOKEN).toBe('fixture-pool-access')
+    expect(childEnv().ANTHROPIC_API_KEY).toBeUndefined()
+    expect(childEnv().ANTHROPIC_AUTH_TOKEN).toBeUndefined()
+    expect(childEnv().ANTHROPIC_BASE_URL).toBeUndefined()
+    expect(childEnv().CLAUDE_CODE_USE_BEDROCK).toBeUndefined()
+    expect(childEnv().HTTPS_PROXY).toBe('http://proxy.invalid')
   })
 
   it('drops only an API key the user rejected in the TUI, as interactive Claude does', async () => {
