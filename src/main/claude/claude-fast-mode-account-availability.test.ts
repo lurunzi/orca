@@ -4,7 +4,7 @@ import type * as ClaudeCredentials from '../rate-limits/claude-oauth-credentials
 import { readClaudeFastModeAccountAvailability } from './claude-fast-mode-account-availability'
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), read: vi.fn(), keychain: vi.fn() }))
-vi.mock('electron', () => ({ net: { fetch: mocks.fetch }, session: { defaultSession: {} } }))
+vi.mock('../network/http-client', () => ({ getMainHttpClient: () => ({ fetch: mocks.fetch }) }))
 vi.mock('node:fs/promises', () => ({ readFile: mocks.read }))
 vi.mock('../network/proxy-settings', () => ({ ensureElectronProxyFromEnvironment: vi.fn() }))
 vi.mock('../rate-limits/claude-oauth-credentials', async (original) => ({
