@@ -243,7 +243,11 @@ describe('Codex Dashboard startup wiring', () => {
   })
 
   it('preserves supported-state discrimination and nullable non-integer start times in the response schema', () => {
-    const common = { schema_version: 1, instance_id: 'fixture-instance' }
+    const common = {
+      schema_version: 1,
+      instance_id: 'fixture-instance',
+      runtime_id: 'fixture-runtime'
+    }
     expect(
       DashboardCodexProcessesResponseSchema.safeParse({ ...common, supported: false }).success
     ).toBe(true)

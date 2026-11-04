@@ -38,7 +38,7 @@ export const DashboardCodexAdoptionStateSchema = z.strictObject({
 })
 export type DashboardCodexAdoptionState = z.infer<typeof DashboardCodexAdoptionStateSchema>
 
-const common = { schema_version: z.literal(1), instance_id: bindingId }
+const common = { schema_version: z.literal(1), instance_id: bindingId, runtime_id: bindingId }
 export const DashboardCodexProcessesResponseSchema = z.union([
   z.strictObject({ ...common, supported: z.literal(false) }),
   z.strictObject({

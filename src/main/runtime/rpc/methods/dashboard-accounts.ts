@@ -45,6 +45,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
         return DashboardCodexProcessesResponseSchema.parse({
           schema_version: 1,
           instance_id: instanceId,
+          runtime_id: context.runtime.getRuntimeId(),
           ...(state === undefined ? { supported: false } : { supported: true, ...state })
         })
       } catch {

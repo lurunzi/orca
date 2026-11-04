@@ -21,8 +21,8 @@ afterEach(() => {
 const method = DASHBOARD_ACCOUNT_METHODS[0]
 const processes = DASHBOARD_ACCOUNT_METHODS[1]
 function context(identity: Pick<RpcContext, 'caller' | 'clientKind'>): RpcContext {
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this method reads only the transport identity.
-  return identity as RpcContext
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: handlers read only the transport identity and Runtime id.
+  return { ...identity, runtime: { getRuntimeId: () => 'fixture-runtime' } } as RpcContext
 }
 const refused: Pick<RpcContext, 'caller' | 'clientKind'>[] = [
   {},
@@ -43,6 +43,7 @@ describe('local Dashboard account RPC', () => {
       ).resolves.toEqual({
         schema_version: 1,
         instance_id: 'fixture-instance',
+        runtime_id: 'fixture-runtime',
         supported: false
       })
       expect(processes.name).toBe('dashboard.accounts.codexProcesses')
@@ -66,6 +67,7 @@ describe('local Dashboard account RPC', () => {
       ).resolves.toEqual({
         schema_version: 1,
         instance_id: 'fixture-instance',
+        runtime_id: 'fixture-runtime',
         supported: true,
         pending_acquisitions: 1,
         processes: []

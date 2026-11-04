@@ -92,6 +92,7 @@ describe('local Dashboard allocation status command', () => {
     const result = {
       schema_version: 1,
       instance_id: 'instance-fixture',
+      runtime_id: 'runtime-fixture',
       supported: true,
       pending_acquisitions: 1,
       processes: []
@@ -110,7 +111,12 @@ describe('local Dashboard allocation status command', () => {
   })
 
   it('keeps an unavailable Codex adapter distinct from an empty process report', async () => {
-    const result = { schema_version: 1, instance_id: 'instance-fixture', supported: false }
+    const result = {
+      schema_version: 1,
+      instance_id: 'instance-fixture',
+      runtime_id: 'runtime-fixture',
+      supported: false
+    }
     callMock.mockResolvedValue({ result })
     await main(['dashboard-accounts', 'codex-processes', '--json'])
     expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
@@ -125,6 +131,7 @@ describe('local Dashboard allocation status command', () => {
       result: {
         schema_version: 1,
         instance_id: 'instance-fixture',
+        runtime_id: 'runtime-fixture',
         supported: false,
         access_token: 'private-access'
       }
