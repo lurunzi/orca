@@ -40,7 +40,7 @@ function cursorLimits(overrides: Partial<ProviderRateLimits> = {}): ProviderRate
       { name: CURSOR_MODELS_BUCKET_NAME, ...windowOf(45) },
       { name: CURSOR_OTHER_MODELS_BUCKET_NAME, ...windowOf(50) }
     ],
-    updatedAt: Date.now(),
+    updatedAt: 1_700_000_000_000,
     error: null,
     status: 'ok',
     ...overrides
