@@ -1,5 +1,6 @@
 import type { DashboardCodexAdoptionState } from '../../dashboard-accounts/dashboard-codex-adoption-protocol'
 import type { DashboardCodexRefreshState } from '../../dashboard-accounts/dashboard-codex-refresh-protocol'
+import type { DashboardClaudeLaunchState } from '../../dashboard-accounts/dashboard-claude-launch-protocol'
 import type { ClaudeAccountRecipe } from '../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import type { StructuredAgentSessionAdmitFreshInput } from './structured-agent-session-input-admission'
 import type { AiVaultConversationCopy } from '../../../shared/ai-vault-resume-preparation'
@@ -178,6 +179,7 @@ export type StructuredAgentSessionSetOptionInput = {
 export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & {
   readDashboardCodexProcesses?(): DashboardCodexAdoptionState
   readDashboardCodexRefreshes?(): DashboardCodexRefreshState
+  readDashboardClaudeLaunches?(): DashboardClaudeLaunchState
   open: StructuredAgentSessionProviderOpen
   supportsCreate?(location: AgentSessionExecutionLocation, agent: string): boolean
   /** Keep runtime/location support in adapter data for remote enablement. */

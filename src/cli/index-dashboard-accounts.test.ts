@@ -88,7 +88,10 @@ describe('local Dashboard allocation status command', () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
-  it('queries Codex process adoption through the same fixed local transport', async () => {
+  it.each([
+    { command: 'codex-processes', rpc: 'dashboard.accounts.codexProcesses' },
+    { command: 'claude-launches', rpc: 'dashboard.accounts.claudeLaunches' }
+  ])('queries $command through the same fixed local transport', async ({ command, rpc }) => {
     const result = {
       schema_version: 1,
       instance_id: 'instance-fixture',
@@ -98,20 +101,20 @@ describe('local Dashboard allocation status command', () => {
       processes: []
     }
     callMock.mockResolvedValue({ result, _meta: { authToken: 'private-token' } })
-    await main(['dashboard-accounts', 'codex-processes', '--json'])
+    await main(['dashboard-accounts', command, '--json'])
     expect(constructorMock).toHaveBeenCalledExactlyOnceWith(
       '/tmp/dashboard-runtime',
       10_000,
       null,
       null
     )
-    expect(callMock).toHaveBeenCalledExactlyOnceWith('dashboard.accounts.codexProcesses', {})
+    expect(callMock).toHaveBeenCalledExactlyOnceWith(rpc, {})
     expect(console.log).toHaveBeenCalledTimes(1)
     expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
   })
 
-  it.each(['codex-processes', 'codex-refreshes'])(
-    'keeps an unavailable Codex adapter distinct from an empty %s report',
+  it.each(['codex-processes', 'codex-refreshes', 'claude-launches'])(
+    'keeps an unavailable adapter distinct from an empty %s report',
     async (command) => {
       const common = {
         schema_version: 1,
@@ -119,9 +122,9 @@ describe('local Dashboard allocation status command', () => {
         runtime_id: 'runtime-fixture'
       }
       const installed =
-        command === 'codex-processes'
-          ? { pending_acquisitions: 0, processes: [] }
-          : { requests: [] }
+        command === 'codex-refreshes'
+          ? { requests: [] }
+          : { pending_acquisitions: 0, processes: [] }
       for (const result of [
         { ...common, supported: false },
         { ...common, supported: true, ...installed }
@@ -140,7 +143,7 @@ describe('local Dashboard allocation status command', () => {
     }
   )
 
-  it.each(['codex-processes', 'codex-refreshes'])(
+  it.each(['codex-processes', 'codex-refreshes', 'claude-launches'])(
     'refuses %s responses containing raw credentials',
     async (command) => {
       callMock.mockResolvedValue({
@@ -213,7 +216,7 @@ describe('local Dashboard allocation status command', () => {
   })
 
   it.each(
-    ['status', 'codex-refreshes'].flatMap((command) =>
+    ['status', 'codex-refreshes', 'claude-launches'].flatMap((command) =>
       ['environment', 'pairing-code', 'host'].map((flag) => [command, flag] as const)
     )
   )('rejects %s with explicit --%s before creating a client', async (command, flag) => {
@@ -224,7 +227,7 @@ describe('local Dashboard allocation status command', () => {
   })
 
   it.each(
-    ['status', 'codex-refreshes'].flatMap((command) =>
+    ['status', 'codex-refreshes', 'claude-launches'].flatMap((command) =>
       ['ORCA_PAIRING_CODE', 'ORCA_REMOTE_PAIRING', 'ORCA_ENVIRONMENT'].map(
         (name) => [command, name] as const
       )
@@ -283,7 +286,7 @@ describe('local Dashboard allocation status command', () => {
     expect(ignoresRemoteSelection(['dashboard-accounts', 'status'])).toBe(true)
   })
 
-  it.each(['status', 'codex-refreshes'])(
+  it.each(['status', 'codex-refreshes', 'claude-launches'])(
     'never accesses the ambient lazy client for %s',
     async (command) => {
       const result =
@@ -294,7 +297,9 @@ describe('local Dashboard allocation status command', () => {
               instance_id: 'instance-fixture',
               runtime_id: 'runtime-fixture',
               supported: true,
-              requests: []
+              ...(command === 'codex-refreshes'
+                ? { requests: [] }
+                : { pending_acquisitions: 0, processes: [] })
             }
       callMock.mockResolvedValue({ result })
       const context: HandlerContext = {

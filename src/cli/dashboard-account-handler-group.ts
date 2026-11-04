@@ -5,7 +5,8 @@ export const DASHBOARD_ACCOUNT_HANDLER_GROUP: HandlerGroup = {
   keys: [
     'dashboard-accounts status',
     'dashboard-accounts codex-processes',
-    'dashboard-accounts codex-refreshes'
+    'dashboard-accounts codex-refreshes',
+    'dashboard-accounts claude-launches'
   ],
   load: async () => (await import('./handlers/dashboard-accounts.js')).DASHBOARD_ACCOUNT_HANDLERS
 }

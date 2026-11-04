@@ -5,6 +5,7 @@ import {
 } from '../../main/dashboard-accounts/dashboard-allocation-protocol'
 import { DashboardCodexProcessesResponseSchema } from '../../main/dashboard-accounts/dashboard-codex-adoption-protocol'
 import { DashboardCodexRefreshesResponseSchema } from '../../main/dashboard-accounts/dashboard-codex-refresh-protocol'
+import { DashboardClaudeLaunchesResponseSchema } from '../../main/dashboard-accounts/dashboard-claude-launch-protocol'
 import type { CommandHandler, HandlerContext } from '../dispatch'
 import { RuntimeClient, RuntimeClientError } from '../runtime-client'
 
@@ -51,5 +52,10 @@ export const DASHBOARD_ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
     queryLocalDashboard(context, async (client) => {
       const response = await client.call<unknown>('dashboard.accounts.codexRefreshes', {})
       return DashboardCodexRefreshesResponseSchema.parse(response.result)
+    }),
+  'dashboard-accounts claude-launches': async (context) =>
+    queryLocalDashboard(context, async (client) => {
+      const response = await client.call<unknown>('dashboard.accounts.claudeLaunches', {})
+      return DashboardClaudeLaunchesResponseSchema.parse(response.result)
     })
 }

@@ -6,6 +6,7 @@ import {
 } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { DashboardCodexProcessesResponseSchema } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
 import { DashboardCodexRefreshesResponseSchema } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
+import { DashboardClaudeLaunchesResponseSchema } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import { readDashboardAllocationStatus } from '../../../dashboard-accounts/dashboard-allocation-status'
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
 
@@ -18,7 +19,7 @@ function requireLocalCaller({
   }
 }
 
-function codexReportContext(context: RpcContext) {
+function reportContext(context: RpcContext, agent: string) {
   const instanceId = process.env.ORCA_DASHBOARD_INSTANCE_ID
   if (process.platform !== 'linux' || !instanceId) {
     throw new DashboardAllocationError()
@@ -29,8 +30,7 @@ function codexReportContext(context: RpcContext) {
       instance_id: instanceId,
       runtime_id: context.runtime.getRuntimeId()
     },
-    adapter: getStructuredAgentSessionHost()?.deps.agents.registration(DashboardToolProvider.Codex)
-      ?.adapter
+    adapter: getStructuredAgentSessionHost()?.deps.agents.registration(agent)?.adapter
   }
 }
 
@@ -51,7 +51,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
     handler: async (_, context) => {
       requireLocalCaller(context)
       try {
-        const { common, adapter } = codexReportContext(context)
+        const { common, adapter } = reportContext(context, DashboardToolProvider.Codex)
         const state = adapter?.readDashboardCodexProcesses?.()
         return DashboardCodexProcessesResponseSchema.parse({
           ...common,
@@ -69,9 +69,27 @@ export const DASHBOARD_ACCOUNT_METHODS = [
     handler: async (_, context) => {
       requireLocalCaller(context)
       try {
-        const { common, adapter } = codexReportContext(context)
+        const { common, adapter } = reportContext(context, DashboardToolProvider.Codex)
         const state = adapter?.readDashboardCodexRefreshes?.()
         return DashboardCodexRefreshesResponseSchema.parse({
+          ...common,
+          ...(state === undefined ? { supported: false } : { supported: true, ...state })
+        })
+      } catch {
+        throw new DashboardAllocationError()
+      }
+    }
+  }),
+  defineMethod({
+    name: 'dashboard.accounts.claudeLaunches',
+    permission: 'accounts-admin',
+    params: z.strictObject({}),
+    handler: async (_, context) => {
+      requireLocalCaller(context)
+      try {
+        const { common, adapter } = reportContext(context, 'claude')
+        const state = adapter?.readDashboardClaudeLaunches?.()
+        return DashboardClaudeLaunchesResponseSchema.parse({
           ...common,
           ...(state === undefined ? { supported: false } : { supported: true, ...state })
         })
