@@ -40,6 +40,10 @@ import type { CodexStructuredSessionTeardown } from './codex-structured-session-
 import type { CodexStructuredNotificationRetry } from './codex-structured-notification-retry'
 import type { deliverCodexServerRequest } from './codex-structured-provider-events'
 import { codexAcquisitionNotificationHandler } from './codex-structured-acquisition-notification'
+import {
+  prepareDashboardCodexAuthentication,
+  dashboardCodexChildLaunch
+} from '../dashboard-accounts/dashboard-codex-authentication'
 
 export async function acquireCodexStructuredSession(input: {
   input: StructuredAgentSessionAcquireInput
@@ -108,6 +112,12 @@ export async function acquireCodexStructuredSession(input: {
       throw new Error(`codex app-server for session ${sessionId} could not be stopped`)
     }
     acquisitions.assertCurrent(sessionId, attempt)
+    const dashboardAuthentication = await prepareDashboardCodexAuthentication().catch(
+      (error: unknown) => {
+        throw launchPreparationFailure(error)
+      }
+    )
+    acquisitions.assertCurrent(sessionId, attempt)
     const resolvedLaunch = await deps
       .resolveLaunch({
         identity: acquireInput.identity,
@@ -126,32 +136,45 @@ export async function acquireCodexStructuredSession(input: {
             ...(acquireInput.options.model ? { model: acquireInput.options.model } : {})
           }
     acquisitions.assertCurrent(sessionId, attempt)
-    account = launch.codexHome ? deps.resolveAccountKind?.(launch.codexHome) : undefined
+    account =
+      !dashboardAuthentication && launch.codexHome
+        ? deps.resolveAccountKind?.(launch.codexHome)
+        : undefined
+    const childLaunch = {
+      command: launch.command,
+      args: launch.args,
+      cwd: launch.cwd,
+      ...(launch.env ? { env: launch.env } : {}),
+      ...(launch.envToDelete ? { envToDelete: launch.envToDelete } : {})
+    }
+    const onNotification = codexAcquisitionNotificationHandler({
+      acquisition,
+      sessionId,
+      dispatchEchoes,
+      primaryThreadId: () => primaryThreadId,
+      notificationRetries,
+      deliver: input.deliver,
+      now: deps.now ?? Date.now
+    })
     const connection = await open(
+      dashboardAuthentication ? dashboardCodexChildLaunch(childLaunch) : childLaunch,
       {
-        command: launch.command,
-        args: launch.args,
-        cwd: launch.cwd,
-        ...(launch.env ? { env: launch.env } : {}),
-        ...(launch.envToDelete ? { envToDelete: launch.envToDelete } : {})
-      },
-      {
-        onNotification: codexAcquisitionNotificationHandler({
-          acquisition,
-          sessionId,
-          dispatchEchoes,
-          primaryThreadId: () => primaryThreadId,
-          notificationRetries,
-          deliver: input.deliver,
-          now: deps.now ?? Date.now
-        }),
-        onServerRequest: (request) =>
+        onNotification: (method, params) => {
+          if (!dashboardAuthentication?.handleNotification(method, params)) {
+            onNotification(method, params)
+          }
+        },
+        onServerRequest: (request) => {
+          if (dashboardAuthentication?.rejectRefresh(acquisition.connection, request)) {
+            return
+          }
           input.deliver(
             acquisition,
             sessionId,
             () => input.handleServerRequest(sessionId, request),
             Buffer.byteLength(JSON.stringify(request), 'utf8')
-          ),
+          )
+        },
         onUnhandledFrame: (kind, payload) =>
           input.deliver(
             acquisition,
@@ -246,6 +269,7 @@ export async function acquireCodexStructuredSession(input: {
           acquisitions,
           attempt,
           connection,
+          dashboardAuthentication,
           translator,
           dispatchEchoes,
           subagentExecutions,

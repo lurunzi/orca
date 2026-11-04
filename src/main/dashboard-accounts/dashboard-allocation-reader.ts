@@ -7,6 +7,7 @@ import {
   DashboardAllocationState,
   parseDashboardAllocation,
   type DashboardAllocationSnapshot,
+  type DashboardCodexAllocation,
   type DashboardClaudeAllocation
 } from './dashboard-allocation-protocol'
 
@@ -50,12 +51,18 @@ export async function readDashboardAllocation(): Promise<DashboardAllocationSnap
     throw new DashboardAllocationError()
   }
 }
-export async function readDashboardClaudeAllocation(): Promise<DashboardClaudeAllocation | null> {
+export async function readDashboardCodexAllocation(): Promise<DashboardCodexAllocation | null> {
   const snapshot = await readDashboardAllocation()
   if (!snapshot) {
     return null
   }
-  const binding = snapshot.bindings[1]
+  const binding = snapshot.bindings[0]
+  requireAvailableAllocation(binding)
+  return binding
+}
+function requireAvailableAllocation(
+  binding: DashboardAllocationSnapshot['bindings'][number]
+): asserts binding is DashboardCodexAllocation | DashboardClaudeAllocation {
   if (
     binding.state !== DashboardAllocationState.Available ||
     (binding.expires_at !== null &&
@@ -64,5 +71,13 @@ export async function readDashboardClaudeAllocation(): Promise<DashboardClaudeAl
   ) {
     throw new DashboardAllocationError()
   }
+}
+export async function readDashboardClaudeAllocation(): Promise<DashboardClaudeAllocation | null> {
+  const snapshot = await readDashboardAllocation()
+  if (!snapshot) {
+    return null
+  }
+  const binding = snapshot.bindings[1]
+  requireAvailableAllocation(binding)
   return binding
 }

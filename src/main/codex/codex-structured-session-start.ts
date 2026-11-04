@@ -41,6 +41,7 @@ import {
   type CodexStructuredSessionAdapterDeps
 } from './codex-structured-session-state'
 import type { CodexStructuredSessionTeardown } from './codex-structured-session-teardown'
+import type { DashboardCodexAuthentication } from '../dashboard-accounts/dashboard-codex-authentication'
 
 type CodexOpenContext = {
   input: StructuredAgentSessionAcquireInput
@@ -51,6 +52,7 @@ type CodexOpenContext = {
   acquisitions: CodexAcquisitionRegistry
   attempt: CodexAcquisitionAttempt
   connection: CodexAppServerConnection
+  dashboardAuthentication: DashboardCodexAuthentication | null
   translator: CodexJournalTranslator | null
   dispatchEchoes: CodexDispatchEchoes
   subagentExecutions: CodexSubagentExecutions
@@ -84,11 +86,18 @@ export async function openCodexStructuredSession(
     assertCodexConnectionOpen(connection, sessionId)
   }
   current()
-  await waitForPromiseWithSignal(
+  const version = await waitForPromiseWithSignal(
     initializeCodexAppServerConnection(connection, null),
     openInput.signal
   )
   current()
+  if (start.dashboardAuthentication) {
+    await waitForPromiseWithSignal(
+      start.dashboardAuthentication.authenticate(connection, version),
+      openInput.signal
+    )
+    current()
+  }
   const threadLaunch = await waitForPromiseWithSignal(
     withCodexVisualsThreadConfig(connection, launch, {
       sessionId,

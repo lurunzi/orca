@@ -93,6 +93,10 @@ export const DashboardAllocationSnapshotSchema = z.strictObject({
   ])
 })
 export type DashboardAllocationSnapshot = z.infer<typeof DashboardAllocationSnapshotSchema>
+export type DashboardCodexAllocation = Extract<
+  DashboardAllocationSnapshot['bindings'][0],
+  { state: DashboardAllocationState.Available }
+>
 export type DashboardClaudeAllocation = Extract<
   DashboardAllocationSnapshot['bindings'][1],
   {
