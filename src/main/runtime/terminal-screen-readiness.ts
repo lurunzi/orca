@@ -5,7 +5,7 @@ import {
 } from './terminal-wait-detection'
 import type { RuntimeTerminalWaitBlockedReason } from '../../shared/runtime-types'
 
-const ANTIGRAVITY_FRAME = /^─{8,}$/
+const ANTIGRAVITY_FRAME = /^\u2500{8,}$/
 const ANTIGRAVITY_EMPTY_COMPOSERS = new Set([
   '>',
   '> Plan mode: research & plan only (shift+tab to cycle)',
@@ -67,9 +67,9 @@ export function isAntigravityWorkingTerminalScreen(tail: readonly string[]): boo
   return (
     (footer.startsWith('esc to cancel') && composerAt(-2)) ||
     (footer.startsWith('? for shortcuts') &&
-      /· [1-9]\d* task\(s\) · \/tasks$/.test(footer) &&
+      /\u00b7 [1-9]\d* task\(s\) \u00b7 \/tasks$/.test(footer) &&
       ANTIGRAVITY_FRAME.test(rows.at(-2) ?? '') &&
-      /^● \[\d{2}:\d{2}:\d{2}\] .+ running$/.test(rows.at(-3) ?? '') &&
+      /^\u25cf \[\d{2}:\d{2}:\d{2}\] .+ running$/.test(rows.at(-3) ?? '') &&
       composerAt(-4))
   )
 }
