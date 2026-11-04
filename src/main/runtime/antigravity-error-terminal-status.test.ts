@@ -113,4 +113,17 @@ describe('Antigravity native terminal errors', () => {
       await runtime.onPtyExit(TRANSCRIPT_PANE_PTY_ID, 0)
     }
   })
+
+  it('detects the Error ID label printed by Antigravity CLI 1.5', async () => {
+    const emulator = new HeadlessEmulator({ cols: 80, rows: 24 })
+    try {
+      const frame = ERROR.replace('ErrID:', 'Error ID:')
+      await emulator.write(frame)
+      expect(
+        observeAntigravityErrorTerminalStatus(emulator, frame, 'antigravity', () => undefined)
+      ).toMatchObject({ lastAssistantMessage: `${TEXT}\nErrID: ${ID}` })
+    } finally {
+      emulator.dispose()
+    }
+  })
 })

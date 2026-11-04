@@ -20,7 +20,7 @@ class AntigravityErrorTracker {
     onCsi: () => {},
     onText: (text) => {
       const candidate = this.tail + text
-      if (candidate.includes('ErrID:')) {
+      if (candidate.includes('ErrID:') || candidate.includes('Error ID:')) {
         this.pending = true
         this.pendingChars = 0
       }

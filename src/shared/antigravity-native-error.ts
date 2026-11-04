@@ -2,7 +2,7 @@ export type AntigravityNativeError = { id: string; text: string }
 
 const ERROR_ID = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}-\d+$/i
 
-/** A native error ends with ErrID immediately above agy's empty composer. */
+/** A completed native error has an error identifier above agy's empty composer. */
 export function readAntigravityNativeError(
   lines: readonly string[]
 ): AntigravityNativeError | null {
@@ -19,13 +19,13 @@ export function readAntigravityNativeError(
     return null
   }
   const content = above.slice(warning).join(' ')
-  const marker = content.lastIndexOf('ErrID:')
-  if (marker === -1) {
+  const marker = /\b(?:ErrID|Error ID):\s*([\da-f\s-]+)$/i.exec(content)
+  if (!marker) {
     return null
   }
-  const id = content.slice(marker + 'ErrID:'.length).replace(/\s/g, '')
+  const id = marker[1]!.replace(/\s/g, '')
   const message = content
-    .slice(0, marker)
+    .slice(0, marker.index)
     .replace(/^⚠\uFE0F?\s+/, '')
     .trim()
   return ERROR_ID.test(id) && message ? { id, text: `${message}\nErrID: ${id}` } : null

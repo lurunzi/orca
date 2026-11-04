@@ -6,13 +6,13 @@ const MESSAGE =
   'Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 4h56m48s.'
 
 describe('Antigravity native error cells', () => {
-  it('keeps the actual failure, reset time and error identifier', () => {
+  it.each(['ErrID', 'Error ID'])('keeps the failure, reset time and %s identifier', (label) => {
     expect(
       readAntigravityNativeError([
         '> investigate',
         'Got one result.',
         `⚠ ${MESSAGE}`,
-        `ErrID: ${ID}`,
+        `${label}: ${ID}`,
         '────',
         '>',
         '? for shortcuts'

@@ -132,7 +132,7 @@ test.describe('Antigravity Native Chat', () => {
     )
     await expect(chatRoot.getByText(childFailure, { exact: true })).toBeVisible({ timeout: 20_000 })
     const quota =
-      'Individual quota reached. Resets in 4h56m48s.\nErrID: 00000000-0000-4000-8000-000000000001-10'
+      'Individual quota reached. Resets in 4h56m48s.\nError ID: 00000000-0000-4000-8000-000000000001-10'
     await electronApp.evaluate(
       ({ BrowserWindow }, { descriptor, sessionId, quota }) => {
         BrowserWindow.getAllWindows()[0]!.webContents.send('agentStatus:set', {
