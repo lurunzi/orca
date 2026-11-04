@@ -4,6 +4,7 @@ import {
   DashboardAllocationStatusSchema
 } from '../../main/dashboard-accounts/dashboard-allocation-protocol'
 import { DashboardCodexProcessesResponseSchema } from '../../main/dashboard-accounts/dashboard-codex-adoption-protocol'
+import { DashboardCodexRefreshesResponseSchema } from '../../main/dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { CommandHandler, HandlerContext } from '../dispatch'
 import { RuntimeClient, RuntimeClientError } from '../runtime-client'
 
@@ -45,5 +46,10 @@ export const DASHBOARD_ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
     queryLocalDashboard(context, async (client) => {
       const response = await client.call<unknown>('dashboard.accounts.codexProcesses', {})
       return DashboardCodexProcessesResponseSchema.parse(response.result)
+    }),
+  'dashboard-accounts codex-refreshes': async (context) =>
+    queryLocalDashboard(context, async (client) => {
+      const response = await client.call<unknown>('dashboard.accounts.codexRefreshes', {})
+      return DashboardCodexRefreshesResponseSchema.parse(response.result)
     })
 }

@@ -18,7 +18,7 @@ export type DashboardCodexSessionAdoption = {
   process: AgentSessionProcessIdentity
 }
 
-const DashboardCodexProcessSchema = z.strictObject({
+export const DashboardCodexProcessSchema = z.strictObject({
   session_id: z.string(),
   fence: z.number(),
   acquisition_generation: z.string(),

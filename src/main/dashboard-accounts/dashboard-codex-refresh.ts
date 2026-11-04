@@ -6,6 +6,8 @@ import type {
   CodexAppServerServerRequest
 } from '../codex/app-server/codex-app-server-connection-types'
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
+import type { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
+import type { DashboardCodexRefreshScope } from './dashboard-codex-refresh-protocol'
 import {
   DashboardAllocationError,
   type DashboardCodexAllocation
@@ -22,12 +24,14 @@ export class DashboardCodexRefresh {
   private readonly workspace: string
   private version: number
   private connection: CodexAppServerConnection | null = null
+  private scope: DashboardCodexRefreshScope | null = null
   private pending = false
 
   constructor(
     allocation: DashboardCodexAllocation,
     private readonly current: () => boolean,
-    private readonly failed: () => void
+    private readonly failed: () => void,
+    private readonly mailbox: DashboardCodexRefreshMailbox
   ) {
     this.accountId = allocation.account_id
     this.revision = allocation.binding_revision
@@ -35,8 +39,9 @@ export class DashboardCodexRefresh {
     this.version = allocation.credential_version
   }
 
-  activate(connection: CodexAppServerConnection): void {
+  activate(connection: CodexAppServerConnection, scope: DashboardCodexRefreshScope): void {
     this.connection = connection
+    this.scope = { ...scope, process: { ...scope.process } }
   }
 
   handle(
@@ -75,7 +80,22 @@ export class DashboardCodexRefresh {
     const abort = new AbortController()
     const deadline = Date.now() + 9000
     const timer = setTimeout(() => abort.abort(), 9000)
+    let unregister: (() => void) | undefined
     try {
+      this.assertCurrent(connection, abort.signal, deadline)
+      if (!this.scope) {
+        throw new DashboardAllocationError()
+      }
+      unregister = this.mailbox.register(
+        this.scope,
+        {
+          account_id: this.accountId,
+          binding_revision: this.revision,
+          credential_version: this.version
+        },
+        deadline,
+        () => connection === this.connection && !connection.closed && this.current()
+      )
       for (;;) {
         this.assertCurrent(connection, abort.signal, deadline)
         const allocation = await waitForPromiseWithSignal(
@@ -104,6 +124,7 @@ export class DashboardCodexRefresh {
         await delayUnlessAborted(250, abort.signal)
       }
     } finally {
+      unregister?.()
       clearTimeout(timer)
     }
   }

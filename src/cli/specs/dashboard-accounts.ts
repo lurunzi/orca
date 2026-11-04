@@ -25,5 +25,17 @@ export const DASHBOARD_ACCOUNT_COMMAND_SPECS: CommandSpec[] = [
       'Output is validated JSON with or without --json. No authentication or model request is triggered.'
     ],
     examples: ['orca dashboard-accounts codex-processes --json']
+  },
+  {
+    path: ['dashboard-accounts', 'codex-refreshes'],
+    summary: 'Read pending Codex credential refresh metadata without credentials',
+    usage: 'orca dashboard-accounts codex-refreshes [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS],
+    notes: [
+      'Uses the same explicit local ORCA_USER_DATA and remote-selection refusal as status.',
+      'Reports unsupported until the Codex adapter provides refresh observation.',
+      'Output is validated JSON with or without --json. Querying does not trigger authentication, refresh or model requests.'
+    ],
+    examples: ['orca dashboard-accounts codex-refreshes --json']
   }
 ]

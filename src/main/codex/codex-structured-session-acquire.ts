@@ -41,6 +41,7 @@ import type { CodexStructuredNotificationRetry } from './codex-structured-notifi
 import type { deliverCodexServerRequest } from './codex-structured-provider-events'
 import { codexAcquisitionNotificationHandler } from './codex-structured-acquisition-notification'
 import { prepareDashboardCodexAuthentication } from '../dashboard-accounts/dashboard-codex-authentication'
+import type { DashboardCodexRefreshMailbox } from '../dashboard-accounts/dashboard-codex-refresh-mailbox'
 import {
   codexStructuredChildLaunch,
   codexDashboardAuthenticationCurrent
@@ -51,6 +52,7 @@ export async function acquireCodexStructuredSession(input: {
   deps: CodexStructuredSessionAdapterDeps
   sessions: Map<string, CodexSession>
   acquisitions: CodexAcquisitionRegistry
+  mailbox: DashboardCodexRefreshMailbox
   notificationRetries: CodexStructuredNotificationRetry
   deliver: (
     acquisition: CodexAcquisitionAttempt['window'],
@@ -114,7 +116,8 @@ export async function acquireCodexStructuredSession(input: {
     }
     acquisitions.assertCurrent(sessionId, attempt)
     const dashboardAuthentication = await prepareDashboardCodexAuthentication(
-      codexDashboardAuthenticationCurrent({ sessions, acquisitions, attempt, acquireInput })
+      codexDashboardAuthenticationCurrent({ sessions, acquisitions, attempt, acquireInput }),
+      input.mailbox
     ).catch((error: unknown) => {
       throw launchPreparationFailure(error)
     })

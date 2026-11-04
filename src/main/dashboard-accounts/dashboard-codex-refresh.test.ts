@@ -7,6 +7,19 @@ import {
 } from './dashboard-allocation-protocol'
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
 import { DashboardCodexRefresh } from './dashboard-codex-refresh'
+import { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
+
+const scope = {
+  session_id: 'session-fixture',
+  fence: 7,
+  acquisition_generation: 'generation-1',
+  process: {
+    hostId: 'host-fixture',
+    pid: 42,
+    processStartTimeMs: 1234.5,
+    spawnToken: 'spawn-fixture'
+  }
+}
 
 vi.mock('./dashboard-allocation-reader', () => ({ readDashboardCodexAllocation: vi.fn() }))
 const allocation: DashboardCodexAllocation = {
@@ -36,9 +49,10 @@ function fixture(current = () => true) {
     close: vi.fn()
   }
   const failed = vi.fn()
-  const refresh = new DashboardCodexRefresh(allocation, current, failed)
-  refresh.activate(connection)
-  return { connection, failed, refresh }
+  const mailbox = new DashboardCodexRefreshMailbox()
+  const refresh = new DashboardCodexRefresh(allocation, current, failed, mailbox)
+  refresh.activate(connection, scope)
+  return { connection, failed, refresh, mailbox }
 }
 function deferred() {
   let resolve!: (value: DashboardCodexAllocation | null) => void
@@ -59,7 +73,9 @@ it('waits for a newer same-binding version and returns only official fields', as
     .mockResolvedValueOnce(allocation)
     .mockResolvedValueOnce(next)
   expect(f.refresh.handle(f.connection, request())).toBe(true)
+  expect(f.mailbox.read().requests).toMatchObject([{ ...scope, credential_version: 4 }])
   await vi.advanceTimersByTimeAsync(250)
+  expect(f.mailbox.read()).toEqual({ requests: [] })
   expect(f.connection.respond).toHaveBeenCalledExactlyOnceWith(1, {
     accessToken: 'private-new-access',
     chatgptAccountId: 'workspace-fixture',
@@ -69,6 +85,22 @@ it('waits for a newer same-binding version and returns only official fields', as
   expect(f.failed).not.toHaveBeenCalled()
   expect(JSON.stringify(f.refresh)).not.toMatch(/private-old-access|private-new-access/)
   expect(vi.getTimerCount()).toBe(0)
+})
+
+it('captures the original scope before callers can change it', async () => {
+  vi.useFakeTimers()
+  const f = fixture(),
+    reading = deferred()
+  const captured = { ...scope, process: { ...scope.process } }
+  f.refresh.activate(f.connection, captured)
+  captured.session_id = 'modified-session'
+  captured.process.pid = 999
+  vi.mocked(readDashboardCodexAllocation).mockReturnValueOnce(reading.promise)
+  f.refresh.handle(f.connection, request())
+  expect(f.mailbox.read().requests).toMatchObject([{ ...scope, credential_version: 4 }])
+  reading.resolve(next)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(f.mailbox.read()).toEqual({ requests: [] })
 })
 
 it('uses the last answered version as the next callback baseline', async () => {
@@ -85,6 +117,7 @@ it('uses the last answered version as the next callback baseline', async () => {
       access_token: 'private-newest-access'
     })
   f.refresh.handle(f.connection, request(2))
+  expect(f.mailbox.read().requests).toMatchObject([{ credential_version: 5 }])
   await vi.advanceTimersByTimeAsync(0)
   expect(f.connection.respond).toHaveBeenCalledTimes(1)
   await vi.advanceTimersByTimeAsync(250)
@@ -103,6 +136,7 @@ it('times out an unfinished read and never replies with a late credential', asyn
   vi.mocked(readDashboardCodexAllocation).mockReturnValueOnce(reading.promise)
   f.refresh.handle(f.connection, request())
   await vi.advanceTimersByTimeAsync(9000)
+  expect(f.mailbox.read()).toEqual({ requests: [] })
   expect(f.connection.respondWithError).toHaveBeenCalledExactlyOnceWith(
     1,
     -32001,
@@ -176,7 +210,7 @@ it('rejects an overlapping request without replacing the original wait', async (
 it('does not enable credential replies before pinned-version authentication', async () => {
   vi.useFakeTimers()
   const f = fixture()
-  const refresh = new DashboardCodexRefresh(allocation, () => true, f.failed)
+  const refresh = new DashboardCodexRefresh(allocation, () => true, f.failed, f.mailbox)
   refresh.handle(f.connection, request())
   await vi.advanceTimersByTimeAsync(0)
   expect(readDashboardCodexAllocation).not.toHaveBeenCalled()

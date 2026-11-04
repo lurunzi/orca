@@ -4,6 +4,7 @@ import { JIRA_HANDLER_GROUP } from './jira-handler-group'
 import { LINEAR_HANDLER_GROUP } from './linear-handler-group'
 import { REFERENCE_HANDLER_GROUP } from './reference-handler-group'
 import { PLUGIN_HANDLER_GROUPS } from './plugin-handler-groups'
+import { DASHBOARD_ACCOUNT_HANDLER_GROUP } from './dashboard-account-handler-group'
 
 export type HandlerGroup = {
   name: string
@@ -37,11 +38,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['account add', 'account list', 'account select', 'account rm'],
     load: async () => (await import('./handlers/account.js')).ACCOUNT_HANDLERS
   },
-  {
-    name: 'dashboard-accounts',
-    keys: ['dashboard-accounts status', 'dashboard-accounts codex-processes'],
-    load: async () => (await import('./handlers/dashboard-accounts.js')).DASHBOARD_ACCOUNT_HANDLERS
-  },
+  DASHBOARD_ACCOUNT_HANDLER_GROUP,
   {
     name: 'artifacts',
     keys: [

@@ -13,7 +13,7 @@ import type {
   StructuredAgentSessionAdapter,
   StructuredAgentSessionSetOptionInput
 } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
-import type { StructuredAgentSessionProviderOpenInput } from '../native-chat/agent-session-wire/structured-agent-session-provider-open-contract'
+import { openCodexStructuredAcquisition } from './codex-structured-session-start'
 import type { CodexJournalTranslationAdmission } from './codex-structured-journal-translation'
 import { dispatchCodexTurn } from './codex-structured-turn-start'
 import { isCodexTurnOptionKey } from './codex-turn-option-keys'
@@ -50,10 +50,12 @@ import {
   cancelCodexStructuredTurn
 } from './codex-structured-prompt-ownership'
 import { renameCodexProviderSession } from './codex-provider-session-rename'
+import { DashboardCodexRefreshMailbox } from '../dashboard-accounts/dashboard-codex-refresh-mailbox'
 
 export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdapter {
   private readonly sessions = new Map<string, CodexSession>()
   private readonly acquisitions = new CodexAcquisitionRegistry()
+  private readonly mailbox = new DashboardCodexRefreshMailbox()
   private readonly notificationRetries: ReturnType<typeof createCodexStructuredNotificationRetry>
   private readonly teardown: CodexStructuredSessionTeardown
 
@@ -83,6 +85,8 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
 
   supportsLocation = supportsCodexStructuredLocation
 
+  readDashboardCodexRefreshes = () => this.mailbox.read()
+
   readDashboardCodexProcesses = () =>
     readCodexDashboardAdoptions(this.sessions, this.acquisitions.size)
 
@@ -108,6 +112,7 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
       deps: this.deps,
       sessions: this.sessions,
       acquisitions: this.acquisitions,
+      mailbox: this.mailbox,
       notificationRetries: this.notificationRetries,
       deliver: (acquisition, sessionId, event, retainedBytes) =>
         this.deliver(acquisition, sessionId, event, retainedBytes),
@@ -118,13 +123,8 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
         this.teardown.forceCloseUnexpected(sessionId, fence, acquisitionGeneration, reason)
     })
 
-  open = (input: StructuredAgentSessionProviderOpenInput) => {
-    const attempt = this.acquisitions.get(input.sessionId)
-    if (!attempt?.open) {
-      return Promise.reject(new Error(`no spawned codex child for session ${input.sessionId}`))
-    }
-    return attempt.open(input)
-  }
+  open: StructuredAgentSessionAdapter['open'] = (input) =>
+    openCodexStructuredAcquisition(this.acquisitions, input)
 
   /** Buffers pre-publication events and drops events from superseded children. */
   private deliver(

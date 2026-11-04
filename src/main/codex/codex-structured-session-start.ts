@@ -64,6 +64,17 @@ type CodexOpenContext = {
   unbindReadingControl?: () => void
 }
 
+export function openCodexStructuredAcquisition(
+  acquisitions: CodexAcquisitionRegistry,
+  input: StructuredAgentSessionProviderOpenInput
+) {
+  const attempt = acquisitions.get(input.sessionId)
+  if (!attempt?.open) {
+    return Promise.reject(new Error(`no spawned codex child for session ${input.sessionId}`))
+  }
+  return attempt.open(input)
+}
+
 /** The host owns the open promise and closes the spawned child if this rejects. */
 export async function openCodexStructuredSession(
   start: CodexOpenContext,
@@ -97,7 +108,12 @@ export async function openCodexStructuredSession(
   let dashboardBinding: DashboardCodexBinding | undefined
   if (start.dashboardAuthentication) {
     dashboardBinding = await waitForPromiseWithSignal(
-      start.dashboardAuthentication.authenticate(connection, version),
+      start.dashboardAuthentication.authenticate(connection, version, {
+        session_id: sessionId,
+        fence: input.fence,
+        acquisition_generation: generation,
+        process: { ...start.process }
+      }),
       openInput.signal
     )
     current()

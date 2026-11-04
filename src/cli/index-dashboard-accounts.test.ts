@@ -110,37 +110,99 @@ describe('local Dashboard allocation status command', () => {
     expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
   })
 
-  it('keeps an unavailable Codex adapter distinct from an empty process report', async () => {
-    const result = {
-      schema_version: 1,
-      instance_id: 'instance-fixture',
-      runtime_id: 'runtime-fixture',
-      supported: false
+  it.each(['codex-processes', 'codex-refreshes'])(
+    'keeps an unavailable Codex adapter distinct from an empty %s report',
+    async (command) => {
+      const common = {
+        schema_version: 1,
+        instance_id: 'instance-fixture',
+        runtime_id: 'runtime-fixture'
+      }
+      const installed =
+        command === 'codex-processes'
+          ? { pending_acquisitions: 0, processes: [] }
+          : { requests: [] }
+      for (const result of [
+        { ...common, supported: false },
+        { ...common, supported: true, ...installed }
+      ]) {
+        callMock.mockResolvedValue({ result })
+        await main(['dashboard-accounts', command, '--json'])
+        expect(JSON.parse(String(vi.mocked(console.log).mock.calls.at(-1)?.[0]))).toEqual(result)
+      }
+      expect(HANDLER_COMMAND_KEYS.has(`dashboard-accounts ${command}`)).toBe(true)
+      expect(
+        COMMAND_SPECS.find((spec) => spec.path.join(' ') === `dashboard-accounts ${command}`)
+      ).toMatchObject({
+        allowedFlags: ['help', 'json'],
+        usage: `orca dashboard-accounts ${command} [--json]`
+      })
     }
-    callMock.mockResolvedValue({ result })
-    await main(['dashboard-accounts', 'codex-processes', '--json'])
-    expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
-    expect(HANDLER_COMMAND_KEYS.has('dashboard-accounts codex-processes')).toBe(true)
-    expect(
-      COMMAND_SPECS.some((spec) => spec.path.join(' ') === 'dashboard-accounts codex-processes')
-    ).toBe(true)
-  })
+  )
 
-  it('refuses process responses containing raw credentials', async () => {
-    callMock.mockResolvedValue({
-      result: {
+  it.each(['codex-processes', 'codex-refreshes'])(
+    'refuses %s responses containing raw credentials',
+    async (command) => {
+      callMock.mockResolvedValue({
+        result: {
+          schema_version: 1,
+          instance_id: 'instance-fixture',
+          runtime_id: 'runtime-fixture',
+          supported: false,
+          access_token: 'private-access'
+        }
+      })
+      await main(['dashboard-accounts', command, '--json'])
+      const output = JSON.stringify(vi.mocked(console.log).mock.calls)
+      expect(output).toContain('dashboard_allocation_unavailable')
+      expect(output).not.toContain('private-access')
+    }
+  )
+
+  it.each([{ flags: [] }, { flags: ['--json'] }])(
+    'queries pending refresh metadata without leaking the RPC envelope %#',
+    async ({ flags }) => {
+      const result = {
         schema_version: 1,
         instance_id: 'instance-fixture',
         runtime_id: 'runtime-fixture',
-        supported: false,
-        access_token: 'private-access'
+        supported: true,
+        requests: [
+          {
+            request_id: 'request-fixture',
+            provider: DashboardToolProvider.Codex,
+            session_id: 'session-fixture',
+            fence: 7,
+            acquisition_generation: 'generation-fixture',
+            process: {
+              hostId: 'host-fixture',
+              pid: 42,
+              processStartTimeMs: 1234.5,
+              spawnToken: 'spawn-fixture'
+            },
+            account_id: 'pool-fixture',
+            binding_revision: 2,
+            credential_version: 3,
+            deadline_at: 1700000009000
+          }
+        ]
       }
-    })
-    await main(['dashboard-accounts', 'codex-processes', '--json'])
-    const output = JSON.stringify(vi.mocked(console.log).mock.calls)
-    expect(output).toContain('dashboard_allocation_unavailable')
-    expect(output).not.toContain('private-access')
-  })
+      callMock.mockResolvedValue({ result, _meta: { authToken: 'private-token' } })
+      await main(['dashboard-accounts', 'codex-refreshes', ...flags])
+      expect(constructorMock).toHaveBeenCalledExactlyOnceWith(
+        '/tmp/dashboard-runtime',
+        10_000,
+        null,
+        null
+      )
+      expect(callMock).toHaveBeenCalledExactlyOnceWith('dashboard.accounts.codexRefreshes', {})
+      expect(console.log).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
+      expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toMatch(
+        /_meta|private-token|authToken/
+      )
+    }
+  )
 
   it('also emits only validated JSON without --json', async () => {
     await main(['dashboard-accounts', 'status'])
@@ -150,27 +212,31 @@ describe('local Dashboard allocation status command', () => {
     )
   })
 
-  it.each(['environment', 'pairing-code', 'host'])(
-    'rejects explicit --%s before creating a client',
-    async (flag) => {
-      await main(['dashboard-accounts', 'status', `--${flag}`, 'private-remote', '--json'])
-      expect(constructorMock).not.toHaveBeenCalled()
-      expect(callMock).not.toHaveBeenCalled()
-      expect(process.exitCode).toBe(1)
-    }
-  )
+  it.each(
+    ['status', 'codex-refreshes'].flatMap((command) =>
+      ['environment', 'pairing-code', 'host'].map((flag) => [command, flag] as const)
+    )
+  )('rejects %s with explicit --%s before creating a client', async (command, flag) => {
+    await main(['dashboard-accounts', command, `--${flag}`, 'private-remote', '--json'])
+    expect(constructorMock).not.toHaveBeenCalled()
+    expect(callMock).not.toHaveBeenCalled()
+    expect(process.exitCode).toBe(1)
+  })
 
-  it.each(['ORCA_PAIRING_CODE', 'ORCA_REMOTE_PAIRING', 'ORCA_ENVIRONMENT'])(
-    'rejects nonempty %s without remote lookup',
-    async (name) => {
-      vi.stubEnv(name, 'private-remote')
-      await main(['dashboard-accounts', 'status', '--json'])
-      expect(constructorMock).not.toHaveBeenCalled()
-      expect(callMock).not.toHaveBeenCalled()
-      expect(console.log).toHaveBeenCalled()
-      expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain('private-remote')
-    }
-  )
+  it.each(
+    ['status', 'codex-refreshes'].flatMap((command) =>
+      ['ORCA_PAIRING_CODE', 'ORCA_REMOTE_PAIRING', 'ORCA_ENVIRONMENT'].map(
+        (name) => [command, name] as const
+      )
+    )
+  )('rejects %s with nonempty %s without remote lookup', async (command, name) => {
+    vi.stubEnv(name, 'private-remote')
+    await main(['dashboard-accounts', command, '--json'])
+    expect(constructorMock).not.toHaveBeenCalled()
+    expect(callMock).not.toHaveBeenCalled()
+    expect(console.log).toHaveBeenCalled()
+    expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain('private-remote')
+  })
 
   it.each([undefined, '', 'relative/private-path'])(
     'rejects an invalid Runtime directory without connecting',
@@ -217,19 +283,31 @@ describe('local Dashboard allocation status command', () => {
     expect(ignoresRemoteSelection(['dashboard-accounts', 'status'])).toBe(true)
   })
 
-  it('never accesses the ambient lazy client', async () => {
-    const context: HandlerContext = {
-      flags: new Map(),
-      cwd: '/tmp',
-      json: false,
-      get client(): never {
-        throw new Error('Ambient client must not be used')
+  it.each(['status', 'codex-refreshes'])(
+    'never accesses the ambient lazy client for %s',
+    async (command) => {
+      const result =
+        command === 'status'
+          ? allocationStatus()
+          : {
+              schema_version: 1,
+              instance_id: 'instance-fixture',
+              runtime_id: 'runtime-fixture',
+              supported: true,
+              requests: []
+            }
+      callMock.mockResolvedValue({ result })
+      const context: HandlerContext = {
+        flags: new Map(),
+        cwd: '/tmp',
+        json: false,
+        get client(): never {
+          throw new Error('Ambient client must not be used')
+        }
       }
+      await DASHBOARD_ACCOUNT_HANDLERS[`dashboard-accounts ${command}`]!(context)
+      expect(console.log).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
     }
-    await DASHBOARD_ACCOUNT_HANDLERS['dashboard-accounts status']!(context)
-    expect(console.log).toHaveBeenCalledTimes(1)
-    expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(
-      allocationStatus()
-    )
-  })
+  )
 })

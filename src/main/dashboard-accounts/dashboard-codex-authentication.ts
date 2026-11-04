@@ -8,6 +8,8 @@ import type {
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
 import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
 import { DashboardCodexRefresh } from './dashboard-codex-refresh'
+import type { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
+import type { DashboardCodexRefreshScope } from './dashboard-codex-refresh-protocol'
 import {
   DashboardAllocationError,
   type DashboardCodexAllocation
@@ -30,7 +32,8 @@ const AccountReadSchema = z.object({
 })
 
 export async function prepareDashboardCodexAuthentication(
-  current: () => boolean
+  current: () => boolean,
+  mailbox: DashboardCodexRefreshMailbox
 ): Promise<DashboardCodexAuthentication | null> {
   if (process.env.ORCA_DASHBOARD_INSTANCE_ID === undefined) {
     return null
@@ -42,7 +45,7 @@ export async function prepareDashboardCodexAuthentication(
   if (!allocation) {
     throw new DashboardAllocationError()
   }
-  return new DashboardCodexAuthentication(allocation, current)
+  return new DashboardCodexAuthentication(allocation, current, mailbox)
 }
 
 export function dashboardCodexChildLaunch(launch: ProviderProcessLaunch): ProviderProcessLaunch {
@@ -68,9 +71,13 @@ export class DashboardCodexAuthentication {
   })
   private readonly refresh: DashboardCodexRefresh
   private allocation: DashboardCodexAllocation | null
-  constructor(allocation: DashboardCodexAllocation, current: () => boolean) {
+  constructor(
+    allocation: DashboardCodexAllocation,
+    current: () => boolean,
+    mailbox: DashboardCodexRefreshMailbox
+  ) {
     this.allocation = allocation
-    this.refresh = new DashboardCodexRefresh(allocation, current, () => this.reject())
+    this.refresh = new DashboardCodexRefresh(allocation, current, () => this.reject(), mailbox)
   }
 
   handleNotification(method: string, params: unknown): boolean {
@@ -110,7 +117,8 @@ export class DashboardCodexAuthentication {
 
   async authenticate(
     connection: CodexAppServerConnection,
-    version: string | null
+    version: string | null,
+    scope: DashboardCodexRefreshScope
   ): Promise<DashboardCodexBinding> {
     const allocation = this.allocation
     this.allocation = null
@@ -118,7 +126,7 @@ export class DashboardCodexAuthentication {
       if (!allocation || version !== '0.166.0') {
         throw new DashboardAllocationError()
       }
-      this.refresh.activate(connection)
+      this.refresh.activate(connection, scope)
       this.observing = true
       const login = await connection.request(
         'account/login/start',

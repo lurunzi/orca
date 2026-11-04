@@ -20,6 +20,7 @@ afterEach(() => {
 })
 const method = DASHBOARD_ACCOUNT_METHODS[0]
 const processes = DASHBOARD_ACCOUNT_METHODS[1]
+const refreshes = DASHBOARD_ACCOUNT_METHODS[2]
 function context(identity: Pick<RpcContext, 'caller' | 'clientKind'>): RpcContext {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: handlers read only the transport identity and Runtime id.
   return { ...identity, runtime: { getRuntimeId: () => 'fixture-runtime' } } as RpcContext
@@ -76,6 +77,117 @@ describe('local Dashboard account RPC', () => {
       expect(read).toHaveBeenCalledOnce()
     }
   )
+
+  it.skipIf(process.platform !== 'linux')(
+    'keeps uninstalled refresh observation distinct from an empty request list',
+    async () => {
+      vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'fixture-instance')
+      vi.mocked(getStructuredAgentSessionHost).mockReturnValue(null)
+      await expect(
+        refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
+      ).resolves.toEqual({
+        schema_version: 1,
+        instance_id: 'fixture-instance',
+        runtime_id: 'fixture-runtime',
+        supported: false
+      })
+      const read = vi.fn(() => ({ requests: [] }))
+      const registration = vi.fn(() => ({ adapter: { readDashboardCodexRefreshes: read } }))
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handler uses only the Codex registration and report method.
+      vi.mocked(getStructuredAgentSessionHost).mockReturnValue({
+        deps: { agents: { registration } }
+      } as never)
+      await expect(
+        refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
+      ).resolves.toEqual({
+        schema_version: 1,
+        instance_id: 'fixture-instance',
+        runtime_id: 'fixture-runtime',
+        supported: true,
+        requests: []
+      })
+      expect(registration).toHaveBeenCalledExactlyOnceWith(DashboardToolProvider.Codex)
+      expect(read).toHaveBeenCalledOnce()
+      expect(refreshes.name).toBe('dashboard.accounts.codexRefreshes')
+      expect(refreshes.permission).toBe('accounts-admin')
+      expect(refreshes.params.safeParse({ path: '/unaccepted' }).success).toBe(false)
+    }
+  )
+
+  it.skipIf(process.platform !== 'linux')(
+    'returns current refresh metadata through the strict response schema',
+    async () => {
+      vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'fixture-instance')
+      const requests = [
+        {
+          request_id: 'request-fixture',
+          provider: DashboardToolProvider.Codex,
+          session_id: 'session-fixture',
+          fence: 7,
+          acquisition_generation: 'generation-fixture',
+          process: {
+            hostId: 'host-fixture',
+            pid: 42,
+            processStartTimeMs: null,
+            spawnToken: 'spawn-fixture'
+          },
+          account_id: 'pool-fixture',
+          binding_revision: 2,
+          credential_version: 3,
+          deadline_at: 1700000009000
+        }
+      ]
+      const read = vi.fn(() => ({ requests }))
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handler uses only the Codex registration and report method.
+      vi.mocked(getStructuredAgentSessionHost).mockReturnValue({
+        deps: {
+          agents: { registration: () => ({ adapter: { readDashboardCodexRefreshes: read } }) }
+        }
+      } as never)
+      await expect(
+        refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
+      ).resolves.toEqual({
+        schema_version: 1,
+        instance_id: 'fixture-instance',
+        runtime_id: 'fixture-runtime',
+        supported: true,
+        requests
+      })
+    }
+  )
+
+  it.skipIf(process.platform !== 'linux')(
+    'scrubs refresh query errors and unexpected credential fields',
+    async () => {
+      vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'fixture-instance')
+      const read = vi.fn(() => ({ requests: [], access_token: 'private-access' }))
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the invalid report intentionally exercises the runtime schema boundary.
+      vi.mocked(getStructuredAgentSessionHost).mockReturnValue({
+        deps: {
+          agents: { registration: () => ({ adapter: { readDashboardCodexRefreshes: read } }) }
+        }
+      } as never)
+      await expect(
+        refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
+      ).rejects.toThrow('dashboard_allocation_unavailable')
+      read.mockImplementationOnce(() => {
+        throw new Error('private-access private-path')
+      })
+      await expect(
+        refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
+      ).rejects.toThrow('dashboard_allocation_unavailable')
+    }
+  )
+
+  it('refuses Codex reports outside a configured Linux pool Runtime', async () => {
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', undefined)
+    for (const candidate of [processes, refreshes]) {
+      await expect(
+        candidate.handler({}, context({ caller: { kind: 'local-cli' } }))
+      ).rejects.toThrow('dashboard_allocation_unavailable')
+    }
+    expect(getStructuredAgentSessionHost).not.toHaveBeenCalled()
+  })
 
   it('only reads status for transport-confirmed local CLI calls', async () => {
     vi.mocked(readDashboardAllocationStatus).mockResolvedValue({

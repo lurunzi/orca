@@ -111,7 +111,25 @@ describe('Codex Dashboard refresh callback wiring', () => {
       const replied = waitForReply(connection)
       vi.mocked(readDashboardCodexAllocation).mockResolvedValue(allocation(2))
       requestRefresh(connection, 81)
+      const pending = adapter.readDashboardCodexRefreshes().requests
+      expect(pending).toMatchObject([
+        {
+          session_id: 'session-1',
+          fence: 7,
+          acquisition_generation: before.processes[0]!.acquisition_generation,
+          process: before.processes[0]!.process,
+          provider: DashboardToolProvider.Codex,
+          account_id: 'pool-fixture',
+          binding_revision: 1,
+          credential_version: 1
+        }
+      ])
+      expect(pending[0]!.request_id).not.toBe('81')
+      expect(JSON.stringify(pending)).not.toMatch(
+        /fixture-private|workspace-fixture|access_token|authToken/
+      )
       await expect(replied).resolves.toEqual({ id: 81, result: refreshed })
+      expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
       expect(adapter.readDashboardCodexProcesses()).toEqual(before)
       expect(before.processes[0]!.credential_version).toBe(1)
       expect(connection.calls.filter((call) => call.method === 'account/login/start')).toHaveLength(
@@ -135,7 +153,17 @@ describe('Codex Dashboard refresh callback wiring', () => {
       })
       vi.mocked(readDashboardCodexAllocation).mockResolvedValue(allocation(2))
       requestRefresh(connection, 82)
+      expect(adapter.readDashboardCodexRefreshes().requests).toMatchObject([
+        {
+          session_id: 'session-1',
+          fence: 7,
+          acquisition_generation: 'generation-1',
+          process: { pid: connection.pid, spawnToken: 'spawn-9' },
+          credential_version: 1
+        }
+      ])
       await expect(replied).resolves.toEqual({ id: 82, result: refreshed })
+      expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
       return account()
     }
     try {
@@ -167,7 +195,9 @@ describe('Codex Dashboard refresh callback wiring', () => {
       })
       requestRefresh(connection, 83)
       await entered.promise
+      expect(adapter.readDashboardCodexRefreshes().requests).toHaveLength(1)
       expect(await adapter.releaseAcquisition({ sessionId: 'session-1' })).toBe(true)
+      expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
       reading.resolve(allocation(2))
       await expect(replied).resolves.toEqual({
         id: 83,
