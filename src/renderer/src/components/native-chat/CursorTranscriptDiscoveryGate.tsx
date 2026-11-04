@@ -4,7 +4,11 @@ import { useAppStore } from '@/store'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault-session-launch-target'
-import { cursorSessionMatchesWorkspace, openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
+import {
+  cursorSessionMatchesWorkspace,
+  openCursorTranscriptTab,
+  reconcileCursorTranscriptTabs
+} from '@/lib/cursor-transcript-tab'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { isAiVaultScanCancelledError } from '../../../../shared/ai-vault-types'
 import {
@@ -33,6 +37,29 @@ export function CursorTranscriptDiscoveryGate(): null {
     }
     let disposed = false
     let inFlight = false
+    let reconciling = false
+    const reconcile = (): void => {
+      if (reconciling) {
+        return
+      }
+      reconciling = true
+      try {
+        reconcileCursorTranscriptTabs(worktreeId)
+      } finally {
+        reconciling = false
+      }
+    }
+    reconcile()
+    const unsubscribe = useAppStore.subscribe((state, previous) => {
+      if (
+        state.agentStatusByPaneKey !== previous.agentStatusByPaneKey ||
+        state.unifiedTabsByWorktree !== previous.unifiedTabsByWorktree ||
+        state.terminalLayoutsByTabId !== previous.terminalLayoutsByTabId ||
+        state.sleepingAgentSessionsByPaneKey !== previous.sleepingAgentSessionsByPaneKey
+      ) {
+        reconcile()
+      }
+    })
     const requestToken = createBrowserUuid()
     const discover = async (): Promise<void> => {
       if (disposed || inFlight || document.visibilityState === 'hidden') {
@@ -40,6 +67,7 @@ export function CursorTranscriptDiscoveryGate(): null {
       }
       inFlight = true
       try {
+        reconcile()
         const result = await window.api.aiVault.listSessions({
           limit: 100,
           scopePaths: [path],
@@ -89,6 +117,7 @@ export function CursorTranscriptDiscoveryGate(): null {
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       disposed = true
+      unsubscribe()
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }

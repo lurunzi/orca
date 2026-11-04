@@ -10,7 +10,10 @@ import { seedHeadlessTerminalFromSpawnResult } from '../pane/terminal-spawn-rest
 import { hideRuntimeOwnedRendererDelivery } from './spawn-hidden-delivery'
 import { rendererSerializerReadiness } from '../pane/serializer-state'
 import { getProviderForPty, localProvider, resolvePtyExecutionHost } from '../provider/registry'
-import { inspectPtyProviderProcess } from '../../../providers/pty-process-inspection'
+import {
+  confirmPtyProviderForegroundProcess,
+  inspectPtyProviderProcess
+} from '../../../providers/pty-process-inspection'
 import type { PtyRuntimeControllerDeps } from './controller-deps'
 import {
   writeRefused,
@@ -182,7 +185,7 @@ export async function confirmForegroundProcessFromRuntimeController(ptyId: strin
   try {
     const provider = getProviderForPty(ptyId)
     // Cached foreground identity cannot resolve a fresh shell conflict.
-    return (await provider.confirmForegroundProcess?.(ptyId)) ?? null
+    return confirmPtyProviderForegroundProcess(provider, ptyId)
   } catch {
     return null
   }

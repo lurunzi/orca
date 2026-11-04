@@ -7,7 +7,7 @@ import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type { Tab } from '../../../../shared/tab-types'
 import type * as TranscriptTabModule from '@/lib/cursor-transcript-tab'
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(() => true) }))
+const mocks = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(() => true), reconcile: vi.fn() }))
 type State = {
   activeWorktreeId: string
   path: string
@@ -34,11 +34,12 @@ vi.mock('../right-sidebar/ai-vault-session-launch-target', () => ({
 }))
 vi.mock('@/lib/cursor-transcript-tab', async (original) => ({
   ...(await original<typeof TranscriptTabModule>()),
-  openCursorTranscriptTab: mocks.open
+  openCursorTranscriptTab: mocks.open,
+  reconcileCursorTranscriptTabs: mocks.reconcile
 }))
 import { useAppStore } from '@/store'
 import { CursorTranscriptDiscoveryGate } from './CursorTranscriptDiscoveryGate'
-Object.assign(useAppStore, { getState: store.getState })
+Object.assign(useAppStore, { getState: store.getState, subscribe: store.subscribe })
 
 function session(id: string, overrides: Partial<AiVaultSession> = {}): AiVaultSession {
   return {
