@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import { test, expect } from './helpers/orca-app'
@@ -105,10 +105,57 @@ async function openAntigravityChat(page: Page, app: ElectronApplication) {
   const chatRoot = page.locator('[data-native-chat-root="true"]')
   await expect(chatRoot).toBeVisible({ timeout: 15_000 })
   await expect(chatRoot.getByText(assistantText)).toBeVisible({ timeout: 30_000 })
-  return { descriptor, ptyId, tabId, chatRoot }
+  return { descriptor, ptyId, tabId, chatRoot, logsDir, sessionId }
 }
 
 test.describe('Antigravity Native Chat', () => {
+  test('shows terminal quota and persisted subagent failures in the conversation', async ({
+    electronApp,
+    orcaPage: page
+  }, testInfo) => {
+    const { chatRoot, logsDir, descriptor, sessionId } = await openAntigravityChat(
+      page,
+      electronApp
+    )
+    const childFailure =
+      'The subagent Output researcher (research) with id "child-e2e" encountered an error and has either stopped or failed to start execution: RESOURCE_EXHAUSTED (code 429): Individual quota reached.'
+    appendFileSync(
+      path.join(logsDir, 'transcript.jsonl'),
+      `${JSON.stringify({
+        step_index: 2,
+        source: 'SYSTEM',
+        type: 'SYSTEM_MESSAGE',
+        status: 'DONE',
+        content: `System-provided information.\n<SYSTEM_MESSAGE>\n[Message] content=${childFailure}\n</SYSTEM_MESSAGE>`
+      })}\n`,
+      'utf8'
+    )
+    await expect(chatRoot.getByText(childFailure, { exact: true })).toBeVisible({ timeout: 20_000 })
+    const quota =
+      'Individual quota reached. Resets in 4h56m48s.\nErrID: 00000000-0000-4000-8000-000000000001-10'
+    await electronApp.evaluate(
+      ({ BrowserWindow }, { descriptor, sessionId, quota }) => {
+        BrowserWindow.getAllWindows()[0]!.webContents.send('agentStatus:set', {
+          paneKey: descriptor.paneKey,
+          worktreeId: descriptor.worktreeId,
+          agentType: 'antigravity',
+          state: 'done',
+          prompt: '',
+          providerSession: { key: 'conversation_id', id: sessionId },
+          lastAssistantMessage: quota,
+          lastAssistantMessageIsToolOutput: true,
+          mainAgent: { state: 'done', outcome: 'failure', stateStartedAt: Date.now() }
+        })
+      },
+      { descriptor, sessionId, quota }
+    )
+    await expect(
+      chatRoot.getByText(/Individual quota reached\. Resets in 4h56m48s\./)
+    ).toBeVisible()
+    await expect(chatRoot.getByText(/ErrID: 00000000-0000-4000-8000-000000000001-10/)).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('antigravity-failures-visible.png') })
+  })
+
   test('shows the model picker and submits composer sends', async ({ electronApp, orcaPage }) => {
     const { chatRoot, ptyId } = await openAntigravityChat(orcaPage, electronApp)
     await orcaPage.screenshot({ path: test.info().outputPath('antigravity-chat.png') })
@@ -164,13 +211,11 @@ test.describe('Antigravity Native Chat', () => {
       await expect(composer).toHaveText(draft)
 
       await electronApp.evaluate(({ ipcMain }) => {
-        const handlers =
-          // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Electron exposes its registered invoke handlers to the test-owned main process.
-          (
-            ipcMain as unknown as {
-              _invokeHandlers: Map<string, (event: unknown, args: unknown) => Promise<unknown>>
-            }
-          )._invokeHandlers
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Electron exposes its registered invoke handlers to the test-owned main process.
+        const mainIpc = ipcMain as unknown as {
+          _invokeHandlers: Map<string, (event: unknown, args: unknown) => Promise<unknown>>
+        }
+        const handlers = mainIpc._invokeHandlers
         const spawn = handlers.get('pty:spawn')!
         // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: these fields belong only to this isolated test process.
         const gate = process as unknown as {
