@@ -1,5 +1,9 @@
 import { asyncQuestionSourceScope } from '../../../../src/shared/native-chat/input/native-chat-ask'
-import { useLayoutEffect, useRef, type MutableRefObject } from 'react'
+import { useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import {
+  nativeChatTerminalErrorText,
+  withNativeChatTerminalError
+} from '../../../../src/shared/native-chat/native-chat-terminal-error'
 import type { RpcClient } from '../../transport/rpc-client'
 import type { ConnectionState } from '../../transport/types'
 import type { MobileNativeChatTab } from './mobile-native-chat-eligibility'
@@ -82,7 +86,21 @@ export function useMobileNativeChatController(args: {
     appendComposerTextRef,
     onActionResolved: onSendResolved
   })
-  const { structuredSession: structuredNativeChat, session: nativeChatSession } = nativeChatLane
+  const { structuredSession: structuredNativeChat, session: transcriptSession } = nativeChatLane
+  const terminalError = activeChatStructured
+    ? null
+    : nativeChatTerminalErrorText(nativeChatStatus, activeChatAgent ?? '', activeChatSessionId)
+  const terminalErrorAt = nativeChatStatus?.mainAgent?.stateStartedAt
+  const nativeChatSession = useMemo(() => {
+    const messages = withNativeChatTerminalError(
+      transcriptSession.messages,
+      terminalError,
+      terminalErrorAt
+    )
+    return messages === transcriptSession.messages
+      ? transcriptSession
+      : { ...transcriptSession, messages }
+  }, [transcriptSession, terminalError, terminalErrorAt])
   const {
     draftKey: chatDraftKey,
     setComposerText: setChatComposerText,

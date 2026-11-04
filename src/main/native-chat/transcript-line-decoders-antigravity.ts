@@ -42,6 +42,22 @@ export function decodeAntigravityTranscriptLine(
   const source = extractString(record.source)
   const type = extractString(record.type)
 
+  if (source === 'SYSTEM' && type === 'SYSTEM_MESSAGE') {
+    const content = extractString(record.content)
+    const failure = content?.match(
+      /\bcontent=(The subagent [\s\S]+? encountered an error and has either stopped or failed to start execution: [\s\S]+?)\s*<\/SYSTEM_MESSAGE>\s*$/
+    )?.[1]
+    return failure
+      ? {
+          id,
+          role: 'system',
+          blocks: [{ type: 'text', text: failure, tone: 'error' }],
+          timestamp,
+          source: 'transcript'
+        }
+      : null
+  }
+
   if (
     (source === 'USER_EXPLICIT' || source === 'USER') &&
     (type === 'USER_INPUT' || type === 'REQUEST')
