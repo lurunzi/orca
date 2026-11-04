@@ -18,6 +18,7 @@ export const CLI_COMMAND_NAMES = [
   'connector',
   'console',
   'cookie',
+  'dashboard-accounts',
   'dblclick',
   'diagnostics',
   'dialog',

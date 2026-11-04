@@ -92,6 +92,28 @@ export const DashboardAllocationSnapshotSchema = z.strictObject({
     ])
   ])
 })
+function statusVariants<P extends DashboardToolProvider>(provider: P) {
+  const binding = variants(provider)
+  return z.union([
+    binding.unassigned,
+    binding.unavailable,
+    z.strictObject({
+      ...binding.assigned,
+      state: z.literal(DashboardAllocationState.Available),
+      expires_at: access.expires_at
+    })
+  ])
+}
+export const DashboardAllocationStatusSchema = z.strictObject({
+  schema_version: z.literal(1),
+  instance_id: id,
+  bindings: z.tuple([
+    statusVariants(DashboardToolProvider.Codex),
+    statusVariants(DashboardToolProvider.ClaudeCode)
+  ]),
+  process_reporting_supported: z.literal(false)
+})
+export type DashboardAllocationStatus = z.infer<typeof DashboardAllocationStatusSchema>
 export type DashboardAllocationSnapshot = z.infer<typeof DashboardAllocationSnapshotSchema>
 export type DashboardCodexAllocation = Extract<
   DashboardAllocationSnapshot['bindings'][0],

@@ -38,6 +38,11 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     load: async () => (await import('./handlers/account.js')).ACCOUNT_HANDLERS
   },
   {
+    name: 'dashboard-accounts',
+    keys: ['dashboard-accounts status'],
+    load: async () => (await import('./handlers/dashboard-accounts.js')).DASHBOARD_ACCOUNT_HANDLERS
+  },
+  {
     name: 'artifacts',
     keys: [
       'artifacts list',

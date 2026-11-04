@@ -24,6 +24,7 @@ import { STATS_METHODS } from './stats'
 import { DIAGNOSTICS_METHODS } from './diagnostics'
 import { TERMINAL_DAEMON_METHODS } from './terminal-daemon'
 import { ACCOUNT_METHODS } from './accounts'
+import { DASHBOARD_ACCOUNT_METHODS } from './dashboard-accounts'
 import { ANTIGRAVITY_ACCOUNT_METHODS } from './antigravity-accounts'
 import { USAGE_CREDENTIAL_METHODS } from './usage-credentials'
 import { PREFLIGHT_METHODS } from './preflight'
@@ -115,6 +116,7 @@ export const ALL_RPC_METHODS = [
   ...DIAGNOSTICS_METHODS,
   ...TERMINAL_DAEMON_METHODS,
   ...ACCOUNT_METHODS,
+  ...DASHBOARD_ACCOUNT_METHODS,
   ...ANTIGRAVITY_ACCOUNT_METHODS,
   ...USAGE_CREDENTIAL_METHODS,
   ...PREFLIGHT_METHODS,
