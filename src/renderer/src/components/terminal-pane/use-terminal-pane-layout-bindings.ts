@@ -16,6 +16,7 @@ export function useTerminalPaneLayoutBindings(controller: TerminalPaneLayoutCont
     pendingPaneSizeRefreshFrameIdsRef,
     persistLayoutSnapshot,
     setExpandedPaneId,
+    setPaneLayoutRevision,
     setTabLayout,
     setTabPaneExpanded,
     tabId
@@ -55,6 +56,8 @@ export function useTerminalPaneLayoutBindings(controller: TerminalPaneLayoutCont
           ...layoutWithoutPtyBindings,
           ptyIdsByLeafId: { ...existingBindings, [leafId]: ptyId }
         })
+        // Main can publish this same layout before the renderer's transport attaches.
+        setPaneLayoutRevision((revision) => revision + 1)
         return
       }
       const nextBindings = { ...existingBindings }
@@ -76,7 +79,7 @@ export function useTerminalPaneLayoutBindings(controller: TerminalPaneLayoutCont
       }
       setTabLayout(tabId, nextLayout)
     },
-    [setTabLayout, tabId, paneTransportsRef]
+    [setTabLayout, tabId, paneTransportsRef, setPaneLayoutRevision]
   )
   const writePanePtyLayoutBinding = useCallback(
     (paneId: number, ptyId: string | null, repairActiveLeafOnClear: boolean): void => {
