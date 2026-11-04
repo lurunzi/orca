@@ -3,7 +3,9 @@ import { newTabLaunchFields } from './launch-agent-new-tab-fields'
 import type { AgentLaunchExecutionContext } from './launch-agent-execution-context'
 
 vi.mock('@/store', () => ({
-  useAppStore: { getState: () => ({ settings: { experimentalNativeChat: true } }) }
+  useAppStore: {
+    getState: () => ({ settings: { nativeChatProviders: { cursor: true, antigravity: true } } })
+  }
 }))
 
 const context: AgentLaunchExecutionContext = {

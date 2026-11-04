@@ -197,7 +197,7 @@ describe('a Codex send while a turn runs', () => {
     endTurn('turn-0', 'completed')
 
     expect(await send('client-1')).toMatchObject({ state: 'admitted' })
-    expect(methods()).toEqual(['thread/start', 'turn/start'])
+    expect(methods()).toEqual(['thread/start', 'thread/prediction/request', 'turn/start'])
   })
 })
 

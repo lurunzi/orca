@@ -79,7 +79,7 @@ describe('agent model catalog service', () => {
         ],
         fastModeSupport: { supported: true }
       },
-      'live'
+      'discovery'
     )
     const service = createAgentModelCatalogService({
       store,

@@ -13,8 +13,8 @@ export function readAntigravityNativeError(
   const above = lines
     .slice(Math.max(0, composer - 20), composer)
     .map((line) => line.trim())
-    .filter((line) => line && !/^[─━-]+$/.test(line))
-  const warning = above.findLastIndex((line) => /^⚠\uFE0F?\s+/.test(line))
+    .filter((line) => line && !/^[\u2500\u2501-]+$/.test(line))
+  const warning = above.findLastIndex((line) => /^\u26A0\uFE0F?\s+/.test(line))
   if (warning === -1) {
     return null
   }
@@ -26,7 +26,7 @@ export function readAntigravityNativeError(
   const id = marker[1]!.replace(/\s/g, '')
   const message = content
     .slice(0, marker.index)
-    .replace(/^⚠\uFE0F?\s+/, '')
+    .replace(/^\u26A0\uFE0F?\s+/, '')
     .trim()
   return ERROR_ID.test(id) && message ? { id, text: `${message}\nErrID: ${id}` } : null
 }
