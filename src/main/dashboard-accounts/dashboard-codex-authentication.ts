@@ -6,6 +6,7 @@ import type {
   CodexAppServerServerRequest
 } from '../codex/app-server/codex-app-server-connection-types'
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
+import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
 import {
   DashboardAllocationError,
   type DashboardCodexAllocation
@@ -104,7 +105,10 @@ export class DashboardCodexAuthentication {
     this.finish(false)
   }
 
-  async authenticate(connection: CodexAppServerConnection, version: string | null): Promise<void> {
+  async authenticate(
+    connection: CodexAppServerConnection,
+    version: string | null
+  ): Promise<DashboardCodexBinding> {
     const allocation = this.allocation
     this.allocation = null
     try {
@@ -137,6 +141,11 @@ export class DashboardCodexAuthentication {
         account.data.workspaceRouting.chatgptAccountId !== allocation.chatgpt_account_id
       ) {
         throw new DashboardAllocationError()
+      }
+      return {
+        account_id: allocation.account_id,
+        binding_revision: allocation.binding_revision,
+        credential_version: allocation.credential_version
       }
     } catch {
       throw new DashboardAllocationError()

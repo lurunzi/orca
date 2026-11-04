@@ -1,3 +1,5 @@
+import type { AgentSessionProcessIdentity } from '../../shared/agent-session/lifecycle/agent-session-record'
+import type { DashboardCodexBinding } from '../dashboard-accounts/dashboard-codex-adoption-protocol'
 import type { AgentSessionAccountKind } from '../../shared/agent-session/agent-session-availability'
 import { throwIfSignalAborted, waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
 import {
@@ -53,6 +55,7 @@ type CodexOpenContext = {
   attempt: CodexAcquisitionAttempt
   connection: CodexAppServerConnection
   dashboardAuthentication: DashboardCodexAuthentication | null
+  process: AgentSessionProcessIdentity
   translator: CodexJournalTranslator | null
   dispatchEchoes: CodexDispatchEchoes
   subagentExecutions: CodexSubagentExecutions
@@ -91,8 +94,9 @@ export async function openCodexStructuredSession(
     openInput.signal
   )
   current()
+  let dashboardBinding: DashboardCodexBinding | undefined
   if (start.dashboardAuthentication) {
-    await waitForPromiseWithSignal(
+    dashboardBinding = await waitForPromiseWithSignal(
       start.dashboardAuthentication.authenticate(connection, version),
       openInput.signal
     )
@@ -212,6 +216,9 @@ export async function openCodexStructuredSession(
     event()
   }
   current()
+  if (dashboardBinding) {
+    session.dashboardAdoption = { binding: { ...dashboardBinding }, process: { ...start.process } }
+  }
   acquisitions.deleteIfCurrent(sessionId, attempt)
   if (launch.resumeThreadId && !opened.supersededThreadId) {
     void session.promptSuggestion.restore(opened.thread)

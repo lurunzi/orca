@@ -1,4 +1,5 @@
 import type { CodexRenameInvocationDeps } from './codex-provider-session-rename'
+import type { DashboardCodexSessionAdoption } from '../dashboard-accounts/dashboard-codex-adoption-protocol'
 import type { CodexAppliedSettings } from './codex-structured-applied-settings'
 import type { StructuredAgentSessionChildWorkProducer } from '../native-chat/agent-session-wire/structured-agent-session-subagent-rows'
 import type { StructuredAgentSessionLogger } from '../native-chat/agent-session-wire/structured-agent-session-logger'
@@ -136,6 +137,7 @@ export type CodexStructuredSessionAdapterDeps = {
 }
 
 export type CodexSession = {
+  dashboardAdoption?: DashboardCodexSessionAdoption
   promptSuggestion?: CodexPromptSuggestion
   events?: StructuredAgentSessionEventSink
   account?: AgentSessionAccountKind

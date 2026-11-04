@@ -88,6 +88,53 @@ describe('local Dashboard allocation status command', () => {
     expect(console.error).not.toHaveBeenCalled()
   })
 
+  it('queries Codex process adoption through the same fixed local transport', async () => {
+    const result = {
+      schema_version: 1,
+      instance_id: 'instance-fixture',
+      supported: true,
+      pending_acquisitions: 1,
+      processes: []
+    }
+    callMock.mockResolvedValue({ result, _meta: { authToken: 'private-token' } })
+    await main(['dashboard-accounts', 'codex-processes', '--json'])
+    expect(constructorMock).toHaveBeenCalledExactlyOnceWith(
+      '/tmp/dashboard-runtime',
+      10_000,
+      null,
+      null
+    )
+    expect(callMock).toHaveBeenCalledExactlyOnceWith('dashboard.accounts.codexProcesses', {})
+    expect(console.log).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
+  })
+
+  it('keeps an unavailable Codex adapter distinct from an empty process report', async () => {
+    const result = { schema_version: 1, instance_id: 'instance-fixture', supported: false }
+    callMock.mockResolvedValue({ result })
+    await main(['dashboard-accounts', 'codex-processes', '--json'])
+    expect(JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0]))).toEqual(result)
+    expect(HANDLER_COMMAND_KEYS.has('dashboard-accounts codex-processes')).toBe(true)
+    expect(
+      COMMAND_SPECS.some((spec) => spec.path.join(' ') === 'dashboard-accounts codex-processes')
+    ).toBe(true)
+  })
+
+  it('refuses process responses containing raw credentials', async () => {
+    callMock.mockResolvedValue({
+      result: {
+        schema_version: 1,
+        instance_id: 'instance-fixture',
+        supported: false,
+        access_token: 'private-access'
+      }
+    })
+    await main(['dashboard-accounts', 'codex-processes', '--json'])
+    const output = JSON.stringify(vi.mocked(console.log).mock.calls)
+    expect(output).toContain('dashboard_allocation_unavailable')
+    expect(output).not.toContain('private-access')
+  })
+
   it('also emits only validated JSON without --json', async () => {
     await main(['dashboard-accounts', 'status'])
     expect(console.log).toHaveBeenCalledTimes(1)

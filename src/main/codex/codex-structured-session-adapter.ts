@@ -1,3 +1,7 @@
+import {
+  readCodexDashboardAdoptions,
+  holdsLiveCodexProviderProcess
+} from './codex-structured-session-process-state'
 import { projectCodexSessionOptions } from './codex-structured-service-tier'
 import * as codexRewind from './codex-structured-rewind'
 import * as Suggestion from './codex-prompt-suggestion-session'
@@ -78,6 +82,9 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
   }
 
   supportsLocation = supportsCodexStructuredLocation
+
+  readDashboardCodexProcesses = () =>
+    readCodexDashboardAdoptions(this.sessions, this.acquisitions.size)
 
   readCommands: NonNullable<StructuredAgentSessionAdapter['readCommands']> = (sessionId) =>
     this.sessions.get(sessionId)?.skillReport?.read()
@@ -199,19 +206,13 @@ export class CodexStructuredSessionAdapter implements StructuredAgentSessionAdap
   heldSends = (sessionId: string): ReadonlySet<string> | undefined =>
     this.sessions.get(sessionId)?.dispatchEchoes.heldSends()
 
-  holdsLiveProviderProcess = (sessionId: string, acquisitionGeneration: string): boolean => {
-    const session = this.sessions.get(sessionId)
-    const starting = this.acquisitions.get(sessionId)
-    if (starting?.acquisitionGeneration === acquisitionGeneration) {
-      return !starting.exitProven && starting.window.connection?.pid !== undefined
-    }
-    return (
-      session?.acquisitionGeneration === acquisitionGeneration &&
-      session.connection.pid !== undefined &&
-      !session.ended &&
-      session.exitObservedAt === undefined
+  holdsLiveProviderProcess = (sessionId: string, acquisitionGeneration: string): boolean =>
+    holdsLiveCodexProviderProcess(
+      this.sessions,
+      this.acquisitions,
+      sessionId,
+      acquisitionGeneration
     )
-  }
 
   backgroundTaskStops: NonNullable<StructuredAgentSessionAdapter['backgroundTaskStops']> = (
     sessionId

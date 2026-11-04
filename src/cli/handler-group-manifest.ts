@@ -39,7 +39,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
   },
   {
     name: 'dashboard-accounts',
-    keys: ['dashboard-accounts status'],
+    keys: ['dashboard-accounts status', 'dashboard-accounts codex-processes'],
     load: async () => (await import('./handlers/dashboard-accounts.js')).DASHBOARD_ACCOUNT_HANDLERS
   },
   {

@@ -187,8 +187,7 @@ export async function acquireCodexStructuredSession(input: {
           acquisition.appliedSettings.end()
           try {
             if (attempt.acquisitionGeneration && !sessions.has(sessionId)) {
-              attempt.exitProven = true
-              attempt.exitError = error
+              Object.assign(attempt, { exitProven: true, exitError: error })
               attempt.dispose?.()
               acquisitions.deleteIfCurrent(sessionId, attempt)
               deps.onEvent?.({
@@ -212,8 +211,7 @@ export async function acquireCodexStructuredSession(input: {
               })
             }
             if (sessions.get(sessionId)?.connection === acquisition.connection) {
-              attempt.exitProven = true
-              attempt.exitError = error
+              Object.assign(attempt, { exitProven: true, exitError: error })
             }
             handleCodexSessionExit({
               sessions,
@@ -244,6 +242,7 @@ export async function acquireCodexStructuredSession(input: {
     }
     acquisitions.assertCurrent(sessionId, attempt)
     const process = await spawnIdentity.read(connection.pid)
+    const dashboardProcess = { ...process }
     acquisitions.assertCurrent(sessionId, attempt)
     assertCodexConnectionOpen(connection, sessionId)
     attempt.acquisitionGeneration = acquisitionGeneration
@@ -270,6 +269,7 @@ export async function acquireCodexStructuredSession(input: {
           attempt,
           connection,
           dashboardAuthentication,
+          process: dashboardProcess,
           translator,
           dispatchEchoes,
           subagentExecutions,

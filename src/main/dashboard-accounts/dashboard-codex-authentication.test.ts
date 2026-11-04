@@ -117,7 +117,19 @@ describe('Dashboard Codex external authentication', () => {
   it('waits for external login proof and checks the allocated workspace before succeeding', async () => {
     const auth = new DashboardCodexAuthentication(allocation)
     const connection = connected(auth)
-    await auth.authenticate(connection, '0.166.0')
+    const adopted = await auth.authenticate(connection, '0.166.0')
+    expect(adopted).toEqual({
+      account_id: 'pool-fixture',
+      binding_revision: 3,
+      credential_version: 4
+    })
+    expect(JSON.stringify(adopted)).not.toMatch(
+      /fixture-private-access|workspace-fixture|access_token|chatgpt_account_id/
+    )
+    await expect(auth.authenticate(connection, '0.166.0')).rejects.toThrow(
+      'dashboard_allocation_unavailable'
+    )
+    expect(connection.request).toHaveBeenCalledTimes(2)
     expect(connection.request).toHaveBeenNthCalledWith(
       1,
       'account/login/start',
