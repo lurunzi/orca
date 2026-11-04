@@ -7,6 +7,7 @@ import type {
 } from '../codex/app-server/codex-app-server-connection-types'
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
 import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
+import { DashboardCodexRefresh } from './dashboard-codex-refresh'
 import {
   DashboardAllocationError,
   type DashboardCodexAllocation
@@ -28,7 +29,9 @@ const AccountReadSchema = z.object({
   workspaceRouting: z.object({ chatgptAccountId: z.string() })
 })
 
-export async function prepareDashboardCodexAuthentication(): Promise<DashboardCodexAuthentication | null> {
+export async function prepareDashboardCodexAuthentication(
+  current: () => boolean
+): Promise<DashboardCodexAuthentication | null> {
   if (process.env.ORCA_DASHBOARD_INSTANCE_ID === undefined) {
     return null
   }
@@ -39,7 +42,7 @@ export async function prepareDashboardCodexAuthentication(): Promise<DashboardCo
   if (!allocation) {
     throw new DashboardAllocationError()
   }
-  return new DashboardCodexAuthentication(allocation)
+  return new DashboardCodexAuthentication(allocation, current)
 }
 
 export function dashboardCodexChildLaunch(launch: ProviderProcessLaunch): ProviderProcessLaunch {
@@ -63,7 +66,12 @@ export class DashboardCodexAuthentication {
   private readonly ready = new Promise<boolean>((resolve) => {
     this.finish = resolve
   })
-  constructor(private allocation: DashboardCodexAllocation | null) {}
+  private readonly refresh: DashboardCodexRefresh
+  private allocation: DashboardCodexAllocation | null
+  constructor(allocation: DashboardCodexAllocation, current: () => boolean) {
+    this.allocation = allocation
+    this.refresh = new DashboardCodexRefresh(allocation, current, () => this.reject())
+  }
 
   handleNotification(method: string, params: unknown): boolean {
     if (!this.observing) {
@@ -88,16 +96,11 @@ export class DashboardCodexAuthentication {
     return true
   }
 
-  rejectRefresh(
+  handleRefresh(
     connection: CodexAppServerConnection | null,
     request: CodexAppServerServerRequest
   ): boolean {
-    if (request.method !== 'account/chatgptAuthTokens/refresh' || !connection) {
-      return false
-    }
-    this.reject()
-    connection.respondWithError(request.id, -32001, 'Dashboard credential refresh is not available')
-    return true
+    return this.refresh.handle(connection, request)
   }
 
   private reject(): void {
@@ -115,6 +118,7 @@ export class DashboardCodexAuthentication {
       if (!allocation || version !== '0.166.0') {
         throw new DashboardAllocationError()
       }
+      this.refresh.activate(connection)
       this.observing = true
       const login = await connection.request(
         'account/login/start',

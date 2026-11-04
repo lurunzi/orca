@@ -63,19 +63,21 @@ afterEach(() => {
 describe('Dashboard Codex external authentication', () => {
   it('keeps local mode unchanged and requires an explicit pool experiment before reading credentials', async () => {
     vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', undefined)
-    expect(await prepareDashboardCodexAuthentication()).toBeNull()
+    expect(await prepareDashboardCodexAuthentication(() => true)).toBeNull()
     expect(readDashboardCodexAllocation).not.toHaveBeenCalled()
     vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
     vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', 'true')
-    await expect(prepareDashboardCodexAuthentication()).rejects.toMatchObject({
+    await expect(prepareDashboardCodexAuthentication(() => true)).rejects.toMatchObject({
       message: 'dashboard_allocation_unavailable'
     })
     expect(readDashboardCodexAllocation).not.toHaveBeenCalled()
     vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
     vi.mocked(readDashboardCodexAllocation).mockResolvedValueOnce(allocation)
-    expect(await prepareDashboardCodexAuthentication()).toBeInstanceOf(DashboardCodexAuthentication)
+    expect(await prepareDashboardCodexAuthentication(() => true)).toBeInstanceOf(
+      DashboardCodexAuthentication
+    )
     vi.mocked(readDashboardCodexAllocation).mockResolvedValueOnce(null)
-    await expect(prepareDashboardCodexAuthentication()).rejects.toMatchObject({
+    await expect(prepareDashboardCodexAuthentication(() => true)).rejects.toMatchObject({
       message: 'dashboard_allocation_unavailable'
     })
   })
@@ -115,7 +117,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('waits for external login proof and checks the allocated workspace before succeeding', async () => {
-    const auth = new DashboardCodexAuthentication(allocation)
+    const auth = new DashboardCodexAuthentication(allocation, () => true)
     const connection = connected(auth)
     const adopted = await auth.authenticate(connection, '0.166.0')
     expect(adopted).toEqual({
@@ -154,7 +156,7 @@ describe('Dashboard Codex external authentication', () => {
 
   it('refuses an unpinned or unknown server version before injecting credentials', async () => {
     for (const version of ['0.166.1', null]) {
-      const auth = new DashboardCodexAuthentication(allocation)
+      const auth = new DashboardCodexAuthentication(allocation, () => true)
       const connection = connected(auth)
       await expect(auth.authenticate(connection, version)).rejects.toMatchObject({
         message: 'dashboard_allocation_unavailable'
@@ -164,7 +166,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('rejects a login completion failure even when the login RPC succeeds', async () => {
-    const auth = new DashboardCodexAuthentication(allocation)
+    const auth = new DashboardCodexAuthentication(allocation, () => true)
     const connection = connected(auth)
     vi.mocked(connection.request).mockImplementationOnce(async () => {
       auth.handleNotification('account/login/completed', {
@@ -181,7 +183,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('rejects missing external-mode evidence and bounds the notification wait', async () => {
-    const auth = new DashboardCodexAuthentication(allocation)
+    const auth = new DashboardCodexAuthentication(allocation, () => true)
     const connection = connected(auth)
     const deadline = new AbortController()
     vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
@@ -203,7 +205,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('rejects a different workspace and hides official RPC errors', async () => {
-    const auth = new DashboardCodexAuthentication(allocation)
+    const auth = new DashboardCodexAuthentication(allocation, () => true)
     const connection = connected(auth)
     vi.mocked(connection.request).mockResolvedValueOnce({ type: 'chatgptAuthTokens' })
     const failed = auth.authenticate(connection, '0.166.0')
@@ -218,22 +220,22 @@ describe('Dashboard Codex external authentication', () => {
       workspaceRouting: { chatgptAccountId: 'other' }
     })
     await expect(failed).rejects.toMatchObject({ message: 'dashboard_allocation_unavailable' })
-    const next = new DashboardCodexAuthentication(allocation)
+    const next = new DashboardCodexAuthentication(allocation, () => true)
     vi.mocked(connection.request).mockRejectedValueOnce(new Error('secret fixture-private-access'))
     await expect(next.authenticate(connection, '0.166.0')).rejects.toMatchObject({
       message: 'dashboard_allocation_unavailable'
     })
   })
 
-  it('answers refresh immediately while login is pending and rejects startup', async () => {
-    const auth = new DashboardCodexAuthentication(allocation)
+  it('rejects a refresh for another workspace while login is pending', async () => {
+    const auth = new DashboardCodexAuthentication(allocation, () => true)
     const connection = connected(auth)
     vi.mocked(connection.request).mockImplementationOnce(async () => {
       expect(
-        auth.rejectRefresh(connection, {
+        auth.handleRefresh(connection, {
           id: 91,
           method: 'account/chatgptAuthTokens/refresh',
-          params: { reason: 'unauthorized' }
+          params: { reason: 'unauthorized', previousAccountId: 'other-workspace' }
         })
       ).toBe(true)
       return { type: 'chatgptAuthTokens' }
@@ -247,6 +249,6 @@ describe('Dashboard Codex external authentication', () => {
       'Dashboard credential refresh is not available'
     )
     expect(connection.request).toHaveBeenCalledTimes(1)
-    expect(auth.rejectRefresh(connection, { id: 92, method: 'other', params: {} })).toBe(false)
+    expect(auth.handleRefresh(connection, { id: 92, method: 'other', params: {} })).toBe(false)
   })
 })

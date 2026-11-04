@@ -349,14 +349,14 @@ describe('Codex Dashboard startup wiring', () => {
     expect(connection.closeCount).toBeGreaterThan(0)
   })
 
-  it('answers a refresh request before publication instead of buffering it behind login', async () => {
+  it('immediately rejects a refresh callback for another workspace before publication', async () => {
     const codex = setup()
     codex.routes['account/login/start'] = () => {
       const connection = codex.connections[0]!
       connection.handlers.onServerRequest?.({
         id: 81,
         method: 'account/chatgptAuthTokens/refresh',
-        params: { reason: 'unauthorized', previousAccountId: 'workspace-fixture' }
+        params: { reason: 'unauthorized', previousAccountId: 'different-workspace' }
       })
       expect(connection.replies).toContainEqual({
         id: 81,

@@ -40,10 +40,11 @@ import type { CodexStructuredSessionTeardown } from './codex-structured-session-
 import type { CodexStructuredNotificationRetry } from './codex-structured-notification-retry'
 import type { deliverCodexServerRequest } from './codex-structured-provider-events'
 import { codexAcquisitionNotificationHandler } from './codex-structured-acquisition-notification'
+import { prepareDashboardCodexAuthentication } from '../dashboard-accounts/dashboard-codex-authentication'
 import {
-  prepareDashboardCodexAuthentication,
-  dashboardCodexChildLaunch
-} from '../dashboard-accounts/dashboard-codex-authentication'
+  codexStructuredChildLaunch,
+  codexDashboardAuthenticationCurrent
+} from './codex-structured-dashboard-authentication'
 
 export async function acquireCodexStructuredSession(input: {
   input: StructuredAgentSessionAcquireInput
@@ -112,11 +113,11 @@ export async function acquireCodexStructuredSession(input: {
       throw new Error(`codex app-server for session ${sessionId} could not be stopped`)
     }
     acquisitions.assertCurrent(sessionId, attempt)
-    const dashboardAuthentication = await prepareDashboardCodexAuthentication().catch(
-      (error: unknown) => {
-        throw launchPreparationFailure(error)
-      }
-    )
+    const dashboardAuthentication = await prepareDashboardCodexAuthentication(
+      codexDashboardAuthenticationCurrent({ sessions, acquisitions, attempt, acquireInput })
+    ).catch((error: unknown) => {
+      throw launchPreparationFailure(error)
+    })
     acquisitions.assertCurrent(sessionId, attempt)
     const resolvedLaunch = await deps
       .resolveLaunch({
@@ -140,13 +141,6 @@ export async function acquireCodexStructuredSession(input: {
       !dashboardAuthentication && launch.codexHome
         ? deps.resolveAccountKind?.(launch.codexHome)
         : undefined
-    const childLaunch = {
-      command: launch.command,
-      args: launch.args,
-      cwd: launch.cwd,
-      ...(launch.env ? { env: launch.env } : {}),
-      ...(launch.envToDelete ? { envToDelete: launch.envToDelete } : {})
-    }
     const onNotification = codexAcquisitionNotificationHandler({
       acquisition,
       sessionId,
@@ -157,7 +151,7 @@ export async function acquireCodexStructuredSession(input: {
       now: deps.now ?? Date.now
     })
     const connection = await open(
-      dashboardAuthentication ? dashboardCodexChildLaunch(childLaunch) : childLaunch,
+      codexStructuredChildLaunch(launch, dashboardAuthentication !== null),
       {
         onNotification: (method, params) => {
           if (!dashboardAuthentication?.handleNotification(method, params)) {
@@ -165,7 +159,7 @@ export async function acquireCodexStructuredSession(input: {
           }
         },
         onServerRequest: (request) => {
-          if (dashboardAuthentication?.rejectRefresh(acquisition.connection, request)) {
+          if (dashboardAuthentication?.handleRefresh(acquisition.connection, request)) {
             return
           }
           input.deliver(
