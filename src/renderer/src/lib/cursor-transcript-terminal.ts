@@ -1,5 +1,6 @@
 import type { AppState } from '@/store/types'
 import { parsePaneKey } from '../../../shared/stable-pane-id'
+import { collectLeafIds } from '../../../shared/terminal-pane-layout-tree'
 
 export type CursorTranscriptTerminal = { tabId: string; paneKey: string; ptyId: string | null }
 
@@ -27,12 +28,15 @@ export function findCursorTranscriptTerminal(
     }
     const live = state.agentStatusByPaneKey[paneKey]
     const retained = state.sleepingAgentSessionsByPaneKey[paneKey]
-    const agent = live?.agentType ?? retained?.agent
-    const provider = live?.providerSession ?? retained?.providerSession
+    const agent = live ? live.agentType : retained?.agent
+    const provider = live ? live.providerSession : retained?.providerSession
     if (agent !== 'cursor' || provider?.id !== sessionId) {
       continue
     }
     const layout = state.terminalLayoutsByTabId[tab.id]
+    if (!collectLeafIds(layout?.root).includes(pane.leafId)) {
+      continue
+    }
     return {
       tabId: tab.id,
       paneKey,
