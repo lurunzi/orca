@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
-import { net, session } from 'electron'
+import { getMainHttpClient } from '../network/http-client'
 import type { AgentSessionFastModeSupport } from '../../shared/agent-session/agent-session-wire'
 import type { ClaudeStructuredLaunch } from './structured/launch/claude-structured-launch-resolution'
 import { record, text } from './structured/launch/claude-structured-model-catalog'
@@ -77,11 +77,12 @@ export async function readClaudeFastModeAccountAvailability(
     if (!apiKey && !token) {
       return unconfirmedClaudeFastMode()
     }
-    await ensureElectronProxyFromEnvironment({
-      proxySession: session.defaultSession,
-      probeUrl: AVAILABILITY_URL
-    })
-    const response = await net.fetch(AVAILABILITY_URL, {
+    const httpClient = getMainHttpClient()
+    const proxySession = httpClient.proxySession()
+    if (proxySession) {
+      await ensureElectronProxyFromEnvironment({ proxySession, probeUrl: AVAILABILITY_URL })
+    }
+    const response = await httpClient.fetch(AVAILABILITY_URL, {
       headers: {
         'User-Agent': 'claude-code/2.1.0',
         ...(apiKey
@@ -91,6 +92,7 @@ export async function readClaudeFastModeAccountAvailability(
       signal: AbortSignal.timeout(Math.max(1, Math.min(timeoutMs ?? 10_000, 10_000)))
     })
     if (!response.ok) {
+      await response.body?.cancel()
       return unconfirmedClaudeFastMode()
     }
     const data = record(await response.json())

@@ -28,21 +28,12 @@ export function NativeChatInboxButton({
             count
           }
         )
-      : inbox.findings.length === 1
-        ? translate(
-            'components.native-chat.inbox.triggerFindings_one',
-            'Inbox, {{count}} finding',
-            {
-              count: 1
-            }
-          )
-        : inbox.findings.length > 1
-          ? translate(
-              'components.native-chat.inbox.triggerFindings_other',
-              'Inbox, {{count}} findings',
-              { count: inbox.findings.length }
-            )
-          : translate('components.native-chat.inbox.title', 'Inbox')
+      : inbox.findings.length > 0
+        ? translate('components.native-chat.inbox.triggerFindings', 'Inbox, {{count}} findings', {
+            count: inbox.findings.length,
+            defaultValue_one: 'Inbox, {{count}} finding'
+          })
+        : translate('components.native-chat.inbox.title', 'Inbox')
   const changeOpen = (next: boolean): void => {
     setOpen(next)
     if (next) {

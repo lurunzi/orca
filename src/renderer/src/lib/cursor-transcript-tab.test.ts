@@ -26,8 +26,21 @@ vi.mock('@/runtime/runtime-rpc-client', async (original) => ({
   ...(await original<typeof RpcModule>()),
   callRuntimeRpc: mocks.rpc
 }))
-import { cursorSessionMatchesWorkspace, openCursorTranscriptTab } from './cursor-transcript-tab'
+import {
+  cursorSessionMatchesWorkspace,
+  openCursorTranscriptTab,
+  reconcileCursorTranscriptTabs
+} from './cursor-transcript-tab'
 import { activateStructuredAgentSessionTab } from './agent-session/structured-agent-session-tab-activation'
+import {
+  addNativeChatPendingAttachment,
+  clearNativeChatPendingAttachmentsForTests
+} from '@/components/native-chat/native-chat-pending-attachment-cache'
+import {
+  clearNativeChatDraftCacheForTests,
+  readNativeChatDraftCache,
+  writeNativeChatDraftCache
+} from '@/components/native-chat/native-chat-draft-cache'
 
 const api = createTabsSliceMockApi()
 const WT = 'folder:worker'
@@ -57,9 +70,12 @@ const session: AiVaultSession = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  clearNativeChatDraftCacheForTests()
+  clearNativeChatPendingAttachmentsForTests()
   mocks.host = 'local'
   store = createTestStore()
   store.setState({
+    activeWorktreeId: WT,
     folderWorkspaces: [
       {
         id: 'worker',
@@ -129,4 +145,107 @@ it('matches Windows path variants without matching a different workspace or prov
   expect(cursorSessionMatchesWorkspace(session, `${PATH}-other`, 'local')).toBe(false)
   expect(cursorSessionMatchesWorkspace(session, PATH, 'runtime:other')).toBe(false)
   expect(cursorSessionMatchesWorkspace({ ...session, agent: 'codex' }, PATH, 'local')).toBe(false)
+})
+
+function managedCursor(sessionId = 'one') {
+  const tab = store.getState().createTab(WT)
+  const leafId = '11111111-1111-4111-8111-111111111111'
+  const paneKey = `${tab.id}:${leafId}`
+  store.setState({
+    terminalLayoutsByTabId: {
+      [tab.id]: {
+        root: { type: 'leaf', leafId },
+        activeLeafId: leafId,
+        expandedLeafId: null,
+        ptyIdsByLeafId: { [leafId]: 'cursor-pty' }
+      }
+    },
+    agentStatusByPaneKey: {
+      [paneKey]: {
+        paneKey,
+        agentType: 'cursor',
+        providerSession: { key: 'session_id', id: sessionId },
+        state: 'done',
+        prompt: '',
+        updatedAt: 1,
+        stateStartedAt: 1,
+        stateHistory: []
+      }
+    }
+  })
+  const unified = store
+    .getState()
+    .unifiedTabsByWorktree[WT].find((entry) => entry.entityId === tab.id)!
+  return { tab, unified, leafId }
+}
+
+it('opens History in the exact managed conversation without creating a second tab', () => {
+  const owner = managedCursor()
+  expect(openCursorTranscriptTab(session, WT)).toBe(true)
+  expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(1)
+  expect(store.getState().getActiveTab(WT)?.id).toBe(owner.unified.id)
+  expect(store.getState().terminalLayoutsByTabId[owner.tab.id]?.chatLeafId).toBe(owner.leafId)
+  expect(store.getState().getActiveTab(WT)?.viewMode).toBe('chat')
+  expect(api.pty.kill).not.toHaveBeenCalled()
+})
+
+it('converges a reader opened before its terminal hook, preserving the live PTY', () => {
+  openCursorTranscriptTab(session, WT)
+  const reader = store.getState().unifiedTabsByWorktree[WT][0]
+  const owner = managedCursor()
+  store.getState().activateTab(reader.id, { worktreeId: WT })
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT].map((tab) => tab.id)).toEqual([
+    owner.unified.id
+  ])
+  expect(store.getState().getActiveTab(WT)?.id).toBe(owner.unified.id)
+  expect(store.getState().tabsByWorktree[WT]).toHaveLength(1)
+  expect(api.pty.kill).not.toHaveBeenCalled()
+  expect(mocks.retire).not.toHaveBeenCalled()
+})
+
+it('keeps an unsent reader draft until delivery clears it, then converges', () => {
+  openCursorTranscriptTab(session, WT)
+  const reader = store.getState().unifiedTabsByWorktree[WT][0]
+  writeNativeChatDraftCache(reader.id, 'unsent 中文')
+  managedCursor()
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(2)
+  expect(readNativeChatDraftCache(reader.id)).toBe('unsent 中文')
+  openCursorTranscriptTab(session, WT)
+  expect(store.getState().getActiveTab(WT)?.id).toBe(reader.id)
+  writeNativeChatDraftCache(reader.id, '')
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(1)
+})
+
+it('does not converge a different session or a different execution host', () => {
+  openCursorTranscriptTab(session, WT)
+  managedCursor('other')
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(2)
+  mocks.host = 'runtime:other'
+  managedCursor()
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT].some((tab) => tab.agentTranscript)).toBe(true)
+})
+
+it('keeps a reader with an uploading attachment', () => {
+  openCursorTranscriptTab(session, WT)
+  const reader = store.getState().unifiedTabsByWorktree[WT][0]
+  addNativeChatPendingAttachment(reader.id, { id: 'image', path: '', pending: true })
+  managedCursor()
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT].some((tab) => tab.id === reader.id)).toBe(true)
+})
+
+it('removes an empty background reader without changing the selected tab', () => {
+  openCursorTranscriptTab(session, WT)
+  const owner = managedCursor()
+  const other = store.getState().createTab(WT)
+  const selected = store.getState().getActiveTab(WT)?.id
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().getActiveTab(WT)?.id).toBe(selected)
+  expect(store.getState().tabsByWorktree[WT].map((tab) => tab.id)).toEqual([owner.tab.id, other.id])
+  expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(2)
 })

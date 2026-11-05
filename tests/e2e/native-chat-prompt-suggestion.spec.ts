@@ -32,7 +32,7 @@ test('shows a Claude terminal suggestion and accepts it without sending', async 
   )
   await orcaPage.evaluate(
     async ({ descriptor, tabId, sessionId, transcriptPath }) => {
-      const settings = await window.api.settings.set({ experimentalNativeChat: true })
+      const settings = await window.api.settings.set({ nativeChatProviders: { claude: true } })
       const store = window.__store
       if (!store) {
         throw new Error('Store unavailable')

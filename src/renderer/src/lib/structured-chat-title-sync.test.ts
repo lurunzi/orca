@@ -99,7 +99,7 @@ describe('structured chat conversation titles', () => {
     })
     expect(tab().aiVaultTitle?.title).toBe('History name')
     expect(resolveUnifiedTabLabel(tab(), false)).toBe('My name')
-    store.getState().setTabCustomTitle(TAB_ID, null)
+    store.getState().setTabCustomLabel(TAB_ID, null)
     expect(resolveUnifiedTabLabel(tab(), false)).toBe('History name')
     const before = store.getState()
     store.getState().setAiVaultTabTitle(TAB_ID, tab().aiVaultTitle ?? null)

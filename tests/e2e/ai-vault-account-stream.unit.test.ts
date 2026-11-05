@@ -21,7 +21,12 @@ import {
 } from '@/components/right-sidebar/ai-vault-account-test-fixture'
 
 vi.mock('node:fs', async (original) => ({ ...(await original<typeof fs>()) }))
-vi.mock('@/i18n/i18n', () => ({ translate: (_key: string, fallback: string) => fallback }))
+import type * as I18nModule from '@/i18n/i18n'
+
+vi.mock('@/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof I18nModule>()),
+  translate: (_key: string, fallback: string) => fallback
+}))
 const bridge = vi.hoisted(() => ({ subscribe: vi.fn() }))
 vi.mock('@/web/preload-api/web-runtime-session', () => ({
   requireActiveEnvironmentOrNull: () => ({ id: 'fixture' }),

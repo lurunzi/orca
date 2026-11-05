@@ -131,11 +131,25 @@ describe('hook title evidence and completion recovery', () => {
   it('delivers mail to a program that reports its status but never sets a title', async () => {
     vi.useFakeTimers()
     const db = createDatabase('orca-titleless-program-status-')
-    const { runtime, write } = createRuntime(db, { launchAgent: 'antigravity' })
+    const { runtime } = createRuntime(db, { launchAgent: 'antigravity' })
+    const write = vi.fn((_ptyId: string, _data: string) => true)
+    runtime.setPtyController({
+      write,
+      writeWithSettlement: settledWriteStub(write),
+      kill: vi.fn(),
+      getForegroundProcess: async () => 'agy',
+      getSize: () => ({ cols: 120, rows: 40 })
+    })
     const run = createBoundRun(db, 'Titleless Run')
     await runtime.listTerminals()
     runtime.onPtyData(PTY_ID, '\x1b]7501;state=working:app=antigravity\x07', 1)
-    runtime.onPtyData(PTY_ID, '\x1b]7501;state=done:app=antigravity\x07> ', 2)
+    runtime.seedHeadlessTerminal(PTY_ID, '\x1b[0m', { cols: 120, rows: 40 })
+    runtime.onPtyData(
+      PTY_ID,
+      readFileSync(join(__dirname, '__fixtures__', 'antigravity-ready-default-127.txt'), 'utf8'),
+      Date.now()
+    )
+    runtime.onPtyData(PTY_ID, '\x1b]7501;state=done:app=antigravity\x07', 2)
     insertDirectRunMessage(db, run.id, 'Worker done')
     runtime.notifyMessageArrived(`run:${run.id}`, 'worker_done')
     await vi.advanceTimersByTimeAsync(5_000)

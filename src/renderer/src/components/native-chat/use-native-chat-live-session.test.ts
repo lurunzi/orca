@@ -113,6 +113,39 @@ describe('useNativeChatLiveSession — transport routing', () => {
     useAppStore.setState({ agentStatusByPaneKey: {} })
   })
 
+  it('shows a host-observed Antigravity error and clears it when the main agent retries', async () => {
+    const props = { paneKey: PANE, agent: 'antigravity' as const, sessionId: SESSION }
+    const text =
+      'Individual quota reached. Resets in 4h56m48s.\nErrID: 00000000-0000-4000-8000-000000000001-10'
+    await render(props)
+    await act(async () => {
+      useAppStore.getState().setAgentStatus(PANE, {
+        state: 'done',
+        prompt: 'go',
+        agentType: 'antigravity',
+        lastAssistantMessage: text,
+        lastAssistantMessageIsToolOutput: true,
+        mainAgent: { state: 'done', outcome: 'failure', stateStartedAt: Date.now() }
+      })
+    })
+    expect(latest?.messages).toEqual([
+      expect.objectContaining({
+        role: 'system',
+        source: 'hook',
+        blocks: [{ type: 'text', text, tone: 'error' }]
+      })
+    ])
+    await act(async () => {
+      useAppStore.getState().setAgentStatus(PANE, {
+        state: 'working',
+        prompt: 'retry',
+        agentType: 'antigravity',
+        mainAgent: { state: 'working', stateStartedAt: Date.now() }
+      })
+    })
+    expect(latest?.messages).toEqual([])
+  })
+
   afterEach(() => {
     for (const root of roots.splice(0)) {
       act(() => root.unmount())

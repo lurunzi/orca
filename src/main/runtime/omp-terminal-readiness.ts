@@ -1,9 +1,9 @@
 import { getPiStateTitleStatus } from '../../shared/pi-state-title-marker'
 import type { RuledScreen } from './screen-input-veto'
 
-/** OMP alternate-screen overlays own input, including setup; its heading can occur as ordinary answer text. */
-export function isOmpOverlayScreen(screen: RuledScreen): boolean {
-  return screen.alternateScreen
+/** Unparsed output cannot rule out an OMP overlay; its heading also occurs in ordinary answers. */
+export function isOmpScreenInputVeto(screen: RuledScreen): boolean {
+  return screen.alternateScreen || screen.pendingOutput === true
 }
 
 /** OMP paints its idle title before setup too, so it cannot prove composer readiness. */

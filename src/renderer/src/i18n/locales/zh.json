@@ -4200,7 +4200,6 @@
             "bf2e739f18": "登录不可用",
             "f8b8dbed85": "用量不可用",
             "3d3c9c0c1f": "实时 Claude 终端轮换凭据后，Claude 用量会刷新。",
-            "42fdd4da1d": "正在刷新 Claude 登录。智能体会话可能仍处于登录状态。",
             "c06c1d215d": "由于网络请求失败，无法刷新 Claude 用量。",
             "cabdc2a9e0": "无法读取 Claude 登录凭据。",
             "a7517cccb6": "Claude 用量目前不可用。",
@@ -19156,7 +19155,6 @@
       "explicitChatWsl": "WSL 中无法使用聊天功能。请改为在终端中打开智能体。",
       "explicitChatUnavailable": "此工作区无法运行聊天。检查智能体安装或在终端中打开它。",
       "structuredSessionTerminalNotVisible": "Orca 已在终端中打开 {{value0}}，但启动完成后无法在此处显示。您的聊天草稿已保留。",
-      "externalTranscript": "外部会话 · 只读",
       "cursorTranscript": {
         "resumeAndSend": "恢复并发送",
         "placeholder": "在 Orca 中继续此对话",
@@ -21952,13 +21950,6 @@
       "unavailable": "该工作区受保护或不可用。"
     },
     "rowActions": "{{name}} 的操作"
-  },
-  "cursorUsage": {
-    "refreshFailed": "无法刷新 Cursor 用量。",
-    "usage": "Cursor 用量",
-    "description": "显示已登录的 Cursor 应用或 CLI 的月度用量。",
-    "signIn": "在运行 Orca 的电脑上打开 Cursor 或运行 agent login，然后刷新用量。",
-    "noAllowance": "Cursor 未返回支持的月度额度。"
   },
   "browserTab": {
     "agentDriving": "智能体正在使用此页面"

@@ -19,6 +19,7 @@ import {
 } from '../../../../shared/agent-detection'
 import { shouldModelAnswerHiddenPtyQueries } from '../../terminal-model-query-authority'
 import { advancePartialEscapeTail } from '../../../../shared/terminal-partial-escape-tail'
+import { observeAntigravityErrorTerminalStatus } from '../../antigravity-error-terminal-status'
 
 export abstract class OrcaRuntimeWithMaybeHydrateHeadlessFromRenderer extends OrcaRuntimeWithSerializeMainTerminalBuffer {
   protected abstract getOrCreateHeadlessTerminal(ptyId: string): RuntimeHeadlessTerminal
@@ -261,7 +262,15 @@ export abstract class OrcaRuntimeWithMaybeHydrateHeadlessFromRenderer extends Or
               pty.launchAgent,
               readStatus,
               outputObservedAt
-            ) ?? observeFreebuffTerminalStatus(state.emulator, chunk, command, pty.launchAgent)
+            ) ??
+            observeAntigravityErrorTerminalStatus(
+              state.emulator,
+              chunk,
+              pty.launchAgent,
+              readStatus,
+              outputObservedAt
+            ) ??
+            observeFreebuffTerminalStatus(state.emulator, chunk, command, pty.launchAgent)
           if (payload) {
             pty.lastExplicitAgentStatus = {
               state: payload.state,

@@ -201,30 +201,29 @@ describe('native-chat composer draft store', () => {
 
   it('does not replay a live window’s addition journaled after this load began reading', async () => {
     storage.drafts.set('agent-session:s1', { text: 'saved', images: [], savedAt: 1 })
-    let commitA: () => void = () => {}
+    const commitsA: (() => void)[] = []
     let aCommitted: () => void = () => {}
     const aDone = new Promise<void>((resolve) => (aCommitted = resolve))
     const aStorage = {
       ...storage,
       write: (scopeKey: string, draft: Parameters<typeof storage.write>[1]) =>
         new Promise<void>((resolve) => {
-          commitA = () => {
+          commitsA.push(() => {
             storage.drafts.set(scopeKey, draft)
             resolve()
             aCommitted()
-          }
+          })
         })
     }
     const a = await reload({ using: aStorage })
-    let land: () => void = () => {}
+    const bRead = Promise.withResolvers<void>()
     const bStorage = {
       ...storage,
-      loadAll: () => {
+      loadAll: vi.fn(async () => {
         const snapshot = new Map(storage.drafts)
-        return new Promise<ReadonlyMap<string, unknown>>((resolve) => {
-          land = () => resolve(snapshot)
-        })
-      },
+        await bRead.promise
+        return snapshot
+      }),
       // IndexedDB orders B's write after A's, which was issued first.
       write: async (scopeKey: string, draft: Parameters<typeof storage.write>[1]) => {
         await aDone
@@ -233,11 +232,12 @@ describe('native-chat composer draft store', () => {
     }
     const b = await reload({ using: bStorage, hydrate: false })
     const bLoad = b.store.hydrateNativeChatComposerDrafts()
+    await vi.waitFor(() => expect(bStorage.loadAll).toHaveBeenCalledOnce())
     a.drafts.writeNativeChatDraftCache('agent-session:s1', 'saved typed in A')
     a.drafts.appendNativeChatDraftCache('agent-session:s1', 'returned')
-    land()
+    bRead.resolve()
     await bLoad
-    commitA()
+    commitsA.splice(0).forEach((commit) => commit())
     await a.store.nativeChatComposerDraftWritesSettled()
     await b.store.nativeChatComposerDraftWritesSettled()
     await new Promise((resolve) => setTimeout(resolve, 50))
@@ -663,7 +663,7 @@ describe('native-chat composer draft store', () => {
     const reloaded = await reload({ using: counted, hydrate: false })
     reloaded.drafts.writeNativeChatDraftCache('tab-1:pane', 'typed')
 
-    expect(counted.loadAll).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(counted.loadAll).toHaveBeenCalledOnce())
     await vi.waitFor(() =>
       expect(reloaded.drafts.readNativeChatDraftCache('agent-session:other')).toBe(
         'saved elsewhere'

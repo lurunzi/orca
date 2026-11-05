@@ -4894,7 +4894,6 @@
             "claudeUnknownOnHost": "Claude usage isn't available from {{server}}. It may not be signed in there, or it may use API-key billing.",
             "remoteOwnerSignInSavedHere": "Its sign-in is saved on this computer only.",
             "3d3c9c0c1f": "Claude usage will refresh after the live Claude terminal rotates its credentials.",
-            "42fdd4da1d": "Claude sign-in is being refreshed. Agent sessions may still be signed in.",
             "c06c1d215d": "Claude usage could not be refreshed because the network request failed.",
             "cabdc2a9e0": "Claude sign-in credentials could not be read.",
             "a7517cccb6": "Claude usage is unavailable right now.",
@@ -20208,7 +20207,6 @@
         "fileActions": "File actions",
         "linkActions": "Link actions"
       },
-      "externalTranscript": "External session · Read-only",
       "cursorTranscript": {
         "resumeAndSend": "Resume and send",
         "placeholder": "Continue this conversation in Orca",
@@ -22732,13 +22730,6 @@
     "restartLocal": "Restart local daemon",
     "killAllLocal": "Kill all local sessions",
     "killFailed": "The terminal could not be ended. Last-observed sessions are retained."
-  },
-  "cursorUsage": {
-    "refreshFailed": "Could not refresh Cursor usage.",
-    "usage": "Cursor Usage",
-    "description": "Show Cursor monthly usage from the signed-in Cursor app or CLI.",
-    "signIn": "Open Cursor or run agent login on the computer running Orca, then refresh usage.",
-    "noAllowance": "Cursor did not report a supported monthly allowance."
   },
   "browserExtensions": {
     "permission": {

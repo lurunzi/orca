@@ -4738,7 +4738,6 @@
             "claudeUnknownOnHost": "{{server}} sunucusundan Claude kullanım bilgisi alınamıyor. Orada oturum açılmamış olabilir veya API anahtarıyla faturalandırma kullanılıyor olabilir.",
             "remoteOwnerSignInSavedHere": "Oturum açma bilgileri yalnızca bu bilgisayarda kayıtlı.",
             "3d3c9c0c1f": "Claude kullanımı, canlı Claude terminali kimlik bilgilerini döndürdükten sonra yenilenecek.",
-            "42fdd4da1d": "Claude oturumu yenileniyor. Ajan oturumları hâlâ açık olabilir.",
             "c06c1d215d": "Ağ isteği başarısız olduğu için Claude kullanımı yenilenemedi.",
             "cabdc2a9e0": "Claude oturum açma kimlik bilgileri okunamadı.",
             "a7517cccb6": "Claude kullanımı şu anda kullanılamıyor.",

@@ -7,6 +7,7 @@ import {
   containsAgentSpinnerGlyph,
   isClaudeIdentityFrameSegment,
   isClaudeManagementTitle,
+  isCursorAgentTitle,
   isCursorNativeAgentTitle,
   isGrokRotatingWorkingTitle
 } from './agent-title-core'
@@ -178,6 +179,9 @@ function collectAnchoredNames(
     }
     if (isClaudeIdentityFrameSegment(segment)) {
       anchored.add('claude')
+    }
+    if (isCursorAgentTitle(segment)) {
+      anchored.add('cursor')
     }
 
     // Parse agy identity plus Gemini model metadata structurally instead of giving Gemini a competitor-specific exception.

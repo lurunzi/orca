@@ -790,6 +790,7 @@ it('persists compound publication ownership through both DTOs and whole-map edit
           options: spawn.sdkOptions
         })
         const session = sessionFor()
+        session.fastModeAccountSupport = { supported: true, accountVerified: true }
         session.connection = connection
         session.options = spawn.options
         adoptClaudeStructuredSpawnOptions(session, { ...spawn, flagSettingsControl: 'supported' })

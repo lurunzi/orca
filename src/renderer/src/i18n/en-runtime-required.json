@@ -1154,7 +1154,6 @@
             }
           },
           "tooltip": {
-            "42fdd4da1d": "Claude sign-in is being refreshed. Agent sessions may still be signed in.",
             "rateLimitResetsAvailable_one": "{{count}} rate-limit reset available",
             "rateLimitResetsAvailable_other": "{{count}} rate-limit resets available"
           },
@@ -1525,7 +1524,6 @@
         "modelApplyFailed": "Could not apply model {{value}}.",
         "modelPickerFailed": "Could not open the model picker."
       },
-      "externalTranscript": "External session · Read-only",
       "failureWords": {
         "accountSwitchInProgress": "{{agent}}'s setup is changing on this host. Try again after it finishes.",
         "agentCommandNotRunnable": "{{agent}}'s Command in Settings → Agents must start with a program Orca can find. Variables, pipes and other shell syntax aren't supported; use the Environment setting for variables. Change it or reset it.",
@@ -1909,9 +1907,6 @@
     },
     "tab": {
       "bar": {
-        "SortableTabContextMenu": {
-          "switchToTerminalView": "Continue with Terminal Agent"
-        },
         "bulkClose": {
           "confirm": "Close tabs",
           "description": "The selected tabs will be closed. Pinned tabs will stay open.",
@@ -1954,13 +1949,6 @@
         }
       }
     }
-  },
-  "cursorUsage": {
-    "description": "Show Cursor monthly usage from the signed-in Cursor app or CLI.",
-    "noAllowance": "Cursor did not report a supported monthly allowance.",
-    "refreshFailed": "Could not refresh Cursor usage.",
-    "signIn": "Open Cursor or run agent login on the computer running Orca, then refresh usage.",
-    "usage": "Cursor Usage"
   },
   "dashboard": {
     "sidebar": {

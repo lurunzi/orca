@@ -128,7 +128,8 @@ function TabBarItemRow({
         tab={{
           id: item.id,
           worktreeId,
-          title: conversationName ??
+          title:
+            conversationName ??
             resolveUnifiedTabLabel(item.data, generatedTabTitlesEnabled, item.data.label),
           customTitle: item.data.customLabel,
           color: item.data.color

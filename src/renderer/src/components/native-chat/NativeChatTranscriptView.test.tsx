@@ -1,10 +1,13 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render as renderComponent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import type { NativeChatSessionTransport } from './native-chat-session-transport'
 import { installNativeChatMessageListTestViewport } from './native-chat-message-list-test-viewport'
+import { TooltipProvider } from '@/components/ui/tooltip'
+
+const render = (ui: React.ReactElement) => renderComponent(ui, { wrapper: TooltipProvider })
 
 type FrameHandler = Parameters<NativeChatSessionTransport['subscribe']>[1]
 const mocks = vi.hoisted(() => {
@@ -98,7 +101,8 @@ it('keeps an editable draft with the transcript while switching away and back', 
     'cursor',
     'worker',
     expect.any(Number),
-    source.transcriptPath
+    source.transcriptPath,
+    { wakeWslDistro: false }
   )
   await act(async () => {
     mocks.frame?.({ type: 'appended', messages: [message('two', 'Next worker response')] })

@@ -217,8 +217,11 @@ describe.skipIf(
           expect(missing.stderr).toBe('')
         }
         expect(posts).toHaveLength(beforeMissing)
-        // Status reflects registered commands; install restores a deleted wrapper.
-        expect(service.getStatus().state).toBe('installed')
+        expect(service.getStatus()).toMatchObject({
+          state: 'partial',
+          managedHooksPresent: true,
+          detail: 'Managed scripts unavailable: antigravity-pre-tool-use.cmd'
+        })
         expect(service.install().state).toBe('installed')
         expect(await invoke()).toMatchObject({
           code: 0,

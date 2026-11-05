@@ -215,7 +215,8 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     // placeholder reads as one, so a typed draft and an empty composer would look the same.
     return {
       lines: visibleNonBlankTerminalLines(state.emulator.getVisibleLines()),
-      alternateScreen: state.emulator.isAlternateScreen
+      alternateScreen: state.emulator.isAlternateScreen,
+      pendingOutput: state.outputSequence !== this.getPtyOutputSequence(ptyId)
     }
   }
 

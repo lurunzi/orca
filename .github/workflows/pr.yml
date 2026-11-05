@@ -993,6 +993,12 @@ jobs:
         with:
           native-runtime: node
 
+      - name: Fetch canonical desktop release tags
+        run: |
+          BASELINE="$(pnpm --silent run prepare:cross-version-releases)"
+          echo "ORCA_CROSS_VERSION_BASELINE_REF=$BASELINE" >> "$GITHUB_ENV"
+          grep -Fx "ORCA_CROSS_VERSION_BASELINE_REF=$BASELINE" "$GITHUB_ENV"
+
       # R1: an upgrade from the newest release must adopt its live terminal daemon.
       - name: Daemon protocol crossing against newest release
         run: pnpm run check:daemon-protocol-crossing

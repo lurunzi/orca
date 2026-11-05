@@ -1,5 +1,106 @@
 import { test, expect } from './helpers/orca-app'
-import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
+import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
+import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
+
+test('late Cursor identity collapses an empty reader into the managed chat and keeps it after completion', async ({
+  orcaPage: page,
+  electronApp
+}, testInfo) => {
+  await waitForSessionReady(page)
+  await waitForActiveWorktree(page)
+  await ensureTerminalVisible(page)
+  await waitForActiveTerminalManager(page)
+  const descriptor = await waitForActivePaneHookDescriptor(page)
+  const tabId = descriptor.paneKey.split(':')[0]!
+  await electronApp.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('nativeChat:readSession')
+    ipcMain.handle('nativeChat:readSession', () => ({
+      messages: [
+        {
+          id: 'reply',
+          role: 'assistant',
+          source: 'transcript',
+          timestamp: 1,
+          blocks: [{ type: 'text', text: 'Managed Cursor reply' }]
+        }
+      ],
+      hasMore: false
+    }))
+    ipcMain.removeHandler('pty:confirmForegroundProcess')
+    ipcMain.handle('pty:confirmForegroundProcess', () => 'cursor-agent')
+  })
+  const readerId = await page.evaluate(({ worktreeId }) => {
+    const tab = window.__store!.getState().createUnifiedTab(worktreeId, 'agent-session', {
+      entityId: 'cursor-transcript:local:late-identity',
+      executionHostId: 'local',
+      agentSessionAgent: 'cursor',
+      label: 'Cursor history reader',
+      activate: true,
+      agentTranscript: {
+        agent: 'cursor',
+        sessionId: 'late-identity',
+        transcriptPath: '/fixture/late-cursor.jsonl',
+        runtimeEnvironmentId: null
+      }
+    })
+    return tab.id
+  }, descriptor)
+  await expect(page.getByText('Managed Cursor reply')).toBeVisible()
+  await page.evaluate(({ paneKey, worktreeId }) => {
+    window
+      .__store!.getState()
+      .setAgentStatus(
+        paneKey,
+        { state: 'working', agentType: 'cursor', prompt: 'late identity' },
+        'Cursor',
+        undefined,
+        { worktreeId },
+        { providerSession: { key: 'session_id', id: 'late-identity' } }
+      )
+  }, descriptor)
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ({ readerId, worktreeId }) =>
+          window
+            .__store!.getState()
+            .unifiedTabsByWorktree[worktreeId]?.some((tab) => tab.id === readerId),
+        { readerId, worktreeId: descriptor.worktreeId }
+      )
+    )
+    .toBe(false)
+  const chat = page.locator('[data-native-chat-root="true"]')
+  await expect(chat).toBeVisible()
+  await expect(chat.getByText('Managed Cursor reply')).toBeVisible()
+  await page.evaluate(({ paneKey, worktreeId }) => {
+    window
+      .__store!.getState()
+      .setAgentStatus(
+        paneKey,
+        { state: 'done', agentType: 'cursor', prompt: 'late identity' },
+        'Cursor',
+        undefined,
+        { worktreeId },
+        { providerSession: { key: 'session_id', id: 'late-identity' } }
+      )
+  }, descriptor)
+  await expect(chat.getByRole('textbox')).toHaveAttribute('contenteditable', 'true')
+  await chat.getByRole('textbox').fill('完成后仍能继续输入')
+  await expect(chat.getByRole('textbox')).toHaveText('完成后仍能继续输入')
+  expect(
+    await page.evaluate(
+      ({ tabId, worktreeId }) => {
+        const tabs = window.__store!.getState().unifiedTabsByWorktree[worktreeId] ?? []
+        return {
+          readers: tabs.filter((tab) => tab.agentTranscript?.sessionId === 'late-identity').length,
+          mode: tabs.find((tab) => tab.entityId === tabId)?.viewMode
+        }
+      },
+      { tabId, worktreeId: descriptor.worktreeId }
+    )
+  ).toEqual({ readers: 0, mode: 'chat' })
+  await page.screenshot({ path: testInfo.outputPath('cursor-one-chat-after-completion.png') })
+})
 
 test('external Cursor input survives tab switches and failed continuation', async ({
   orcaPage,

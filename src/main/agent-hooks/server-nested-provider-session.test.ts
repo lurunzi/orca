@@ -62,9 +62,8 @@ describe('nested hooks preserve the parent transcript identity', () => {
         expect(current.agentType).toBe('cursor')
         expect(current.providerSession).toEqual(original.providerSession)
         expect(current.model).toBe(original.model)
-        expect(listener).toHaveBeenLastCalledWith(
-          expect.objectContaining({ providerSession: original.providerSession })
-        )
+        expect(listener).toHaveBeenCalled()
+        expect(listener.mock.lastCall?.[0]?.providerSession).toEqual(original.providerSession)
       }
     } finally {
       server.stop()

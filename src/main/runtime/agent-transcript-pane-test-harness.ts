@@ -198,9 +198,12 @@ export async function waitForTranscriptIdle(
   pane: Pick<Awaited<ReturnType<typeof createTranscriptPane>>, 'runtime' | 'handle'>,
   timeoutMs: number
 ) {
-  vi.useFakeTimers({
-    toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval']
-  })
+  const ownsTimers = !vi.isFakeTimers()
+  if (ownsTimers) {
+    vi.useFakeTimers({
+      toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval']
+    })
+  }
   try {
     const waiting = pane.runtime.waitForTerminal(pane.handle, { condition: 'tui-idle', timeoutMs })
     // Expected refusals must have a rejection handler before advancing their deadline.
@@ -208,6 +211,8 @@ export async function waitForTranscriptIdle(
     await vi.advanceTimersByTimeAsync(timeoutMs)
     return await waiting
   } finally {
-    vi.useRealTimers()
+    if (ownsTimers) {
+      vi.useRealTimers()
+    }
   }
 }

@@ -289,7 +289,7 @@ it('replays a lost reply for a prompted folder launch without another message or
 })
 
 it.each([true, false])(
-  'keeps an explicit Claude Fast %s over the opposite saved selection',
+  'handles explicit Claude Fast %s without enabling an unverified account',
   async (fastMode) => {
     const runtime = launchRuntime()
     const resolve = runtime.resolveStructuredAgentSessionCreateIntent.getMockImplementation()!
@@ -300,14 +300,18 @@ it.each([true, false])(
       accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: '/host/.claude' },
       options: { model: 'claude-opus-4-6', effort: 'medium', fastMode: String(!fastMode) }
     }))
-    const created = await agentLaunchSurfaceFactory(
-      rpcContext(runtime, PHONE)
-    ).createStructuredSession({
+    const creating = agentLaunchSurfaceFactory(rpcContext(runtime, PHONE)).createStructuredSession({
       worktreeId: 'wt-7',
       agent: 'claude',
       withoutPrompt: true,
       options: { model: 'claude-opus-4-6', fastMode }
     })
+    if (fastMode) {
+      await expect(creating).rejects.toMatchObject({ code: 'agent_session_operation_invalid' })
+      expect(rig.adapter.acquire).not.toHaveBeenCalled()
+      return
+    }
+    const created = await creating
     expect(rig.store.getRecord(created.sessionId)?.options).toEqual({
       model: 'claude-opus-4-6',
       effort: 'medium',

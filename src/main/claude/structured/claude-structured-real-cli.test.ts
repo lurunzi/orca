@@ -238,6 +238,14 @@ describe.skipIf(!realClaudeAvailable)(suiteTitle, () => {
           spawnToken: 'real-cli-effort'
         })
         await claudeStartupSettled(adapter, 'real-cli-handshake')
+        await vi.waitFor(() => {
+          expect(events).toContainEqual(
+            expect.objectContaining({
+              type: 'options-reported',
+              reportedOptions: expect.objectContaining({ effort: 'low' })
+            })
+          )
+        })
         const published = events.flatMap((event) =>
           event.type === 'message' ? [event.message] : []
         )
