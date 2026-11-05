@@ -10,6 +10,7 @@ import { planLaunchAgentStartupPrompt } from '@/lib/launch-agent-startup-prompt-
 import { persistAgentLaunchTabOrder } from '@/lib/launch-agent-tab-order'
 import { tuiAgentToAgentKind } from '@/lib/telemetry'
 import { seedNativeChatLaunchDraftForAgentTab } from '@/lib/agent-launch-prompt-delivery'
+import { seedNativeChatAppliedSessionOptions } from '../../../shared/native-chat/input/native-chat-session-option-cache'
 import { pasteAgentLaunchPromptOnceReady } from '@/lib/launch-agent-tab-prompt-paste'
 import { runtimeEnvironmentIdOrLocalUnlessTwin } from '@/lib/worktree-runtime-owner'
 import { isWebRuntimeSessionActive } from '@/runtime/web-runtime-session-environment'
@@ -133,6 +134,7 @@ export function launchAgentInNewTabWithOutcome(
         agentArgs,
         sessionOptions,
         sessionOptionsYieldToAgentArgs: args.sessionOptionsYieldToAgentArgs,
+        ...(rememberedNativeChatTerminalLaunch ? { rememberedNativeChatTerminalLaunch } : {}),
         platform: resolvedLaunchPlatform,
         shell: queuedShell,
         isRemote
@@ -143,6 +145,12 @@ export function launchAgentInNewTabWithOutcome(
     })
   args.focusIntent?.cancel()
   const launchFields = newTabLaunchFields(args, executionContext, routePromptDelivery)
+  const rememberedNativeChatTerminalLaunch =
+    launchFields.viewMode === 'chat' &&
+    sessionOptions === undefined &&
+    args.agentSessionLaunchPlan === undefined
+      ? ({} as const)
+      : undefined
   const runtimeEnvironmentId = runtimeEnvironmentIdOrLocalUnlessTwin(store, worktreeId)
   if (isWebRuntimeSessionActive(runtimeEnvironmentId)) {
     if (beforeSurfaceOpen?.({ kind: 'host-published' }) === false) {
@@ -191,7 +199,9 @@ export function launchAgentInNewTabWithOutcome(
       ...(groupId ? { groupId } : {}),
       prompt: trimmedPrompt,
       ...(agentArgs !== undefined ? { agentArgs } : {}),
-      ...(sessionOptions ? { sessionOptions } : {}),
+      ...((startupPlan.sessionOptions ?? sessionOptions)
+        ? { sessionOptions: startupPlan.sessionOptions ?? sessionOptions }
+        : {}),
       ...(initialCwd?.trim() ? { cwd: initialCwd } : {}),
       launchSource: launchSource ?? 'tab_bar_quick_launch',
       quickCommandLabel,
@@ -236,6 +246,9 @@ export function launchAgentInNewTabWithOutcome(
   if (initialCwd?.trim()) {
     // Why: queue before mount so local, WSL, and SSH continuations preserve their subdirectory.
     store.queueTabInitialCwd(tab.id, initialCwd)
+  }
+  if (launchFields.viewMode === 'chat' && startupPlan.sessionOptions) {
+    seedNativeChatAppliedSessionOptions(tab.id, agent, startupPlan.sessionOptions)
   }
   // Safe for native-prefill agents: delivery skips paste when their draft already arrived at launch.
   if (hasPrompt && promptDelivery === 'draft' && pasteDraftAfterLaunch === null) {

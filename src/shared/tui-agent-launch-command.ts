@@ -3,6 +3,7 @@ import {
   resolveAgentSessionOptionLaunch
 } from './agent-session/options/agent-session-option-launch'
 import { resolveAgentChoiceLayers, yieldAgentChoicesToArgs } from './agent-choice-layers'
+import type { AgentDedicatedChoices } from './agent-launch-choices'
 import { resolveTuiAgentLaunchRawArgs } from './tui-agent-launch-defaults'
 import {
   hasExtraAgentArgs,
@@ -208,6 +209,7 @@ export function terminalSessionOptionInputs(args: {
   agent: TuiAgent
   settings?: AgentLaunchProfileSettings | null
   sessionOptions: Readonly<Record<string, SessionOptionValue>> | undefined
+  rememberedChoices?: AgentDedicatedChoices
   yieldToAgentArgs?: boolean
   agentArgs: string | null | undefined
   shell: AgentStartupShell
@@ -261,6 +263,7 @@ export function terminalSessionOptionInputs(args: {
   const { model: defaultModel, ...defaultOptions } = defaultValues
   const choices = resolveAgentChoiceLayers({
     agent: args.agent,
+    remembered: args.rememberedChoices,
     defaults: { ...(defaultModel ? { model: defaultModel } : {}), options: defaultOptions },
     action: args.sessionOptions
       ? {

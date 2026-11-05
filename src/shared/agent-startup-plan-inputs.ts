@@ -7,6 +7,7 @@ import {
 } from './tui-agent-launch-defaults'
 import { resolveStartupShell, type AgentStartupShell } from './tui-agent-startup-shell'
 import { terminalSessionOptionInputs } from './tui-agent-launch-command'
+import { rememberedNativeChatLaunchChoices } from './native-chat/input/terminal-native-chat-launch-seed'
 import { resolveLocalWindowsAgentStartupShell } from './windows-terminal-shell'
 
 /** The settings slice a launch reads; hosts pass their whole `GlobalSettings` row. */
@@ -19,6 +20,7 @@ export type AgentStartupSettings = Partial<
     | 'agentDefaultEnv'
     | 'agentPermissionDefault'
     | 'agentPermissionOverrides'
+    | 'nativeChatSessionOptions'
     | 'terminalWindowsShell'
   >
 >
@@ -51,10 +53,20 @@ export function resolveAgentStartupPlanInputs(args: {
   shell: AgentStartupShell | undefined
   sessionOptions?: Readonly<Record<string, SessionOptionValue>> | undefined
   sessionOptionsYieldToAgentArgs?: boolean
+  /** Apply saved native-chat model picks for a new terminal-backed chat tab. */
+  rememberedNativeChatTerminalLaunch?: { discoveredModelIds?: readonly string[] | null }
   /** Orca types into this launch after start (worker, automation, handoff), not a user. */
   suppressStartupUpdatePrompt?: boolean
 }): AgentStartupPlanInputs {
   const { agent, platform, isRemote, sessionOptions } = args
+  const rememberedChoices =
+    args.rememberedNativeChatTerminalLaunch && sessionOptions === undefined
+      ? rememberedNativeChatLaunchChoices(
+          args.settings,
+          agent,
+          args.rememberedNativeChatTerminalLaunch.discoveredModelIds
+        )
+      : undefined
   const settings = agentLaunchPermissionSettings(agent, args.settings, sessionOptions)
   const shell =
     args.shell ??
@@ -68,6 +80,7 @@ export function resolveAgentStartupPlanInputs(args: {
     settings,
     agentArgs: args.agentArgs,
     sessionOptions,
+    ...(rememberedChoices ? { rememberedChoices } : {}),
     yieldToAgentArgs: args.sessionOptionsYieldToAgentArgs,
     command: settings.agentCmdOverrides?.[agent],
     extraAgentArgs: args.extraAgentArgs,
