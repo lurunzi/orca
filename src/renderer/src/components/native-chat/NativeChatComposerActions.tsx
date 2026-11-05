@@ -243,6 +243,7 @@ export const NativeChatComposerActions = memo(function NativeChatComposerActions
           isWorking={isWorking}
           pickerRequest={sessionOptionsPickerRequest}
           focusComposer={focusComposer}
+          agent={agent}
         />
         {contextUsage ? <NativeChatContextUsageRing usage={contextUsage} /> : null}
         {dictation}

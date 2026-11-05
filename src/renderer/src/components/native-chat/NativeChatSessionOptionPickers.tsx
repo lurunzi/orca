@@ -39,6 +39,7 @@ export type NativeChatSessionOptionPickersProps = {
   pickerRequest?: NativeChatOptionPickerRequest | null
   /** Where focus lands after a visit that changed something; see `useNativeChatPickerFocusReturn`. */
   focusComposer?: () => void
+  agent?: string
 }
 
 /** A descriptor write in flight; its value shows until it settles. */
@@ -152,6 +153,7 @@ function SessionOptionPopover(props: {
   onSet: (descriptor: SessionOptionDescriptor, value: SessionOptionValue) => void
   onAction: (descriptor: SessionOptionDescriptor) => void
   focusComposer?: () => void
+  agent?: string
 }): React.JSX.Element {
   const { model, options, pendingIds, demandModelCatalog } = props
   const canOpen = [model, ...options].some(
@@ -285,6 +287,7 @@ function SessionOptionPopover(props: {
             readOnlyReason={modelReason}
             busy={pendingIds.has(model.id)}
             onSelect={(value) => set(model, value)}
+            agent={props.agent}
           />
         ) : (
           <NativeChatSessionOptionWriteGroup
@@ -323,7 +326,8 @@ function NativeChatSessionOptionPickersInner({
   snapshot,
   isWorking,
   pickerRequest,
-  focusComposer
+  focusComposer,
+  agent
 }: NativeChatSessionOptionPickersProps): React.JSX.Element | null {
   useUiLanguageRevision()
   const [pending, setPending] = useState<ReadonlyMap<string, PendingPick>>(() => new Map())
@@ -384,6 +388,7 @@ function NativeChatSessionOptionPickersInner({
         queued={queued.size > 0}
         pendingIds={new Set(pending.keys())}
         request={pickerRequest ?? null}
+        agent={agent}
         onSet={(descriptor, value) => {
           const variantModel =
             descriptor.id === 'thinking'
