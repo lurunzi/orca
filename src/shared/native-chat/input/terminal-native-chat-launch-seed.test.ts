@@ -136,4 +136,23 @@ describe('terminal native chat launch seed', () => {
     })
     expect(inputs.sessionOptions).toBeUndefined()
   })
+
+  it('seeds Antigravity only from a model its account discovery listed', () => {
+    const antigravity = {
+      nativeChatSessionOptions: { antigravity: { model: 'gemini-4-argon', valuesByModel: {} } },
+      agentLaunchChoices: {}
+    }
+    const launch = (discoveredModelIds: string[] | null) =>
+      resolveAgentStartupPlanInputs({
+        agent: 'antigravity',
+        settings: antigravity,
+        platform: 'win32',
+        isRemote: false,
+        shell: undefined,
+        rememberedNativeChatTerminalLaunch: { discoveredModelIds }
+      }).sessionOptions
+    expect(launch(['gemini-3.8-flash', 'gemini-4-argon'])).toEqual({ model: 'gemini-4-argon' })
+    expect(launch(null)).toBeUndefined()
+    expect(launch(['gemini-3.8-flash'])).toBeUndefined()
+  })
 })

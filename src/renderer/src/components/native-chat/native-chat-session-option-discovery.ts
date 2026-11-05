@@ -23,6 +23,7 @@ import type {
 } from '../../../../shared/agent-session/agent-session-wire'
 import { useAppStore } from '@/store'
 import { findKnownWorktreeById } from '@/store/slices/worktrees/listing/detected-worktree-meta'
+import { readNativeChatEnrichedModels } from './native-chat-session-option-enrichment'
 
 export type NativeChatModelDiscoveryContext = {
   hostKey: string
@@ -54,6 +55,14 @@ export function resolveNativeChatModelDiscoveryContext(
     Object.entries(state.tabsByWorktree ?? {}).find(([, tabs]) =>
       tabs.some((tab) => tab.id === terminalTabId)
     )?.[0] ?? null
+  return resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
+}
+
+/** A launch resolves its worktree's discovery host before the tab exists. */
+export function resolveNativeChatModelDiscoveryContextForWorktree(
+  worktreeId: string | null
+): NativeChatModelDiscoveryContext | null {
+  const state = useAppStore.getState()
   const connectionId = getConnectionIdFromState(state, worktreeId)
   if (worktreeId && connectionId === undefined) {
     return null
@@ -142,4 +151,14 @@ export async function discoverNativeChatCatalogModels(
     agent,
     await discoverRuntimeCommitMessageModels(context, agent)
   )
+}
+
+/** Model ids already discovered this session on the worktree's host; null before any discovery. */
+export function readNativeChatDiscoveredModelIdsForWorktree(
+  agent: AgentType,
+  worktreeId: string | null
+): string[] | null {
+  const context = resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
+  const models = context ? readNativeChatEnrichedModels(agent, context.hostKey) : null
+  return models ? models.map((model) => model.id) : null
 }

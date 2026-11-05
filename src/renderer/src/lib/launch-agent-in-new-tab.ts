@@ -17,6 +17,7 @@ import { isWebRuntimeSessionActive } from '@/runtime/web-runtime-session-environ
 import { launchAgentInWebHostTab } from '@/lib/launch-agent-web-host-tab'
 import { resolveAgentStartupPlanInputs } from '../../../shared/agent-startup-plan-inputs'
 import { readAgentLaunchPreferencesForWorktree } from '@/components/settings/use-host-agent-launch-preferences'
+import { readNativeChatDiscoveredModelIdsForWorktree } from '@/components/native-chat/native-chat-session-option-discovery'
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { resolveAgentLaunchExecutionContext } from '@/lib/launch-agent-execution-context'
 import { launchStructuredAgentFromNewTab } from '@/lib/launch-agent-in-new-tab-structured-route'
@@ -130,7 +131,7 @@ export function launchAgentInNewTabWithOutcome(
     launchFields.viewMode === 'chat' &&
     sessionOptions === undefined &&
     args.agentSessionLaunchPlan === undefined
-      ? ({} as const)
+      ? { discoveredModelIds: readNativeChatDiscoveredModelIdsForWorktree(agent, worktreeId) }
       : undefined
   const buildStartup = (
     agentLaunchChoices = readAgentLaunchPreferencesForWorktree(store, worktreeId).agentLaunchChoices
