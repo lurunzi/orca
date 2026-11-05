@@ -9,7 +9,7 @@ import {
   resolveOuterWrapperForegroundIdentity,
   shouldInspectOuterWrapperForegroundProcess
 } from '../../shared/foreground-wrapper-agent'
-import { isShellProcess } from '../../shared/shell-process-detection'
+import { isMsysExecShellProcess, isShellProcess } from '../../shared/shell-process-detection'
 import {
   queryWindowsPaneProcessInventory,
   type WindowsProcessCandidate,
@@ -65,7 +65,22 @@ export async function resolveWindowsAgentForegroundProcessWithAvailability(
   if (!inventory) {
     return { available: false, processName: null }
   }
-  const candidates = inventory.candidates
+  let consoleRead: Promise<ReadonlySet<number> | null> | undefined
+  const readConsoleAttachedProcessIds = options.readWindowsConsoleAttachedProcessIds
+    ? () => (consoleRead ??= options.readWindowsConsoleAttachedProcessIds!())
+    : undefined
+  let candidates = inventory.candidates
+  if (
+    readConsoleAttachedProcessIds &&
+    isMsysExecShellProcess(fallbackProcess) &&
+    !windowsCandidatesContainRecognizedAgent(candidates, fallbackProcess, options.contextPaths)
+  ) {
+    // MSYS exec lets the fork stub exit, so a script-launched agent is linked to this pane only by its console.
+    const consoleProcessIds = await readConsoleAttachedProcessIds()
+    if (consoleProcessIds) {
+      candidates = [...candidates, ...inventory.collectConsoleOrphans(consoleProcessIds)]
+    }
+  }
   // Filter console membership before ambiguity checks so detached agents cannot suppress the attached input owner.
   const hasRecognizedCandidate = windowsCandidatesContainRecognizedAgent(
     candidates,
@@ -73,9 +88,9 @@ export async function resolveWindowsAgentForegroundProcessWithAvailability(
     options.contextPaths
   )
   let filteredCandidates = candidates
-  if (hasRecognizedCandidate && options.readWindowsConsoleAttachedProcessIds) {
+  if (hasRecognizedCandidate && readConsoleAttachedProcessIds) {
     // Job membership retains detached descendants; only console attachment can exclude their byte authority.
-    const consoleProcessIds = await options.readWindowsConsoleAttachedProcessIds()
+    const consoleProcessIds = await readConsoleAttachedProcessIds()
     if (!consoleProcessIds) {
       return { available: false, processName: null }
     }
