@@ -157,11 +157,20 @@ test.describe('Antigravity Native Chat', () => {
   })
 
   test('shows the model picker and submits composer sends', async ({ electronApp, orcaPage }) => {
+    await electronApp.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('git:discoverCommitMessageModels')
+      ipcMain.handle('git:discoverCommitMessageModels', () => ({
+        success: true,
+        catalogOrigin: 'probe',
+        defaultModelId: 'gemini-3-pro',
+        models: [{ id: 'gemini-3-pro', label: 'Gemini 3 Pro' }]
+      }))
+    })
     const { chatRoot, ptyId } = await openAntigravityChat(orcaPage, electronApp)
     await orcaPage.screenshot({ path: test.info().outputPath('antigravity-chat.png') })
     await chatRoot.getByRole('button', { name: 'Model' }).click()
     await expect(orcaPage.getByRole('combobox', { name: 'Search models…' })).toBeEditable()
-    await expect(orcaPage.getByRole('option').first()).toBeVisible()
+    await expect(orcaPage.getByRole('option', { name: 'Gemini 3 Pro', exact: true })).toBeVisible()
     await orcaPage.keyboard.press('Escape')
 
     await clearTerminalPtyWriteLog(electronApp)
