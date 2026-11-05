@@ -10,14 +10,8 @@ import { DashboardClaudeLaunchesResponseSchema } from '../../../dashboard-accoun
 import { readDashboardAllocationStatus } from '../../../dashboard-accounts/dashboard-allocation-status'
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
 
-function requireLocalCaller({
-  caller,
-  clientKind
-}: Pick<RpcContext, 'caller' | 'clientKind'>): void {
-  if (caller?.kind !== 'local-cli' || clientKind !== undefined) {
-    throw new DashboardAllocationError()
-  }
-}
+import { requireLocalDashboardCaller } from './dashboard-account-local-caller'
+import { DASHBOARD_AGENT_RESTART_METHOD } from './dashboard-agent-restart'
 
 function reportContext(context: RpcContext, agent: string) {
   const instanceId = process.env.ORCA_DASHBOARD_INSTANCE_ID
@@ -40,7 +34,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: z.strictObject({}),
     handler: async (_, context) => {
-      requireLocalCaller(context)
+      requireLocalDashboardCaller(context)
       return readDashboardAllocationStatus()
     }
   }),
@@ -49,7 +43,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: z.strictObject({}),
     handler: async (_, context) => {
-      requireLocalCaller(context)
+      requireLocalDashboardCaller(context)
       try {
         const { common, adapter } = reportContext(context, DashboardToolProvider.Codex)
         const state = adapter?.readDashboardCodexProcesses?.()
@@ -67,7 +61,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: z.strictObject({}),
     handler: async (_, context) => {
-      requireLocalCaller(context)
+      requireLocalDashboardCaller(context)
       try {
         const { common, adapter } = reportContext(context, DashboardToolProvider.Codex)
         const state = adapter?.readDashboardCodexRefreshes?.()
@@ -85,7 +79,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
     permission: 'accounts-admin',
     params: z.strictObject({}),
     handler: async (_, context) => {
-      requireLocalCaller(context)
+      requireLocalDashboardCaller(context)
       try {
         const { common, adapter } = reportContext(context, 'claude')
         const state = adapter?.readDashboardClaudeLaunches?.()
@@ -97,5 +91,6 @@ export const DASHBOARD_ACCOUNT_METHODS = [
         throw new DashboardAllocationError()
       }
     }
-  })
+  }),
+  DASHBOARD_AGENT_RESTART_METHOD
 ] as const

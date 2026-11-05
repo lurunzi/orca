@@ -3,6 +3,20 @@ import { LOCAL_COMMAND_FLAGS } from '../args'
 
 export const DASHBOARD_ACCOUNT_COMMAND_SPECS: CommandSpec[] = [
   {
+    path: ['dashboard-accounts', 'restart'],
+    destructive: true,
+    summary: 'Interrupt and restart one confirmed local pool Agent process',
+    usage: 'orca dashboard-accounts restart --request-json <metadata-json> [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'request-json'],
+    notes: [
+      'Uses explicit local ORCA_USER_DATA; remote selection is refused.',
+      'The strict JSON request contains schema_version, instance_id, runtime_id and target with confirm_interrupt:true. Maximum 16 KiB; no credentials.',
+      'The old process is interrupted. Unsent user text is retained and paused; existing model requests are not replayed.',
+      'Waits at most 120 seconds. Timeout or disconnection leaves the outcome unknown; re-query process reports before another operation. No automatic retry.',
+      'A replacement process does not prove target credential adoption.'
+    ]
+  },
+  {
     path: ['dashboard-accounts', 'status'],
     summary: 'Read the local Dashboard allocation metadata without credentials',
     usage: 'orca dashboard-accounts status [--json]',

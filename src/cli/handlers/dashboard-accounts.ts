@@ -1,4 +1,3 @@
-import { isAbsolute } from 'node:path'
 import {
   DashboardAllocationErrorCode,
   DashboardAllocationStatusSchema
@@ -9,24 +8,14 @@ import { DashboardClaudeLaunchesResponseSchema } from '../../main/dashboard-acco
 import type { CommandHandler, HandlerContext } from '../dispatch'
 import { RuntimeClient, RuntimeClientError } from '../runtime-client'
 
-const remoteEnvironment = ['ORCA_PAIRING_CODE', 'ORCA_REMOTE_PAIRING', 'ORCA_ENVIRONMENT'] as const
-const invalidRequest = () =>
-  new RuntimeClientError('invalid_argument', 'dashboard_allocation_invalid_request')
+import { requireLocalDashboardRuntime } from './dashboard-local-runtime'
+import { restartDashboardAgent } from './dashboard-agent-restart'
 
 async function queryLocalDashboard(
   { flags }: HandlerContext,
   read: (client: RuntimeClient) => Promise<unknown>
 ): Promise<void> {
-  if (
-    [...flags.keys()].some((flag) => flag !== 'json' && flag !== 'help') ||
-    remoteEnvironment.some((name) => process.env[name]?.trim())
-  ) {
-    throw invalidRequest()
-  }
-  const userData = process.env.ORCA_USER_DATA
-  if (!userData || !isAbsolute(userData) || userData.includes('\0')) {
-    throw invalidRequest()
-  }
+  const userData = requireLocalDashboardRuntime(flags, ['json', 'help'])
   try {
     console.log(JSON.stringify(await read(new RuntimeClient(userData, 10_000, null, null))))
   } catch {
@@ -38,6 +27,7 @@ async function queryLocalDashboard(
 }
 
 export const DASHBOARD_ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
+  'dashboard-accounts restart': restartDashboardAgent,
   'dashboard-accounts status': async (context) =>
     queryLocalDashboard(context, async (client) => {
       const response = await client.call<unknown>('dashboard.accounts.status', {})

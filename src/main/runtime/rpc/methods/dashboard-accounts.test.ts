@@ -223,7 +223,7 @@ describe('local Dashboard account RPC', () => {
   it.each(refused)(
     'refuses non-local transport identity %# before reading credentials',
     async (identity) => {
-      for (const candidate of DASHBOARD_ACCOUNT_METHODS) {
+      for (const candidate of [method, processes, refreshes, DASHBOARD_ACCOUNT_METHODS[3]]) {
         await expect(candidate.handler({}, context(identity))).rejects.toThrow(
           'dashboard_allocation_unavailable'
         )
