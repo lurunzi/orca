@@ -124,6 +124,14 @@ export function launchAgentInNewTabWithOutcome(
     args.focusIntent?.cancel()
     return { refused: { delivered: false, failureNotified: notifyFailure } }
   }
+  const launchFields = newTabLaunchFields(args, executionContext, routePromptDelivery)
+  // A new chat with no explicit options starts from the model last picked in a chat of this agent.
+  const rememberedNativeChatTerminalLaunch =
+    launchFields.viewMode === 'chat' &&
+    sessionOptions === undefined &&
+    args.agentSessionLaunchPlan === undefined
+      ? ({} as const)
+      : undefined
   const buildStartup = (
     agentLaunchChoices = readAgentLaunchPreferencesForWorktree(store, worktreeId).agentLaunchChoices
   ) =>
@@ -144,13 +152,6 @@ export function launchAgentInNewTabWithOutcome(
       isFollowupPath
     })
   args.focusIntent?.cancel()
-  const launchFields = newTabLaunchFields(args, executionContext, routePromptDelivery)
-  const rememberedNativeChatTerminalLaunch =
-    launchFields.viewMode === 'chat' &&
-    sessionOptions === undefined &&
-    args.agentSessionLaunchPlan === undefined
-      ? ({} as const)
-      : undefined
   const runtimeEnvironmentId = runtimeEnvironmentIdOrLocalUnlessTwin(store, worktreeId)
   if (isWebRuntimeSessionActive(runtimeEnvironmentId)) {
     if (beforeSurfaceOpen?.({ kind: 'host-published' }) === false) {

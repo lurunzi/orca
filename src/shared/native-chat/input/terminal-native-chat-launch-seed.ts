@@ -50,21 +50,26 @@ export function rememberedNativeChatLaunchChoices(
     agent
   )
   const modelId = typeof persisted?.model === 'string' ? persisted.model : undefined
-  if (!modelId || !rememberedNativeChatModelStillListed({ agent, modelId, discoveredModelIds })) {
+  if (
+    !persisted ||
+    !modelId ||
+    !rememberedNativeChatModelStillListed({ agent, modelId, discoveredModelIds })
+  ) {
     return undefined
   }
-  const { model, ...options } = persisted
   const rememberedOptions = Object.fromEntries(
-    Object.entries(options).map(([id, value]) => [
-      id,
-      typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value)
-    ])
+    Object.entries(persisted)
+      .filter(([id]) => id !== 'model')
+      .map(([id, value]) => [
+        id,
+        typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value)
+      ])
   )
   const choices = resolveAgentChoiceLayers({
     agent,
     argumentOwner: 'defaults',
     defaults: settings?.agentLaunchChoices?.[agent],
-    remembered: { model, options: rememberedOptions }
+    remembered: { model: modelId, options: rememberedOptions }
   })
   return choices.model || Object.keys(choices.options ?? {}).length > 0 ? choices : undefined
 }
