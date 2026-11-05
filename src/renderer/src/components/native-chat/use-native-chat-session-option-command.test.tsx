@@ -31,16 +31,14 @@ describe('useNativeChatSessionOptionCommand', () => {
   })
 
   it.each(['applied', 'unknown'] as const)(
-    'reports Cursor model commands only after a verified selection (%s)',
+    'returns the Cursor switch outcome (%s)',
     async (outcome) => {
       switchCursorModel.mockResolvedValue(outcome)
-      const onSlashCommand = vi.fn()
       const readTerminalScreen = () => 'Cursor Agent'
       const hook = renderHook(() =>
         useNativeChatSessionOptionCommand({
           agent: 'cursor',
           disabled: false,
-          onSlashCommand,
           readTerminalScreen,
           resolveTarget: () => ({ settings: {}, ptyId: 'pty-1' })
         })
@@ -60,7 +58,6 @@ describe('useNativeChatSessionOptionCommand', () => {
           readScreen: readTerminalScreen
         })
       )
-      expect(onSlashCommand).toHaveBeenCalledTimes(outcome === 'applied' ? 1 : 0)
       expect(sendNativeChatMessageVerified).not.toHaveBeenCalled()
       expect(typeNativeChatCommand).not.toHaveBeenCalled()
       expect(hook.result.current.isDispatching).toBe(false)

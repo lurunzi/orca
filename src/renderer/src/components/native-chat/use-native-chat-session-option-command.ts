@@ -16,15 +16,15 @@ import { translate } from '@/i18n/i18n'
 import { sendRuntimePtyInputVerified } from '@/runtime/runtime-terminal-verified-input'
 import { switchCursorModel } from './cursor-model-switch'
 
+/** Picker switches already show in the pill, so they add no "Ran" command marker to the transcript. */
 export function useNativeChatSessionOptionCommand(args: {
   agent: AgentType
   disabled: boolean
-  onSlashCommand?: (command: string) => void
   onSubmitted?: () => void
   resolveTarget: () => NativeChatResolvedTarget | null
   readTerminalScreen?: () => string | null
 }): { dispatch: NativeChatSessionOptionDispatchCommand; isDispatching: boolean } {
-  const { agent, disabled, onSlashCommand, onSubmitted, resolveTarget, readTerminalScreen } = args
+  const { agent, disabled, onSubmitted, resolveTarget, readTerminalScreen } = args
   const mountedRef = useRef(true)
   const activeObserversRef = useRef(new Set<ClaudeModelSwitchConfirmationObserver>())
   const activeSendsRef = useRef(new Set<AbortController>())
@@ -87,9 +87,6 @@ export function useNativeChatSessionOptionCommand(args: {
                   signal: sendController.signal
                 })
               : 'unknown'
-          if (outcome === 'applied') {
-            onSlashCommand?.(command.trim())
-          }
           return { outcome }
         }
         const detectClaudeConfirmation =
@@ -126,7 +123,6 @@ export function useNativeChatSessionOptionCommand(args: {
         }
         // Start detection after acceptance so remote send latency cannot consume the response window.
         observer?.startDetection()
-        onSlashCommand?.(command.trim())
         emitNativeChatMessageSent({
           agent,
           runtime: nativeChatComposerTargetIsRemote(target.ptyId) ? 'remote' : 'local'
@@ -142,7 +138,7 @@ export function useNativeChatSessionOptionCommand(args: {
         }
       }
     },
-    [agent, disabled, onSlashCommand, onSubmitted, resolveTarget, readTerminalScreen]
+    [agent, disabled, onSubmitted, resolveTarget, readTerminalScreen]
   )
 
   return { dispatch, isDispatching }
