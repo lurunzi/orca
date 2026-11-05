@@ -29,7 +29,7 @@ import { installOrcadProcessErrorGuards } from './orcad-process-error-guards'
 import { orcadWsPortOptions } from './orcad-ws-port-policy'
 import { createOrcadStartupTiming } from './orcad-startup-timing'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../shared/layout-owner-switch'
-import { restoreOrcadTerminalAuthority } from './orcad-restored-terminal-authority'
+import { restoreOrcadRuntimeAuthority } from './orcad-runtime-authority'
 import { installOrcadFeatureReadiness } from '../runtime/rpc/orcad-feature-readiness'
 
 export { parseArgs }
@@ -276,7 +276,7 @@ async function startOrcadRuntime(
   // Recover browser/orchestration authority before clients attach to the runtime graph.
   runtime.rehydrateClientHostedBrowserPages()
 
-  await restoreOrcadTerminalAuthority(runtime, timed, featureReadiness)
+  await restoreOrcadRuntimeAuthority(runtime, timed, featureReadiness)
   runtime.agentTransitions.seedRestoredRows()
   void runtime.sidebarFacts?.reconcileSortStampTiers(getLocalPtyProvider())
 
