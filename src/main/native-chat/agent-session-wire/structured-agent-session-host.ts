@@ -285,6 +285,7 @@ export class StructuredAgentSessionHost {
     () => this.mutationContext(),
     () => this.attachContext()
   )
+  restartAgentForCredentials = this.mutations.restartAgentForCredentials
   cancel = this.mutations.cancel
   respondToPrompt = this.mutations.respondToPrompt
   setOption = this.mutations.setOption

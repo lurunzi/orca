@@ -143,6 +143,10 @@ export async function endExitedStructuredAgentSessionChildUnderSerialize<
     return
   }
   const close = child.close
+  if (close?.exitConfirmation && exit.deathEvidenceKind === 'kill-delivered') {
+    close.exitConfirmation.awaitingObservation = true
+    return
+  }
   const expected = exit.expected && close?.failure?.kind !== 'hostFault'
   const failure = close?.failure?.kind === 'hostFault' ? close.failure : exit.failure
   // Use the first death observation when settling the running turn.

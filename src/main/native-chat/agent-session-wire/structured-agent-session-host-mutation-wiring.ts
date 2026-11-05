@@ -16,6 +16,7 @@ import {
 import { IN_PROCESS_OPTIONS_READER } from './structured-agent-session-option-observation'
 import { settleStructuredAgentSessionLateDispatch } from './structured-agent-session-late-dispatch'
 import * as agentStart from './structured-agent-session-agent-start'
+import { restartStructuredAgentSessionForCredentials } from './structured-agent-session-credential-restart'
 import type { StructuredAgentSessionAttachContext } from './structured-agent-session-attach-context'
 import type { AgentSessionRewindParams } from '../../../shared/agent-session/lifecycle/agent-session-rewind'
 import { rewindStructuredAgentSession } from './structured-agent-session-rewind'
@@ -88,6 +89,8 @@ export function structuredAgentSessionMutationDelegates(
   attachContext: () => StructuredAgentSessionAttachContext
 ) {
   return {
+    restartAgentForCredentials: (input: unknown) =>
+      restartStructuredAgentSessionForCredentials(attachContext(), input),
     cancel: (
       caller: StructuredAgentSessionCaller,
       params: Parameters<typeof cancelStructuredAgentSessionTurn>[2]

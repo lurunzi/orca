@@ -80,6 +80,7 @@ export type StructuredAgentSessionChildClose = {
   readonly reason: string | null
   readonly failure?: SubmissionRejectionFact
   stopOutcome?: AgentSessionStopOutcome
+  readonly exitConfirmation?: { awaitingObservation: boolean }
   /** Fold Stop before settling work; repeated unnamed personal closes reopen settlement. */
   recorded: Promise<JournalStopSettle | null>
   /** Order child exit at the Stop request; repeated requests advance this boundary. */

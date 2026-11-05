@@ -211,6 +211,7 @@ export type ClaudeSession = ForkFields.ClaudeAccountSuggestionSessionFields & {
   closeFinalization?: Promise<boolean>
   /** Set only after the durable close write succeeds, before lifecycle emission. */
   closeFinalized?: boolean
+  closeAwaitingRootExit?: true
   /** Set once `ended` has been emitted, so a persistence retry cannot repeat it. */
   closeEnded?: boolean
   translator: ClaudeJournalTranslator | null

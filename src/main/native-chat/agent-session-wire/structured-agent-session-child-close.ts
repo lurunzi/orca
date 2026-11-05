@@ -2,6 +2,7 @@
 // root-exit proof reaches the single exit handler, including late adapter reports.
 
 import type { AgentSessionCloseObserver } from './structured-agent-session-adapter-stop'
+import { AgentSessionAcquisitionRootExitObservedError } from './structured-agent-session-acquisition-errors'
 import {
   refuse,
   type AgentSessionWireRefusal
@@ -24,7 +25,7 @@ export async function joinStructuredAgentSessionChildClose(
 ): Promise<StructuredAgentSessionChildCloseVerdict> {
   // Capture startup state before provider release loses that evidence.
   const unanswered = child.phase === 'starting'
-  const closed = await closeProviderRoot(context, sessionId, observeClose)
+  const closed = await closeProviderRoot(context, sessionId, child, observeClose)
   if (!closed) {
     return 'unverifiable'
   }
@@ -71,7 +72,7 @@ export async function joinClosingStructuredAgentSessionChild(
     return { ok: true }
   }
   const unanswered = child.phase === 'starting'
-  const closing = closeProviderRoot(context, sessionId)
+  const closing = closeProviderRoot(context, sessionId, child)
   const closed = await (lock ? lock.wait(closing) : closing)
   if (closed) {
     const end = () =>
@@ -96,18 +97,34 @@ export async function joinClosingStructuredAgentSessionChild(
 function closeProviderRoot(
   context: StructuredAgentSessionLifetimeContext,
   sessionId: string,
+  child: StructuredAgentSessionProviderChild,
   observeClose?: AgentSessionCloseObserver
 ): Promise<boolean | 'kill-delivered'> {
   const { adapter, logger } = context.deps
+  if (child.close?.exitConfirmation?.awaitingObservation) {
+    return Promise.resolve(false)
+  }
   // Missing close means no owned process; implemented closes must prove exit.
   if (!adapter.disposeSession && !adapter.closeSession) {
-    return Promise.resolve(true)
+    return Promise.resolve(!child.close?.exitConfirmation)
   }
   context.deps.store.requireWritableRecord(sessionId)
   return stopAgentSessionProviderRoot(
     async () => {
       const close = adapter.disposeSession ?? adapter.closeSession
-      return (await close?.call(adapter, sessionId, observeClose)) === true
+      try {
+        return (await close?.call(adapter, sessionId, observeClose)) === true
+      } catch (error) {
+        if (
+          child.close?.exitConfirmation &&
+          error instanceof AgentSessionAcquisitionRootExitObservedError &&
+          error.deathEvidenceKind === 'kill-delivered'
+        ) {
+          child.close.exitConfirmation.awaitingObservation = true
+          return false
+        }
+        throw error
+      }
     },
     // Proven exit stands; descendant/follow-up failures are log-only.
     (error) =>
