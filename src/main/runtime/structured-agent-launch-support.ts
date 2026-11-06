@@ -71,7 +71,8 @@ export async function observeStructuredAgentLaunch(
   )
   return checkAgentCliVersion(
     { program: launch.command, prefixArgs: launch.prefixArgs, cwd: await once(), env: launch.env },
-    check.minimumVersions
+    check.minimumVersions,
+    check.readVersion
   )
 }
 

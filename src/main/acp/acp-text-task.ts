@@ -97,7 +97,8 @@ export class AcpTextTasks {
       }
       disposed = true
       try {
-        if (spec.agent === 'antigravity') {
+        // Only the managed server's private home is Orca's to clean; agy keeps its own history.
+        if (spec.agent === 'antigravity' && spec.managedRuntime) {
           await removeAntigravitySignInSessionFiles(home, sessionId, cwd)
         }
         await rm(cwd, { recursive: true, force: true })

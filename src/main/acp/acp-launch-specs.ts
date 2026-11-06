@@ -53,6 +53,8 @@ import {
 import { readAntigravitySignInLine } from '../antigravity/antigravity-sign-in-url'
 import type { AcpSignInWatch } from './acp-agent-connection'
 import type { AcpLaunchGate } from './acp-launch-gate'
+import type { AgentCliVersionReader } from '../agent-cli-version-probe'
+import { antigravityCliLaunchSpec } from '../antigravity/antigravity-cli-acp-launch-spec'
 
 /** Model discovery never authenticates interactively. */
 export type AcpModelDiscovery =
@@ -114,11 +116,13 @@ export type AcpLaunchSpec = {
   account: AcpAccountBinding
   /** Ascending release-line minimums, checked before creation and at every launch. */
   minimumVersions?: readonly string[]
+  /** Replaces the plain `--version` read, e.g. to also prove the release serves ACP. */
+  readVersion?: AgentCliVersionReader
   /** Searched after PATH. */
   installDirectories(input: { env: Readonly<Record<string, string>>; homePath: string }): string[]
   /** Installed only on request; takes precedence over PATH and excludes `minimumVersions`. */
   managedRuntime?: ManagedRuntime
-  /** Agent-enforced modes; Orca does not answer its permission requests. */
+  /** Agent-enforced modes; Orca answers permission requests only for a Full access absent here. */
   permissionModeConfig?: {
     values: { ask: string } & Partial<Record<AgentChatPermissionMode, string>>
   }
@@ -258,7 +262,7 @@ const ANTIGRAVITY_SESSION_HISTORY: StructuredAgentSessionHistory = {
   parseResumeArgs: () => null
 }
 
-// The managed ACP server has its own sign-in; agy provides neither ACP nor its account.
+// The managed ACP server has its own sign-in, separate from the agy CLI's account.
 export const ANTIGRAVITY_LAUNCH_SPEC = {
   agent: 'antigravity',
   command: ANTIGRAVITY_ACP_COMMAND,
@@ -294,12 +298,18 @@ export const ANTIGRAVITY_LAUNCH_SPEC = {
   launchGate: ANTIGRAVITY_LAUNCH_GATE
 } satisfies AcpLaunchSpec
 
+// Hosts with no managed build run the installed agy CLI's ACP server instead.
+export const ANTIGRAVITY_HOST_LAUNCH_SPEC: AcpLaunchSpec =
+  ANTIGRAVITY_ACP_RUNTIME.pin() === null
+    ? antigravityCliLaunchSpec(ANTIGRAVITY_LAUNCH_SPEC)
+    : ANTIGRAVITY_LAUNCH_SPEC
+
 export const ACP_LAUNCH_SPECS: readonly AcpLaunchSpec[] = [
   GROK_LAUNCH_SPEC,
   OPENCODE_LAUNCH_SPEC,
   OPENCODE2_LAUNCH_SPEC,
   OMP_LAUNCH_SPEC,
-  ANTIGRAVITY_LAUNCH_SPEC
+  ANTIGRAVITY_HOST_LAUNCH_SPEC
 ]
 
 export function acpLaunchSpecFor(agent: string): AcpLaunchSpec | null {

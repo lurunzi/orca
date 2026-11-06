@@ -94,7 +94,8 @@ export function startAntigravityChatSignIn(
   owner: string
 ): { flowId: string } {
   if (ANTIGRAVITY_LAUNCH_SPEC.managedRuntime.pin() === null) {
-    throw new Error(`Antigravity chats are not available on ${process.platform} ${process.arch}.`)
+    // These chats run the agy CLI, which keeps the terminal's sign-in.
+    throw new Error('Antigravity chats here use the agy sign-in; run `agy` to sign in.')
   }
   if (active) {
     if (active.owner !== owner) {

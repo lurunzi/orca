@@ -246,9 +246,13 @@ export class AcpStructuredOptions {
       return this.applied.get('permissionMode') ?? null
     }
     const current = this.select('mode')?.currentValue
-    return current
+    const mode = current
       ? (Object.entries(values).find(([, value]) => value === current)?.[0] ?? null)
       : null
+    // Orca's own Full access runs the agent in its ask mode.
+    return mode === 'ask' && this.applied.get('permissionMode') === 'full-access'
+      ? 'full-access'
+      : mode
   }
 
   // Match the mode category rather than assuming an agent's config ID.

@@ -9,7 +9,7 @@ import {
   closeProviderTimelineRigs,
   SESSION
 } from '../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
-import { acpLaunchSpecFor } from './acp-launch-specs'
+import { ANTIGRAVITY_LAUNCH_SPEC } from './acp-launch-specs'
 import {
   openAcpAdapterRig,
   PROVIDER_SESSION,
@@ -28,7 +28,7 @@ import { deferred } from './acp-scripted-agent.test-support'
 import { resolveAcpLaunchInvocation } from './acp-structured-launch-resolution'
 import { readAcpFixture, type AcpFixtureFrame } from './acp-timeline-fixture.test-support'
 
-const ANTIGRAVITY = acpLaunchSpecFor('antigravity')!
+const ANTIGRAVITY = ANTIGRAVITY_LAUNCH_SPEC
 const result = (frame: AcpFixtureFrame | undefined) =>
   z.record(z.string(), z.unknown()).parse(frame?.message.result)
 afterEach(closeProviderTimelineRigs)

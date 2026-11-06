@@ -19,6 +19,20 @@ it('lists Antigravity with the chats when its terminal opens the transcript chat
   ])
 })
 
+it('lists Antigravity as a structured chat once its host runs Antigravity chats', () => {
+  expect(
+    buildNewTabAgentMenuRows({
+      ...input,
+      hostChatAnswer: () => 'yes',
+      settings: { agentDefaultSurface: 'chat' as const }
+    })
+  ).toEqual([
+    { kind: 'chat', agent: 'claude' },
+    { kind: 'chat', agent: 'antigravity' },
+    { kind: 'cli', agent: 'gemini' }
+  ])
+})
+
 it('keeps Antigravity a CLI row once its own chat switch is off', () => {
   expect(
     buildNewTabAgentMenuRows({

@@ -16,6 +16,7 @@ export function transcriptTerminalViewMode(
         ? undefined
         : readAgentLaunchModeSettings(execution.runtime, intent),
       connectionId,
+      ...(intent.surface ? { requestedSurface: intent.surface } : {}),
       ...(intent.prompt?.delivery === 'draft' ? { draft: intent.prompt.text } : {})
     }) ?? 'terminal'
   )

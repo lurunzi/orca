@@ -1,6 +1,7 @@
 import type { AgentSessionExecutionLocation } from '../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionAccountHome } from '../../shared/agent-session/lifecycle/agent-session-account-home'
 import type { applyStructuredCodexWorkspaceTrust } from '../agent-workspace-trust-spawn'
+import type { AgentCliVersionReader } from '../agent-cli-version-probe'
 import type { StructuredAgentCliConversations } from '../native-chat/structured-agent-cli-conversations'
 import type {
   StructuredAgentSessionAdapter,
@@ -79,6 +80,8 @@ export type StructuredAgentLaunchCheck = {
   ) => { command: string; prefixArgs: string[]; env: Record<string, string> }
   /** The ascending releases that binary's `--version` must reach; see `agentCliMinimumVersion`. */
   minimumVersions: readonly string[]
+  /** Replaces the plain `--version` read. */
+  readVersion?: AgentCliVersionReader
 }
 
 export type StructuredAgentChatProgram = {

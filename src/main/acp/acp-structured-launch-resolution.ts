@@ -144,7 +144,7 @@ export async function checkAcpLaunchVersion(
   return checkAgentCliVersion(
     { program: launch.command, prefixArgs: launch.prefixArgs, cwd: launch.cwd, env: launch.env },
     spec.minimumVersions ?? [],
-    read
+    read ?? spec.readVersion
   )
 }
 

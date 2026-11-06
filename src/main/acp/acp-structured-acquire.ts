@@ -90,6 +90,8 @@ export async function acquireAcpStructuredSession(input: {
       early.push(deliver)
     }
   }
+  // Without a full-access mode of its own, the agent asks and Orca answers.
+  const orcaApproves = launch.fullAccess && !spec.permissionModeConfig?.values['full-access']
   // Keep the last abort check and spawn synchronous when no temp directory is needed.
   const connect = spec.privateTempDirectory
     ? await acpPrivateTempConnect(deps, closedBeforeSpawn)
@@ -112,7 +114,7 @@ export async function acquireAcpStructuredSession(input: {
         }
         // Do not auto-approve questions or permissions enforced by the agent's own mode.
         const claimed = spec.dialect.request?.('session/request_permission', request)
-        if (launch.fullAccess && !spec.permissionModeConfig && !claimed) {
+        if (orcaApproves && !claimed) {
           const allow = request.options.find((option) => option.kind === 'allow_once')
           if (allow) {
             return { outcome: { outcome: 'selected', optionId: allow.optionId } }
@@ -148,7 +150,7 @@ export async function acquireAcpStructuredSession(input: {
       onExit: () => input.onExit(session)
     }
   )
-  if (!spec.permissionModeConfig) {
+  if (!spec.permissionModeConfig || orcaApproves) {
     options.applied.set('permissionMode', launch.fullAccess ? 'full-access' : 'ask')
   }
   // From here, cancellation closes this connection even before exit is proven.

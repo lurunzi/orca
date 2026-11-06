@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from './orca-runtime'
 import { structuredAgentRuntimeRegistration } from './structured-agent-runtime-registrations'
-import { acpLaunchSpecFor } from '../acp/acp-launch-specs'
+import { ANTIGRAVITY_HOST_LAUNCH_SPEC, ANTIGRAVITY_LAUNCH_SPEC } from '../acp/acp-launch-specs'
 import { AcpStructuredSessionAdapter } from '../acp/acp-structured-session-adapter'
 
 afterEach(() => vi.restoreAllMocks())
@@ -60,10 +60,10 @@ describe('the structured agent registration list', () => {
     expect(installHost).not.toHaveBeenCalled()
   })
 
-  it('refuses Antigravity chat on a host without a pinned server build', async () => {
+  it('refuses the managed Antigravity server on a host without a pinned build', async () => {
     const { runtime, installHost } = runtimeAt()
     const adapter = new AcpStructuredSessionAdapter({
-      spec: acpLaunchSpecFor('antigravity')!,
+      spec: ANTIGRAVITY_LAUNCH_SPEC,
       resolveLaunch: async () => {
         throw new Error('no launch')
       },
@@ -84,9 +84,12 @@ describe('the structured agent registration list', () => {
       Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
       expect(adapter.supportsLocation(LOCAL)).toBe(true)
       Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-      expect(
-        await runtime.getStructuredAgentSessionCreateSupport('id:workspace-1', 'antigravity')
-      ).toEqual({ supported: false, reason: 'agent' })
+      // A host that registered the installed agy instead answers through its probe.
+      if (ANTIGRAVITY_HOST_LAUNCH_SPEC === ANTIGRAVITY_LAUNCH_SPEC) {
+        expect(
+          await runtime.getStructuredAgentSessionCreateSupport('id:workspace-1', 'antigravity')
+        ).toEqual({ supported: false, reason: 'agent' })
+      }
       expect(adapter.supportsLocation(LOCAL)).toBe(false)
       expect(installHost).not.toHaveBeenCalled()
     } finally {
