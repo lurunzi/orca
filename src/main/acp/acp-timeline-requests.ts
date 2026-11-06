@@ -50,6 +50,8 @@ export function acpPermissionPresentation(
 }
 
 const requestSessionSchema = z.object({ sessionId: z.string() })
+// A sessionless request that names a session must still name this one.
+const sessionlessRequestSchema = z.looseObject({ sessionId: z.never().optional() })
 const UNADVERTISED_CLIENT_METHOD = /^(?:fs|terminal)\//
 const requestToolSchema = z.object({
   toolCallId: z.string().optional(),
@@ -71,7 +73,10 @@ export function translateAcpRequest(
   settled?: { reply: unknown }
 } {
   const session = requestSessionSchema.safeParse(params)
-  if (!session.success || session.data.sessionId !== options.sessionId) {
+  const sessionless =
+    options.dialect.sessionlessRequests?.includes(method) === true &&
+    sessionlessRequestSchema.safeParse(params).success
+  if (!sessionless && (!session.success || session.data.sessionId !== options.sessionId)) {
     throw new AcpRpcError(-32602, 'ACP request belongs to an unknown session')
   }
   const tool = requestToolSchema.safeParse(params)

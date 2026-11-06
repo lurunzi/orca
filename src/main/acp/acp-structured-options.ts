@@ -57,6 +57,7 @@ export class AcpStructuredOptions {
       | 'effortChangesModel'
       | 'clampsUnlistedEffort'
       | 'builtinCommands'
+      | 'effortOptionIds'
     > = {}
   ) {}
 
@@ -257,9 +258,15 @@ export class AcpStructuredOptions {
   }
 
   private select(category: string): SelectOption | null {
-    const option = this.configOptions.find(
-      (entry) => entry.category === category || (category === 'model' && entry.id === 'model')
-    )
+    const matches = (entry: SessionConfigOption) =>
+      entry.category === category || (category === 'model' && entry.id === 'model')
+    const preferred =
+      category === 'thought_level'
+        ? this.configOptions.find(
+            (entry) => matches(entry) && this.dialect.effortOptionIds?.includes(entry.id)
+          )
+        : undefined
+    const option = preferred ?? this.configOptions.find(matches)
     return option && isSelect(option) ? option : null
   }
 }

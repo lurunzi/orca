@@ -53,6 +53,7 @@ import {
 import { readAntigravitySignInLine } from '../antigravity/antigravity-sign-in-url'
 import type { AcpSignInWatch } from './acp-agent-connection'
 import type { AcpLaunchGate } from './acp-launch-gate'
+import { CURSOR_LAUNCH_SPEC } from '../cursor/cursor-acp-launch-spec'
 
 /** Model discovery never authenticates interactively. */
 export type AcpModelDiscovery =
@@ -138,6 +139,8 @@ export type AcpLaunchSpec = {
   /** Prefer session/resume even when loading is supported. */
   resumePreference?: 'resume'
   launchGate?: AcpLaunchGate
+  /** Sent as `clientCapabilities._meta` when a chat initializes. */
+  clientCapabilitiesMeta?: Readonly<Record<string, unknown>>
 }
 
 const GROK_LAUNCH_SPEC: AcpLaunchSpec = {
@@ -299,7 +302,8 @@ export const ACP_LAUNCH_SPECS: readonly AcpLaunchSpec[] = [
   OPENCODE_LAUNCH_SPEC,
   OPENCODE2_LAUNCH_SPEC,
   OMP_LAUNCH_SPEC,
-  ANTIGRAVITY_LAUNCH_SPEC
+  ANTIGRAVITY_LAUNCH_SPEC,
+  CURSOR_LAUNCH_SPEC
 ]
 
 export function acpLaunchSpecFor(agent: string): AcpLaunchSpec | null {
