@@ -95,7 +95,12 @@ function fakes() {
 
 function place(
   f: ReturnType<typeof fakes>,
-  args: { mode: AgentLaunchModeReceipt; existing?: boolean; terminal?: string }
+  args: {
+    mode: AgentLaunchModeReceipt
+    existing?: boolean
+    terminal?: string
+    agent?: 'claude' | 'cursor'
+  }
 ) {
   return placeWorkerAgent({
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the placement calls only the methods faked here.
@@ -114,7 +119,7 @@ function place(
     creationTarget: args.existing ? undefined : CREATION_TARGET,
     resolvedWorktree: args.existing ? EXISTING : undefined,
     mode: args.mode,
-    agent: args.terminal ? undefined : 'claude',
+    agent: args.terminal ? undefined : (args.agent ?? 'claude'),
     launchPreferences: undefined,
     effects: f.effects,
     onStage: (stage) => f.failedStages.push(stage)
@@ -301,5 +306,23 @@ describe('a fresh worker through the launch executor', () => {
     expect(f.runtime.createTerminal).not.toHaveBeenCalled()
     expect(f.runtime.createManagedWorktree).not.toHaveBeenCalled()
     expect(f.stages).toEqual([])
+  })
+
+  it('opens a Cursor worker in an existing worktree as its transcript chat when Chat UI is on', async () => {
+    const f = fakes()
+    const runtime = Object.assign(f.runtime, {
+      requireStore: () => ({ getSettings: () => ({ nativeChatProviders: { cursor: true } }) }),
+      showTerminalWorkspaceLaunchScope: vi.fn(async () => ({
+        id: 'wt_existing',
+        connectionId: null
+      }))
+    })
+
+    await place({ ...f, runtime }, { mode: TERMINAL, existing: true, agent: 'cursor' })
+
+    expect(f.runtime.createTerminal).toHaveBeenCalledWith(
+      'id:wt_existing',
+      expect.objectContaining({ startupAgent: 'cursor', viewMode: 'chat' })
+    )
   })
 })

@@ -64,6 +64,8 @@ export async function createExistingWorktreeWorkerTerminal(args: {
   worktreeId: string
   agent: TuiAgent
   launchPreferences?: AgentLaunchPreferences
+  /** Fork: Cursor/Antigravity workers open as transcript chat when Chat UI is on. */
+  viewMode?: 'terminal' | 'chat'
   taskId: string
   effects: WorkerEffect[]
 }): Promise<RuntimeTerminalCreate> {
@@ -74,6 +76,7 @@ export async function createExistingWorktreeWorkerTerminal(args: {
     suppressStartupUpdatePrompt: true,
     ...(args.launchPreferences ? { launchPreferences: args.launchPreferences } : {}),
     title: `worker-${args.taskId}`,
+    ...(args.viewMode ? { viewMode: args.viewMode } : {}),
     // Worker creation is background work and must not pull the sidebar away.
     surfaceOwner: false
   })
