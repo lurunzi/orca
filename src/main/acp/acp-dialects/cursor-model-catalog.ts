@@ -4,6 +4,7 @@ import type { AgentSessionModelOption } from '../../../shared/agent-session/agen
 export const CURSOR_LIST_MODELS = 'cursor/list_available_models'
 /** Thought-level parameters that pick an effort; `thinking` only toggles reasoning on or off. */
 export const CURSOR_EFFORT_OPTION_IDS = ['effort', 'reasoning_effort', 'reasoning'] as const
+export const CURSOR_FAST_OPTION_ID = 'fast'
 
 const parameterSchema = z.looseObject({
   id: z.string().min(1),
@@ -33,6 +34,10 @@ function effortParameter(raw: readonly unknown[]): z.infer<typeof parameterSchem
   return parameters.find((parameter) => ids.includes(parameter.id))
 }
 
+function offersFast(raw: readonly unknown[]): boolean {
+  return raw.some((entry) => parameterSchema.safeParse(entry).data?.id === CURSOR_FAST_OPTION_ID)
+}
+
 /** Parses the session-free listing; ids match chats that opt into the parameterized picker. */
 export function parseCursorModelListing(value: unknown): AgentSessionModelOption[] {
   const listing = listingSchema.safeParse(value)
@@ -40,7 +45,8 @@ export function parseCursorModelListing(value: unknown): AgentSessionModelOption
     throw new Error('cursor-agent did not list its models')
   }
   return listing.data.models.map((model) => {
-    const effort = effortParameter(model.configOptions ?? [])
+    const parameters = model.configOptions ?? []
+    const effort = effortParameter(parameters)
     const efforts = (effort?.options ?? []).map((option) => ({
       value: option.value,
       label: option.name || option.value
@@ -50,6 +56,7 @@ export function parseCursorModelListing(value: unknown): AgentSessionModelOption
       id: model.value,
       label: model.name || model.value,
       isDefault: false,
+      supportsFastMode: offersFast(parameters),
       efforts,
       // The listing reports this account's saved value for the model, not a provider default.
       declaredDefaultEffort: efforts.find(({ value }) => value === current)?.value ?? null

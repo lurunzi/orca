@@ -91,6 +91,13 @@ describe('Cursor model listing', () => {
               { value: 'low', name: 'Low' },
               { value: 'high', name: 'High' }
             ]
+          },
+          {
+            id: 'fast',
+            category: 'model_config',
+            type: 'select',
+            currentValue: 'false',
+            options: [{ value: 'false' }, { value: 'true' }]
           }
         ]
       }
@@ -99,11 +106,19 @@ describe('Cursor model listing', () => {
 
   it('lists every model with its effort menu, not the thinking switch', () => {
     expect(parseCursorModelListing(listing)).toEqual([
-      { id: 'default', label: 'Auto', isDefault: false, efforts: [], declaredDefaultEffort: null },
+      {
+        id: 'default',
+        label: 'Auto',
+        isDefault: false,
+        supportsFastMode: false,
+        efforts: [],
+        declaredDefaultEffort: null
+      },
       {
         id: 'claude-opus-5',
         label: 'Claude Opus 5',
         isDefault: false,
+        supportsFastMode: true,
         efforts: [
           { value: 'low', label: 'Low' },
           { value: 'high', label: 'High' }
@@ -114,7 +129,7 @@ describe('Cursor model listing', () => {
     expect(() => parseCursorModelListing({})).toThrow(/did not list/)
   })
 
-  it('writes effort to the preferred thought-level option of a live session', () => {
+  it('writes effort to the preferred thought-level option and Fast to the fast option', () => {
     const options = new AcpStructuredOptions(CURSOR_ACP_DIALECT)
     const [, effort] = listing.models[1]!.configOptions
     options.adoptSession({
@@ -130,6 +145,7 @@ describe('Cursor model listing', () => {
         ...listing.models[1]!.configOptions.map((option) => ({
           name: option.id,
           ...option,
+          type: 'select' as const,
           options: []
         }))
       ]
@@ -139,6 +155,18 @@ describe('Cursor model listing', () => {
       configId: effort!.id,
       value: 'low'
     })
+    expect(options.write('fastMode', 'true')).toEqual({
+      method: 'config',
+      configId: 'fast',
+      value: 'true'
+    })
+    expect(options.write('fastMode', 'on')).toBeNull()
+    const read = options.read()
+    expect(read.current).toMatchObject({
+      fastMode: false,
+      confirmed: ['model', 'effort', 'fastMode']
+    })
+    expect(options.reported()).toMatchObject({ fastMode: 'false' })
   })
 })
 

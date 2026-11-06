@@ -1,4 +1,5 @@
 import { afterEach, expect, it } from 'vitest'
+import { z } from 'zod'
 import {
   closeProviderTimelineRigs,
   SESSION
@@ -38,6 +39,16 @@ function scriptCursor(agent: AcpScriptedAgent, onPrompt: (frame: FakeFrame) => P
   agent.on('session/new', (frame) =>
     agent.reply(frame, { sessionId: PROVIDER_SESSION, configOptions: CONFIG_OPTIONS })
   )
+  let configOptions = CONFIG_OPTIONS
+  agent.on('session/set_config_option', (frame) => {
+    const { configId, value } = z
+      .object({ configId: z.string(), value: z.string() })
+      .parse(frame.params)
+    configOptions = configOptions.map((option) =>
+      option.id === configId ? { ...option, currentValue: value } : option
+    )
+    agent.reply(frame, { configOptions })
+  })
   agent.on('session/prompt', (frame) => {
     void onPrompt(frame).then(() => agent.reply(frame, { stopReason: 'end_turn' }))
   })
@@ -51,7 +62,7 @@ async function promptRow(rig: Awaited<ReturnType<typeof openAcpAdapterRig>>, kin
   })
 }
 
-it('opts into the parameterized picker and reads effort rather than the thinking switch', async () => {
+it('opts into the parameterized picker, reads effort rather than thinking, and drives Fast', async () => {
   const rig = await openAcpAdapterRig({
     spec: CURSOR,
     script: (agent) => scriptCursor(agent, async () => {})
@@ -68,7 +79,22 @@ it('opts into the parameterized picker and reads effort rather than the thinking
     'composer-2.5',
     'claude-opus-5'
   ])
-  expect(options.models.find((model) => model.id === 'claude-opus-5')?.efforts).toHaveLength(5)
+  expect(options.models.find((model) => model.id === 'claude-opus-5')).toMatchObject({
+    supportsFastMode: true,
+    efforts: expect.arrayContaining([{ value: 'max', label: 'max' }])
+  })
+  expect(options.current).toMatchObject({ fastMode: false })
+  const reported = await rig.adapter.setOption({
+    sessionId: SESSION,
+    fence: 1,
+    key: 'fastMode',
+    value: 'true'
+  })
+  expect(rig.sent('session/set_config_option').at(-1)?.params).toMatchObject({
+    configId: 'fast',
+    value: 'true'
+  })
+  expect(reported).toMatchObject({ model: 'claude-opus-5', effort: 'high', fastMode: 'true' })
 })
 
 it('answers a sessionless cursor/ask_question with the chosen option ids', async () => {

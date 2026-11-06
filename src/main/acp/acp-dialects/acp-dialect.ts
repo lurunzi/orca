@@ -136,6 +136,8 @@ export type AcpDialect = {
   sessionlessRequests?: readonly string[]
   /** Preferred ids when a model reports several thought_level options (e.g. thinking and effort). */
   effortOptionIds?: readonly string[]
+  /** A per-model boolean config option ('true'/'false') that Orca's Fast toggle drives. */
+  fastOptionId?: string
   /** Hide these commands and reject command-only prompts before dispatch. */
   withheldCommands?: readonly string[]
   /** Which session rows are the agent's own built-ins, as this process's initialize response proves. */
