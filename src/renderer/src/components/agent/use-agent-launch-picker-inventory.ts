@@ -10,6 +10,7 @@ import { structuredAgentSessionTargetForHost } from '@/runtime/structured-agent-
 import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
 import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
 import { formatAgentTypeLabel } from '../../../../shared/agent-type-label'
+import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { AgentSessionModelCatalogResult } from '../../../../shared/agent-session/agent-session-wire'
 import { parseStructuredLaunchSeedOptions } from '../../../../shared/native-chat/input/native-chat-session-option-defaults'
 import {
@@ -18,6 +19,9 @@ import {
 } from './agent-launch-picker-acquisition'
 import { isAgentPermissionChoice } from '../../../../shared/tui-agent-permission-choice'
 import { isAgentChatPermissionChoice } from '../../../../shared/agent-chat-permission-mode'
+import { isTranscriptChatAgent } from '../../../../shared/transcript-chat-launch-view'
+import { agentPickerCatalogModel } from '../../../../shared/agent-launch-picker-catalog'
+import { loadNativeChatCatalogModelsForWorktree } from '../native-chat/native-chat-session-option-discovery'
 import {
   agentPickerEntriesFromRows,
   agentPickerChoiceSeeds,
@@ -236,11 +240,13 @@ export function useAgentLaunchPickerInventorySource(
                   : undefined
               },
         catalog: async (entry) =>
-          await callStructuredAgentSession<AgentSessionModelCatalogResult>(
-            target,
-            'agentSession.modelCatalog',
-            { worktree: `id:${worktreeId}`, agent: entry.agent, waitForListing: true }
-          ).catch(() => undefined),
+          isTranscriptChatAgent(entry.agent)
+            ? await transcriptChatPickerCatalog(entry.agent, worktreeId)
+            : await callStructuredAgentSession<AgentSessionModelCatalogResult>(
+                target,
+                'agentSession.modelCatalog',
+                { worktree: `id:${worktreeId}`, agent: entry.agent, waitForListing: true }
+              ).catch(() => undefined),
         support: async (entry) => {
           const support = await callStructuredAgentSession<{
             seedOptions?: Record<string, string>
@@ -268,4 +274,17 @@ export function useAgentLaunchPickerInventorySource(
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- Only semantic inputs and visibility own observation; selected priority publishes independently after commit.
   }, [key, open, source])
   return source
+}
+
+/** Fork: Cursor and Antigravity list what their in-chat picker discovers, not the structured catalog they lack. */
+async function transcriptChatPickerCatalog(
+  agent: TuiAgent,
+  worktreeId: string | undefined
+): Promise<AgentSessionModelCatalogResult | undefined> {
+  const models = await loadNativeChatCatalogModelsForWorktree(agent, worktreeId ?? null).catch(
+    () => null
+  )
+  return models?.length
+    ? { origin: 'probe', models: models.map(agentPickerCatalogModel), fetchedAt: Date.now() }
+    : undefined
 }

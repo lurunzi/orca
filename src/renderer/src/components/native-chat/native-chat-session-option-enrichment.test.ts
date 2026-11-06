@@ -8,6 +8,7 @@ import {
   clearNativeChatModelEnrichmentForTests,
   ensureNativeChatModelEnrichment,
   getNativeChatModelEnrichmentEntryCountForTests,
+  loadNativeChatEnrichedModels,
   NATIVE_CHAT_MODEL_ENRICHMENT_MAX_ENTRIES,
   readNativeChatEnrichedModels,
   subscribeNativeChatEnrichedModels
@@ -137,6 +138,25 @@ describe('native chat session option enrichment', () => {
     ensureNativeChatModelEnrichment({ agent: 'cursor', hostKey: 'local', discover })
     expect(discover).toHaveBeenCalledOnce()
     expect(readNativeChatEnrichedModels('cursor', 'local')).toBeNull()
+  })
+
+  it('lets a launch menu await the listing, or learn there is none', async () => {
+    const listed = await loadNativeChatEnrichedModels({
+      agent: 'cursor',
+      hostKey: 'local',
+      discover: async () => [{ id: 'composer-2.5', label: 'Composer 2.5', options: [] }]
+    })
+    expect(listed?.map((model) => model.id)).toContain('composer-2.5')
+
+    await expect(
+      loadNativeChatEnrichedModels({
+        agent: 'antigravity',
+        hostKey: 'local',
+        discover: async () => {
+          throw new Error('offline')
+        }
+      })
+    ).resolves.toBeNull()
   })
 
   it('does not probe agents whose catalogs have no discovery command', () => {

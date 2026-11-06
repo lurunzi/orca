@@ -12,6 +12,8 @@ type CatalogEnrichmentEntry = {
   refreshAfter: number
   models: CatalogModel[] | null
   listeners: Set<(models: CatalogModel[]) => void>
+  /** Settles when the running discovery does, success or not. */
+  inflight?: Promise<void>
 }
 
 const enrichmentByAgentHost = new Map<string, CatalogEnrichmentEntry>()
@@ -84,7 +86,7 @@ export function ensureNativeChatModelEnrichment(args: {
   retainEnrichmentEntry(key, entry)
 
   // Keep the last successful list usable while its execution host refreshes it.
-  void args
+  entry.inflight = args
     .discover()
     .then((discovered) => {
       entry.state = 'settled'
@@ -104,6 +106,17 @@ export function ensureNativeChatModelEnrichment(args: {
       entry.refreshAfter = Date.now() + AGENT_MODEL_CATALOG_FAILURE_TTL_MS
       retainEnrichmentEntry(key, entry)
     })
+}
+
+/** The host's models, discovering when stale; null when no discovery has listed any. */
+export async function loadNativeChatEnrichedModels(args: {
+  agent: AgentType
+  hostKey: string
+  discover: () => Promise<readonly CatalogModel[] | null>
+}): Promise<CatalogModel[] | null> {
+  ensureNativeChatModelEnrichment(args)
+  await enrichmentByAgentHost.get(enrichmentKey(args.agent, args.hostKey))?.inflight
+  return readNativeChatEnrichedModels(args.agent, args.hostKey)
 }
 
 export function clearNativeChatModelEnrichmentForTests(): void {

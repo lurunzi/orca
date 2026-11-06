@@ -1,6 +1,9 @@
 import { discoveredModel } from './agent-session/options/structured-agent-session-discovered-model'
 import { createClaudeCatalogOptions } from './agent-session/options/agent-session-option-catalog-claude-codex'
-import type { CatalogOption } from './agent-session/options/agent-session-option-catalog-types'
+import type {
+  CatalogModel,
+  CatalogOption
+} from './agent-session/options/agent-session-option-catalog-types'
 import { getAgentSessionOptionLaunchCatalog } from './agent-session/options/agent-session-option-catalog'
 import { sourceControlActionOptions } from './source-control-action-launch-preferences'
 import {
@@ -89,13 +92,20 @@ export function agentPickerModels(entry: AgentPickerEntry): AgentPickerModel[] {
   if (entry.catalog.origin !== 'unknown') {
     return entry.catalog.models
   }
-  return (getAgentSessionOptionLaunchCatalog(entry.agent)?.models ?? []).map((model) => ({
+  return (getAgentSessionOptionLaunchCatalog(entry.agent)?.models ?? []).map(
+    agentPickerCatalogModel
+  )
+}
+
+/** A catalog model as a picker row; a model whose listing names no efforts keeps its agent's effort choice. */
+export function agentPickerCatalogModel(model: CatalogModel): AgentPickerModel {
+  const effort = model.options.find((option) => option.id === 'effort')
+  return {
     id: model.id,
     label: model.label,
     description: model.description,
     isDefault: model.isDefault === true,
-    efforts: model.options.flatMap((option) =>
-      option.id === 'effort' && option.kind.type === 'select' ? option.kind.choices : []
-    )
-  }))
+    efforts: effort?.kind.type === 'select' ? effort.kind.choices : [],
+    ...(effort ? {} : { effortsKnown: false as const })
+  }
 }

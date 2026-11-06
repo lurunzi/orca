@@ -23,7 +23,10 @@ import type {
 } from '../../../../shared/agent-session/agent-session-wire'
 import { useAppStore } from '@/store'
 import { findKnownWorktreeById } from '@/store/slices/worktrees/listing/detected-worktree-meta'
-import { readNativeChatEnrichedModels } from './native-chat-session-option-enrichment'
+import {
+  loadNativeChatEnrichedModels,
+  readNativeChatEnrichedModels
+} from './native-chat-session-option-enrichment'
 
 export type NativeChatModelDiscoveryContext = {
   hostKey: string
@@ -161,4 +164,20 @@ export function readNativeChatDiscoveredModelIdsForWorktree(
   const context = resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
   const models = context ? readNativeChatEnrichedModels(agent, context.hostKey) : null
   return models ? models.map((model) => model.id) : null
+}
+
+/** The models a terminal-backed chat on this worktree's host lists, shared with its in-chat picker. */
+export async function loadNativeChatCatalogModelsForWorktree(
+  agent: AgentType,
+  worktreeId: string | null
+): Promise<CatalogModel[] | null> {
+  const context = resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
+  if (!context) {
+    return null
+  }
+  return await loadNativeChatEnrichedModels({
+    agent,
+    hostKey: context.hostKey,
+    discover: () => discoverNativeChatCatalogModels(agent, context.runtime, context.hostKey)
+  })
 }
