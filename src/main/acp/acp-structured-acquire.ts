@@ -106,6 +106,9 @@ export async function acquireAcpStructuredSession(input: {
     },
     {
       clientInfo: { name: 'orca', version: '1' },
+      ...(spec.clientCapabilitiesMeta
+        ? { clientCapabilitiesMeta: spec.clientCapabilitiesMeta }
+        : {}),
       ...(spec.signIn ? { signIn: spec.signIn } : {}),
       onPermission: (request, context) => {
         if (!isAcpReadySession(session) || !session.turns?.acceptsRequests) {

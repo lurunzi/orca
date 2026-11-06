@@ -84,7 +84,7 @@ it('joins recorded declarations to unchanged configured policy, host capture and
       dispose: unused,
       open: unused
     }
-    const set = vi.fn(async (_key: 'model' | 'effort', _value: string) => {})
+    const set = vi.fn(async (_key: 'model' | 'effort' | 'fastMode', _value: string) => {})
     if (!('options' in captured)) {
       throw new Error('unexpected refusal')
     }

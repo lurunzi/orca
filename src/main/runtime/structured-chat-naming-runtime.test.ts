@@ -238,7 +238,9 @@ describe('structured chat naming runtime', () => {
                     ? 'GROK_HOME'
                     : provider === 'antigravity'
                       ? 'GEMINI_HOME'
-                      : 'PI_CODING_AGENT_DIR',
+                      : provider === 'cursor'
+                        ? 'CURSOR_CONFIG_DIR'
+                        : 'PI_CODING_AGENT_DIR',
             path: '/pinned-account'
           }
     const shouldExecute = () => true

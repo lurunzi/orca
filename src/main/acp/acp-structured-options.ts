@@ -57,6 +57,8 @@ export class AcpStructuredOptions {
       | 'effortChangesModel'
       | 'clampsUnlistedEffort'
       | 'builtinCommands'
+      | 'effortOptionIds'
+      | 'fastOptionId'
     > = {}
   ) {}
 
@@ -76,6 +78,7 @@ export class AcpStructuredOptions {
     this.appliedInput.delete(key)
     if (key === 'model') {
       this.appliedInput.delete('effort')
+      this.appliedInput.delete('fastMode')
     }
     if (key === 'effort' && this.dialect.effortChangesModel) {
       this.appliedInput.delete('model')
@@ -150,7 +153,18 @@ export class AcpStructuredOptions {
       const option = this.select('thought_level')
       return option ? { method: 'config', configId: option.id, value } : null
     }
+    if (key === 'fastMode' && (value === 'true' || value === 'false')) {
+      const option = this.fastOption()
+      return option ? { method: 'config', configId: option.id, value } : null
+    }
     return null
+  }
+
+  // Only the current model's options prove Fast; other models stay unknown.
+  private fastOption(): SelectOption | null {
+    const id = this.dialect.fastOptionId
+    const option = id ? this.configOptions.find((entry) => entry.id === id) : undefined
+    return option && isSelect(option) ? option : null
   }
 
   /** Native choices never establish an unobserved model's capability or configured default. */
@@ -165,6 +179,7 @@ export class AcpStructuredOptions {
         }))
       : []
     const currentModel = (modelOption?.currentValue ?? this.models?.currentModelId) || undefined
+    const fastOption = this.fastOption()
     const listed: { id: string; label: string; description?: string }[] = modelOption
       ? selectChoices(modelOption).map((choice) => ({
           id: choice.value,
@@ -192,6 +207,7 @@ export class AcpStructuredOptions {
       return {
         ...model,
         isDefault: false,
+        ...(fastOption && model.id === currentModel ? { supportsFastMode: true } : {}),
         // Fall back to the running session's menu when the advertised menu is empty.
         ...(advertised && (advertised.efforts.length > 0 || model.id !== currentModel)
           ? advertised
@@ -201,12 +217,17 @@ export class AcpStructuredOptions {
           : {})
       }
     })
-    const confirmed = [...(currentModel ? ['model'] : []), ...(effortOption ? ['effort'] : [])]
+    const confirmed = [
+      ...(currentModel ? ['model'] : []),
+      ...(effortOption ? ['effort'] : []),
+      ...(fastOption ? ['fastMode'] : [])
+    ]
     return {
       models,
       current: {
         ...(currentModel ? { model: currentModel } : {}),
         ...(effortOption ? { effort: effortOption.currentValue } : {}),
+        ...(fastOption ? { fastMode: fastOption.currentValue === 'true' } : {}),
         confirmed
       }
     }
@@ -231,7 +252,8 @@ export class AcpStructuredOptions {
     const { current } = this.read()
     return {
       ...(current.model ? { model: current.model } : {}),
-      ...(current.effort ? { effort: current.effort } : {})
+      ...(current.effort ? { effort: current.effort } : {}),
+      ...(current.fastMode !== undefined ? { fastMode: String(current.fastMode) } : {})
     }
   }
 
@@ -261,9 +283,15 @@ export class AcpStructuredOptions {
   }
 
   private select(category: string): SelectOption | null {
-    const option = this.configOptions.find(
-      (entry) => entry.category === category || (category === 'model' && entry.id === 'model')
-    )
+    const matches = (entry: SessionConfigOption) =>
+      entry.category === category || (category === 'model' && entry.id === 'model')
+    const preferred =
+      category === 'thought_level'
+        ? this.configOptions.find(
+            (entry) => matches(entry) && this.dialect.effortOptionIds?.includes(entry.id)
+          )
+        : undefined
+    const option = preferred ?? this.configOptions.find(matches)
     return option && isSelect(option) ? option : null
   }
 }
