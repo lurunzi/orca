@@ -141,6 +141,44 @@ describe('NativeChatBackgroundTasksStatus stop affordances', () => {
     expect(onStop).toHaveBeenCalledWith('codex-command:exec-1')
   })
 
+  it('shows the agent a background shell runs instead of the shell icon', () => {
+    const view = (overrides: Partial<AgentChildWorkView>): AgentChildWorkView => ({
+      id: 'child',
+      kind: 'command',
+      state: 'working',
+      membership: 'live',
+      firstObservedAt: Date.now() - 65_000,
+      observedAt: Date.now() - 1_000,
+      stoppable: true,
+      invocation: { invocationId: 'spawn-1', generation: 1 },
+      ...overrides
+    })
+    render(
+      <DisclosureHost
+        isVisible
+        tasks={[]}
+        settledTasks={[]}
+        childViews={[
+          view({ id: 'worker', description: 'Run Codex worker', agentType: 'codex' }),
+          view({ id: 'dev', description: 'pnpm dev' })
+        ]}
+        indicatorActive
+        supportsTaskStop
+        offersStopAll={false}
+        stoppingTaskIds={new Set()}
+        stoppingAll={false}
+        onStop={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { expanded: false }))
+
+    const shell = within(screen.getByRole('list', { name: 'Shell' }))
+    const worker = shell.getByText('Run Codex worker').closest('li')!
+    const dev = shell.getByText('pnpm dev').closest('li')!
+    expect(worker.querySelector('.lucide-square-terminal')).toBeNull()
+    expect(dev.querySelector('.lucide-square-terminal')).not.toBeNull()
+  })
+
   it('stops a Grok background command and the Grok subagent beside it by their own ids', () => {
     const view = (overrides: Partial<AgentChildWorkView>): AgentChildWorkView => ({
       id: 'child',
