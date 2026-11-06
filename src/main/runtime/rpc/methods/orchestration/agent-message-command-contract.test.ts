@@ -65,9 +65,10 @@ afterEach(async () => {
   setStructuredAgentSessionHost(null)
   await transport?.stop()
   transport = undefined
+  // The orchestration database lives in the rig's folder; Windows cannot delete it while open.
+  h.cleanup()
   await rig?.dispose()
   rig = undefined
-  h.cleanup()
   vi.unstubAllEnvs()
   vi.restoreAllMocks()
   vi.doUnmock('../../../../../cli/runtime-client')

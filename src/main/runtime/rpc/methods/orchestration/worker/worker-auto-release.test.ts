@@ -264,7 +264,11 @@ describe('orchestration worker automatic release', () => {
     beforeEach(() => {
       userDataDir = mkdtempSync(join(tmpdir(), 'orca-auto-release-restart-'))
     })
-    afterEach(() => rmSync(userDataDir, { recursive: true, force: true }))
+    afterEach(() => {
+      // Inner hooks run before the outer cleanup; Windows cannot delete the still-open database.
+      h.cleanup()
+      rmSync(userDataDir, { recursive: true, force: true })
+    })
 
     function setupFileBacked(): void {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
