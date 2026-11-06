@@ -239,14 +239,21 @@ export function useAgentLaunchPickerInventorySource(
                     }))
                   : undefined
               },
-        catalog: async (entry) =>
-          isTranscriptChatAgent(entry.agent)
-            ? await transcriptChatPickerCatalog(entry.agent, worktreeId)
-            : await callStructuredAgentSession<AgentSessionModelCatalogResult>(
-                target,
-                'agentSession.modelCatalog',
-                { worktree: `id:${worktreeId}`, agent: entry.agent, waitForListing: true }
-              ).catch(() => undefined),
+        catalog: async (entry) => {
+          const structured = await callStructuredAgentSession<AgentSessionModelCatalogResult>(
+            target,
+            'agentSession.modelCatalog',
+            { worktree: `id:${worktreeId}`, agent: entry.agent, waitForListing: true }
+          ).catch(() => undefined)
+          if (
+            (structured && structured.origin !== 'unknown') ||
+            !isTranscriptChatAgent(entry.agent)
+          ) {
+            return structured
+          }
+          // Fork: without a structured listing, Cursor and Antigravity still list their CLI's models.
+          return (await transcriptChatPickerCatalog(entry.agent, worktreeId)) ?? structured
+        },
         support: async (entry) => {
           const support = await callStructuredAgentSession<{
             seedOptions?: Record<string, string>
@@ -276,7 +283,7 @@ export function useAgentLaunchPickerInventorySource(
   return source
 }
 
-/** Fork: Cursor and Antigravity list what their in-chat picker discovers, not the structured catalog they lack. */
+/** Fork: the models a Cursor or Antigravity terminal chat discovers, for hosts with no structured listing. */
 async function transcriptChatPickerCatalog(
   agent: TuiAgent,
   worktreeId: string | undefined
