@@ -422,7 +422,9 @@ describe('async questions', () => {
     expect(scanner.append(message('noise', [{ type: 'text', text: 'working' }]))).toEqual([])
     expect(scanner.current().contributors).toBe(borrowed)
     expect(isDeliveredNativeChatUserMessage(userRow('queued', { queued: true }))).toBe(false)
-    expect(isDeliveredNativeChatUserMessage(userRow('optimistic', { optimistic: true }))).toBe(false)
+    expect(isDeliveredNativeChatUserMessage(userRow('optimistic', { optimistic: true }))).toBe(
+      false
+    )
     expect(isDeliveredNativeChatUserMessage(message('assistant', []))).toBe(false)
     expect(isDeliveredNativeChatUserMessage(userRow('delivered'))).toBe(true)
     scanner.append(userRow('delivered'))
