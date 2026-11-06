@@ -49,12 +49,12 @@ describe('the structured agent registration list', () => {
   it('refuses an agent it does not hold without installing the host', async () => {
     const { runtime, installHost } = runtimeAt()
     expect(
-      await runtime.getStructuredAgentSessionCreateSupport('id:workspace-1', 'cursor')
+      await runtime.getStructuredAgentSessionCreateSupport('id:workspace-1', 'droid')
     ).toEqual({
       supported: false,
       reason: 'agent'
     })
-    await expect(runtime.resolveStructuredAgentAccountHome('cursor')).rejects.toMatchObject({
+    await expect(runtime.resolveStructuredAgentAccountHome('droid')).rejects.toMatchObject({
       message: 'structured_agent_session_unsupported'
     })
     expect(installHost).not.toHaveBeenCalled()
