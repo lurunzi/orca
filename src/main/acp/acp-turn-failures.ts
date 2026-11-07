@@ -48,7 +48,10 @@ export function acpSignInRequiredFailure(
   error: AcpAgentError
 ): SubmissionRejectionFact {
   const detail = providerDiagnostic(acpPromptErrorDetail(dialect, error), 'person')
-  return agentSessionFailureFact('notSignedIn', detail ? { detail } : {})
+  return agentSessionFailureFact('notSignedIn', {
+    ...(detail ? { detail } : {}),
+    ...(dialect.signInAccount ? { account: dialect.signInAccount } : {})
+  })
 }
 
 /** Deduplicate failure rows by turn, accepting later reasons when earlier reports lacked one. */
@@ -120,7 +123,10 @@ export class AcpTurnFailures {
       usageLimit: limit
     })
     const failure = authenticationRequired
-      ? agentSessionFailureFact('notSignedIn', { detail: diagnostic })
+      ? agentSessionFailureFact('notSignedIn', {
+          detail: diagnostic,
+          ...(this.dialect.signInAccount ? { account: this.dialect.signInAccount } : {})
+        })
       : usageLimited
         ? agentSessionFailureFact('usageLimitReached', {
             detail: diagnostic,

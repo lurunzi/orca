@@ -142,6 +142,8 @@ export type AcpLaunchSpec = {
   privateTempDirectory?: true
   /** Prefer session/resume even when loading is supported. */
   resumePreference?: 'resume'
+  /** The agent cannot delete sessions, so helper sessions would stay in the user's own history. */
+  keepsEverySession?: true
   launchGate?: AcpLaunchGate
   /** Sent as `clientCapabilities._meta` when a chat initializes. */
   clientCapabilitiesMeta?: Readonly<Record<string, unknown>>

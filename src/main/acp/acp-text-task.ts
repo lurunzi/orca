@@ -115,6 +115,10 @@ export class AcpTextTasks {
       if (!invocation) {
         throw new Error('Native text task launch is unavailable')
       }
+      // A naming session would stay in the user's own agent history.
+      if (spec.keepsEverySession) {
+        return null
+      }
       const launch = await waitForPromiseWithSignal(
         prepareAcpLaunch(
           this.deps,

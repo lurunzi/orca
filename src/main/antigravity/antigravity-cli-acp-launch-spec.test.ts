@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { checkAgentCliVersion, type AgentCliVersionInput } from '../agent-cli-version-probe'
 import {
   ANTIGRAVITY_HOST_LAUNCH_SPEC,
@@ -10,7 +10,11 @@ import { acpStructuredAgentDefinition } from '../acp/acp-structured-agent-defini
 import { resolveAcpLaunchInvocation } from '../acp/acp-structured-launch-resolution'
 import { supportsAcpStructuredLocation } from '../acp/acp-structured-location-support'
 import { ANTIGRAVITY_ACP_RUNTIME } from './antigravity-acp-runtime'
-import { antigravityCliLaunchSpec, readAgyAcpRelease } from './antigravity-cli-acp-launch-spec'
+import {
+  antigravityCliLaunchSpec,
+  readAgyAcpRelease,
+  resetAgyAcpChecksForTests
+} from './antigravity-cli-acp-launch-spec'
 
 const CLI = antigravityCliLaunchSpec(ANTIGRAVITY_LAUNCH_SPEC)
 // Recorded from agy 1.5.1 on Windows.
@@ -23,9 +27,14 @@ Available subcommands:
 `
 const INPUT = { program: '/opt/agy/agy', cwd: '/work', env: {} }
 
-function probe(version: string | null, help: string | Error) {
+function probe(
+  version: string | null,
+  help: string | Error,
+  clock?: { identity: string; now: number }
+) {
   const runs: string[][] = []
   const deps = {
+    ...(clock ? { identify: async () => clock.identity, now: () => clock.now } : {}),
     readVersion: async () => ({ version }),
     run: async (spec: { args?: readonly string[] }) => {
       runs.push([...(spec.args ?? [])])
@@ -41,6 +50,8 @@ function probe(version: string | null, help: string | Error) {
 }
 
 describe('installed agy as the Antigravity chat server', () => {
+  beforeEach(() => resetAgyAcpChecksForTests())
+
   it('runs the CLI where no managed build exists and keeps the managed server elsewhere', () => {
     const pinned = ANTIGRAVITY_ACP_RUNTIME.pin() !== null
     expect(acpLaunchSpecFor('antigravity')).toBe(ANTIGRAVITY_HOST_LAUNCH_SPEC)
@@ -59,10 +70,10 @@ describe('installed agy as the Antigravity chat server', () => {
   })
 
   it('accepts an agy whose help lists the acp server', async () => {
-    const { read, runs } = probe('1.5.1', AGY_HELP)
+    const { read, runs } = probe('1.5.2', AGY_HELP)
     expect(await checkAgentCliVersion(INPUT, CLI.minimumVersions!, read)).toEqual({
       status: 'ready',
-      version: '1.5.1'
+      version: '1.5.2'
     })
     expect(runs).toEqual([['--help']])
   })
@@ -78,11 +89,11 @@ describe('installed agy as the Antigravity chat server', () => {
   })
 
   it('refuses releases before the ACP fixes chats rely on, without probing help', async () => {
-    const { read, runs } = probe('1.5.0', AGY_HELP)
+    const { read, runs } = probe('1.5.1', AGY_HELP)
     expect(await checkAgentCliVersion(INPUT, CLI.minimumVersions!, read)).toEqual({
       status: 'tooOld',
-      version: '1.5.0',
-      minimumVersion: '1.5.1'
+      version: '1.5.1',
+      minimumVersion: '1.5.2'
     })
     expect(runs).toEqual([['--help']])
     const unreadable = probe(null, AGY_HELP)
@@ -115,14 +126,32 @@ describe('installed agy as the Antigravity chat server', () => {
     expect(invocation).toMatchObject({
       command: join('/found', 'agy'),
       prefixArgs: [],
-      envToDelete: []
+      envToDelete: ['GEMINI_API_KEY', 'GOOGLE_API_KEY']
     })
-    // agy keeps its own home and sign-in; the chat changes neither.
-    expect(invocation.env).toEqual(launchEnv)
-    expect(searched[0]?.split(/[;:]/)).toContain(join('/local', 'agy', 'bin'))
+    // agy keeps its own home and sign-in; an inherited API key would switch it to key auth.
+    expect(invocation.env).toEqual({ PATH: '/usr/bin', LOCALAPPDATA: '/local' })
+    expect(searched[0]?.split(/[;:]/)).toEqual(
+      expect.arrayContaining([join('/local', 'agy', 'bin'), join('/home/u', '.local', 'bin')])
+    )
     for (const fullAccess of [false, true]) {
       expect(CLI.args({ fullAccess, pluginDir: null })).toEqual(['acp'])
     }
+  })
+
+  it('reuses a binary’s answer, retries a failed check after five minutes and rechecks an upgrade', async () => {
+    const clock = { identity: '1:1', now: 0 }
+    const broken = probe('1.5.2', new Error('hung'), clock)
+    expect((await broken.read(INPUT)).version).toBeNull()
+    expect((await broken.read(INPUT)).version).toBeNull()
+    expect(broken.runs).toHaveLength(1)
+    clock.now = 5 * 60_000
+    const fixed = probe('1.5.2', AGY_HELP, clock)
+    expect((await fixed.read(INPUT)).version).toBe('1.5.2')
+    expect((await fixed.read(INPUT)).version).toBe('1.5.2')
+    expect(fixed.runs).toHaveLength(1)
+    clock.identity = '2:2'
+    const upgraded = probe('1.5.3', AGY_HELP, clock)
+    expect((await upgraded.read(INPUT)).version).toBe('1.5.3')
   })
 
   it('runs the agy named by the Command setting', async () => {
