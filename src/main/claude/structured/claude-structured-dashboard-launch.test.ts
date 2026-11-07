@@ -3,9 +3,12 @@ import {
   adapterAtPublishFor,
   adapterFor,
   fakeClaude,
-  identityFor
+  identityFor,
+  PROVIDER_SESSION_ID
 } from './claude-structured-session-test-support'
 import { claudeOpened } from './claude-structured-startup-settled-test-support'
+import { ClaudeStructuredSessionAdapter } from './claude-structured-session-adapter'
+import { DashboardAllocationErrorCode } from '../../dashboard-accounts/dashboard-allocation-protocol'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -15,7 +18,10 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 function fixture(holdInit = false, pooled = true) {
-  const claude = fakeClaude({ holdInit })
+  const claude = fakeClaude({
+    holdInit,
+    ...(pooled ? { initAccount: { tokenSource: 'CLAUDE_CODE_OAUTH_TOKEN' } } : {})
+  })
   const binding = { account_id: 'pool-claude', binding_revision: 2, credential_version: 1 }
   const launch = pooled ? { dashboardBinding: binding } : {}
   const adapter = (holdInit ? adapterAtPublishFor : adapterFor)(claude, launch)
@@ -27,6 +33,98 @@ function fixture(holdInit = false, pooled = true) {
 }
 const acquire = (adapter: ReturnType<typeof fixture>['adapter'], spawnToken = 'spawn-1') =>
   adapter.acquire({ identity: identityFor(), fence: 7, spawnToken })
+
+function sourceFixture(account: unknown, pooled: boolean, naming: boolean) {
+  const claude = fakeClaude({ initAccount: account })
+  const adapter = new ClaudeStructuredSessionAdapter({
+    resolveLaunch: async () => ({
+      pathToClaudeCodeExecutable: 'claude',
+      options: {},
+      cwd: '/work/repo',
+      claudeConfigDir: '/accounts/claude',
+      providerSessionId: PROVIDER_SESSION_ID,
+      resumeLeafUuid: null,
+      resumesTranscript: false,
+      continuesChain: false,
+      cliFlag: async () => 'supported' as const,
+      ...(pooled
+        ? {
+            dashboardBinding: {
+              account_id: 'pool-claude',
+              binding_revision: 2,
+              credential_version: 1
+            }
+          }
+        : {})
+    }),
+    openConnection: claude.openConnection,
+    readProcessStartTime: async () => 1700000000000,
+    ...(naming
+      ? {
+          namingInputs: async () => {
+            throw new Error('Unexpected naming request')
+          }
+        }
+      : {})
+  })
+  cleanups.push(async () => {
+    claude.dispose()
+    await adapter.closeAll()
+  })
+  return { claude, adapter }
+}
+
+describe.each([false, true])('Claude pool authentication source (naming=%s)', (naming) => {
+  it.each([
+    { name: 'missing account', account: undefined },
+    { name: 'invalid account', account: 'fixture-private-account-text' },
+    { name: 'other OAuth', account: { tokenSource: 'oauth' } },
+    { name: 'API key', account: { tokenSource: 'none', apiKeySource: 'environment' } },
+    {
+      name: 'mixed sources',
+      account: { tokenSource: 'CLAUDE_CODE_OAUTH_TOKEN', apiKeySource: 'environment' }
+    },
+    {
+      name: 'unknown API source',
+      account: { tokenSource: 'CLAUDE_CODE_OAUTH_TOKEN', apiKeySource: null }
+    }
+  ])('rejects $name without exposing account data or confirming startup', async ({ account }) => {
+    const { claude, adapter } = sourceFixture(account, true, naming)
+    const opening = acquire(adapter).then(() => claudeOpened(adapter, 'session-1'))
+    await expect(opening).rejects.toMatchObject({
+      message: DashboardAllocationErrorCode.Unavailable
+    })
+    expect(
+      adapter.readDashboardClaudeLaunches().processes.filter((process) => process.initialized)
+    ).toEqual([])
+    expect(claude.connections.flatMap((connection) => connection.sent)).toEqual([])
+  })
+
+  it.each([
+    { tokenSource: 'CLAUDE_CODE_OAUTH_TOKEN' },
+    { tokenSource: 'CLAUDE_CODE_OAUTH_TOKEN', apiKeySource: 'none' }
+  ])(
+    'opens the selected OAuth source without manufacturing an adoption proof: %j',
+    async (account) => {
+      const { adapter } = sourceFixture(account, true, naming)
+      await acquire(adapter)
+      await claudeOpened(adapter, 'session-1')
+      expect(adapter.readDashboardClaudeLaunches().processes).toMatchObject([
+        { initialized: true, credential_version: 1 }
+      ])
+    }
+  )
+
+  it.each([undefined, { tokenSource: 'none', apiKeySource: 'environment' }])(
+    'preserves local-account initialization: %j',
+    async (account) => {
+      const { adapter } = sourceFixture(account, false, naming)
+      await acquire(adapter)
+      await claudeOpened(adapter, 'session-1')
+      expect(adapter.readDashboardClaudeLaunches().processes).toEqual([])
+    }
+  )
+})
 
 describe('Claude pool process startup evidence', () => {
   it('distinguishes publication from initialize and returns immutable launch metadata copies', async () => {

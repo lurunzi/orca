@@ -3,6 +3,7 @@
 import type { AgentSessionAccountKind } from '../../../shared/agent-session/agent-session-availability'
 import type { StructuredAgentSessionProviderOpenResult } from '../../native-chat/agent-session-wire/structured-agent-session-provider-open-contract'
 import { withProviderRequestTimeout } from '../../provider-process/provider-request-timeout'
+import { assertDashboardClaudeAuthenticationSource } from '../../dashboard-accounts/dashboard-claude-authentication'
 import type { ClaudeStreamJsonConnection } from '../claude-stream-json-connection'
 import { ClaudeSlashCommandCatalog } from '../claude-slash-command-catalog'
 import {
@@ -59,6 +60,7 @@ export async function readClaudeStartupFacts(input: {
   sessionId: string
   providerSessionId: string
   resumesTranscript: boolean
+  dashboardPooled: boolean
   account?: AgentSessionAccountKind
   requestTimeoutMs: number | undefined
   emit: (event: ClaudeStructuredSessionEvent) => void
@@ -73,6 +75,9 @@ export async function readClaudeStartupFacts(input: {
         throw error
       })
       .then((result) => {
+        if (input.dashboardPooled) {
+          assertDashboardClaudeAuthenticationSource(result)
+        }
         const authError = claudeInitializationAuthError(result, input.account)
         if (authError) {
           throw authError

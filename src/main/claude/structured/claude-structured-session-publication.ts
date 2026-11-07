@@ -43,6 +43,7 @@ function claudeSessionInitialization(input: {
         sessionId: naming.chat,
         providerSessionId: launch.providerSessionId,
         resumesTranscript: launch.resumesTranscript,
+        dashboardPooled: launch.dashboardBinding !== undefined,
         account: launch.account,
         emit: input.emit,
         requestTimeoutMs: input.requestTimeoutMs

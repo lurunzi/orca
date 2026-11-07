@@ -54,6 +54,7 @@ async function openStartingClaudeSession(
         sessionId: request.sessionId,
         providerSessionId: session.providerSessionId,
         resumesTranscript,
+        dashboardPooled: session.dashboardLaunch !== undefined,
         account,
         requestTimeoutMs: deps.requestTimeoutMs,
         emit: (event) => emit(session, event)
