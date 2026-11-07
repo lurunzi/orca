@@ -18,6 +18,7 @@ import {
   type ClaudeToolUse
 } from './structured/journal/claude-structured-item-translation'
 import { claudeEnvelopeStopHookFeedbackRow } from './claude-stop-hook-feedback'
+import { snapshotClaudeReadImages } from './claude-read-image-snapshots'
 import {
   appendUnmodeledContent,
   type ClaudeProviderFrameFallback
@@ -161,7 +162,11 @@ export function journalClaudeMessage(
       input: null
     }
     const resultIdentity = claudeToolIdentity(envelope.sessionId, result.toolUseId)
-    const resultBody = claudeToolBody({ tool, result })
+    const resultBody = claudeToolBody({
+      tool,
+      result,
+      resultImagePaths: snapshotClaudeReadImages(tool, result)
+    })
     ctx.sink.appendItem(resultIdentity, resultBody, {
       ...stamp(resultIdentity, resultBody),
       lifecycle: true

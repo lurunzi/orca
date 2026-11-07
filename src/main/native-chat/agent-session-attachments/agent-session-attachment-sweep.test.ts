@@ -45,6 +45,8 @@ import {
   AGENT_SESSION_ATTACHMENT_PART_FILE,
   agentSessionAttachmentStoreRoot
 } from './agent-session-attachment-references'
+import { journalInputClaimsReceipt } from '../agent-session-journal/journal-submission-hook'
+import type { JournalRow } from '../agent-session-journal/journal-row-schema'
 import { AgentSessionAttachmentStore } from './agent-session-attachment-store'
 import {
   sweepAgentSessionAttachments,
@@ -251,5 +253,42 @@ describe('sweepAgentSessionAttachments', () => {
     await utimes(join(store.rootDir, uploadId), at, at)
     await sweepAgentSessionAttachments(store, facts(), NOW)
     expect(await remaining()).toEqual([uploadId])
+  })
+
+  it('keeps the image snapshot a recorded tool call shows', async () => {
+    const path = await seedUpload(SENT, OLD)
+    const row: JournalRow = {
+      v: 1,
+      epoch: 'epoch-1',
+      seq: 1,
+      fence: 1,
+      ts: NOW,
+      kind: 'item',
+      itemId: 'tool-1',
+      revision: 1,
+      body: {
+        kind: 'tool-call',
+        name: 'Read',
+        input: { file_path: '/tmp/shot.png' },
+        state: 'completed',
+        resultImagePaths: [path]
+      }
+    }
+    journalInputClaimsReceipt(
+      (database, body, required) => {
+        claimAgentSessionAttachmentsInTransaction(database, {
+          stateDirectory,
+          sessionId: 'session-1',
+          body,
+          required,
+          now: NOW
+        })
+      },
+      () => false,
+      [row]
+    )?.write(db)
+    await sweepAgentSessionAttachments(store, facts(), NOW)
+    expect(claimedSessions()).toEqual(['session-1'])
+    expect(await remaining()).toEqual([SENT])
   })
 })
