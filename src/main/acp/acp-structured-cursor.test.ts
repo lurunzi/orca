@@ -47,6 +47,12 @@ function scriptCursor(agent: AcpScriptedAgent, onPrompt: (frame: FakeFrame) => P
     configOptions = configOptions.map((option) =>
       option.id === configId ? { ...option, currentValue: value } : option
     )
+    if (configId === 'model' && value === 'composer-2.5') {
+      // Recorded: Composer reports only Fast, no thinking, context or effort.
+      configOptions = configOptions.filter((option) =>
+        ['mode', 'model', 'fast'].includes(option.id)
+      )
+    }
     agent.reply(frame, { configOptions })
   })
   agent.on('session/prompt', (frame) => {
@@ -97,13 +103,15 @@ it('opts into the parameterized picker, reads effort rather than thinking, and d
   expect(reported).toMatchObject({ model: 'claude-opus-5', effort: 'high', fastMode: 'true' })
 })
 
-it('maps a CLI variant id such as composer-2.5-fast to its listed model and Fast', async () => {
+it('maps a CLI variant id such as composer-2.5-fast to its listed model and Fast, skipping a saved effort Composer lacks', async () => {
   const rig = await openAcpAdapterRig({
     spec: CURSOR,
     script: (agent) => scriptCursor(agent, async () => {})
   })
   await rig.acquire()
-  await expect(sendHello(rig, 'send-1', 1, { model: 'composer-2.5-fast' })).resolves.toMatchObject({
+  await expect(
+    sendHello(rig, 'send-1', 1, { model: 'composer-2.5-fast', effort: 'xhigh' })
+  ).resolves.toMatchObject({
     state: 'admitted'
   })
   expect(rig.sent('session/set_config_option').map((frame) => frame.params)).toMatchObject([

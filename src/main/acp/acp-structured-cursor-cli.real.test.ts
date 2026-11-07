@@ -52,7 +52,11 @@ describe.skipIf(process.env.ORCA_REAL_CURSOR_CLI_TEST !== '1')('installed cursor
       await rig.acquire()
       expect(rig.openFailure()).toBeUndefined()
       await expect(
-        sendHello(rig, 'send-1', 1, { model: 'composer-2.5-fast' })
+        sendHello(rig, 'send-1', 1, {
+          model: 'composer-2.5-fast',
+          effort: 'xhigh',
+          fastMode: 'true'
+        })
       ).resolves.toMatchObject({ state: 'admitted' })
       await vi.waitFor(
         async () => {

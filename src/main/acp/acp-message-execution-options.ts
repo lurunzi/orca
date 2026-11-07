@@ -41,6 +41,15 @@ export async function applyAcpMessageOptions(
       if (!isCurrent()) {
         return false
       }
+      // A saved effort or Fast pick rides along with a named model that may not offer it (Composer has no effort).
+      if (
+        key !== 'model' &&
+        options.model !== undefined &&
+        !(error instanceof AcpAgentError) &&
+        session.options.write(key, value) === null
+      ) {
+        continue
+      }
       if (error instanceof AcpAgentError) {
         const detail = acpPromptErrorDetail(session.spec.dialect, error)
         const rejection = acpAuthenticationRequired(session.spec.dialect, error)
