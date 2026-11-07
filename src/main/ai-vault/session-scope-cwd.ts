@@ -8,9 +8,10 @@ import {
 } from './session-cwd-bucket-layouts'
 import type { FileWithMtime, SessionFileCandidate } from './session-scanner-types'
 import { asRecord } from './session-scanner-record-value'
-import { extractString, parseJsonObject } from './session-scanner-values'
+import { extractString, parseJsonObject, readJsonObjectIfExists } from './session-scanner-values'
 import { clineManifestCwd } from './session-scanner-cline-parser'
 import { cursorChatMetaUnavailable, readCursorChatMeta } from './session-scanner-cursor-chat-meta'
+import { isCursorAcpSessionMetaPath } from './session-scanner-cursor-acp-parser'
 import { rovoSessionCwd } from './session-scanner-graph-parsers'
 import { grokSessionCwd } from './session-scanner-grok-parser'
 import { listedKiroMetadata } from './session-scanner-kiro-parser'
@@ -79,6 +80,10 @@ const SESSION_HEADER = head((record) => (record.type === 'session' ? record.cwd 
 const CURSOR: SessionScopeCwdSource = {
   kind: 'read',
   readCwd: async ({ file }, signal) => {
+    if (isCursorAcpSessionMetaPath(file.path)) {
+      const meta = await settledRead(() => readJsonObjectIfExists(file.path, signal), signal)
+      return meta ? { cwd: extractString(meta.cwd) } : null
+    }
     const meta = await settledRead(() => readCursorChatMeta(file.path, signal), signal)
     if (meta) {
       return { cwd: meta.cwd }

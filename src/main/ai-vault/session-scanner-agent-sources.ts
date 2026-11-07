@@ -1,6 +1,5 @@
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
-import { pathSegments } from './session-file-discovery'
 import { resolveAbsoluteDirOverride } from '../../shared/absolute-dir-override'
 import type { AiVaultAgent } from '../../shared/ai-vault-types'
 import type { AiVaultDeletableAgent } from '../../shared/ai-vault-session-deletion'
@@ -11,7 +10,7 @@ import {
   clineMessagesPathForMetadata,
   isClineSessionMetadataPath
 } from './session-scanner-cline-parser'
-import { cursorChatMetaPath } from './session-scanner-cursor-chat-meta'
+import { CURSOR_AGENT_SOURCE } from './cursor-session-source'
 import { devinSessionsDbDependencyPath } from './session-scanner-devin-db'
 import { resolveKimiSessionsDir } from './session-scanner-kimi-paths'
 import { resolveMuseSessionsDir } from './session-scanner-muse-paths'
@@ -39,7 +38,6 @@ const COPILOT_SESSIONS_DIR = join(
   resolveAbsoluteDirOverride(process.env.COPILOT_HOME, join(homedir(), '.copilot')),
   'session-state'
 )
-const CURSOR_PROJECTS_DIR = join(homedir(), '.cursor', 'projects')
 const CODEBUDDY_PROJECTS_DIR = join(homedir(), '.codebuddy', 'projects')
 const ROVO_SESSIONS_DIR = join(homedir(), '.rovodev', 'sessions')
 export function piSessionHistorySessionsDir(): string {
@@ -142,16 +140,7 @@ export const AI_VAULT_AGENT_SOURCES: AiVaultAgentSourceTable = {
       ]),
     extensions: ['.jsonl']
   },
-  cursor: {
-    rootDirs: (options, wslHomeDirs) =>
-      sessionRootDirs(options.cursorProjectsDir ?? CURSOR_PROJECTS_DIR, wslHomeDirs, [
-        '.cursor',
-        'projects'
-      ]),
-    extensions: ['.jsonl'],
-    filePredicate: (filePath) => pathSegments(filePath).includes('agent-transcripts'),
-    contentDependencyPath: cursorChatMetaPath
-  },
+  cursor: CURSOR_AGENT_SOURCE,
   grok: {
     rootDirs: (options, wslHomeDirs) => [
       options.grokSessionsDir ?? resolveGrokSessionsDir(),

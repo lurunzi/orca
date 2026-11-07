@@ -12,6 +12,10 @@ import { throwIfAiVaultScanCancelled } from './ai-vault-scan-cancellation'
 import { WslTranscriptFsError } from '../native-chat/wsl-transcript-fs-gate'
 import { parseJsonObject, timestampMs } from './session-scanner-values'
 import { antigravityHistoryPromptHash } from './antigravity-history-prompt'
+import {
+  antigravityConversationSummariesPath,
+  readAntigravityConversationWorkspaces
+} from './antigravity-conversation-summaries'
 
 const HISTORY_MATCH_WINDOW_MS = 2_000
 
@@ -56,6 +60,23 @@ export async function readLocalAntigravityHistory(
   }
 }
 
+/** Local stores only: a synchronous SQLite open over a WSL share can boot the distro or stall on locks. */
+export async function readLocalAntigravitySummaryWorkspaces(
+  historyPath: string,
+  signal?: AbortSignal
+): Promise<ReadonlyMap<string, string>> {
+  throwIfAiVaultScanCancelled(signal)
+  if (isWslUncPath(historyPath)) {
+    return new Map()
+  }
+  try {
+    return readAntigravityConversationWorkspaces(antigravityConversationSummariesPath(historyPath))
+  } catch {
+    // Missing, locked or foreign databases leave the history.jsonl and cache joins in charge.
+    return new Map()
+  }
+}
+
 type AntigravityHistoryEntry = {
   timestampMs: number
   workspace: string
@@ -71,7 +92,9 @@ export type AntigravityWorkspaceResolver = {
 }
 
 export function createAntigravityWorkspaceResolver(
-  readHistory: (historyPath: string) => Promise<string | null>
+  readHistory: (historyPath: string) => Promise<string | null>,
+  readSummaryWorkspaces: (historyPath: string) => Promise<ReadonlyMap<string, string>> = async () =>
+    new Map()
 ): AntigravityWorkspaceResolver {
   const indexes = new Map<string, Promise<AntigravityHistoryIndex>>()
 
@@ -102,6 +125,10 @@ export function createAntigravityWorkspaceResolver(
               } else if (index.byId.get(id) !== path) {
                 index.byId.set(id, null)
               }
+            }
+            // The summaries database records each conversation's own workspace, so it settles conflicts.
+            for (const [id, path] of await readSummaryWorkspaces(historyPath)) {
+              index.byId.set(id, path)
             }
             return index
           })

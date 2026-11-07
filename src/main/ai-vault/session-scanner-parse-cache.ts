@@ -10,6 +10,7 @@ import { createCodebuddySessionResumeState } from './session-scanner-codebuddy-p
 import { createGeminiJsonlSessionResumeState } from './session-scanner-gemini-parsers'
 import { createCopilotSessionResumeState } from './session-scanner-copilot-parser'
 import { createCursorSessionResumeState } from './session-scanner-cursor-parser'
+import { isCursorAcpSessionMetaPath } from './session-scanner-cursor-acp-parser'
 import { countSubagentTranscripts } from './session-scanner-subagent-transcripts'
 import { countOmpSubagentTranscripts } from './session-scanner-omp-subagent-transcripts'
 import type { ResumableSessionParseState, SessionFileCandidate } from './session-scanner-types'
@@ -56,7 +57,10 @@ function resumableStateFactoryFor(
       return (messages) =>
         createCodexSessionResumeState(candidate.file, candidate.codexHome, messages)
     case 'cursor':
-      return (messages) => createCursorSessionResumeState(candidate.file, messages)
+      // ACP stores are SQLite, not appendable lines.
+      return isCursorAcpSessionMetaPath(candidate.file.path)
+        ? null
+        : (messages) => createCursorSessionResumeState(candidate.file, messages)
     case 'copilot':
       return (messages) => createCopilotSessionResumeState(candidate.file, messages)
     case 'droid':

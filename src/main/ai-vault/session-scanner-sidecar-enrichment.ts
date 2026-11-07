@@ -3,6 +3,7 @@ import { buildAiVaultResumeCommand } from '../../shared/ai-vault-resume-command'
 import { generatedSessionTitle } from './session-scanner-accumulator'
 import { readCursorChatMeta, wasCursorChatMetaRefused } from './session-scanner-cursor-chat-meta'
 import { devinSessionsIndexForSidecar } from './session-scanner-devin-db'
+import { isCursorAcpSessionMetaPath } from './session-scanner-cursor-acp-parser'
 import type { SessionSidecarObservation } from './session-sidecar-stat'
 import type { SessionFileCandidate } from './session-scanner-types'
 
@@ -44,7 +45,11 @@ export function reuseUnchangedSidecarSession(
 }
 
 export function sidecarEnrichesWithoutReparse(candidate: SessionFileCandidate): boolean {
-  return candidate.agent === 'cursor' || candidate.agent === 'devin'
+  // An ACP store's sidecar is the conversation itself, so a change needs a reparse.
+  return (
+    (candidate.agent === 'cursor' && !isCursorAcpSessionMetaPath(candidate.file.path)) ||
+    candidate.agent === 'devin'
+  )
 }
 
 export async function enrichSessionFromSidecar(
@@ -56,7 +61,11 @@ export async function enrichSessionFromSidecar(
   if (candidate.agent === 'devin') {
     return enrichDevinSessionFromDb(candidate.file.sidecar, foldSession, platform)
   }
-  if (candidate.agent !== 'cursor' || !foldSession) {
+  if (
+    candidate.agent !== 'cursor' ||
+    !foldSession ||
+    isCursorAcpSessionMetaPath(candidate.file.path)
+  ) {
     return { session: foldSession, refused: false }
   }
   const meta = await readCursorChatMeta(candidate.file.path, signal)

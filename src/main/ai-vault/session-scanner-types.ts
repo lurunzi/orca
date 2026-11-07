@@ -30,6 +30,7 @@ export type AiVaultScanOptions = {
   includeAntigravityIdeSessions?: boolean
   copilotSessionsDir?: string
   cursorProjectsDir?: string
+  cursorAcpSessionsDir?: string
   opencodeStorageDir?: string
   opencodeDbPaths?: readonly string[]
   /** Managed account OpenCode data directories; resolved by the host process. */

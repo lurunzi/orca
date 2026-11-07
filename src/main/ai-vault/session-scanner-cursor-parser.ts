@@ -61,9 +61,16 @@ export async function parseCursorSessionContent(
 
 function consumeCursorRecordLine(accumulator: SessionAccumulator, line: string): void {
   const record = parseJsonObject(line)
-  if (!record) {
-    return
+  if (record) {
+    consumeCursorRecord(accumulator, record)
   }
+}
+
+/** One `{ role, message?: { content } | content }` record, shared by transcripts and ACP stores. */
+export function consumeCursorRecord(
+  accumulator: SessionAccumulator,
+  record: Record<string, unknown>
+): void {
   updateTimeline(accumulator, extractString(record.timestamp))
   const role = extractString(record.role)
   if (role === 'user' || role === 'assistant') {

@@ -26,6 +26,10 @@ import { parseGeminiSessionFile } from './session-scanner-gemini-parsers'
 import { parseCodexSessionFile } from './session-scanner-codex-parser'
 import { parseCopilotSessionFile } from './session-scanner-copilot-parser'
 import { parseCursorSessionFile } from './session-scanner-cursor-parser'
+import {
+  isCursorAcpSessionMetaPath,
+  parseCursorAcpSessionFile
+} from './session-scanner-cursor-acp-parser'
 import { parseHermesSessionFile } from './session-scanner-hermes-parser'
 import { parseOpenCodeSessionFile } from './session-scanner-opencode-parser'
 import type { SessionFileCandidate } from './session-scanner-types'
@@ -95,7 +99,9 @@ export async function parseAgentSessionFile(
     case 'copilot':
       return parseCopilotSessionFile(candidate.file, platform, messages)
     case 'cursor':
-      return parseCursorSessionFile(candidate.file, platform, messages)
+      return isCursorAcpSessionMetaPath(candidate.file.path)
+        ? parseCursorAcpSessionFile(candidate.file, platform, messages)
+        : parseCursorSessionFile(candidate.file, platform, messages)
     case 'opencode': {
       // Synthetic db#id paths identify SQLite sessions; real paths retain the legacy JSON parser.
       const sqliteCandidate = splitOpenCodeSqliteCandidate(candidate.file.path)
