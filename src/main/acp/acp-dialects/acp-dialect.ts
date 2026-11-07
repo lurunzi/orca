@@ -10,6 +10,7 @@ import type {
 import type { ProviderTimelineRequestBody } from '../../native-chat/agent-session-timeline/provider-timeline-event'
 import type { AcpAgentError } from '../acp-errors'
 import type { AgentSessionOptionChoice } from '../../../shared/agent-session/agent-session-wire'
+import type { AgentSessionExecutionOptions } from '../../../shared/agent-session/options/agent-session-execution-options'
 import type {
   AvailableCommand,
   InitializeResponse,
@@ -139,6 +140,11 @@ export type AcpDialect = {
   effortOptionIds?: readonly string[]
   /** A per-model boolean config option ('true'/'false') that Orca's Fast toggle drives. */
   fastOptionId?: string
+  /** Rewrites a requested model the session does not list into a listed model and its options. */
+  resolveModelSelection?(
+    options: AgentSessionExecutionOptions,
+    listed: readonly string[]
+  ): AgentSessionExecutionOptions
   /** Hide these commands and reject command-only prompts before dispatch. */
   withheldCommands?: readonly string[]
   /** Which sign-in a not-signed-in chat needs; absent is the agent's usual one. */

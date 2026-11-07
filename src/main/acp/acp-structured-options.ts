@@ -160,6 +160,13 @@ export class AcpStructuredOptions {
     return null
   }
 
+  listedModelIds(): string[] {
+    const modelOption = this.select('model')
+    return modelOption
+      ? selectChoices(modelOption).map((choice) => choice.value)
+      : (this.models?.availableModels.map((model) => model.modelId) ?? [])
+  }
+
   // Only the current model's options prove Fast; other models stay unknown.
   private fastOption(): SelectOption | null {
     const id = this.dialect.fastOptionId

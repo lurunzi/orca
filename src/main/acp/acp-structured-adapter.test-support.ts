@@ -1,4 +1,5 @@
 import { FakeAcpChild } from './acp-scripted-connection.test-fixture'
+import type { AgentSessionExecutionOptions } from '../../shared/agent-session/options/agent-session-execution-options'
 export { FakeAcpChild, PID } from './acp-scripted-connection.test-fixture'
 
 import { tmpdir } from 'node:os'
@@ -248,8 +249,19 @@ const HELLO: AgentJournalMessageItem = {
   blocks: [{ type: 'text', text: 'hello' }]
 }
 
-export function sendHello(rig: AcpAdapterRig, clientMessageId: string, fence = 1) {
-  return rig.adapter.dispatch({ sessionId: SESSION, clientMessageId, body: HELLO, fence })
+export function sendHello(
+  rig: AcpAdapterRig,
+  clientMessageId: string,
+  fence = 1,
+  executionOptions?: AgentSessionExecutionOptions
+) {
+  return rig.adapter.dispatch({
+    sessionId: SESSION,
+    clientMessageId,
+    body: HELLO,
+    fence,
+    ...(executionOptions ? { executionOptions } : {})
+  })
 }
 
 export function replyChunk(promptId: string, text: string, meta: Record<string, unknown> = {}) {

@@ -97,6 +97,21 @@ it('opts into the parameterized picker, reads effort rather than thinking, and d
   expect(reported).toMatchObject({ model: 'claude-opus-5', effort: 'high', fastMode: 'true' })
 })
 
+it('maps a CLI variant id such as composer-2.5-fast to its listed model and Fast', async () => {
+  const rig = await openAcpAdapterRig({
+    spec: CURSOR,
+    script: (agent) => scriptCursor(agent, async () => {})
+  })
+  await rig.acquire()
+  await expect(sendHello(rig, 'send-1', 1, { model: 'composer-2.5-fast' })).resolves.toMatchObject({
+    state: 'admitted'
+  })
+  expect(rig.sent('session/set_config_option').map((frame) => frame.params)).toMatchObject([
+    { configId: 'model', value: 'composer-2.5' },
+    { configId: 'fast', value: 'true' }
+  ])
+})
+
 it('answers a sessionless cursor/ask_question with the chosen option ids', async () => {
   let reply: Promise<FakeFrame> | undefined
   const rig = await openAcpAdapterRig({

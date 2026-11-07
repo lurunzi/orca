@@ -14,14 +14,17 @@ import {
 
 export async function applyAcpMessageOptions(
   session: AcpStructuredSession,
-  options: AgentSessionExecutionOptions | undefined,
+  requested: AgentSessionExecutionOptions | undefined,
   setOption: (key: 'model' | 'effort' | 'fastMode', value: string) => Promise<unknown>,
   isCurrent: () => boolean,
   signal?: AbortSignal
 ): Promise<boolean> {
-  if (!options) {
+  if (!requested) {
     return true
   }
+  const options =
+    session.spec.dialect.resolveModelSelection?.(requested, session.options.listedModelIds()) ??
+    requested
   // Fast follows the model, so it is written after the model switch.
   const keys = session.spec.dialect.fastOptionId
     ? (['model', 'effort', 'fastMode'] as const)
