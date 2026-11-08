@@ -338,7 +338,8 @@ it('uses a cold parsed latest Codex cwd after its unlisted row is evicted', asyn
   expect(await stat(path)).toMatchObject({ mtimeMs, size: sizeBytes })
 })
 
-it('walks a history larger than the spread-argument limit', async () => {
+// 200k missing-file probes take ~40 s on Windows, where each ENOENT costs far more than on POSIX.
+it('walks a history larger than the spread-argument limit', { timeout: 120_000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'orca-scope-huge-'))
   tempRoots.push(root)
   const sessionsDir = join(root, 'sessions')

@@ -1,9 +1,9 @@
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { validateAiVaultSessionDeleteTarget } from './session-delete-target'
 
 // Inject roots so validation never depends on the user's home.
-const HOME = join('/tmp', 'orca-ai-vault-delete-fixture-home')
+const HOME = resolve('/tmp', 'orca-ai-vault-delete-fixture-home')
 const GEMINI_ROOT = join(HOME, '.gemini', 'tmp')
 const CURSOR_ROOT = join(HOME, '.cursor', 'projects')
 const HERMES_ROOT = join(HOME, '.hermes', 'sessions')
@@ -19,7 +19,7 @@ const GROK_ROOT = join(HOME, '.grok', 'sessions')
 
 describe('validateAiVaultSessionDeleteTarget', () => {
   it('plans whole session-directory removal for a canonical Cline manifest', () => {
-    const root = join('/tmp', 'cline-sessions')
+    const root = resolve('/tmp', 'cline-sessions')
     const sessionId = '1786466194549_xrzrl'
     const sessionDir = join(root, sessionId)
     const result = validateAiVaultSessionDeleteTarget({
@@ -37,7 +37,7 @@ describe('validateAiVaultSessionDeleteTarget', () => {
   })
 
   it('rejects a Cline messages companion as an undiscoverable delete target', () => {
-    const root = join('/tmp', 'cline-sessions')
+    const root = resolve('/tmp', 'cline-sessions')
     const sessionId = '1786466194549_xrzrl'
     const result = validateAiVaultSessionDeleteTarget({
       agent: 'cline',
@@ -298,7 +298,7 @@ describe('validateAiVaultSessionDeleteTarget', () => {
   })
 
   it('allows a gemini file under a WSL-expanded root', () => {
-    const wslHome = join('/tmp', 'orca-ai-vault-delete-fixture-wsl-home')
+    const wslHome = resolve('/tmp', 'orca-ai-vault-delete-fixture-wsl-home')
     const result = validateAiVaultSessionDeleteTarget({
       agent: 'gemini',
       filePath: join(wslHome, '.gemini', 'tmp', 'project-a', 'session-1.json'),
@@ -366,7 +366,7 @@ describe('directory-shaped agents', () => {
   })
 
   it("pairs a WSL-home claude session with that distro's session-env, not the local one", () => {
-    const wslHome = join('/tmp', 'orca-wsl-home')
+    const wslHome = resolve('/tmp', 'orca-wsl-home')
     const filePath = join(wslHome, '.claude', 'projects', '-proj', 'sess-2.jsonl')
     const result = validateAiVaultSessionDeleteTarget({
       agent: 'claude',

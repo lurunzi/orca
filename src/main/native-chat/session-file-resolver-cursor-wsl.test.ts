@@ -41,6 +41,8 @@ vi.mock('./wsl-transcript-fs-gate', async (importOriginal) => ({
   ...(await importOriginal<typeof WslTranscriptFsGate>()),
   runWslTranscriptFsTask: mocks.gate
 }))
+// Windows hosts would otherwise probe the real distros before the mocked gate runs.
+vi.mock('./wsl-transcript-running-admission', () => ({ admitWslTranscriptPath: async () => {} }))
 vi.mock('../ai-vault/session-scanner-discovery', () => ({
   walkSessionFiles: mocks.walk
 }))

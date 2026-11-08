@@ -35,7 +35,7 @@ import { deleteAiVaultSessionFile as deleteWithRemover } from './session-delete'
 const deleteAiVaultSessionFile = (args: Parameters<typeof deleteWithRemover>[0]) =>
   deleteWithRemover(args, (removal) => trashItemMock(removal.path))
 
-const HOME = join('/tmp', 'orca-ai-vault-delete-exec-fixture-home')
+const HOME = resolve('/tmp', 'orca-ai-vault-delete-exec-fixture-home')
 const GEMINI_ROOT = join(HOME, '.gemini', 'tmp')
 const CLAUDE_ROOT = join(HOME, '.claude', 'projects')
 const ROVO_ROOT = join(HOME, '.rovodev', 'sessions')
@@ -105,7 +105,7 @@ describe('deleteAiVaultSessionFile', () => {
 
   it('accepts a session under a symlinked root by realpath-resolving the roots too', async () => {
     const filePath = join(GEMINI_ROOT, 'project-a', 'session-1.json')
-    const realRoot = join('/real', '.gemini', 'tmp')
+    const realRoot = resolve('/real', '.gemini', 'tmp')
     const realFile = join(realRoot, 'project-a', 'session-1.json')
     lstatMock.mockResolvedValue({ isFile: () => true })
     realpathMock.mockImplementation((p: string) =>
