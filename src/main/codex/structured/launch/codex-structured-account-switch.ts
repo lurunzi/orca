@@ -86,6 +86,10 @@ export async function resolveCodexStructuredLaunchHome(input: {
   if (sameHome(target, input.recordHome)) {
     return target
   }
+  // A selection made for terminals must not strand a chat its history cannot follow.
+  if (!(await codexChatAccountSwitchable(input.recordHome).catch(() => false))) {
+    return input.recordHome
+  }
   try {
     const others = accountSwitch.selectableHomes().filter((home) => !sameHome(home, target))
     const rollout = input.threadId
