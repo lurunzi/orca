@@ -36,6 +36,7 @@ import {
 import { STRUCTURED_AGENT_RUNTIME_METADATA } from '../runtime/structured-agent-runtime-metadata'
 import type { StructuredAgentRuntimeMetadata } from '../runtime/structured-agent-runtime-registration-types'
 import { commandName, commandProgramIndex, shellCommands } from './shell-command-words'
+import { assertNotCursorAcpTerminalResume } from './session-scanner-cursor-acp-parser'
 
 /** Hide chat-owned rows from clients unable to open that agent’s chat. */
 export type StructuredChatOpener = (agent: StructuredAgentId) => boolean
@@ -214,6 +215,7 @@ function historyRowOwners(rowAgent: string): readonly StructuredAgentId[] {
 }
 
 export function assertLegacyAiVaultResumeAllowed(args: AiVaultPrepareSessionResumeArgs): void {
+  assertNotCursorAcpTerminalResume(args.agent, args.filePath)
   // A fork writes a new conversation, and preparing its home never writes this one.
   const blocking = args.fork ? undefined : resumeOwnerships(args).find(terminalResumeBlocked)
   if (blocking) {

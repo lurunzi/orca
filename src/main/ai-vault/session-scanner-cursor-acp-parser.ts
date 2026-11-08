@@ -22,6 +22,15 @@ export function isCursorAcpSessionMetaPath(filePath: string): boolean {
   return segments.at(-1) === CURSOR_ACP_META_FILE && segments.at(-3) === CURSOR_ACP_SESSIONS_DIR
 }
 
+/** `cursor-agent --resume` reads <config>/chats, so an ACP id would start an empty chat under that id. */
+export function assertNotCursorAcpTerminalResume(agent: string, filePath: string): void {
+  if (agent === 'cursor' && isCursorAcpSessionMetaPath(filePath)) {
+    throw new Error(
+      'This Cursor conversation was created in an Orca chat and cannot be resumed in a terminal.'
+    )
+  }
+}
+
 /** Watch the WAL when present: turns commit there long before a checkpoint touches store.db. */
 export async function cursorAcpStoreDependencyPath(metaPath: string): Promise<string> {
   const dbPath = join(dirname(metaPath), CURSOR_ACP_STORE_FILE)

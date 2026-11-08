@@ -7,6 +7,7 @@ import SyncDatabase from '../sqlite/sync-database'
 import { rootMessageIds } from './cursor-acp-session-store'
 import { validateAiVaultSessionDeleteTarget } from './session-delete-target'
 import { scanAiVaultSessions } from './session-scanner'
+import { assertLegacyAiVaultResumeAllowed } from './structured-session-ownership'
 import { isolatedScanRoots } from './session-scanner-test-fixtures'
 
 const temporaryDirectories: string[] = []
@@ -180,5 +181,42 @@ describe('Cursor ACP session history', () => {
     const root = rootBlob([id, id])
     expect(rootMessageIds(root)).toEqual([id, id])
     expect(rootMessageIds(Buffer.concat([root, Buffer.from([0x0a, 0x20, 0x01])]))).toEqual([id, id])
+  })
+
+  it('refuses a terminal resume, which would start an empty chat under the same id', () => {
+    const resume = (filePath: string) => () =>
+      assertLegacyAiVaultResumeAllowed({
+        agent: 'cursor',
+        sessionId: 'acp-session',
+        filePath,
+        codexHome: null,
+        executionHostId: 'local',
+        fork: true
+      })
+    expect(resume(join(tmpdir(), 'acp-sessions', 'acp-session', 'meta.json'))).toThrow(
+      'cannot be resumed in a terminal'
+    )
+    expect(
+      resume(join(tmpdir(), 'projects', 'p', 'agent-transcripts', 'id', 'id.jsonl'))
+    ).not.toThrow()
+  })
+})
+
+describe('Cursor transcript discovery', () => {
+  it('lists a parent transcript but not its Task subagent transcripts', async () => {
+    const { home } = await acpHome()
+    const projects = join(home, 'cursor-projects')
+    const parentDir = join(projects, 'project', 'agent-transcripts', 'parent')
+    await mkdir(join(parentDir, 'subagents'), { recursive: true })
+    const line = JSON.stringify({ role: 'user', message: { content: 'hello' } })
+    await writeFile(join(parentDir, 'parent.jsonl'), `${line}\n`)
+    await writeFile(join(parentDir, 'subagents', 'child.jsonl'), `${line}\n`)
+
+    const result = await scanAiVaultSessions({
+      ...isolatedScanRoots(home),
+      cursorProjectsDir: projects
+    })
+
+    expect(result.sessions.map((session) => session.sessionId)).toEqual(['parent'])
   })
 })

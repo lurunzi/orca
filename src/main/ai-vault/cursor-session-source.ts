@@ -1,5 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { resolveAbsoluteDirOverride } from '../../shared/absolute-dir-override'
 import type { AiVaultAgentSource } from './session-scanner-agent-sources'
 import { pathSegments } from './session-file-discovery'
 import { cursorChatMetaPath } from './session-scanner-cursor-chat-meta'
@@ -9,9 +10,16 @@ import {
   isCursorAcpSessionMetaPath
 } from './session-scanner-cursor-acp-parser'
 import { sessionRootDirs } from './session-scanner-roots'
+import { SUBAGENT_DIR_NAME } from './session-scanner-subagent-transcripts'
 
 const CURSOR_PROJECTS_DIR = join(homedir(), '.cursor', 'projects')
-const CURSOR_ACP_SESSIONS_ROOT = join(homedir(), '.cursor', CURSOR_ACP_SESSIONS_DIR)
+// Chats follow CURSOR_CONFIG_DIR as the launch does; ones started before it was set stay in ~/.cursor.
+const CURSOR_ACP_SESSIONS_ROOTS = [
+  ...new Set([
+    resolveAbsoluteDirOverride(process.env.CURSOR_CONFIG_DIR, join(homedir(), '.cursor')),
+    join(homedir(), '.cursor')
+  ])
+].map((configDir) => join(configDir, CURSOR_ACP_SESSIONS_DIR))
 
 /** Terminal chats write agent-transcripts; `cursor-agent acp` chats write acp-sessions. */
 export const CURSOR_AGENT_SOURCE: AiVaultAgentSource = {
@@ -26,7 +34,7 @@ export const CURSOR_AGENT_SOURCE: AiVaultAgentSource = {
       ? [options.cursorAcpSessionsDir]
       : options.cursorProjectsDir
         ? []
-        : [CURSOR_ACP_SESSIONS_ROOT])
+        : CURSOR_ACP_SESSIONS_ROOTS)
   ],
   extensions: ['.jsonl', '.json'],
   filePredicate: (filePath) =>
@@ -35,5 +43,7 @@ export const CURSOR_AGENT_SOURCE: AiVaultAgentSource = {
   contentDependencyPath: (filePath) =>
     isCursorAcpSessionMetaPath(filePath)
       ? cursorAcpStoreDependencyPath(filePath)
-      : cursorChatMetaPath(filePath)
+      : cursorChatMetaPath(filePath),
+  // agent-transcripts/<parent>/subagents/*.jsonl are Task children, not top-level chats.
+  directoryPredicate: (name) => name !== SUBAGENT_DIR_NAME
 }

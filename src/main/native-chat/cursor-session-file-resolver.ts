@@ -35,7 +35,7 @@ async function findCursorTranscriptInDirs(
     try {
       const files = await walkSessionFiles(rootDir, 'cursor', [], {
         extensions: new Set(source.extensions),
-        directoryPredicate: source.directoryPredicate,
+        // Lookups by id may target a subagent transcript, which the history walk skips.
         filePredicate: (path) =>
           basename(path) === targetName && (source.filePredicate?.(path) ?? true),
         ...(isWslRoot
