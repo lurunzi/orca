@@ -53,6 +53,8 @@ export function createTerminalTabPresentationActions(
     setAiVaultTabTitle: (tabId, aiVaultTitle) => {
       set((s) => {
         const ownerWorktreeId = getTerminalTabOwnerWorktreeId(s.tabsByWorktree, tabId)
+        let nextTabsByWorktree = s.tabsByWorktree
+        let nextUnifiedTabsByWorktree = s.unifiedTabsByWorktree
         if (!ownerWorktreeId) {
           // Fork: structured chat tabs carry their conversation title on the unified tab.
           const updated = applyAgentSessionAiVaultTitle(
@@ -63,30 +65,32 @@ export function createTerminalTabPresentationActions(
           if (!updated) {
             return s
           }
-          scheduleRuntimeGraphSync()
-          return { tabsByWorktree: s.tabsByWorktree, unifiedTabsByWorktree: updated }
+          nextUnifiedTabsByWorktree = updated
+        } else {
+          const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
+          const current = tabs.find((tab) => tab.id === tabId)
+          if (!current || sameAiVaultSessionTitle(current.aiVaultTitle, aiVaultTitle)) {
+            return s
+          }
+          const ownerTabs = tabs.map((tab) => (tab.id === tabId ? { ...tab, aiVaultTitle } : tab))
+          nextTabsByWorktree = { ...s.tabsByWorktree, [ownerWorktreeId]: ownerTabs }
+          const unifiedTabs = s.unifiedTabsByWorktree[ownerWorktreeId] ?? []
+          nextUnifiedTabsByWorktree = {
+            ...s.unifiedTabsByWorktree,
+            [ownerWorktreeId]: unifiedTabs.map((tab) =>
+              tab.contentType === 'terminal' && tab.entityId === tabId
+                ? { ...tab, aiVaultTitle }
+                : tab
+            )
+          }
+          adoptTerminalTabOwnerMetadataOnlyBuckets(s.tabsByWorktree, nextTabsByWorktree, [
+            ownerWorktreeId
+          ])
         }
-        const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
-        const current = tabs.find((tab) => tab.id === tabId)
-        if (!current || sameAiVaultSessionTitle(current.aiVaultTitle, aiVaultTitle)) {
-          return s
-        }
-        const ownerTabs = tabs.map((tab) => (tab.id === tabId ? { ...tab, aiVaultTitle } : tab))
-        const nextTabsByWorktree = { ...s.tabsByWorktree, [ownerWorktreeId]: ownerTabs }
-        const unifiedTabs = s.unifiedTabsByWorktree[ownerWorktreeId] ?? []
-        const nextUnifiedTabs = unifiedTabs.map((tab) =>
-          tab.contentType === 'terminal' && tab.entityId === tabId ? { ...tab, aiVaultTitle } : tab
-        )
-        adoptTerminalTabOwnerMetadataOnlyBuckets(s.tabsByWorktree, nextTabsByWorktree, [
-          ownerWorktreeId
-        ])
         scheduleRuntimeGraphSync()
         return {
           tabsByWorktree: nextTabsByWorktree,
-          unifiedTabsByWorktree: {
-            ...s.unifiedTabsByWorktree,
-            [ownerWorktreeId]: nextUnifiedTabs
-          }
+          unifiedTabsByWorktree: nextUnifiedTabsByWorktree
         }
       })
     },
