@@ -68,7 +68,7 @@ export class UsageLimitAccountGate {
     const hold = usageLimitAccountHold(cut, reading, now)
     if (mayRefresh && hold.kind === 'refresh' && now - this.refreshedAt >= 60_000) {
       this.refreshedAt = now
-      this.source()?.refreshAccountUsage?.()
+      void this.source()?.refreshAccountUsage?.()
     }
     return hold
   }

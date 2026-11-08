@@ -180,8 +180,8 @@ export type StructuredAgentSessionHostDeps = {
     isWorkspaceAsleep: (workspaceId: string) => boolean
     /** The provider's usage for the account its chats launch under; null when Orca cannot read it. */
     readAccountUsage?: (provider: string) => UsageLimitAccountReading | null
-    /** Asks the provider for fresh usage; the next reading carries the answer. */
-    refreshAccountUsage?: () => void
+    /** Asks the provider for fresh usage; settles once the next reading carries the answer. */
+    refreshAccountUsage?: () => Promise<void>
   }
   startupLimits?: Partial<StructuredAgentSessionStartupLimits>
   /** Absent means no dispatch ownership. */

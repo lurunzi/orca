@@ -45,7 +45,8 @@ export class AcpTimelineTranslator {
   readonly subagents = new AcpSubagents()
   private readonly messages = new AcpTurnMessages()
   private readonly started = new BoundedMap<string, true>({ maxEntries: 128 })
-  private readonly failures: AcpTurnFailures
+  /** Turns rewrite a failure row once account usage explains it. */
+  readonly failures: AcpTurnFailures
   private loading = false
   private readonly context = new AcpContextTimeline()
   protected activeTurn?: string

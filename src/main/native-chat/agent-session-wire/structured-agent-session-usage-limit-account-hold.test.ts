@@ -13,7 +13,8 @@ function createRig(ids: string[]) {
   let reading: UsageLimitAccountReading | null = {
     checkedAt: ENDED,
     exhausted: true,
-    resetsAt: RESET
+    resetsAt: RESET,
+    usedUpResets: []
   }
   const cuts = new Map<string, NativeChatUsageLimitCut | null>(
     ids.map((id) => [id, { turnItemId: `turn-${id}`, resetsAt: RESET, turnEndedAt: ENDED }])
@@ -29,7 +30,7 @@ function createRig(ids: string[]) {
         subscribe: () => () => {},
         isWorkspaceAsleep: () => false,
         readAccountUsage: () => reading,
-        refreshAccountUsage: () => {
+        refreshAccountUsage: async () => {
           refreshes += 1
         }
       },
@@ -81,7 +82,12 @@ describe('usage-limit automatic continue gated by account usage', () => {
     expect(rig.sent).toEqual([])
     expect(rig.refreshes()).toBe(1)
 
-    rig.setReading({ checkedAt: RESET + 25_000, exhausted: false, resetsAt: null })
+    rig.setReading({
+      checkedAt: RESET + 25_000,
+      exhausted: false,
+      resetsAt: null,
+      usedUpResets: []
+    })
     rig.setNow(RESET + 30_000)
     await rig.scheduler.tick()
     expect(rig.sent.sort()).toEqual([...ids].sort())
@@ -90,7 +96,12 @@ describe('usage-limit automatic continue gated by account usage', () => {
   it('holds past the agent-reported reset while the account says the limit still lasts', async () => {
     const rig = createRig(['chat'])
     const weeklyReset = RESET + 24 * 60 * MINUTE
-    rig.setReading({ checkedAt: RESET + 20_000, exhausted: true, resetsAt: weeklyReset })
+    rig.setReading({
+      checkedAt: RESET + 20_000,
+      exhausted: true,
+      resetsAt: weeklyReset,
+      usedUpResets: []
+    })
     rig.setNow(RESET + 30_000)
     await rig.scheduler.tick()
     expect(rig.sent).toEqual([])

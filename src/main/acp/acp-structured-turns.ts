@@ -18,6 +18,8 @@ import { ACP_COMPACT_PROMPT } from './acp-compaction-turn'
 import { AcpAgentError, AcpAuthRequiredError, AcpConnectionClosedError } from './acp-errors'
 import type { AcpStructuredConnection } from './acp-structured-connection'
 import type { AcpStructuredLane } from './acp-structured-lane'
+import type { AgentSessionUsageLimit } from '../../shared/agent-session/failures/agent-session-usage-limit'
+import { acpPromptTurnId } from './acp-prompt-turns'
 import type { ContentBlock } from './generated/acp-protocol.generated'
 
 export type AcpDispatchSettlement = { clientMessageId: string } & (
@@ -37,6 +39,8 @@ export type AcpStructuredTurnsDeps = {
   settle: (settlement: AcpDispatchSettlement) => void
   /** Replace the child so the next send reopens the session. */
   sessionLost: (error: Error) => void
+  /** The limit the account's own usage shows for a failure that named none. */
+  usageLimitFromAccount?: (failedAt: number) => Promise<AgentSessionUsageLimit | null>
 }
 
 export class AcpStructuredTurns {
@@ -248,6 +252,7 @@ export class AcpStructuredTurns {
   }
 
   private finish(send: Send): void {
+    this.explainFromAccount(send.clientMessageId)
     if (this.active === send) {
       this.active = null
     }
@@ -260,6 +265,18 @@ export class AcpStructuredTurns {
     } else if (!this.active) {
       this.notifyIdle()
     }
+  }
+
+  private explainFromAccount(clientMessageId: string): void {
+    const { lane, usageLimitFromAccount } = this.deps
+    const turn = acpPromptTurnId(clientMessageId)
+    if (!usageLimitFromAccount || !lane.translator.failures.unexplained(turn)) {
+      return
+    }
+    usageLimitFromAccount(this.deps.now()).then(
+      (limit) => limit && lane.apply(lane.translator.failures.usageLimitFromAccount(turn, limit)),
+      () => {}
+    )
   }
 
   /** Steering waits indefinitely for cancellation; Stop can still end the child. */
