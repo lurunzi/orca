@@ -10,6 +10,7 @@ import type { OrcaRuntimeWithGetPtyRecordForPaneKey } from '../orchestration/ter
 import { OrcaRuntimeWithStartTuiIdleVisibleReadProbe } from '../terminal/wait/terminal-wait-visible-probe'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type { Repo } from '../../../shared/repo-types'
+import { readUsageLimitAccountReading } from '../../rate-limits/usage-limit-account-reading'
 import { escalateChatWorkerError } from '../orchestration/chat-worker-error-escalation'
 import type { StructuredAgentSessionRequestFailure } from '../../native-chat/agent-session-wire/structured-agent-session-request-failures'
 import type { StructuredAgentSessionHostDeps } from '../../native-chat/agent-session-wire/structured-agent-session-host-types'
@@ -33,7 +34,20 @@ export abstract class OrcaRuntimeWithWorktreePsDependencies extends OrcaRuntimeW
       isEnabled: () =>
         this.requireStore().getSettings().nativeChatAutoContinueAfterUsageLimit === true,
       subscribe: (changed) => this.requireStore().onSettingsChanged?.(changed) ?? (() => {}),
-      isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId)
+      isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId),
+      // Chats launch under the selected account, whose usage is the active reading.
+      readAccountUsage: (provider) => {
+        const state = this.accounts.usageRateLimits()?.getState()
+        const limits =
+          provider === 'claude' ? state?.claude : provider === 'codex' ? state?.codex : undefined
+        return limits === undefined ? null : readUsageLimitAccountReading(limits)
+      },
+      refreshAccountUsage: () => {
+        void this.accounts
+          .usageRateLimits()
+          ?.refresh()
+          .catch(() => {})
+      }
     }
   }
 
