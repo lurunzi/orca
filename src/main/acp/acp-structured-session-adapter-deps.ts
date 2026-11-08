@@ -15,6 +15,7 @@ import type { AcpLaunchSpec } from './acp-launch-specs'
 import type { ConnectAcpAgent } from './acp-structured-connection'
 import type { AgentChildWorkEvidence } from '../../shared/agent-status/child-work/agent-status-child-work-evidence'
 import type { AgentChatPermissionChoice } from '../../shared/agent-launch/permissions/agent-chat-permission-mode'
+import type { AgentSessionUsageLimit } from '../../shared/agent-session/failures/agent-session-usage-limit'
 
 // Grace begins at cancellation, before process close.
 export const ACP_STOP_GRACE_MS = 4_000
@@ -53,6 +54,11 @@ export type AcpStructuredSessionAdapterDeps = {
       | { state: 'unknown'; reason: string }
     )
   ) => void
+  /** The limit an agent account's usage shows after a turn that failed without naming one. */
+  usageLimitFromAccount?: (
+    agent: string,
+    failedAt: number
+  ) => Promise<AgentSessionUsageLimit | null>
   logger?: StructuredAgentSessionLogger
   now?: () => number
   mintGeneration?: () => string

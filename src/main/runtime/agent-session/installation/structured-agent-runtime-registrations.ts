@@ -20,6 +20,7 @@ import { createOpenCodeAcpConnection } from '../../../opencode/opencode-acp-conn
 import { acpStructuredLaunchPart } from '../../../acp/acp-structured-launch-resolution'
 import { AcpStructuredSessionAdapter } from '../../../acp/acp-structured-session-adapter'
 import { PI_RPC_RUNTIME_REGISTRATION } from '../../../pi/rpc-runtime-registration'
+import { usageLimitFromAccountReading } from '../../../rate-limits/usage-limit-account-reading'
 import {
   claudeLaunchEnvOverlay,
   claudeListingDeps
@@ -195,6 +196,13 @@ function createAcpAdapter(
         context.host()?.publishChildWorkEvidence(sessionId, evidence, producer),
       ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
       onDispatchSettledLate: followUps.onDispatchSettledLate,
+      usageLimitFromAccount: async (agent, failedAt) => {
+        const usage = deps.usageLimitAutoContinue
+        const read = () =>
+          usageLimitFromAccountReading(usage?.readAccountUsage?.(agent) ?? null, failedAt)
+        // The polled reading predates the failure more often than not; one fetch settles it.
+        return read() ?? (await usage?.refreshAccountUsage?.(), read())
+      },
       logger: deps.logger,
       onEvent: context.deliverLifecycle
     })

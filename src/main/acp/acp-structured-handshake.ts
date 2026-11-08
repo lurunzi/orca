@@ -210,7 +210,13 @@ export async function initializeAcpStructuredSession(
       now,
       settle: onSettled,
       sessionLost: input.onSessionLost,
-      modelRefusal: (error) => acpNoModelSelected(spec.dialect, options, error)
+      modelRefusal: (error) => acpNoModelSelected(spec.dialect, options, error),
+      ...(deps.usageLimitFromAccount
+        ? {
+            usageLimitFromAccount: (failedAt: number) =>
+              deps.usageLimitFromAccount!(spec.agent, failedAt)
+          }
+        : {})
     })
   })
   if (!isAcpReadySession(child)) {

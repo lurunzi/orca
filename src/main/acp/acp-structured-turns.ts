@@ -16,8 +16,9 @@ import type {
 import { acpCompactPrompt } from './acp-compaction-turn'
 import { AcpAgentError, AcpAuthRequiredError, AcpConnectionClosedError } from './acp-errors'
 import type { AcpStructuredConnection } from './acp-structured-connection'
-import type { AcpStructuredLane } from './acp-structured-lane'
 import { acpPromptRejection } from './acp-turn-failures'
+import { explainAcpFailureFromAccount } from './acp-account-usage-failure'
+import type { AcpAccountUsageFailureDeps } from './acp-account-usage-failure'
 import type { ContentBlock } from './generated/acp-protocol.generated'
 
 export type AcpDispatchSettlement = { clientMessageId: string } & (
@@ -28,12 +29,10 @@ export type AcpDispatchSettlement = { clientMessageId: string } & (
 
 type Send = { clientMessageId: string; prompt: ContentBlock[]; requestedAt: number }
 
-export type AcpStructuredTurnsDeps = {
+export type AcpStructuredTurnsDeps = AcpAccountUsageFailureDeps & {
   connection: Pick<AcpStructuredConnection, 'prompt' | 'cancel'>
   withdrawRequests: () => void
-  lane: AcpStructuredLane
   agentName: string
-  now: () => number
   settle: (settlement: AcpDispatchSettlement) => void
   /** Replace the child so the next send reopens the session. */
   sessionLost: (error: Error) => void
@@ -299,6 +298,7 @@ export class AcpStructuredTurns {
   }
 
   private finish(send: Send): void {
+    explainAcpFailureFromAccount(this.deps, send.clientMessageId)
     if (this.active === send) {
       this.active = null
       this.stopAt = null

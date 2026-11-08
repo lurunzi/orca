@@ -18,6 +18,19 @@ import type { OrcaRuntimeWithGetStructuredAgentSessionCreateSupport } from '../.
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { StructuredAgentSessionHostDeps } from '../../../native-chat/agent-session-wire/host/structured-agent-session-host-types'
 import { OrcaRuntimeWithStartTuiIdleVisibleReadProbe } from '../../terminal/wait/terminal-wait-visible-probe'
+import { readUsageLimitAccountReading } from '../../../rate-limits/usage-limit-account-reading'
+import type { RateLimitState } from '../../../../shared/rate-limit-types'
+
+const ACCOUNT_USAGE_OF_PROVIDER: Record<
+  string,
+  (state: RateLimitState) => RateLimitState['claude']
+> = {
+  claude: (state) => state.claude,
+  codex: (state) => state.codex,
+  cursor: (state) => state.cursor,
+  antigravity: (state) => state.antigravity
+}
+const POOLED_PROVIDERS = new Set(['cursor', 'antigravity'])
 
 export abstract class RuntimeStructuredAgentHost extends OrcaRuntimeWithStartTuiIdleVisibleReadProbe {
   abstract notifyStructuredSessionJournalActivity(sessionId: string): void
@@ -73,7 +86,20 @@ export abstract class RuntimeStructuredAgentHost extends OrcaRuntimeWithStartTui
       isEnabled: () =>
         this.requireStore().getSettings().nativeChatAutoContinueAfterUsageLimit === true,
       subscribe: (changed) => this.requireStore().onSettingsChanged?.(changed) ?? (() => {}),
-      isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId)
+      isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId),
+      readAccountUsage: (provider) => {
+        const state = this.accounts.usageRateLimits()?.getState()
+        const limits = state ? ACCOUNT_USAGE_OF_PROVIDER[provider]?.(state) : undefined
+        return limits === undefined
+          ? null
+          : readUsageLimitAccountReading(limits, { pooled: POOLED_PROVIDERS.has(provider) })
+      },
+      refreshAccountUsage: async () => {
+        await this.accounts
+          .usageRateLimits()
+          ?.refresh()
+          .catch(() => {})
+      }
     }
   }
 

@@ -162,6 +162,17 @@ export class AcpTurnFailures {
     return this.rows.has(turn)
   }
 
+  unexplained(turn: string): boolean {
+    const written = this.rows.peek(turn)
+    return written !== undefined && !acpProviderFailed(written)
+  }
+
+  usageLimitFromAccount(turn: string, limit: AgentSessionUsageLimit): ProviderTimelineEvent[] {
+    return this.unexplained(turn)
+      ? this.row(turn, { stopReason: 'rate_limit', usageLimit: limit })
+      : []
+  }
+
   notification(
     turn: string | undefined,
     extension: AcpDialectNotification | undefined

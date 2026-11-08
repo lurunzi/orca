@@ -16,6 +16,7 @@ import type { StructuredAgentSessionCommandHandoverContext } from '../operations
 import type { StructuredAgentSessionAcquireAborts } from '../startup/structured-agent-session-acquire-aborts'
 import type { StructuredAgentSessionDeliveryOrder } from '../delivery/structured-agent-session-delivery-order'
 import type { StructuredAgentSessionRanRecorder } from '../options/structured-agent-session-ran-options'
+import type { UsageLimitAccountReading } from '../../../rate-limits/usage-limit-account-reading'
 import type {
   StructuredAgentSessionAdmitHostInput,
   StructuredAgentSessionContinueInput
@@ -183,6 +184,10 @@ export type StructuredAgentSessionHostDeps = {
     isEnabled: () => boolean
     subscribe: (changed: () => void) => () => void
     isWorkspaceAsleep: (workspaceId: string) => boolean
+    /** The provider's usage for the account its chats launch under; null when Orca cannot read it. */
+    readAccountUsage?: (provider: string) => UsageLimitAccountReading | null
+    /** Asks the provider for fresh usage; settles once the next reading carries the answer. */
+    refreshAccountUsage?: () => Promise<void>
   }
   startupLimits?: Partial<StructuredAgentSessionStartupLimits>
   /** Absent means no dispatch ownership. */

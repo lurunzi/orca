@@ -52,6 +52,11 @@ export function useNativeChatUsageLimitAutoContinue(
     [feed, sessionId]
   )
   const cutState = useSyncExternalStore(subscribe, readCutState)
+  const readContinueAt = useCallback(() => {
+    const current = feed.getSnapshot().get(sessionId)?.usageLimitContinue
+    return readCutState() === 'scheduled' ? current?.continueAt : undefined
+  }, [feed, sessionId, readCutState])
+  const continueAt = useSyncExternalStore(subscribe, readContinueAt)
   const turnEndedAt = cut?.turnEndedAt
   // A row on screen when its cut ages out hides the automatic line; the host alone decides sends.
   // The shared minute clock only re-renders; fresh wall time decides, read on every render.
@@ -100,6 +105,8 @@ export function useNativeChatUsageLimitAutoContinue(
     if (kind === null || resetsAt === undefined) {
       return null
     }
-    return kind === 'scheduled' ? { kind, resetsAt, cancelDisabled: cancelling, cancel } : { kind }
-  }, [capability, resetsAt, cutState, schedulable, target.kind, cancelling, cancel])
+    return kind === 'scheduled'
+      ? { kind, resetsAt: continueAt ?? resetsAt, cancelDisabled: cancelling, cancel }
+      : { kind }
+  }, [capability, resetsAt, continueAt, cutState, schedulable, target.kind, cancelling, cancel])
 }
