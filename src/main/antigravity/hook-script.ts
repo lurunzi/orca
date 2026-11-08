@@ -1,5 +1,6 @@
 import { POSIX_HOOK_BOUNDED_STDIN } from '../agent-hooks/posix-hook-bounded-stdin'
 import { posixCurlCommand } from '../agent-hooks/hook-post-command'
+import { buildHookProcessCapture } from '../agent-hooks/hook-process-capture'
 import {
   createStrictPosixHookJsonStdinReader,
   buildPosixHookSpoolLines,
@@ -55,6 +56,7 @@ export function getManagedScript(
     'else',
     '  exit 0',
     'fi',
+    ...buildHookProcessCapture(),
     ...buildPosixHookSpoolLines('antigravity', 'ORCA_ANTIGRAVITY_EVENT'),
     'if [ -n "$ORCA_AGENT_HOOK_ENDPOINT" ] && [ -r "$ORCA_AGENT_HOOK_ENDPOINT" ]; then',
     '  . "$ORCA_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
@@ -75,6 +77,8 @@ export function getManagedScript(
     '  --data-urlencode "env=${ORCA_AGENT_HOOK_ENV}" \\',
     '  --data-urlencode "version=${ORCA_AGENT_HOOK_VERSION}" \\',
     '  --data-urlencode "hook_event_name=${ORCA_ANTIGRAVITY_EVENT}" \\',
+    '  --data-urlencode "agentProcess=${orca_agent_process}" \\',
+    '  --data-urlencode "tmuxPane=${orca_tmux_pane}" \\',
     '  --data-urlencode "payload@-" >/dev/null 2>&1 || spool_hook_event',
     'exit 0',
     ''

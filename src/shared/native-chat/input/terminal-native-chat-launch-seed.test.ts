@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   resolveAgentLaunchCommand,
   terminalSessionOptionInputs
-} from '../../tui-agent-launch-command'
-import { resolveAgentStartupPlanInputs } from '../../agent-startup-plan-inputs'
-import { tokenizeStartupCommand } from '../../tui-agent-startup-shell'
+} from '../../agent-launch/startup/tui-agent-launch-command'
+import { resolveAgentStartupPlanInputs } from '../../agent-launch/startup/agent-startup-plan-inputs'
+import { tokenizeStartupCommand } from '../../agent-launch/startup/tui-agent-startup-shell'
 import {
   rememberedNativeChatLaunchChoices,
   rememberedNativeChatLaunchSessionOptions,

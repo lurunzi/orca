@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -110,9 +110,12 @@ function PickerTrigger(props: {
             className="max-w-64"
             onKeyDown={props.onKeyDown}
           >
-            <span className="truncate text-chat-foreground">{props.modelLabel}</span>
-            {props.optionsLabel ? <span className="shrink-0">{props.optionsLabel}</span> : null}
-            <ChevronDown className="size-3" />
+            <span data-composer-label className="flex min-w-0 items-center gap-1">
+              <span className="truncate text-chat-foreground">{props.modelLabel}</span>
+              {props.optionsLabel ? <span className="shrink-0">{props.optionsLabel}</span> : null}
+              <ChevronDown className="size-3" />
+            </span>
+            <SlidersHorizontal data-composer-compact-icon className="hidden size-3.5" />
           </Button>
         </PopoverTrigger>
       </TooltipTrigger>
@@ -371,12 +374,13 @@ function NativeChatSessionOptionPickersInner({
       )
     )
   )
-  const reportedModel = projected.snapshot.find((descriptor) => descriptor.category === 'model')
-  if (!surface || !reportedModel) {
+  const model = projected.snapshot.find((descriptor) => descriptor.category === 'model')
+  if (!surface || !model) {
     return null
   }
-  const model = reportedModel
-  const options = sortNativeChatSessionOptions(projected.snapshot)
+  const options = sortNativeChatSessionOptions(projected.snapshot).filter(
+    (descriptor) => descriptor.id !== 'interactionMode'
+  )
 
   return (
     <div className="flex min-w-0 items-center text-chat-foreground-faint">

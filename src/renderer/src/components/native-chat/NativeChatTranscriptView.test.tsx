@@ -39,7 +39,7 @@ vi.mock('./use-cursor-transcript-resume', () => ({
 vi.mock('@/lib/cursor-transcript-terminal', () => ({
   findCursorTranscriptTerminal: mocks.terminal
 }))
-vi.mock('@/lib/worktree-runtime-owner', () => ({
+vi.mock('@/lib/workspace/ownership/worktree-runtime-owner', () => ({
   getKnownExecutionHostIdForWorktree: () => 'runtime:worker-host'
 }))
 vi.mock('./NativeChatResolvedView', () => ({

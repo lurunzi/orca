@@ -1,4 +1,4 @@
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
 import type { SessionOptionValue } from '../../../../shared/native-chat/input/native-chat-session-options'
 import { readClaudeSessionOptionsFromTerminalScreen } from './claude-terminal-session-options'

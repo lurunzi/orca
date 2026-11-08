@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { finalReplayFrame, readRuntimeFixture } from './agent-transcript-replay-test-harness'
-import { HeadlessEmulator } from '../daemon/headless-emulator'
+import { HeadlessEmulator } from '../daemon/emulation/headless-emulator'
 import { readAntigravityTerminalSessionOptions } from '../../shared/antigravity-terminal-session-options'
 
 describe('Antigravity model reported by captured startup screens', () => {

@@ -3,14 +3,14 @@ import { join } from 'node:path'
 import { resolveAbsoluteDirOverride } from '../../shared/absolute-dir-override'
 import type { AiVaultAgentSource } from './session-scanner-agent-sources'
 import { pathSegments } from './session-file-discovery'
-import { cursorChatMetaPath } from './session-scanner-cursor-chat-meta'
+import { cursorChatMetaPath } from './scanners/cursor/session-scanner-cursor-chat-meta'
 import {
   CURSOR_ACP_SESSIONS_DIR,
   cursorAcpStoreDependencyPath,
   isCursorAcpSessionMetaPath
 } from './session-scanner-cursor-acp-parser'
 import { sessionRootDirs } from './session-scanner-roots'
-import { SUBAGENT_DIR_NAME } from './session-scanner-subagent-transcripts'
+import { SUBAGENT_DIR_NAME } from './scanners/claude/session-scanner-subagent-transcripts'
 
 const CURSOR_PROJECTS_DIR = join(homedir(), '.cursor', 'projects')
 // Chats follow CURSOR_CONFIG_DIR as the launch does; ones started before it was set stay in ~/.cursor.

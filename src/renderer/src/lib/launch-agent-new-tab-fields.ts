@@ -1,6 +1,6 @@
 import { initialTranscriptChatView } from '../../../shared/transcript-chat-launch-view'
-import type { TuiAgent } from '../../../shared/tui-agent'
-import type { AgentLaunchExecutionContext } from '@/lib/launch-agent-execution-context'
+import type { TuiAgent } from '../../../shared/agent-launch/catalog/tui-agent'
+import type { AgentLaunchExecutionContext } from '@/lib/agent-session/launch/new-tab/launch-agent-execution-context'
 import { useAppStore } from '@/store'
 
 /** Fork: the launch fields a new agent tab carries beyond upstream's — the terminal-backed transcript

@@ -52,16 +52,20 @@ export function NativeChatModelCombobox({
 }: NativeChatModelComboboxProps): React.JSX.Element {
   const searchLabel = translate('components.native-chat.composer.searchModels', 'Search models…')
   const search = useRef<HTMLInputElement>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(false)
 
+  const hasSearch = query.trim().length > 0
+  const visibleChoices = useMemo(
+    () => choices.filter((choice) => !choice.searchOnly || hasSearch),
+    [choices, hasSearch]
+  )
   const isGrouped = grouped ?? agent === 'cursor'
   const groups = useMemo(
-    () => (isGrouped ? groupCursorModels(choices, currentValue) : null),
-    [isGrouped, choices, currentValue]
+    () => (isGrouped ? groupCursorModels(visibleChoices, currentValue) : null),
+    [isGrouped, visibleChoices, currentValue]
   )
 
-  const hasSearch = searchQuery.trim().length > 0
   const showMoreModels = expanded || hasSearch
 
   const renderModelItem = (choice: SessionOptionSelectChoice): React.JSX.Element => {
@@ -103,7 +107,7 @@ export function NativeChatModelCombobox({
       filter={modelChoiceFilter}
       defaultValue={currentValue}
     >
-      <CommandInput ref={search} placeholder={searchLabel} onValueChange={setSearchQuery} />
+      <CommandInput ref={search} placeholder={searchLabel} value={query} onValueChange={setQuery} />
       {readOnly && readOnlyReason ? (
         <div className="px-3 py-1.5 text-xs text-muted-foreground">{readOnlyReason}</div>
       ) : null}
@@ -125,7 +129,7 @@ export function NativeChatModelCombobox({
         </CommandEmpty>
         <NativeChatSessionOptionWriteGroup busy={busy}>
           {!isGrouped || !groups ? (
-            <CommandGroup>{choices.map(renderModelItem)}</CommandGroup>
+            <CommandGroup>{visibleChoices.map(renderModelItem)}</CommandGroup>
           ) : (
             <>
               {groups.autoModel ? (

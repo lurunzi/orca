@@ -3,9 +3,9 @@ import {
   isValidAgentSessionQuestionAnswers,
   legacyAgentSessionQuestionAnswers
 } from '../../../shared/agent-session/agent-session-question-answer'
-import { boundJournalPromptBody } from '../../native-chat/agent-session-journal/journal-prompt-body-bounds'
+import { boundJournalPromptBody } from '../../native-chat/agent-session-journal/item-lifecycle/journal-prompt-body-bounds'
 import { AcpRpcError } from '../acp-errors'
-import { pendingAcpResolution } from '../acp-timeline-requests'
+import { pendingAcpResolution } from './acp-dialect'
 import type { AcpRequestPresentation, AcpRequestSettlement } from './acp-dialect'
 
 // Shapes follow cursor-agent 2026.11.05's ACP interaction handlers and cursor.com/docs/cli/acp.

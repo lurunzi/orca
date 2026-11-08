@@ -1,7 +1,7 @@
 import { BoundedMap } from '../../shared/bounded-map'
 import { runsOrcaOrchestrationWait } from '../../shared/orca-cli-invocations'
 import { agentLaunchedByShellCommand } from '../../shared/shell-command-agent-launch'
-import type { TerminalAgent } from '../../shared/terminal-agent'
+import type { TerminalAgent } from '../../shared/agent-status/identity/terminal-agent'
 import {
   claudeRecord,
   claudeToolUses,

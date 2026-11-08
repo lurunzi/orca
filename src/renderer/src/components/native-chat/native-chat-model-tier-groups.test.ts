@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseCursorModels } from '../../../../shared/commit-message-model-parsers'
+import { parseCursorModels } from '../../../../shared/source-control/ai/generation/commit-message-model-parsers'
 import {
   buildModelPickerRows,
   findTieredRow,

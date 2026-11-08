@@ -4,7 +4,7 @@ import { useNativeChatPromptCardPresentation } from './use-native-chat-prompt-ca
 import { useMemo } from 'react'
 import { useAppStore } from '../../store'
 import { extractAntigravityProseQuestion } from '../../../../shared/native-chat-antigravity-prose-question'
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { AskPrompt } from '../../../../shared/native-chat/input/native-chat-ask-types'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import { resolveNativeChatInteractivePromptCard } from '../../../../shared/native-chat/input/native-chat-interactive-prompt'

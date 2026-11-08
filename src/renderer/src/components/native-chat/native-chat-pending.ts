@@ -5,7 +5,7 @@ import {
   transcriptTimestampAtOrAfterLocal,
   type NativeChatPendingSend
 } from '../../../../shared/native-chat/transcript/native-chat-pending-sends'
-import type { NativeChatLaunchPrompt } from '@/lib/native-chat-launch-prompt'
+import type { NativeChatLaunchPrompt } from '@/components/native-chat/drafts/native-chat-launch-prompt'
 import { normalizedNativeChatUserMessageText } from '../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
 import { matchesCursorLaunchPromptEcho } from './cursor-launch-prompt-echo'
 import {
@@ -124,6 +124,4 @@ export function nextNativeChatPendingSendId(now = Date.now()): string {
   return `${now}-${pendingSendCounter}`
 }
 
-export function isLaunchPromptMessageId(id: string): boolean {
-  return id.startsWith('launch-pending:')
-}
+export { isLaunchPromptMessageId } from '../../../../shared/native-chat/transcript/native-chat-pending-sends'

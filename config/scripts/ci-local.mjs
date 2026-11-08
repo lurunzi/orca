@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { resolvePnpmCliInvocation } from './pnpm-cli-invocation.mjs'
+import { resolvePnpmCliInvocation } from './tool-invocation/pnpm-cli-invocation.mjs'
 import { prepareCrossVersionReleases } from './prepare-cross-version-releases.mjs'
 
 // Uses the same package scripts and Vitest config as pr.yml / unit-tests.yml.

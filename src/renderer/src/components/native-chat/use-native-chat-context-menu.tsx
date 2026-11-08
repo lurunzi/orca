@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type MouseEventHandler,
@@ -9,8 +8,8 @@ import {
   type RefObject
 } from 'react'
 import { flushSync } from 'react-dom'
-import { chatMathSelectionText } from '../sidebar/chat-markdown-math-selection'
-import { Clipboard, Copy, GitFork, Image as ImageIcon, SquareTerminal } from 'lucide-react'
+import { markdownMathSelectionText } from '../../../../shared/markdown-math-selection'
+import { Clipboard, Copy, Image as ImageIcon, SquareTerminal } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +52,8 @@ import {
 import type { NativeChatFileLinkContext } from './native-chat-file-link'
 import type { NativeChatMessageListHandle } from './use-native-chat-reveal-latest'
 import type { NativeChatRewindSurface } from './use-native-chat-rewind'
+import { useNativeChatStandaloneMenu } from './use-native-chat-standalone-menu'
+import type { NativeChatSessionMenuSource } from './use-native-chat-session-context-actions'
 
 type NativeChatContextMenuState = {
   open: boolean
@@ -76,7 +77,8 @@ type UseNativeChatContextMenuArgs = {
   actions: NativeChatContextMenuActions
   showTerminalPaneActions?: boolean
   splitShortcutLabels?: { right: string; down: string }
-  chatPane?: { tabId: string; worktreeId: string; groupId: string }
+  chatPane?: { tabId: string; worktreeId: string; groupId: string; sessionId: string }
+  chatSession?: NativeChatSessionMenuSource
   /** Session-scoped items; rendered inside the menu content so they mount only while open. */
   sessionMenuItems?: ReactNode
   /** A structured chat tab's Orca session ID; a chat in a terminal pane is that terminal's agent. */
@@ -101,7 +103,6 @@ export type NativeChatContextMenuActions = {
   onToggleExpand: () => void
   canContinueAgentSessionInNewSession: boolean
   onContinueAgentSessionInNewSession: () => void
-  onForkAgentSession: () => void
   onCopyAgentSessionContext: () => void
   onSetTitle: () => void
   canClearPaneTitle: boolean
@@ -124,7 +125,6 @@ export const emptyNativeChatContextMenuActions: Omit<NativeChatContextMenuAction
   onToggleExpand: () => {},
   canContinueAgentSessionInNewSession: false,
   onContinueAgentSessionInNewSession: () => {},
-  onForkAgentSession: () => {},
   onCopyAgentSessionContext: () => {},
   onSetTitle: () => {},
   canClearPaneTitle: false,
@@ -148,6 +148,7 @@ export function useNativeChatContextMenu({
   showTerminalPaneActions = true,
   splitShortcutLabels,
   chatPane,
+  chatSession,
   sessionMenuItems,
   resolveOrcaSessionId,
   messageListRef,
@@ -182,13 +183,9 @@ export function useNativeChatContextMenu({
   const hasItems =
     hasEditItems || hasSessionItems || chatPane !== undefined || resolveOrcaSessionId !== undefined
 
-  useEffect(() => {
-    if (!enabled) {
-      setState((current) =>
-        current.open ? { ...current, open: false, image: undefined } : current
-      )
-    }
-  }, [enabled])
+  if (!enabled && state.open) {
+    setState({ ...state, open: false, image: undefined })
+  }
 
   const onContextMenuCapture = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -238,6 +235,11 @@ export function useNativeChatContextMenu({
     setState((prev) => ({ ...prev, open }))
   }, [])
 
+  const standaloneMenu = useNativeChatStandaloneMenu({
+    pane: showTerminalPaneActions ? undefined : chatPane,
+    source: showTerminalPaneActions ? undefined : chatSession,
+    close: () => setState((prev) => ({ ...prev, open: false }))
+  })
   return {
     onContextMenuCapture,
     onPointerDownCapture: keepSelectionThroughMenuPress,
@@ -308,9 +310,11 @@ export function useNativeChatContextMenu({
           ) : null}
           {hasEditItems && hasSessionItems ? <DropdownMenuSeparator /> : null}
           {onFind ? <NativeChatFindMenuItem onSelect={() => onFind(state.returnFocusTo)} /> : null}
+          {standaloneMenu.quickCommands}
           {onHandOff ? (
             <AgentSessionContinuationMenuItem disabled={handOffDisabled} onSelect={onHandOff} />
           ) : null}
+          {standaloneMenu.sessionItems}
           {showTerminalPaneActions ? (
             <>
               {onSwitchToTerminal ? (
@@ -330,13 +334,6 @@ export function useNativeChatContextMenu({
                   onSelect={actions.onContinueAgentSessionInNewSession}
                 />
               ) : null}
-              <DropdownMenuItem onSelect={actions.onForkAgentSession}>
-                <GitFork />
-                {translate(
-                  'auto.components.terminal.pane.TerminalContextMenu.8a7ddb8b8a',
-                  'Fork Agent Session…'
-                )}
-              </DropdownMenuItem>
               <AgentSessionContextCopyMenuItem onSelect={actions.onCopyAgentSessionContext} />
             </>
           ) : null}
@@ -358,6 +355,7 @@ export function useNativeChatContextMenu({
             </>
           ) : null}
         </DropdownMenuContent>
+        {standaloneMenu.dialogs}
       </DropdownMenu>
     )
   }
@@ -405,7 +403,7 @@ function getNativeChatSelectedText(root: HTMLElement | null): string {
   if (!nodeBelongsToRoot(anchor, root) || !nodeBelongsToRoot(focus, root)) {
     return ''
   }
-  return chatMathSelectionText(selection, root) ?? selection.toString()
+  return markdownMathSelectionText(selection, root) ?? selection.toString()
 }
 
 function nodeBelongsToRoot(node: Node | null, root: HTMLElement): boolean {

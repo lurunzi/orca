@@ -18,7 +18,7 @@ vi.mock('@/i18n/i18n', () => ({
 vi.mock('@/lib/agent-catalog', () => ({ AgentIcon: () => null }))
 vi.mock('@/hooks/useResetCountdownClock', () => ({ useResetCountdownClock: () => 0 }))
 vi.mock('@/components/ui/dropdown-menu', () => ({ DropdownMenuItem: () => null }))
-vi.mock('@/components/settings/SettingsFormControls', () => ({
+vi.mock('@/components/settings/form-controls/SettingsFormControls', () => ({
   SettingsSegmentedControl: () => null
 }))
 
@@ -114,11 +114,6 @@ describe('pool labels', () => {
     expect(formatPoolShortLabel(daily, [daily])).toBe('Daily')
   })
 
-  it('leaves Gemini CLI’s 60-minute "Pro" pool unchanged', () => {
-    const pro = pool(undefined, 60, { name: 'Pro' })
-    expect(formatPoolShortLabel(pro, [pro])).toBe('Pro')
-  })
-
   it('adds a reset countdown only once a pool is urgent and its reset is known', () => {
     const now = Date.UTC(2026, 9, 1, 12)
     const resetsAt = now + 130 * 60_000
@@ -131,24 +126,6 @@ describe('pool labels', () => {
     expect(label({ usedPercent: 79, resetsAt })).toBe('5h')
     expect(label({ usedPercent: 80, resetsAt: null })).toBe('5h')
   })
-
-  it.each([
-    [WEEK, 'Weekly Limit Remaining', 'wk (2h 10m)'],
-    [0, 'Daily Limit Remaining', 'Daily (2h 10m)'],
-    [0, undefined, '2h 10m']
-  ] as const)(
-    'keeps the window identity for an urgent %s-minute pool',
-    (minutes, windowName, expected) => {
-      const now = Date.UTC(2026, 9, 1, 12)
-      const bucket = pool('Gemini Models', minutes, {
-        windowName,
-        usedPercent: 90,
-        resetsAt: now + 130 * 60_000
-      })
-
-      expect(formatPoolWindowLabel(bucket, now)).toBe(expected)
-    }
-  )
 })
 
 describe('formatStatusBarSectionLabel', () => {
@@ -172,18 +149,5 @@ describe('formatStatusBarSectionLabel', () => {
     const tightest = getTightestUsageSection(p)
     expect(tightest?.window).toBe(buckets[1])
     expect(formatStatusBarSectionLabel(p, tightest!)).toBe('wk')
-  })
-
-  it('returns the section label when the window is not a grouped bucket', () => {
-    const p: ProviderRateLimits = {
-      provider: 'gemini',
-      session: null,
-      weekly: null,
-      buckets: [pool(undefined, 60, { name: 'Pro', usedPercent: 40 })],
-      updatedAt: 0,
-      error: null,
-      status: 'ok'
-    }
-    expect(formatStatusBarSectionLabel(p, getTightestUsageSection(p)!)).toBe('Pro')
   })
 })

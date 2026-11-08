@@ -11,9 +11,9 @@ import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-ses
 import type { AgentSessionMutationEnvelope } from '../../../shared/agent-session/agent-session-wire'
 import type { AgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store'
 import { openTestAgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
-import type { StructuredAgentSessionAdapter } from './structured-agent-session-adapter'
-import { StructuredAgentSessionHost } from './structured-agent-session-host'
-import type { StructuredAgentSessionStatusSink } from './structured-agent-session-status-feed'
+import type { StructuredAgentSessionAdapter } from './providers/structured-agent-session-adapter'
+import { StructuredAgentSessionHost } from './host/structured-agent-session-host'
+import type { StructuredAgentSessionStatusSink } from './observations/structured-agent-session-status-ownership'
 import {
   HOST_TEST_NOW as NOW,
   HOST_TEST_SESSION as SESSION,
@@ -22,19 +22,19 @@ import {
   hostTestMessage,
   hostTestOperationId,
   resetHostTestOperationIds
-} from './structured-agent-session-host-test-data'
+} from './host/testing/structured-agent-session-host-test-data'
 import { agentSessionFailureFact } from '../../../shared/agent-session/failures/agent-session-failure'
 import { agentSessionFailureWords } from '../../../shared/agent-session/failures/agent-session-failure-words'
 import {
   closeTestJournalHostDatabase,
   openTestJournalHostDatabase
-} from '../agent-session-journal/journal-host-database-test-support'
+} from '../agent-session-journal/store-lifecycle/journal-host-database-test-support'
 import { codexProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import {
   NO_STRUCTURED_AGENTS,
   claudeAndCodexRouter
-} from './structured-agent-session-adapter-router-test-support'
-import { startsWhenPublished } from './structured-agent-session-instant-start.test-support'
+} from './providers/testing/structured-agent-session-adapter-router-test-support'
+import { startsWhenPublished } from './host/testing/structured-agent-session-instant-start.test-support'
 
 const REQUESTED_CLOSE_END = { type: 'ended', reason: 'closed', cause: 'requested-close' } as const
 
@@ -85,7 +85,7 @@ function openHost(
     journalDatabase: openTestJournalHostDatabase(root),
     claimKeyId: 'key-1',
     mintSpawnToken: () => `spawn-${acquire.mock.calls.length}`,
-    idleSweep: { intervalMs: SWEEP_MS, idleMs: IDLE_MS },
+    idleSweep: { intervalMs: SWEEP_MS, idleMs: () => IDLE_MS },
     now: () => clock,
     statusSink,
     ...(probeOwner ? { probeOwner } : {})

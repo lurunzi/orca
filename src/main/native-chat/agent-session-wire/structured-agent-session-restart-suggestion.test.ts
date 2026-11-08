@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { StructuredAgentSessionAdapter } from './structured-agent-session-adapter'
-import { claudeAndCodexRouter } from './structured-agent-session-adapter-router-test-support'
+import type { StructuredAgentSessionAdapter } from './providers/structured-agent-session-adapter'
+import { claudeAndCodexRouter } from './providers/testing/structured-agent-session-adapter-router-test-support'
 import {
   claudeProviderHandle,
   codexProviderHandle

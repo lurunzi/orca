@@ -20,8 +20,11 @@ import {
   writeUnverifiable,
   isSettledWrite,
   type WriteSettlement
-} from '../../../../shared/pty-write-settlement'
-import { isDrivingInputKind, type TerminalInputKind } from '../../../../shared/terminal-input-kind'
+} from '../../../../shared/terminal/pty/lifecycle/pty-write-settlement'
+import {
+  isDrivingInputKind,
+  type TerminalInputKind
+} from '../../../../shared/terminal/input/terminal-input-kind'
 
 type RuntimeWriteDeps = Pick<PtyRuntimeControllerDeps, 'runtime'>
 
@@ -183,9 +186,8 @@ export async function inspectProcessFromRuntimeController(
 
 export async function confirmForegroundProcessFromRuntimeController(ptyId: string) {
   try {
-    const provider = getProviderForPty(ptyId)
     // Cached foreground identity cannot resolve a fresh shell conflict.
-    return confirmPtyProviderForegroundProcess(provider, ptyId)
+    return await confirmPtyProviderForegroundProcess(getProviderForPty(ptyId), ptyId)
   } catch {
     return null
   }

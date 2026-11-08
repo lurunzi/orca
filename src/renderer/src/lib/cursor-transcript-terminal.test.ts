@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { findCursorTranscriptTerminal } from './cursor-transcript-terminal'
-import { makePaneKey } from '../../../shared/stable-pane-id'
+import { makePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
 
 const leaf = '11111111-1111-4111-8111-111111111111'
 const paneKey = makePaneKey('tab', leaf)

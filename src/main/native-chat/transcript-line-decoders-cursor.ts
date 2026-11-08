@@ -1,6 +1,6 @@
 import type { NativeChatMessage } from '../../shared/native-chat/native-chat-types'
 import { asRecord, extractString, parseJsonObject } from '../ai-vault/session-scanner-values'
-import { stripGrokUserQueryEnvelope } from '../ai-vault/session-scanner-grok-user-text'
+import { stripGrokUserQueryEnvelope } from '../ai-vault/scanners/grok/session-scanner-grok-user-text'
 import { claudeContentBlocks } from './transcript-record-blocks'
 
 const CURSOR_QUERY_PREFIX =

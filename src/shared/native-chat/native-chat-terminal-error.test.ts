@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AgentStatusEntry } from '../agent-status-types'
+import type { AgentStatusEntry } from '../agent-status/contracts/agent-status-types'
 import type { NativeChatMessage } from './native-chat-types'
 import {
   nativeChatTerminalErrorText,

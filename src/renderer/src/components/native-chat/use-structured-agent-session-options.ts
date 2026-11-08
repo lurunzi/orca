@@ -3,14 +3,17 @@ import type { StructuredAgentSessionOptionsArgs } from './structured-agent-sessi
 import { toast } from 'sonner'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { structuredAgentSessionSeedCatalog } from '../../../../shared/agent-session/options/structured-agent-session-seed-catalog'
+import type { SessionOptionsSurface } from '../../../../shared/native-chat/input/native-chat-session-options'
 import {
   lockedStructuredAgentSessionOptionSnapshot,
   structuredAgentSessionOptionSnapshot
 } from '../../../../shared/agent-session/options/structured-agent-session-option-snapshot'
-import { createStructuredAgentSessionOptionsWriteOwner } from '../../../../shared/agent-session/options/structured-agent-session-options-write-owner'
+import {
+  createStructuredAgentSessionOptionsWriteOwner,
+  structuredAgentSessionOptionAvailability
+} from '../../../../shared/agent-session/options/structured-agent-session-options-write-owner'
 import { structuredAgentSessionShownSnapshot } from '../../../../shared/agent-session/options/structured-agent-session-option-view'
 import { useHostModelCatalogUpgrade } from './use-host-model-catalog-upgrade'
-import { useStructuredOptionSurface } from './use-structured-option-surface'
 import { useStructuredAgentSessionOptionState } from './use-structured-agent-session-option-state'
 import { agentSessionWriteFailureText } from './agent-session-write-notice-text'
 import {
@@ -64,8 +67,29 @@ export function useStructuredAgentSessionOptions(args: StructuredAgentSessionOpt
 
   const acceptsPicks = (!transportEnabled || fence !== null) && launch?.seedPending !== true
 
+  const interactionReadyRef = useRef(acceptsPicks)
+  const lockSnapshotRef = useRef(
+    (snapshot: ReturnType<typeof structuredAgentSessionOptionSnapshot>) => snapshot
+  )
+  const lockSnapshot = (snapshot: ReturnType<typeof structuredAgentSessionOptionSnapshot>) =>
+    !acceptsPicks ? lockedStructuredAgentSessionOptionSnapshot(snapshot) : snapshot
+  useLayoutEffect(() => {
+    interactionReadyRef.current = acceptsPicks
+    lockSnapshotRef.current = lockSnapshot
+  })
+  const renderedView = optionView(optionState, launchSeedOptions, launch?.explicitOptions)
+  const optionSnapshot = structuredAgentSessionOptionAvailability({
+    controller,
+    view: renderedView,
+    snapshot: lockSnapshot(structuredAgentSessionShownSnapshot(renderedView)),
+    ready: acceptsPicks,
+    providerStarting,
+    isCurrentContext
+  })
+  const modelOption = optionSnapshot.find((row) => row.id === 'model')
   const hostCatalog = useHostModelCatalogUpgrade({
     agent,
+    selectedModel: modelOption?.kind.type === 'select' ? modelOption.kind.currentValue : undefined,
     sessionId,
     target,
     optionCatalog,
@@ -83,21 +107,6 @@ export function useStructuredAgentSessionOptions(args: StructuredAgentSessionOpt
     receiveCatalog
   })
 
-  const interactionReadyRef = useRef(acceptsPicks)
-  const lockSnapshotRef = useRef(
-    (snapshot: ReturnType<typeof structuredAgentSessionOptionSnapshot>) => snapshot
-  )
-  const lockSnapshot = (snapshot: ReturnType<typeof structuredAgentSessionOptionSnapshot>) =>
-    !acceptsPicks ? lockedStructuredAgentSessionOptionSnapshot(snapshot) : snapshot
-  useLayoutEffect(() => {
-    interactionReadyRef.current = acceptsPicks
-    lockSnapshotRef.current = lockSnapshot
-  })
-  const optionSnapshot = lockSnapshot(
-    structuredAgentSessionShownSnapshot(
-      optionView(optionState, launchSeedOptions, launch?.explicitOptions)
-    )
-  )
   const readWriteContext = () => {
     const view = optionView(optionStateRef.current, launchSeedOptions, launch?.explicitOptions)
     return {
@@ -107,6 +116,7 @@ export function useStructuredAgentSessionOptions(args: StructuredAgentSessionOpt
       snapshot: lockSnapshotRef.current(structuredAgentSessionOptionSnapshot(view)),
       ready: acceptsPicks && interactionReadyRef.current,
       providerStarting,
+      existingChat: !newLaunch || args.hasTurn === true,
       isCurrentContext,
       ...(!transportEnabled || fence === null
         ? {
@@ -158,11 +168,23 @@ export function useStructuredAgentSessionOptions(args: StructuredAgentSessionOpt
       rereadOptions()
     }
   }, [demandModelCatalog, rereadOptions, rereadsAccountOptions])
-  const optionSurface = useStructuredOptionSurface(optionSnapshot, setOption, demandPickerOptions)
+  const optionSurface = useMemo<SessionOptionsSurface>(
+    () => ({
+      getSnapshot: () => optionSnapshot,
+      demandModelCatalog: demandPickerOptions,
+      admits: writer.admits,
+      setOption,
+      invokeAction: async () => ({ snapshot: optionSnapshot }),
+      subscribe: () => () => {}
+    }),
+    [setOption, optionSnapshot, demandPickerOptions, writer]
+  )
 
   return {
     conversationCommands: support?.commands ?? [],
+    compactInstructions: support?.compactInstructions === true,
     /** Absent unless this host and session can change the goal. */
+    accountUsage: support?.accountUsage,
     threadGoal: support?.threadGoal,
     /** A goal only the agent's own `/goal` changes; absent from a host that predates it. */
     reportedThreadGoal: support?.reportedThreadGoal,
@@ -173,6 +195,8 @@ export function useStructuredAgentSessionOptions(args: StructuredAgentSessionOpt
     sessionSupport,
     /** Undefined until this fence's options read answers. */
     rewind: support?.fence === fence ? support.rewind : undefined,
+    /** Undefined until this fence's options read answers, or from a host that predates forks. */
+    forkSupport: support?.fence === fence ? support.forkSupport : undefined,
     optionSnapshot,
     optionSurface,
     setStructuredOption,

@@ -6,12 +6,15 @@ import {
   isCodexAppServerUnsupportedError,
   isCodexMethodNotFoundError
 } from './app-server/codex-app-server-session'
-import type { CodexSession, CodexStructuredSessionEvent } from './codex-structured-session-state'
+import type {
+  CodexSession,
+  CodexStructuredSessionEvent
+} from './structured/session-lifecycle/codex-structured-session-state'
 import {
   readCodexThreadId,
   readCodexTurnId,
   readCodexTurnStatus
-} from './codex-structured-thread-facts'
+} from './app-server/codex-structured-thread-facts'
 
 const PREDICTION_REQUEST = 'thread/prediction/request'
 

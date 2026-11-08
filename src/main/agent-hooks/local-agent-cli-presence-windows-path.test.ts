@@ -1,10 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const { mergePath } = vi.hoisted(() => ({ mergePath: vi.fn() }))
-vi.mock('../pty/windows-environment-path', () => ({
-  mergePersistedWindowsPathAsync: mergePath,
-  resolvePathEnvKey: (env: NodeJS.ProcessEnv) =>
-    Object.keys(env).find((key) => key.toLowerCase() === 'path') ?? 'PATH'
+vi.mock('../pty/environment/windows-environment-path', () => ({
+  mergePersistedWindowsPathAsync: mergePath
 }))
 
 import { detectLocalManagedAgentCliPresence } from './local-agent-cli-presence'

@@ -3,6 +3,7 @@ import { isWslUncPath } from '../../shared/wsl-paths'
 import { walkSessionFiles } from '../ai-vault/session-scanner-discovery'
 import { AI_VAULT_AGENT_SOURCES } from '../ai-vault/session-scanner-agent-sources'
 import { wslGatedReaddir } from './wsl-transcript-fs-access'
+import { wslCursorProjectsDirs } from './host-readable-transcript-path'
 import { wslTranscriptFsRefusal, type WslTranscriptFsError } from './wsl-transcript-fs-gate'
 
 /** Finds `<session id>.jsonl` under Cursor projects roots, then under lazily loaded WSL roots. */
@@ -20,6 +21,21 @@ export async function resolveCursorSessionFile(
   const fallbackDirs = (await loadFallbackDirs()).filter((dir) => !projectsDirs.includes(dir))
   signal?.throwIfAborted()
   return findCursorTranscriptInDirs(sessionId, fallbackDirs, signal)
+}
+
+/** An override root replaces the default `~/.cursor/projects` and skips the WSL fallback. */
+export function resolveCursorSessionFileFromRoot(
+  sessionId: string,
+  cursorProjectsDir: string | undefined,
+  signal?: AbortSignal
+): Promise<string | null> {
+  const root = AI_VAULT_AGENT_SOURCES.cursor.rootDirs({ cursorProjectsDir }, [])[0]
+  return resolveCursorSessionFile(
+    sessionId,
+    root ? [root] : [],
+    cursorProjectsDir ? undefined : wslCursorProjectsDirs,
+    signal
+  )
 }
 
 async function findCursorTranscriptInDirs(

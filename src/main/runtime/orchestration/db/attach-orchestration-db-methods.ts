@@ -34,8 +34,8 @@ import { attachMailboxPointerEnterState } from './messages/mailbox-pointer-enter
 import { attachMessageInbox } from './messages/message-inbox'
 import { attachMessageInsert } from './messages/message-insert'
 import { attachRoleMailboxDelivery } from './messages/role-mailbox-delivery'
-import { attachStructuredPointerOperationStore } from './messages/structured-pointer-operation-store'
 import { attachStructuredSessionIdentityStore } from './structured-session-identity/structured-session-identity-store'
+import { attachStructuredMailSendStore } from './messages/structured-mail-send-store'
 import { attachMutationReceiptStore } from './mutation-receipts/mutation-receipt-store'
 import { attachLifecycleTransition } from './lifecycle-transition'
 import { attachQuestionThreads } from './questions/question-threads'
@@ -97,8 +97,8 @@ export function attachOrchestrationDbMethods(ctor: { prototype: object }): void 
   attachRunDelivery(ctor)
   attachMessageInsert(ctor)
   attachRoleMailboxDelivery(ctor)
-  attachStructuredPointerOperationStore(ctor)
   attachStructuredSessionIdentityStore(ctor)
+  attachStructuredMailSendStore(ctor)
   attachMessageInbox(ctor)
   attachMailboxPointerEnterState(ctor)
   attachDirectMailboxRouting(ctor)

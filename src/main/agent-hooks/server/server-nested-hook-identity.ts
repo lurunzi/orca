@@ -1,5 +1,5 @@
-import type { resolveAgentStatusIdentity } from '../../../shared/agent-status-identity'
-import type { ParsedAgentStatusPayload } from '../../../shared/agent-status-types'
+import type { resolveAgentStatusIdentity } from '../../../shared/agent-status/identity/agent-status-identity'
+import type { ParsedAgentStatusPayload } from '../../../shared/agent-status/contracts/agent-status-types'
 import type { EnrichedAgentHookEventPayload } from './server-types'
 
 /** Fork: a nested hook takes the resolved agent type, and one inherited from the active pane keeps

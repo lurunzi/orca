@@ -1,4 +1,4 @@
-import { isDecorativeAgentTitleFrameChange } from '../../../../shared/agent-decorative-title-signature'
+import { isDecorativeAgentTitleFrameChange } from '../../../../shared/agent-status/title/agent-decorative-title-signature'
 import { scheduleRuntimeGraphSync } from '@/runtime/sync-runtime-graph'
 import { classifyTitleActivity } from '@/lib/pane-agent-evidence'
 import { applyAgentSessionAiVaultTitle } from '../slices/agent-session-tab-ai-vault-title'
@@ -12,6 +12,7 @@ import {
 } from '../slices/terminal-tab-owner-index'
 import { getTabIdFromPaneKey } from './terminal-pty-identities'
 import type { TerminalSlice, TerminalStoreGet, TerminalStoreSet } from './terminal-state'
+import { sameAiVaultSessionTitle } from '../../../../shared/ai-vault/contracts/ai-vault-session-title'
 
 export function createTerminalTabPresentationActions(
   set: TerminalStoreSet,
@@ -52,9 +53,8 @@ export function createTerminalTabPresentationActions(
     setAiVaultTabTitle: (tabId, aiVaultTitle) => {
       set((s) => {
         const ownerWorktreeId = getTerminalTabOwnerWorktreeId(s.tabsByWorktree, tabId)
-        let tabsByWorktree = s.tabsByWorktree
-        let unifiedTabsByWorktree = s.unifiedTabsByWorktree
         if (!ownerWorktreeId) {
+          // Fork: structured chat tabs carry their conversation title on the unified tab.
           const updated = applyAgentSessionAiVaultTitle(
             s.unifiedTabsByWorktree,
             tabId,
@@ -63,33 +63,31 @@ export function createTerminalTabPresentationActions(
           if (!updated) {
             return s
           }
-          unifiedTabsByWorktree = updated
-        } else {
-          const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
-          const current = tabs.find((tab) => tab.id === tabId)
-          const sameTitle =
-            current?.aiVaultTitle?.agent === aiVaultTitle?.agent &&
-            current?.aiVaultTitle?.sessionId === aiVaultTitle?.sessionId &&
-            current?.aiVaultTitle?.title === aiVaultTitle?.title
-          if (!current || sameTitle) {
-            return s
-          }
-          const ownerTabs = tabs.map((tab) => (tab.id === tabId ? { ...tab, aiVaultTitle } : tab))
-          const nextTabsByWorktree = { ...s.tabsByWorktree, [ownerWorktreeId]: ownerTabs }
-          const unifiedTabs = s.unifiedTabsByWorktree[ownerWorktreeId] ?? []
-          const nextUnifiedTabs = unifiedTabs.map((tab) =>
-            tab.contentType === 'terminal' && tab.entityId === tabId
-              ? { ...tab, aiVaultTitle }
-              : tab
-          )
-          adoptTerminalTabOwnerMetadataOnlyBuckets(s.tabsByWorktree, nextTabsByWorktree, [
-            ownerWorktreeId
-          ])
-          tabsByWorktree = nextTabsByWorktree
-          unifiedTabsByWorktree = { ...s.unifiedTabsByWorktree, [ownerWorktreeId]: nextUnifiedTabs }
+          scheduleRuntimeGraphSync()
+          return { tabsByWorktree: s.tabsByWorktree, unifiedTabsByWorktree: updated }
         }
+        const tabs = s.tabsByWorktree[ownerWorktreeId] ?? []
+        const current = tabs.find((tab) => tab.id === tabId)
+        if (!current || sameAiVaultSessionTitle(current.aiVaultTitle, aiVaultTitle)) {
+          return s
+        }
+        const ownerTabs = tabs.map((tab) => (tab.id === tabId ? { ...tab, aiVaultTitle } : tab))
+        const nextTabsByWorktree = { ...s.tabsByWorktree, [ownerWorktreeId]: ownerTabs }
+        const unifiedTabs = s.unifiedTabsByWorktree[ownerWorktreeId] ?? []
+        const nextUnifiedTabs = unifiedTabs.map((tab) =>
+          tab.contentType === 'terminal' && tab.entityId === tabId ? { ...tab, aiVaultTitle } : tab
+        )
+        adoptTerminalTabOwnerMetadataOnlyBuckets(s.tabsByWorktree, nextTabsByWorktree, [
+          ownerWorktreeId
+        ])
         scheduleRuntimeGraphSync()
-        return { tabsByWorktree, unifiedTabsByWorktree }
+        return {
+          tabsByWorktree: nextTabsByWorktree,
+          unifiedTabsByWorktree: {
+            ...s.unifiedTabsByWorktree,
+            [ownerWorktreeId]: nextUnifiedTabs
+          }
+        }
       })
     },
     setGeneratedTabTitleFromAgentPrompt: (paneKey, prompt, options) => {

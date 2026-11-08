@@ -1,10 +1,8 @@
-import type {
-  AgentStatusIpcPayload,
-  ParsedAgentStatusPayload
-} from '../../shared/agent-status-types'
+import type { AgentStatusIpcPayload } from '../../shared/agent-status/contracts/agent-status-ipc-payload'
+import type { ParsedAgentStatusPayload } from '../../shared/agent-status/contracts/agent-status-types'
 import { readAntigravityNativeError } from '../../shared/antigravity-native-error'
-import { createTerminalEscapeScanner } from '../../shared/terminal-escape-scanner'
-import type { HeadlessEmulator } from '../daemon/headless-emulator'
+import { createTerminalEscapeScanner } from '../../shared/terminal/protocol/escape/terminal-escape-scanner'
+import type { HeadlessEmulator } from '../daemon/emulation/headless-emulator'
 
 type ErrorStatus = Pick<
   AgentStatusIpcPayload,

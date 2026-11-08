@@ -1,4 +1,4 @@
-import type { AgentStatusEntry, AgentType } from '../agent-status-types'
+import type { AgentStatusEntry, AgentType } from '../agent-status/contracts/agent-status-types'
 import type { NativeChatMessage } from './native-chat-types'
 import { readAntigravityNativeError } from '../antigravity-native-error'
 

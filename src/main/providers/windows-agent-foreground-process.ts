@@ -4,12 +4,13 @@ import {
   recognizeAgentProcess,
   recognizeAgentProcessFromCommandLine,
   type RecognizedAgentProcess
-} from '../../shared/agent-process-recognition'
+} from '../../shared/agent-status/process/agent-process-recognition'
 import {
   resolveOuterWrapperForegroundIdentity,
   shouldInspectOuterWrapperForegroundProcess
 } from '../../shared/foreground-wrapper-agent'
-import { isMsysExecShellProcess, isShellProcess } from '../../shared/shell-process-detection'
+import { isShellProcess } from '../../shared/agent-status/process/shell-process-detection'
+import { isMsysExecShellProcess } from '../../shared/agent-status/process/shell-process-detection'
 import {
   queryWindowsPaneProcessInventory,
   type WindowsProcessCandidate,
@@ -76,10 +77,8 @@ export async function resolveWindowsAgentForegroundProcessWithAvailability(
     !windowsCandidatesContainRecognizedAgent(candidates, fallbackProcess, options.contextPaths)
   ) {
     // MSYS exec lets the fork stub exit, so a script-launched agent is linked to this pane only by its console.
-    const consoleProcessIds = await readConsoleAttachedProcessIds()
-    if (consoleProcessIds) {
-      candidates = [...candidates, ...inventory.collectConsoleOrphans(consoleProcessIds)]
-    }
+    const consoleProcessIds = (await readConsoleAttachedProcessIds()) ?? new Set<number>()
+    candidates = [...candidates, ...inventory.collectConsoleOrphans(consoleProcessIds)]
   }
   // Filter console membership before ambiguity checks so detached agents cannot suppress the attached input owner.
   const hasRecognizedCandidate = windowsCandidatesContainRecognizedAgent(

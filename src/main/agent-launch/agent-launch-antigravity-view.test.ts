@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../shared/constants'
-import type { AgentLaunchSurface } from '../../shared/agent-launch-surface'
+import type { AgentLaunchSurface } from '../../shared/agent-launch/contracts/agent-launch-surface'
 import { executeAgentLaunch, type AgentLaunchExecution } from './agent-launch-executor'
 
 function launchAntigravity(input: {

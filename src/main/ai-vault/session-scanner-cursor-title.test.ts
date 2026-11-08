@@ -6,7 +6,7 @@ import {
   createCursorSessionResumeState,
   parseCursorSessionContent,
   parseCursorSessionFile
-} from './session-scanner-cursor-parser'
+} from './scanners/cursor/session-scanner-cursor-parser'
 
 const file = {
   path: '/home/test/.cursor/projects/project/agent-transcripts/chat/chat.jsonl',

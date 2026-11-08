@@ -5,7 +5,7 @@ import {
   readCodexThreadId,
   readCodexTurnId,
   readCodexTurnStatus
-} from './codex-structured-thread-facts'
+} from './app-server/codex-structured-thread-facts'
 
 export function supportsCodexPredictionFork(version: string | null | undefined): boolean {
   return (

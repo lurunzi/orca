@@ -1,4 +1,4 @@
-import type { AiVaultSession } from '../../../shared/ai-vault-types'
+import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
 
 const STORAGE_KEY = 'orca.cursorTranscript.offeredSessions'
 const MAX_OFFERS = 200

@@ -5,7 +5,6 @@ import type { NativeChatComposerInput } from './native-chat-composer-input'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { cn } from '@/lib/utils'
-import { useNotificationCardComposerClearance } from '@/lib/notification-card-composer-clearance'
 import { NativeChatMentionMenu, NativeChatPickerMenu } from './NativeChatAutocompleteMenus'
 import { NativeChatComposerActions } from './NativeChatComposerActions'
 import { NativeChatComposerNotices } from './NativeChatComposerNotices'
@@ -89,6 +88,8 @@ export function NativeChatComposerField({
   onDictationHoldStart,
   onDictationHoldEnd,
   onSend,
+  steerPreview = null,
+  onSteerPreview,
   onStop,
   sessionOptionsSurface,
   sessionOptionsSnapshot,
@@ -96,7 +97,8 @@ export function NativeChatComposerField({
   sessionOptionsPickerRequest,
   goalMode,
   agent,
-  launchPrompt
+  launchPrompt,
+  workspaceFooter
 }: NativeChatComposerFieldProps): React.JSX.Element {
   const editMessageLabel = translate(
     'components.native-chat.queuedMessages.editMessage',
@@ -168,6 +170,7 @@ export function NativeChatComposerField({
   const dictationHoldStart = useLatestHandler(onDictationHoldStart)
   const dictationHoldEnd = useLatestHandler(onDictationHoldEnd)
   const send = useLatestHandler(onSend)
+  const runSteerPreview = useLatestHandler(onSteerPreview ?? noop)
   const stop = useLatestHandler(onStop ?? noop)
   const exitGoalMode = useLatestHandler(goalMode?.exit ?? noop)
 
@@ -193,16 +196,14 @@ export function NativeChatComposerField({
   const focusComposer = useCallback(() => textareaRef.current?.focus(), [textareaRef])
   // A launch prompt sits in a popover, so it takes the app's surface instead of the chat's.
   const launch = launchPrompt !== undefined
-  const paneRef = useRef<HTMLDivElement>(null)
-  const columnRef = useRef<HTMLDivElement>(null)
-  // A launch prompt's popover never covers notification cards, so it needs no clearance.
-  useNotificationCardComposerClearance(paneRef, columnRef, editSession === undefined && !launch)
 
   return (
-    <div ref={paneRef} className={launch ? undefined : 'shrink-0 bg-chat-pane'}>
-      <div className={launch ? undefined : 'px-3 pt-2 pb-4 sm:px-4'}>
+    <div
+      data-composer-field={launch ? undefined : ''}
+      className={launch ? undefined : '@container/composer-field shrink-0 bg-chat-pane'}
+    >
+      <div className={launch ? undefined : 'native-chat-composer-gutter pt-2 pb-4'}>
         <div
-          ref={columnRef}
           className={cn('relative w-full', !launch && 'mx-auto max-w-(--chat-content-max-width)')}
         >
           {autocomplete.mode === 'slash' ? (
@@ -241,6 +242,7 @@ export function NativeChatComposerField({
             className={cn(
               // Use a constant container border so focus changes cannot flash it.
               'group/composer rounded-xl border p-1.5 shadow-xs',
+              !launch && 'native-chat-composer-card',
               launch
                 ? 'border-foreground/10 bg-background dark:bg-foreground/[0.04]'
                 : 'border-chat-composer-border bg-chat-composer-surface',
@@ -307,11 +309,11 @@ export function NativeChatComposerField({
                   nativeChatComposerPlaceholder(hasPty, canSend, afterStop)
                 }
                 // Let layout handle wrapping and touch targets; scroll after eight lines (a launch prompt: one line growing to six) without JavaScript measurement.
-                // An empty launch prompt also grows to fit a placeholder that wraps: its zero-width float keeps its height.
+                // An empty launch prompt also grows to fit a wrapping placeholder: a paragraph-wide float that keeps its height, with a zero-width margin box so the caret line stays put.
                 className={cn(
                   'w-full bg-transparent px-2 py-1 text-sm outline-none',
                   launch
-                    ? 'min-h-7 max-h-[calc(6lh+0.5rem)] text-foreground placeholder:text-muted-foreground [&_p.is-editor-empty:first-child]:before:!h-auto [&_p.is-editor-empty:first-child]:before:mr-[-100%]'
+                    ? 'min-h-7 max-h-[calc(6lh+0.5rem)] text-foreground placeholder:text-muted-foreground [&_p.is-editor-empty:first-child]:before:!h-auto [&_p.is-editor-empty:first-child]:before:w-full [&_p.is-editor-empty:first-child]:before:mr-[-100%]'
                     : 'min-h-12 max-h-[calc(8lh+0.5rem)] text-chat-foreground-strong placeholder:text-chat-foreground-faint pointer-coarse:min-h-14',
                   'overflow-y-auto scrollbar-sleek',
                   // Why: the editor is a contenteditable, which `:disabled` never matches.
@@ -364,6 +366,8 @@ export function NativeChatComposerField({
                 onDictationHoldStart={dictationHoldStart}
                 onDictationHoldEnd={dictationHoldEnd}
                 onSend={send}
+                steerPreview={steerPreview}
+                onSteerPreview={runSteerPreview}
                 onStop={onStop ? stop : undefined}
                 sessionOptionsSurface={sessionOptionsSurface}
                 sessionOptionsSnapshot={sessionOptionsSnapshot}
@@ -376,6 +380,7 @@ export function NativeChatComposerField({
               />
             </div>
           </div>
+          {workspaceFooter}
         </div>
       </div>
     </div>

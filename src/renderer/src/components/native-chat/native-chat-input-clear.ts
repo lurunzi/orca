@@ -1,9 +1,8 @@
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
-import { AGENT_TUI_CLEAR_INPUT_MAX } from '../../../../shared/agent-tui-input-clear'
+import { AGENT_TUI_CLEAR_INPUT_MAX } from '../../../../shared/agent-launch/startup/agent-tui-input-clear'
 import { whenNativeChatComposerReady } from './native-chat-composer-ready-wait'
 
-// Ctrl+U clears only one logical line; multi-line launch drafts need buildAgentTuiClearInputForText, while verified option commands skip clearing.
-export const NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT = '\x15'
+export const NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT = AGENT_TUI_CLEAR_INPUT_MAX
 
 /** Gap before re-reading the agent's input line to confirm a clear landed. */
 export const NATIVE_CHAT_CLEAR_CONFIRM_MS = 140
@@ -15,8 +14,8 @@ export type NativeChatSendOptions = {
   onWriteUnconfirmed?: () => void
   /** Request provider acknowledgments for body/submit writes; false includes uncertain acceptance. */
   onDeliverySettled?: (acknowledged: boolean) => void
-  /** Bytes that empty the agent's input line. Defaults to a single Ctrl+U. */
-  clearInput?: string
+  /** Bytes that empty the agent's input line. Null refuses an oversized draft; defaults to the bounded maximum clear. */
+  clearInput?: string | null
   /** For launch-draft replacement, confirm empty input and widen to maximal clearing if residue remains. */
   confirmCleared?: () => boolean
   /**
@@ -27,7 +26,7 @@ export type NativeChatSendOptions = {
 }
 
 export function clearUnsubmittedAgentInput(ptyId: string, options?: NativeChatSendOptions): void {
-  if (options?.clearInput === '') {
+  if (options?.clearInput === '' || options?.clearInput === null) {
     return
   }
   sendRuntimePtyInput(ptyId, options?.clearInput ?? NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT, 'driving')
@@ -39,8 +38,15 @@ export function clearThenWrite(
   options: NativeChatSendOptions | undefined,
   delay: (ms: number, fn: () => void) => void,
   writeBody: () => void,
+  rejectClear: () => void,
   onLineTouched?: () => void
 ): void {
+  if (options?.clearInput === null) {
+    options.onWriteRejected?.()
+    options.onDeliverySettled?.(false)
+    rejectClear()
+    return
+  }
   whenNativeChatComposerReady(options?.composerReady, delay, () => {
     onLineTouched?.()
     clearConfirmedThenWrite(ptyId, options, delay, writeBody)

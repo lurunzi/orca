@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, expect, it } from 'vitest'
 import { z } from 'zod'
-import { agentChatPermissionModes } from '../../shared/agent-chat-permission-support'
+import { agentChatPermissionModes } from '../../shared/agent-launch/permissions/agent-chat-permission-support'
 import {
   closeProviderTimelineRigs,
   SESSION

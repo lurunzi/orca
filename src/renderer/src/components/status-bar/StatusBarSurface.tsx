@@ -28,6 +28,7 @@ import { FloatingTerminalIconContextMenu } from '@/components/floating-terminal/
 import { ClaudeSwitcherMenu } from './ClaudeSwitcherMenu'
 import { CodexSwitcherMenu } from './CodexSwitcherMenu'
 import { ProviderDetailsMenu } from './ProviderDetailsMenu'
+import { AntigravityUsageMenu } from './AntigravityUsageMenu'
 import { CLOSE_ALL_CONTEXT_MENUS_EVENT } from '@/lib/close-all-context-menus'
 import { ProviderSegment, UsageOverflowChip, getUsageTone } from './StatusBarProviderSegment'
 import {
@@ -76,6 +77,7 @@ export function StatusBarSurface({
     return null
   }
   const {
+    antigravityAccounts,
     anyFetching,
     anyVisible,
     barRef,
@@ -236,6 +238,17 @@ export function StatusBarSurface({
                             iconOnly={false}
                             asSubmenu
                             triggerContent={rowNode}
+                          />
+                        )
+                      }
+                      if (p.provider === 'antigravity') {
+                        return (
+                          <AntigravityUsageMenu
+                            antigravity={p}
+                            accounts={antigravityAccounts}
+                            compact={compact}
+                            triggerContent={rowNode}
+                            onManageAccounts={() => handleOpenProviderAccounts('antigravity')}
                           />
                         )
                       }

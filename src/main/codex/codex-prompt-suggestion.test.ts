@@ -9,7 +9,7 @@ import {
   identityFor,
   THREAD_ID,
   USER_MESSAGE
-} from './codex-structured-session-adapter-fixture'
+} from './structured/session-lifecycle/codex-structured-session-adapter-fixture'
 
 const REQUEST = 'thread/prediction/request'
 const UPDATED = 'thread/prediction/updated'

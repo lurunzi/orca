@@ -1,7 +1,7 @@
-import './mock-descendant-sweep'
+import './pty-subprocess/testing/mock-descendant-sweep'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { IPty } from 'node-pty'
-import { TerminalHost } from './terminal-host'
+import { TerminalHost } from './terminal-host/terminal-host'
 import { createPtyForegroundProcessTracker } from './pty-subprocess/foreground-process-tracker'
 import { confirmPtyProviderForegroundProcess } from '../providers/pty-process-inspection'
 

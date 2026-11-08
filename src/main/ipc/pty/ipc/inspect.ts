@@ -4,7 +4,7 @@ import {
   confirmPtyProviderForegroundProcess,
   inspectPtyProviderProcessForRenderer
 } from '../../../providers/pty-process-inspection'
-import { clientOnlyUnverifiableInspection } from '../../../../shared/terminal-process-inspection'
+import { clientOnlyUnverifiableInspection } from '../../../../shared/terminal/pty/lifecycle/terminal-process-inspection'
 import {
   getProviderForPty,
   hasPtyProviderForInspection,

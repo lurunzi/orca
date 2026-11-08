@@ -2,7 +2,7 @@ import { isAntigravityCommandApprovalScreen } from './antigravity-command-approv
 import {
   detectTerminalWaitBlockedReason,
   isKnownReadyPromptPreview
-} from './terminal-wait-detection'
+} from './terminal/wait/terminal-wait-detection'
 import type { RuntimeTerminalWaitBlockedReason } from '../../shared/runtime-types'
 
 const ANTIGRAVITY_FRAME = /^\u2500{8,}$/

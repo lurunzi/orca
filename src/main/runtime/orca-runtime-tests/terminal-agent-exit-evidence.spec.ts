@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { syncSinglePty } from '../orca-runtime-test-fixtures.spec'
-import { createSideEffectRuntime } from '../orca-runtime-test-scenario-builders.spec'
+import { syncSinglePty } from './orca-runtime-test-fixtures.spec'
+import { createSideEffectRuntime } from './orca-runtime-test-scenario-builders.spec'
 
 const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!
 

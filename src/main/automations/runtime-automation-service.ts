@@ -2,7 +2,7 @@ import { observeAutomationChatRun } from './runtime-chat-run-observer'
 import { readAutomationRunReceipt } from './automation-run-receipt'
 import { publishedLaunchTarget } from './automation-agent-run-result'
 import { launchAutomationChatAgent } from './automation-chat-agent-launch'
-import { tuiAgentDisplayName } from '../../shared/tui-agent-display-names'
+import { tuiAgentDisplayName } from '../../shared/agent-launch/catalog/tui-agent-display-names'
 import type { ClaudeUsageStore } from '../claude-usage/store'
 import type { CodexUsageStore } from '../codex-usage/store'
 import type { Store } from '../persistence/loading-store/store'
@@ -13,13 +13,14 @@ import {
   getTuiAgentDetectCommands,
   isTuiAgent,
   TUI_AGENT_CONFIG
-} from '../../shared/tui-agent-config'
+} from '../../shared/agent-launch/catalog/tui-agent-config'
 import { launchHeadlessAutomationAgent, runOwnHandle } from './headless-automation-agent-launch'
 import {
   AGENT_HOOKS_REVIEW_BLOCKED_ERROR,
   createRuntimeAutomationRunTerminalObserver
 } from './runtime-terminal-run-observer'
 import { closeEarlierHookReviewRunTerminals } from './hook-review-blocked-run-terminals'
+import { automationRunSetupSkip } from './automation-run-setup-skip'
 
 const MAX_REMEMBERED_LAUNCHES = 256
 
@@ -149,10 +150,19 @@ export function createRuntimeAutomationService(input: {
     onAutomationsChanged: (payload) => runtime.notifyAutomationsChanged(payload),
     allowRemoteHostScheduling: input.headless,
     chatDispatcher: async (request) => {
-      const { terminalHandle, ...launch } = await launchAutomationChatAgent(runtime, {
+      const { terminalHandle, ...launched } = await launchAutomationChatAgent(runtime, {
         ...request,
         runs: store.listAutomationRuns(request.automation.id)
       })
+      const launch = {
+        ...launched,
+        ...(await automationRunSetupSkip(
+          runtime,
+          request.automation,
+          request.target.repo,
+          launched.workspaceId
+        ))
+      }
       if (launch.terminalPaneKey && terminalHandle) {
         launchedHandles.set(launch.terminalPaneKey, terminalHandle)
         if (launchedHandles.size > MAX_REMEMBERED_LAUNCHES) {
@@ -163,10 +173,19 @@ export function createRuntimeAutomationService(input: {
     },
     headlessDispatcher: input.headless
       ? async (request) => {
-          const { terminalHandle, ...launch } = await launchHeadlessAutomationAgent(runtime, {
+          const { terminalHandle, ...launched } = await launchHeadlessAutomationAgent(runtime, {
             ...request,
             runs: store.listAutomationRuns(request.automation.id)
           })
+          const launch = {
+            ...launched,
+            ...(await automationRunSetupSkip(
+              runtime,
+              request.automation,
+              request.target.repo,
+              launched.workspaceId
+            ))
+          }
           if (launch.terminalPaneKey) {
             launchedHandles.set(launch.terminalPaneKey, terminalHandle)
             if (launchedHandles.size > MAX_REMEMBERED_LAUNCHES) {

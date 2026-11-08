@@ -8,7 +8,7 @@ import {
   readAgentCliVersion,
   type AgentCliVersionInput,
   type AgentCliVersionReader
-} from '../agent-cli-version-probe'
+} from '../agent-launch/preflight/agent-cli-version-probe'
 import { directoryAccountBinding, type AcpAccountBinding } from '../acp/acp-account-binding'
 import type { AcpLaunchSpec } from '../acp/acp-launch-specs'
 

@@ -1,10 +1,10 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import type { AiVaultSession } from '../../../shared/ai-vault-types'
+import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
 import type { ExecutionHostId } from '../../../shared/execution-host'
-import { parseWorkspaceSession } from '../../../shared/workspace-session-schema'
+import { parseWorkspaceSession } from '../../../shared/workspace-session/workspace-session-schema'
 import { createTestStore } from '@/store/slices/store-test-helpers'
 import { createTabsSliceMockApi } from '@/store/slices/tabs-slice-test-harness'
-import type * as WorktreeOwnerModule from './worktree-runtime-owner'
+import type * as WorktreeOwnerModule from './workspace/ownership/worktree-runtime-owner'
 import type * as RetirementModule from '@/runtime/structured-agent-session-tab-retirement'
 import type * as RpcModule from '@/runtime/runtime-rpc-client'
 
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => {
 })
 let store: ReturnType<typeof createTestStore>
 vi.mock('@/store', () => ({ useAppStore: { getState: () => store.getState() } }))
-vi.mock('./worktree-runtime-owner', async (original) => ({
+vi.mock('./workspace/ownership/worktree-runtime-owner', async (original) => ({
   ...(await original<typeof WorktreeOwnerModule>()),
   getKnownExecutionHostIdForWorktree: () => mocks.host
 }))

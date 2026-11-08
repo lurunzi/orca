@@ -2,6 +2,8 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { readAttachmentTextChunk } from './agent-session-attachment-text-read'
+import type { AttachmentTextRequest } from '../../../shared/attachment-text-source'
 import { appendFile, mkdir, rm, writeFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import {
@@ -204,6 +206,10 @@ export class AgentSessionAttachmentStore {
   }
 
   /** Refuse out-of-store paths and previews exceeding the remote reply budget. */
+  readTextChunk(request: AttachmentTextRequest, maxContentBytes?: number) {
+    return readAttachmentTextChunk(this.rootDir, request, maxContentBytes)
+  }
+
   async readPreview(filePath: string, maxContentBytes?: number): Promise<RuntimeFilePreviewResult> {
     if (
       !IMAGE_FILE_MIME_TYPES[extname(filePath).toLowerCase()] ||

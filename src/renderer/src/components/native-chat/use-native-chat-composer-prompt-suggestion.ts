@@ -1,5 +1,5 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { NativeChatComposerInput } from './native-chat-composer-input'
 import type { NativeChatStructuredComposerTransport } from './native-chat-composer-types'
 import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'

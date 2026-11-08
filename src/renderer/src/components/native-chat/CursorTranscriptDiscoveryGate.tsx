@@ -1,16 +1,16 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
-import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
-import { createBrowserUuid } from '@/lib/browser-uuid'
-import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault-session-launch-target'
+import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
+import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/non-secure-context-uuid'
+import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target'
 import {
   cursorSessionMatchesWorkspace,
   openCursorTranscriptTab,
   reconcileCursorTranscriptTabs
 } from '@/lib/cursor-transcript-tab'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
-import { isAiVaultScanCancelledError } from '../../../../shared/ai-vault-types'
+import { isAiVaultScanCancelledError } from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import {
   cursorTranscriptOfferKey,
   isCursorTranscriptRecent,

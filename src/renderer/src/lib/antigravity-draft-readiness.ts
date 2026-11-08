@@ -4,8 +4,8 @@ import type {
   RuntimeTerminalShow,
   RuntimeTerminalWait
 } from '../../../shared/runtime-types'
-import { makePaneKey } from '../../../shared/stable-pane-id'
-import { toHostSessionTabId } from '../../../shared/terminal-surface-id'
+import { makePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
+import { toHostSessionTabId } from '../../../shared/workspace-layout/terminal-surface-id'
 import { useAppStore } from '@/store'
 import { ensureLocalRuntimeCapabilities } from '@/runtime/local-runtime-capabilities'
 import { callRuntimeRpc, runtimeEnvironmentSupportsCapability } from '@/runtime/runtime-rpc-client'

@@ -1,4 +1,4 @@
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import {
   AGENT_MODEL_CATALOG_FRESH_MS,
   AGENT_MODEL_CATALOG_FAILURE_TTL_MS

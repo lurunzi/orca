@@ -19,7 +19,9 @@ vi.mock('./native-chat-pty-send-queue', () => ({
   cancelNativeChatPtySends: vi.fn(),
   waitForNativeChatPtyIdle: vi.fn()
 }))
-vi.mock('@/lib/native-chat-telemetry', () => ({ emitNativeChatMessageSent: vi.fn() }))
+vi.mock('@/components/native-chat/telemetry/native-chat-telemetry', () => ({
+  emitNativeChatMessageSent: vi.fn()
+}))
 
 import { useNativeChatSessionOptionCommand } from './use-native-chat-session-option-command'
 

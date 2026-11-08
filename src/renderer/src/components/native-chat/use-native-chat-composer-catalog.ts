@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { getVerifiedNativeChatCommands } from '../../../../shared/native-chat/native-chat-agent-profiles'
 import type {
   NativeChatSessionSkill,
@@ -23,14 +23,33 @@ export function useNativeChatComposerCatalog(
   const structured = Boolean(structuredTransport)
   const reported = structuredTransport?.sessionCommands
   const conversationCommands = structuredTransport?.conversationCommands
+  const compactInstructions = structuredTransport?.compactInstructions
+  const interactionModeSupported =
+    structuredTransport?.optionSnapshot.some((entry) => entry.id === 'interactionMode') === true
+  const accountUsage = structuredTransport?.accountUsage !== undefined
   const agentCommands = useMemo(
     () =>
       structured
         ? withNativeChatResumeCommand(
-            structuredSessionSlashCommands(agent, conversationCommands, reported)
+            structuredSessionSlashCommands(
+              agent,
+              conversationCommands,
+              reported,
+              compactInstructions,
+              interactionModeSupported
+            ),
+            accountUsage
           )
         : getVerifiedNativeChatCommands(agent),
-    [agent, conversationCommands, reported, structured]
+    [
+      accountUsage,
+      agent,
+      compactInstructions,
+      conversationCommands,
+      reported,
+      structured,
+      interactionModeSupported
+    ]
   )
   const sessionSkills = useMemo(() => nativeChatSessionSkills(agent, reported), [agent, reported])
   return { agentCommands, sessionSkills }

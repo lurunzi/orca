@@ -11,29 +11,31 @@ const gateFacts: { current: { turnRunning: boolean; awaitingHuman: boolean } | n
   current: { turnRunning: false, awaitingHuman: false }
 }
 
-vi.mock('../native-chat/agent-session-wire/structured-agent-session-registry', () => ({
+vi.mock('../native-chat/agent-session-wire/host/structured-agent-session-registry', () => ({
   getStructuredAgentSessionHost: () => hostRef.current
 }))
-vi.mock('./orchestration/structured-mailbox-pointer-host', () => ({
+vi.mock('./orchestration/mailbox/structured-pointer/structured-mailbox-pointer-host', () => ({
   readStructuredSessionGateFacts: () => gateFacts.current
 }))
 
-const { OrchestrationDb } = await import('./orchestration/db')
+const { OrchestrationDb } = await import('./orchestration/db/orchestration-db')
 const {
   bindStructuredSessionCoordinatorIdentities,
   readStructuredSessionCoordinatorIdentity,
   resetStructuredSessionCoordinatorIdentitiesForTest,
   setStructuredSessionCoordinatorIdentity
 } = await import('./structured-session-coordinator-identity')
-const { resolveStructuredWorkerAuthority } = await import('./structured-worker-authority')
+const { resolveStructuredWorkerAuthority } =
+  await import('./orchestration/terminal-authority/structured-sessions/structured-worker-authority')
 const {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerIdentities,
   structuredWorkerProcessIncarnation
-} = await import('./structured-worker-identity')
+} =
+  await import('./orchestration/terminal-authority/structured-sessions/structured-worker-identity')
 const { sealedChildEnv: structuredSessionChildIdentityEnv } =
-  await import('./structured-session-child-env.test-support')
+  await import('./agent-session/environment/structured-session-child-env.test-support')
 
 const SESSION_ID = '0f1e2d3c-4b5a-4968-8776-a5b4c3d2e1f0'
 

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { resolveCursorLegacyModel } from './cursor-legacy-model-ids'
 import { translateAcpRequest } from '../acp-timeline-requests'
 import { AcpStructuredOptions } from '../acp-structured-options'
-import { AcpToolTimeline } from '../acp-tool-timeline'
+import { AcpTimelineOwnership } from '../acp-timeline-ownership'
 import { scrubCursorAcpEnvironment } from '../../cursor/cursor-acp-launch-spec'
 import { CURSOR_ACP_DIALECT } from './cursor-dialect'
 import { parseCursorModelListing } from './cursor-model-catalog'
 import { cursorRequest } from './cursor-requests'
 
-const tools = new AcpToolTimeline()
+const tools = new AcpTimelineOwnership().tools
 const translate = (method: string, params: unknown) =>
   translateAcpRequest(method, params, 1, { sessionId: 's1', dialect: CURSOR_ACP_DIALECT, tools })
 

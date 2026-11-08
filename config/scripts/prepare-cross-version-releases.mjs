@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { selectLatestStableReleaseTag } from './stable-release-tags.mjs'
+import { selectLatestStableReleaseTag } from './release/versioning/stable-release-tags.mjs'
 
 export function prepareCrossVersionReleases(
   repoRoot,

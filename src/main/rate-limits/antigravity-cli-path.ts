@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { resolveCommandOnLocalPath } from '../ipc/command-path-resolver'
+import { resolveCommandOnLocalPath } from '../ipc/command-path/command-path-resolver'
 import { antigravityCommandName } from './antigravity-usage-command'
 
 /** Keep PATH precedence; GUI launchers can omit the CLI's standard installation directory. */

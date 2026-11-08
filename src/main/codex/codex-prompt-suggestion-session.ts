@@ -1,4 +1,4 @@
-import type { CodexSession } from './codex-structured-session-state'
+import type { CodexSession } from './structured/session-lifecycle/codex-structured-session-state'
 
 /** Fork: a call that changes the thread drops the session's next-prompt suggestion. */
 export function dropCodexPromptSuggestion<T extends CodexSession | undefined>(session: T): T {

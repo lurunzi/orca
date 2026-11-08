@@ -1,12 +1,12 @@
-import { resolveAgentChoiceLayers } from '../../agent-choice-layers'
-import type { AgentDedicatedChoices } from '../../agent-launch-choices'
+import { resolveAgentChoiceLayers } from '../../agent-launch/choices/agent-choice-layers'
+import type { AgentDedicatedChoices } from '../../agent-launch/choices/agent-launch-choices'
 import {
   findCatalogModel,
   getAgentSessionOptionLaunchCatalog
 } from '../../agent-session/options/agent-session-option-catalog'
 import type { GlobalSettings } from '../../global-settings-types'
-import { isTuiAgent } from '../../tui-agent-config'
-import type { TuiAgent } from '../../tui-agent'
+import { isTuiAgent } from '../../agent-launch/catalog/tui-agent-config'
+import type { TuiAgent } from '../../agent-launch/catalog/tui-agent'
 import { resolveNativeChatSessionOptionDefaults } from './native-chat-session-option-defaults'
 import { decodeCatalogOptionValue } from '../../agent-session/options/structured-agent-session-option-codec'
 import type { SessionOptionValue } from './native-chat-session-options'

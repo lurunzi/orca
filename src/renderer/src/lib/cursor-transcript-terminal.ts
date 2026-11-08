@@ -1,6 +1,6 @@
 import type { AppState } from '@/store/types'
-import { parsePaneKey } from '../../../shared/stable-pane-id'
-import { collectLeafIds } from '../../../shared/terminal-pane-layout-tree'
+import { parsePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
+import { collectLeafIds } from '../../../shared/workspace-layout/terminal-pane-layout-tree'
 
 export type CursorTranscriptTerminal = { tabId: string; paneKey: string; ptyId: string | null }
 

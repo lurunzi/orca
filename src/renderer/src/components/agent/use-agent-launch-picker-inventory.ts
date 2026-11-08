@@ -1,76 +1,56 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
-import { readHostAgentLaunchSettings } from '../settings/agent-launch-settings-transport'
+import { hostWorktreeTarget } from '../../../../shared/worktree/host-qualified-identity'
+import { parseExecutionHostId } from '../../../../shared/execution-host'
+import {
+  selectWorkspaceByHostTarget,
+  selectWorktreesByRepo,
+  selectFolderWorkspaces
+} from '@/store/workspace-record-selectors'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { readHostAgentLaunchDefaults } from '../../runtime/agent-launch-settings/agent-launch-settings-transport'
 import type { NewTabAgentMenuModel } from '../tab-bar/use-new-tab-agent-menu-rows'
 import { useAppStore } from '@/store'
-import {
-  buildAgentLaunchRouteInput,
-  workspaceKindForWorktreeId
-} from '@/lib/agent-launch-route-input'
+import { buildAgentLaunchRouteInput } from '@/lib/agent-session/launch/routing/agent-launch-route-input'
+import { workspaceKindForWorktreeId } from '../../../../shared/workspace-launch-kind'
 import { structuredAgentSessionTargetForHost } from '@/runtime/structured-agent-session-owner'
 import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
-import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
-import { formatAgentTypeLabel } from '../../../../shared/agent-type-label'
-import type { TuiAgent } from '../../../../shared/tui-agent'
+import { readHostStructuredAgentsForRuntime } from '@/runtime/host-structured-agents'
+import { getAgentSessionOptionLaunchCatalog } from '../../../../shared/agent-session/options/agent-session-option-catalog'
+import { formatAgentTypeLabel } from '../../../../shared/agent-status/presentation/agent-type-label'
+import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
 import type { AgentSessionModelCatalogResult } from '../../../../shared/agent-session/agent-session-wire'
 import { parseStructuredLaunchSeedOptions } from '../../../../shared/native-chat/input/native-chat-session-option-defaults'
 import {
+  createAgentPickerInventorySource,
+  useAgentPickerInventoryEntries,
   currentAgentPickerAcquisition,
-  observeAgentPickerAcquisition
+  observeAgentPickerAcquisition,
+  type AgentPickerInventorySource
 } from './agent-launch-picker-acquisition'
-import { isAgentPermissionChoice } from '../../../../shared/tui-agent-permission-choice'
-import { isAgentChatPermissionChoice } from '../../../../shared/agent-chat-permission-mode'
+import {
+  agentPickerChoiceSeeds,
+  type AgentPickerDefaultSettings
+} from '../../../../shared/agent-launch/picker/agent-launch-picker-defaults'
+import { isAgentChatPermissionChoice } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import { isTranscriptChatAgent } from '../../../../shared/transcript-chat-launch-view'
-import { agentPickerCatalogModel } from '../../../../shared/agent-launch-picker-catalog'
+import { agentPickerCatalogModel } from '../../../../shared/agent-launch/picker/agent-launch-picker-catalog'
 import { loadNativeChatCatalogModelsForWorktree } from '../native-chat/native-chat-session-option-discovery'
 import {
   agentPickerEntriesFromRows,
-  agentPickerChoiceSeeds,
-  type AgentPickerDefaultSettings,
   type AgentPickerEntry
-} from '../../../../shared/agent-launch-picker'
+} from '../../../../shared/agent-launch/picker/agent-launch-picker'
 
-/**
- * Live picker entries for one (inventory key, open) generation. Catalog and seed reads land one
- * at a time for several seconds after the menu opens; holding them here instead of in the
- * owner's React state lets only the components that render entries re-render as they land.
- */
-export type AgentPickerInventorySource = {
-  getSnapshot: () => AgentPickerEntry[]
-  subscribe: (listener: () => void) => () => void
-}
+export { useAgentPickerInventoryEntries, type AgentPickerInventorySource }
 
-type WritableAgentPickerInventorySource = AgentPickerInventorySource & {
-  publish: (entries: readonly AgentPickerEntry[]) => void
-}
-
-function createAgentPickerInventorySource(
-  initial: AgentPickerEntry[]
-): WritableAgentPickerInventorySource {
-  let entries = initial
-  const listeners = new Set<() => void>()
-  return {
-    getSnapshot: () => entries,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    publish: (next) => {
-      // Why: a read that changed nothing (e.g. an unavailable catalog) must not re-render the menu.
-      if (next.length === entries.length && next.every((entry, i) => entry === entries[i])) {
-        return
-      }
-      entries = [...next]
-      for (const listener of listeners) {
-        listener()
-      }
-    }
-  }
-}
-
-export function useAgentPickerInventoryEntries(
-  source: AgentPickerInventorySource
+/** Forms consume entries; menu owners can retain the source without subscribing. */
+export function useAgentLaunchPickerInventory(
+  worktreeId: string | undefined,
+  model: NewTabAgentMenuModel,
+  open: boolean,
+  selected?: AgentPickerEntry['agent']
 ): AgentPickerEntry[] {
-  return useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot)
+  return useAgentPickerInventoryEntries(
+    useAgentLaunchPickerInventorySource(worktreeId, model, open, selected)
+  )
 }
 
 /** Owns acquisition for the menu without subscribing its caller to the entries it publishes. */
@@ -96,6 +76,58 @@ export function useAgentLaunchPickerInventorySource(
       }
     }).executionHostId
   const target = structuredAgentSessionTargetForHost(executionHostId)
+  const registeredAgents = readHostStructuredAgentsForRuntime(
+    executionHostId,
+    target?.kind === 'local' ? null : context?.runtimeId
+  )
+  const repo = context?.workspace.repoId
+    ? useAppStore.getState().repos.find((candidate) => candidate.id === context.workspace.repoId)
+    : undefined
+  const workspaceId = worktreeId ?? context?.workspace.worktreeId
+  const selector = workspaceId ? `id:${workspaceId}` : repo ? `path:${repo.path}` : undefined
+  const state = useAppStore.getState()
+  const hostId = parseExecutionHostId(executionHostId)?.id
+  const worktrees = selectWorktreesByRepo(state)
+  const folders = selectFolderWorkspaces(state)
+  const concreteWorkspace = useMemo(
+    () =>
+      !!(
+        workspaceId &&
+        hostId &&
+        selectWorkspaceByHostTarget(
+          { worktreesByRepo: worktrees ?? {}, folderWorkspaces: folders ?? [] },
+          hostWorktreeTarget({ id: workspaceId, hostId })
+        )
+      ),
+    [workspaceId, hostId, worktrees, folders]
+  )
+  const draftTarget = useMemo(
+    () => ({
+      key: JSON.stringify([
+        context?.workspace.kind,
+        workspaceId,
+        context?.workspace.repoId,
+        repo?.path,
+        context?.launchCwd,
+        context?.workspace.executionContext,
+        executionHostId
+      ]),
+      worktreeId: concreteWorkspace ? workspaceId : undefined,
+      repoId: repo?.id,
+      executionHostId
+    }),
+    [
+      context?.workspace.kind,
+      workspaceId,
+      context?.workspace.repoId,
+      repo?.path,
+      repo?.id,
+      context?.launchCwd,
+      context?.workspace.executionContext,
+      executionHostId,
+      concreteWorkspace
+    ]
+  )
   const key = useMemo(
     () =>
       JSON.stringify([
@@ -104,6 +136,7 @@ export function useAgentLaunchPickerInventorySource(
         context?.pairingRevision,
         context?.runtimeId,
         worktreeId,
+        selector,
         executionHostId,
         model.state === 'settled' ? model.rows : [],
         model.state === 'settled' ? model.detection.detectedIds : [],
@@ -117,7 +150,7 @@ export function useAgentLaunchPickerInventorySource(
           nativeChatPermissionMode: settings.nativeChatPermissionMode
         }
       ]),
-    [context, worktreeId, executionHostId, model, settings]
+    [context, worktreeId, selector, executionHostId, model, settings]
   )
   const build = (defaults: AgentPickerDefaultSettings | null | undefined) =>
     model.state === 'settled'
@@ -127,7 +160,16 @@ export function useAgentLaunchPickerInventorySource(
           (agent) => agentPickerChoiceSeeds(agent, defaults),
           formatAgentTypeLabel,
           model.defaultTuiAgent
-        )
+        ).map((entry) => ({
+          ...entry,
+          ...(!target ||
+          !entry.surfaces.length ||
+          (registeredAgents &&
+            !registeredAgents.some(({ agent }) => agent === entry.agent) &&
+            !getAgentSessionOptionLaunchCatalog(entry.agent))
+            ? { catalogRead: 'unsupported' as const }
+            : {})
+        }))
       : []
   const fallback = useMemo(
     () =>
@@ -140,9 +182,10 @@ export function useAgentLaunchPickerInventorySource(
             defaultsPending: true,
             structuredDefaultsPending: entry.surfaces.includes('chat'),
             ownerKey: key,
+            draftTarget,
             worktreeId
           }))
-        : build(settings).map((entry) => ({ ...entry, ownerKey: key, worktreeId })),
+        : build(settings).map((entry) => ({ ...entry, ownerKey: key, draftTarget, worktreeId })),
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- The semantic key covers rows, detection, target and defaults without restarting for object identity.
     [key]
   )
@@ -155,28 +198,10 @@ export function useAgentLaunchPickerInventorySource(
     [key, open, fallback]
   )
   useEffect(() => {
-    if (!open || !target || !worktreeId || model.state !== 'settled') {
+    if (!open || !target || model.state !== 'settled') {
       return
     }
     const controller = new AbortController()
-    const record = (value: unknown): value is Record<string, unknown> =>
-      value !== null && typeof value === 'object' && !Array.isArray(value)
-    const argsRecord = (value: unknown) =>
-      value === undefined ||
-      (record(value) && Object.values(value).every((v) => typeof v === 'string'))
-    const permissionsRecord = (value: unknown) =>
-      value === undefined || (record(value) && Object.values(value).every(isAgentPermissionChoice))
-    const usable = (value: unknown): value is AgentPickerDefaultSettings =>
-      record(value) &&
-      argsRecord(value.agentDefaultArgs) &&
-      permissionsRecord(value.agentPermissionOverrides) &&
-      (value.agentPermissionDefault === undefined ||
-        isAgentPermissionChoice(value.agentPermissionDefault)) &&
-      (value.agentPermission === undefined ||
-        (record(value.agentPermission) &&
-          isAgentPermissionChoice(value.agentPermission.default) &&
-          argsRecord(value.agentPermission.userArgs) &&
-          permissionsRecord(value.agentPermission.overrides)))
     return observeAgentPickerAcquisition(
       key,
       fallback,
@@ -185,7 +210,7 @@ export function useAgentLaunchPickerInventorySource(
           target.kind !== 'environment'
             ? undefined
             : async () => {
-                const host = await readHostAgentLaunchSettings(
+                const defaults = await readHostAgentLaunchDefaults(
                   {
                     environmentId: target.environmentId,
                     pairingRevision: context?.pairingRevision,
@@ -193,72 +218,46 @@ export function useAgentLaunchPickerInventorySource(
                   },
                   controller.signal
                 ).catch(() => null)
-                let defaults: AgentPickerDefaultSettings | undefined
-                let structuredKnown = false
-                if (usable(host)) {
-                  const permission = host.agentPermission
-                  const choices = host.agentChoices
-                  defaults = {
-                    agentDefaultArgs:
-                      choices?.userArgs ?? permission?.userArgs ?? host.agentDefaultArgs,
-                    agentLaunchChoices: choices?.defaults ?? settings?.agentLaunchChoices,
-                    ...(permission
-                      ? {
-                          agentPermissionDefault: permission.default,
-                          agentPermissionOverrides: permission.overrides
-                        }
-                      : {})
-                  }
-                } else {
-                  const legacy = await callRuntimeRpc<{ settings?: AgentPickerDefaultSettings }>(
-                    target,
-                    'settings.get',
-                    undefined,
-                    {
-                      signal: controller.signal,
-                      timeoutMs: 15_000,
-                      expectedEnvironmentPairingRevision: context?.pairingRevision,
-                      ...(context?.runtimeId
-                        ? { expectedEnvironmentRuntimeId: context.runtimeId }
-                        : {})
-                    }
-                  ).catch(() => null)
-                  if (usable(legacy?.settings)) {
-                    defaults = legacy.settings
-                    structuredKnown = true
-                  }
-                }
                 return defaults
-                  ? build(defaults).map((entry) => ({
+                  ? build(defaults.settings).map((entry) => ({
                       ...entry,
                       defaultsPending: false,
                       structuredDefaultsPending:
-                        entry.surfaces.includes('chat') && !structuredKnown,
+                        entry.surfaces.includes('chat') && !defaults.structuredKnown,
                       ownerKey: key,
+                      draftTarget,
                       worktreeId
                     }))
                   : undefined
               },
         catalog: async (entry) => {
-          const structured = await callStructuredAgentSession<AgentSessionModelCatalogResult>(
+          const request = callStructuredAgentSession<AgentSessionModelCatalogResult>(
             target,
             'agentSession.modelCatalog',
-            { worktree: `id:${worktreeId}`, agent: entry.agent, waitForListing: true }
-          ).catch(() => undefined)
-          if (
-            (structured && structured.origin !== 'unknown') ||
-            !isTranscriptChatAgent(entry.agent)
-          ) {
+            {
+              ...(selector ? { worktree: selector } : {}),
+              agent: entry.agent,
+              waitForListing: true
+            }
+          )
+          if (!isTranscriptChatAgent(entry.agent)) {
+            return await request
+          }
+          const structured = await request.catch(() => undefined)
+          if (structured && structured.origin !== 'unknown') {
             return structured
           }
           // Fork: without a structured listing, Cursor and Antigravity still list their CLI's models.
           return (await transcriptChatPickerCatalog(entry.agent, worktreeId)) ?? structured
         },
         support: async (entry) => {
+          if (!selector) {
+            return undefined
+          }
           const support = await callStructuredAgentSession<{
             seedOptions?: Record<string, string>
           }>(target, 'agentSession.createSupport', {
-            worktree: `id:${worktreeId}`,
+            worktree: selector,
             agent: entry.agent
           })
           const parsed = parseStructuredLaunchSeedOptions(support?.seedOptions)

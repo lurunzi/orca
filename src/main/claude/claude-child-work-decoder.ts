@@ -4,11 +4,11 @@ import type {
   AgentChildWorkKind,
   AgentChildWorkOperation,
   AgentChildWorkOutcome
-} from '../../shared/agent-status-child-work'
+} from '../../shared/agent-status/child-work/agent-status-child-work'
 import type {
   AgentChildWorkEvidence,
   AgentChildWorkLiveObservation
-} from '../../shared/agent-status-child-work-evidence'
+} from '../../shared/agent-status/child-work/agent-status-child-work-evidence'
 import {
   classifyClaudeBackgroundTaskKind,
   liveClaudeTaskRunState,
@@ -24,7 +24,7 @@ import {
 import { isClaudeSubagentTask } from './claude-subagent-task-frames'
 import { ClaudeBashTaskCalls } from './claude-bash-task-calls'
 import { ORCA_ORCHESTRATION_WAIT_COMMAND } from '../../shared/orca-cli-invocations'
-import type { TerminalAgent } from '../../shared/terminal-agent'
+import type { TerminalAgent } from '../../shared/agent-status/identity/terminal-agent'
 import {
   claudeChildWorkOutcome,
   claudeTaskProgressFacts,

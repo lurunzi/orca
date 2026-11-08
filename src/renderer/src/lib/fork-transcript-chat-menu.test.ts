@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { buildNewTabAgentMenuRows } from './new-tab-agent-menu-rows'
+import { buildNewTabAgentMenuRows } from '../../../shared/agent-launch/picker/agent-launch-picker-rows'
 
 const input = {
   detectedOnHost: ['claude', 'antigravity', 'gemini'] as const,

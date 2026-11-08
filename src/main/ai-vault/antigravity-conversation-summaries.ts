@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { columnExists, tableExists } from '../opencode-usage/schema-helpers'
-import { readOpenCodeDatabase } from './session-scanner-opencode-sqlite-open'
+import { readOpenCodeDatabase } from './scanners/opencode/sqlite/session-scanner-opencode-sqlite-open'
 import { asRecord } from './session-scanner-record-value'
 import { extractString } from './session-scanner-values'
 

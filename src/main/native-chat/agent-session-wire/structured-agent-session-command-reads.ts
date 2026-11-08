@@ -1,5 +1,5 @@
-import { AT_REST_COMMANDS_READ_BUDGET_MS } from './at-rest-command-catalog'
-import type { StructuredAgentSessionHostDeps } from './structured-agent-session-host-types'
+import { AT_REST_COMMANDS_READ_BUDGET_MS } from './options/at-rest-command-catalog'
+import type { StructuredAgentSessionHostDeps } from './host/structured-agent-session-host-types'
 
 type CommandReadDeps = Pick<StructuredAgentSessionHostDeps, 'adapter' | 'store'>
 

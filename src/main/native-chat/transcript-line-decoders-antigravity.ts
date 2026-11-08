@@ -11,7 +11,7 @@ import {
   parseJsonObject,
   timestampMs
 } from '../ai-vault/session-scanner-values'
-import { extractAntigravityUserRequest } from '../ai-vault/session-scanner-antigravity-parser'
+import { extractAntigravityUserRequest } from '../ai-vault/scanners/antigravity/session-scanner-antigravity-parser'
 
 const TOOL_STEP_TYPES = new Set([
   'RUN_COMMAND',

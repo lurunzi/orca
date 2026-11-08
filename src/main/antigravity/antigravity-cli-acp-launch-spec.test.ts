@@ -1,6 +1,9 @@
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { checkAgentCliVersion, type AgentCliVersionInput } from '../agent-cli-version-probe'
+import {
+  checkAgentCliVersion,
+  type AgentCliVersionInput
+} from '../agent-launch/preflight/agent-cli-version-probe'
 import {
   ANTIGRAVITY_HOST_LAUNCH_SPEC,
   ANTIGRAVITY_LAUNCH_SPEC,

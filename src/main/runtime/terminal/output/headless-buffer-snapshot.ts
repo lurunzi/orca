@@ -1,11 +1,11 @@
 import type { TerminalIdentityReadContext } from '../query/terminal-identity-read-context'
 import { OrcaRuntimeWithAntigravityScreenReadiness } from './antigravity-screen-readiness'
-import type { TerminalOscLinkRange } from '../../../../shared/terminal-osc-link-ranges'
-import { parseTerminalKittyKeyboardFlags } from '../../../../shared/terminal-kitty-keyboard-flags'
+import type { TerminalOscLinkRange } from '../../../../shared/terminal/links/terminal-osc-link-ranges'
+import { parseTerminalKittyKeyboardFlags } from '../../../../shared/terminal/protocol/input-modes/terminal-kitty-keyboard-flags'
 import type {
   OrchestrationCompatibilitySshAttachmentAuthority,
   OrchestrationCompatibilitySshTerminal
-} from '../../runtime-terminal-contracts'
+} from '../../orchestration/terminal-authority/orchestration-compatibility-authority'
 import { randomUUID } from 'node:crypto'
 
 export abstract class OrcaRuntimeWithSerializeHeadlessTerminalBuffer extends OrcaRuntimeWithAntigravityScreenReadiness {

@@ -1,6 +1,6 @@
-import { agentChoiceCliApply } from '../../agent-choice-cli-apply'
+import { agentChoiceCliApply } from '../../agent-launch/choices/agent-choice-cli-apply'
 import type { AgentSessionOptionCatalog, CatalogOption } from './agent-session-option-catalog-types'
-import { parseAntigravityModels } from '../../commit-message-model-parsers'
+import { parseAntigravityModels } from '../../source-control/ai/generation/commit-message-model-parsers'
 
 const ANTIGRAVITY_EFFORT: CatalogOption = {
   id: 'effort',
