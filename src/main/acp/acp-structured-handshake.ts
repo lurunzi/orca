@@ -186,7 +186,13 @@ export async function initializeAcpStructuredSession(
       agentName,
       now,
       settle: onSettled,
-      sessionLost: input.onSessionLost
+      sessionLost: input.onSessionLost,
+      ...(deps.usageLimitFromAccount
+        ? {
+            usageLimitFromAccount: (failedAt: number) =>
+              deps.usageLimitFromAccount!(spec.agent, failedAt)
+          }
+        : {})
     })
   })
   if (!isAcpReadySession(child)) {

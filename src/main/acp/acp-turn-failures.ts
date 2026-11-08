@@ -78,6 +78,17 @@ export class AcpTurnFailures {
     return this.rows.has(turn)
   }
 
+  /** A failure row that names neither sign-in nor a limit; account usage may still explain it. */
+  unexplained(turn: string): boolean {
+    const written = this.rows.peek(turn)
+    return written !== undefined && !written.notSignedIn && !written.usageLimited
+  }
+
+  /** Rewrites an unexplained failure as the usage limit the account's own usage shows. */
+  usageLimitFromAccount(turn: string, limit: AgentSessionUsageLimit): ProviderTimelineEvent[] {
+    return this.unexplained(turn) ? this.row(turn, undefined, 'rate_limit', false, limit) : []
+  }
+
   ended(
     turn: string,
     stopReason: string,

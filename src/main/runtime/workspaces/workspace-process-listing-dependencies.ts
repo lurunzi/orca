@@ -10,6 +10,19 @@ import type { OrcaRuntimeWithGetPtyRecordForPaneKey } from '../orchestration/ter
 import { OrcaRuntimeWithStartTuiIdleVisibleReadProbe } from '../terminal/wait/terminal-wait-visible-probe'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 import type { Repo } from '../../../shared/repo-types'
+import { readUsageLimitAccountReading } from '../../rate-limits/usage-limit-account-reading'
+import type { RateLimitState } from '../../../shared/rate-limit-types'
+
+const ACCOUNT_USAGE_OF_PROVIDER: Record<
+  string,
+  (state: RateLimitState) => RateLimitState['claude']
+> = {
+  claude: (state) => state.claude,
+  codex: (state) => state.codex,
+  cursor: (state) => state.cursor,
+  antigravity: (state) => state.antigravity
+}
+const POOLED_PROVIDERS = new Set(['cursor', 'antigravity'])
 import { escalateChatWorkerError } from '../orchestration/chat-worker-error-escalation'
 import type { StructuredAgentSessionRequestFailure } from '../../native-chat/agent-session-wire/structured-agent-session-request-failures'
 import type { StructuredAgentSessionHostDeps } from '../../native-chat/agent-session-wire/structured-agent-session-host-types'
@@ -33,7 +46,21 @@ export abstract class OrcaRuntimeWithWorktreePsDependencies extends OrcaRuntimeW
       isEnabled: () =>
         this.requireStore().getSettings().nativeChatAutoContinueAfterUsageLimit === true,
       subscribe: (changed) => this.requireStore().onSettingsChanged?.(changed) ?? (() => {}),
-      isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId)
+      isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId),
+      // Chats launch under the selected account, whose usage is the active reading.
+      readAccountUsage: (provider) => {
+        const state = this.accounts.usageRateLimits()?.getState()
+        const limits = state ? ACCOUNT_USAGE_OF_PROVIDER[provider]?.(state) : undefined
+        return limits === undefined
+          ? null
+          : readUsageLimitAccountReading(limits, { pooled: POOLED_PROVIDERS.has(provider) })
+      },
+      refreshAccountUsage: async () => {
+        await this.accounts
+          .usageRateLimits()
+          ?.refresh()
+          .catch(() => {})
+      }
     }
   }
 
