@@ -14,21 +14,28 @@ import { ProviderDetailsMenu } from './ProviderDetailsMenu'
 import { AccountSwitchSection } from './AccountSwitchList'
 import { AccountSwitchRowItem } from './AccountSwitchRowItem'
 import { useCodexSwitcherController } from './use-codex-switcher-controller'
+import { providerChatAccountControl, type ChatAccountAction } from './ProviderAccountChatButton'
+import { signedInCodexAccountCount } from './status-bar-codex-accounts'
 
 export function CodexSwitcherMenu({
   codex,
   compact,
   iconOnly,
   asSubmenu = false,
-  triggerContent
+  triggerContent,
+  chatAction
 }: {
-  codex: ProviderRateLimits
+  codex: ProviderRateLimits | null
   compact: boolean
   iconOnly: boolean
   asSubmenu?: boolean
   triggerContent?: React.ReactNode
-}): React.JSX.Element {
+  /** Switch the account one chat's next start uses; see `useCodexSwitcherController`. */
+  chatAction?: ChatAccountAction
+}): React.JSX.Element | null {
   const {
+    accounts,
+    accountsLoaded,
     activeTarget,
     canRedeemReset,
     handleConfirmReset,
@@ -54,9 +61,19 @@ export function CodexSwitcherMenu({
     setSkipFutureResetConfirm,
     skipFutureResetConfirm,
     switchGroups
-  } = useCodexSwitcherController(codex)
+  } = useCodexSwitcherController(codex, chatAction)
 
   const isBusy = isSwitching || reauthenticatingAccountId !== null
+  const accountControl = providerChatAccountControl(
+    'codex',
+    chatAction,
+    accountsLoaded,
+    signedInCodexAccountCount(accounts),
+    isBusy
+  )
+  if (accountControl?.add) {
+    return chatAction?.target.kind === 'local' ? accountControl.button : null
+  }
   const rows = (selectedGroup?.targets ?? []).map((target) => {
     const inactiveUsage = target.id
       ? inactiveCodexAccounts.find((a) => a.accountId === target.id)
@@ -111,7 +128,7 @@ export function CodexSwitcherMenu({
     inactiveUsage: (typeof rows)[number]['inactiveUsage']
   ): React.ReactNode {
     // Why: rows follow this desktop's codexTarget, so a remote owner's usage could land on the wrong row.
-    if (active && !hasActiveRuntimeEnvironment) {
+    if (active && codex && !hasActiveRuntimeEnvironment) {
       return <InlineUsageBars limits={codex} isFetching={codex.status === 'fetching'} />
     }
     if (inactiveUsage?.isFetching && !inactiveUsage.rateLimits) {
@@ -129,6 +146,7 @@ export function CodexSwitcherMenu({
       iconOnly={iconOnly}
       asSubmenu={asSubmenu}
       triggerContent={triggerContent}
+      trigger={accountControl?.button}
       ariaLabel={translate(
         'auto.components.status.bar.StatusBar.ba55303942',
         'Open Codex details and account switcher'
@@ -163,15 +181,17 @@ export function CodexSwitcherMenu({
         ) : undefined
       }
       topContent={
-        <AccountRuntimeToggle
-          groups={switchGroups}
-          value={selectedGroup?.key ?? selectedRuntimeKey}
-          onChange={(group) => void handleSelectRuntime(group)}
-          ariaLabel={translate(
-            'auto.components.status.bar.StatusBar.38b5647724',
-            'Codex usage runtime'
-          )}
-        />
+        chatAction ? undefined : (
+          <AccountRuntimeToggle
+            groups={switchGroups}
+            value={selectedGroup?.key ?? selectedRuntimeKey}
+            onChange={(group) => void handleSelectRuntime(group)}
+            ariaLabel={translate(
+              'auto.components.status.bar.StatusBar.38b5647724',
+              'Codex usage runtime'
+            )}
+          />
+        )
       }
       open={open}
       onOpenChange={handleOpenChange}
@@ -184,7 +204,7 @@ export function CodexSwitcherMenu({
         isRedeemingReset={isRedeemingReset}
         onConfirm={handleConfirmReset}
       />
-      {open ? <CodexRestartStatusPrompt /> : null}
+      {open && !chatAction ? <CodexRestartStatusPrompt /> : null}
       <AccountSwitchSection
         heading={translate('auto.components.status.bar.StatusBar.7657e3db9c', 'Codex Account')}
         targets={selectedGroup?.targets ?? []}
@@ -193,7 +213,8 @@ export function CodexSwitcherMenu({
           openSettingsTarget({
             pane: 'accounts',
             repoId: null,
-            sectionId: 'accounts-codex'
+            sectionId: 'accounts-codex',
+            ...(chatAction ? { hostScope: chatAction.target, intent: 'native-accounts' } : {})
           })
           openSettingsPage()
         }}

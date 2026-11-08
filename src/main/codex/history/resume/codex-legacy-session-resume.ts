@@ -95,6 +95,8 @@ export async function prepareCodexAccountRestartResume(args: {
   transcriptPath: string
   targetHome: string
   systemCodexHomePath: string
+  /** Refuse rather than copy: a copy would fork the history the other account keeps writing. */
+  hardlinkOnly?: boolean
 }): Promise<string> {
   if (sameRuntimePath(args.sourceHome, args.targetHome)) {
     return args.targetHome
@@ -110,7 +112,8 @@ export async function prepareCodexAccountRestartResume(args: {
   await materializeLegacyRollout(
     args.transcriptPath,
     join(args.targetHome, 'sessions', relativePath),
-    paths.auditLogPath
+    paths.auditLogPath,
+    args.hardlinkOnly === true
   )
   return args.targetHome
 }
@@ -161,7 +164,8 @@ async function resolveSelectedAccountCodexHomeForResume(
 async function materializeLegacyRollout(
   sourcePath: string,
   targetPath: string,
-  auditLogPath: string
+  auditLogPath: string,
+  hardlinkOnly = false
 ): Promise<void> {
   const sourceStat = await lstat(sourcePath)
   if (!sourceStat.isFile() || sourceStat.isSymbolicLink()) {
@@ -172,7 +176,11 @@ async function materializeLegacyRollout(
     await link(sourcePath, targetPath)
   } catch (linkError) {
     if (isExistsError(linkError)) {
-      await assertMatchingExistingTarget(sourcePath, targetPath)
+      await assertMatchingExistingTarget(sourcePath, targetPath, hardlinkOnly)
+    } else if (hardlinkOnly) {
+      throw new Error('The rollout cannot be hardlinked into the target home.', {
+        cause: linkError
+      })
     } else {
       try {
         await copySessionFileWithoutOverwrite(sourcePath, targetPath)
@@ -211,14 +219,19 @@ async function materializeLegacyRollout(
   )
 }
 
-async function assertMatchingExistingTarget(sourcePath: string, targetPath: string): Promise<void> {
+async function assertMatchingExistingTarget(
+  sourcePath: string,
+  targetPath: string,
+  sameFileOnly = false
+): Promise<void> {
   const [sourceStat, targetStat] = await Promise.all([lstat(sourcePath), lstat(targetPath)])
+  const sameFile = sourceStat.dev === targetStat.dev && sourceStat.ino === targetStat.ino
   if (
     !targetStat.isFile() ||
     targetStat.isSymbolicLink() ||
     sourceStat.size !== targetStat.size ||
-    ((sourceStat.dev !== targetStat.dev || sourceStat.ino !== targetStat.ino) &&
-      (await fileDigest(sourcePath)) !== (await fileDigest(targetPath)))
+    (!sameFile &&
+      (sameFileOnly || (await fileDigest(sourcePath)) !== (await fileDigest(targetPath))))
   ) {
     throw new Error('A different rollout already occupies the real-home target path.')
   }

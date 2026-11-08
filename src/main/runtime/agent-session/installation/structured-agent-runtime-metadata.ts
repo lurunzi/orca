@@ -1,4 +1,7 @@
-import { agentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+import {
+  agentSessionAccountHome,
+  agentSessionAccountHomePath
+} from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
 import { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import { ACP_LAUNCH_SPECS, type AcpLaunchSpec } from '../../../acp/acp-launch-specs'
 import { acpStructuredAgentDefinition } from '../../../acp/acp-structured-agent-definitions'
@@ -12,6 +15,11 @@ import { supportsClaudeStructuredLocation } from '../../../claude/structured/lau
 import { supportsAcpStructuredLocation } from '../../../acp/acp-structured-location-support'
 import { PI_RPC_RUNTIME_METADATA } from '../../../pi/rpc-runtime-metadata'
 import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
+import { claudeChatAccountSwitchable } from '../../../claude/structured/launch/claude-structured-account-switch'
+import {
+  codexChatAccountSwitchable,
+  codexStructuredLaunchFollowsSelection
+} from '../../../codex/structured/launch/codex-structured-account-switch'
 import {
   resolveStructuredClaudeAccountHomePath,
   resolveStructuredCodexAccountHomePath
@@ -120,6 +128,12 @@ export const STRUCTURED_AGENT_RUNTIME_CATALOG: readonly StructuredAgentRuntimeCa
       modelCatalog: codexModelCatalogDiscovery,
       ...CODEX_CLI_CONVERSATIONS,
       supportsLocation: (location) => supportsCodexStructuredLocation(location),
+      // Without the desktop's account switch a launch keeps the record's home.
+      launchFollowsSelection: codexStructuredLaunchFollowsSelection,
+      accountSwitchable: async ({ record }) => {
+        const home = agentSessionAccountHomePath(record.accountHome)
+        return home !== null && codexChatAccountSwitchable(home)
+      },
       resolveAccountHome: async (request, services) =>
         agentSessionAccountHome(
           CODEX_STRUCTURED_AGENT,
@@ -137,6 +151,7 @@ export const STRUCTURED_AGENT_RUNTIME_CATALOG: readonly StructuredAgentRuntimeCa
       supportsLocation: supportsClaudeStructuredLocation,
       // Without a router a launch keeps the record's home (resolveClaudeStructuredLaunchHome).
       launchFollowsSelection: () => getClaudeProfileRouter() !== undefined,
+      accountSwitchable: claudeChatAccountSwitchable,
       resolveAccountHome: async ({ launchEnv, location, purpose }, services) =>
         agentSessionAccountHome(
           CLAUDE_STRUCTURED_AGENT,

@@ -1,4 +1,7 @@
-import type { AgentSessionExecutionLocation } from '../../../../shared/agent-session/lifecycle/agent-session-record'
+import type {
+  AgentSessionExecutionLocation,
+  AgentSessionRecord
+} from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
 import type { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import type { AgentCliVersionReader } from '../../../agent-launch/preflight/agent-cli-version-probe'
@@ -128,6 +131,13 @@ export type StructuredAgentRuntimeMetadata = StructuredAgentCliConversations & {
   /** Whether a start of an existing chat launches under the account `resolveAccountHome` picks now
    *  rather than the one its record pins; absent keeps the record's. */
   launchFollowsSelection?: () => boolean
+  /** Whether a chat whose launch follows the selection can move its history, kept in `store`, to
+   *  every account the selection can name; absent never offers an account switch. */
+  accountSwitchable?: (input: {
+    record: AgentSessionRecord
+    store: string
+    launchEnv: NodeJS.ProcessEnv
+  }) => Promise<boolean>
 }
 
 export type StructuredAgentRuntimeRegistration = StructuredAgentRuntimeMetadata & {

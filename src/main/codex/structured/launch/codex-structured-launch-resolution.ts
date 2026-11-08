@@ -10,7 +10,8 @@ import {
 //
 // Every input is read back from the record the store already made durable, not
 // from the call that triggered spawn. A client that attaches twice must
-// land in the same working directory under the same account home, and a resume
+// land in the same working directory under the same account home (the record's,
+// or the selected one once the rollout follows it), and a resume
 // must name the thread this session actually proved — never one a caller asks
 // for, which is how a resume becomes a fork wearing a resume's name.
 
@@ -21,6 +22,7 @@ import type { StructuredAgentLaunchPartResolver } from '../../../runtime/agent-s
 import type { CodexStructuredLaunch } from '../session-lifecycle/codex-structured-session-state'
 import { codexStructuredPermissionPolicy } from '../../../../shared/codex-permission-policy'
 import { codexStructuredLaunchArgs } from './codex-structured-launch-args'
+import { resolveCodexStructuredLaunchHome } from './codex-structured-account-switch'
 import {
   LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV,
   NATIVE_CHAT_SCRATCH_DIR_ENV,
@@ -98,13 +100,13 @@ async function readCodexStructuredInvocation(
   return { ...invocation, environment }
 }
 
-/** Derive resume identity and account home from the durable record. */
+/** Derive resume identity from the durable record; the home follows the selection when it can. */
 export function codexStructuredLaunchPart(
   deps: CodexStructuredLaunchPartDeps
 ): StructuredAgentLaunchPartResolver<CodexStructuredLaunch> {
   return async (basis) => {
     const { record } = basis
-    const accountHome = requireLegacyAgentSessionAccountHome(record.accountHome)
+    const recordHome = requireLegacyAgentSessionAccountHome(record.accountHome)
     const { command, prefixArgs } = await resolveCodexStructuredInvocation({
       ...(deps.resolveCommand ? { resolveCommand: deps.resolveCommand } : {}),
       refreshEnvironmentAfterMiss: basis.refreshAfterMissingProgram,
@@ -115,6 +117,12 @@ export function codexStructuredLaunchPart(
     const args = codexStructuredLaunchArgs(await deps.resolveLaunchArgs())
     const head = agentSessionProviderHandleChainHead(record.providerHandleChain)
     const resumeThreadId = head?.handle.nativeId ?? null
+    const codexHome = await resolveCodexStructuredLaunchHome({
+      recordHome: recordHome.path,
+      threadId: resumeThreadId,
+      launchEnv: basis.launchEnv(),
+      launchDirectory: basis.launchDirectory
+    })
     // Match the first turn's model to avoid duplicate prompt injection on a model switch.
     const model = record.options?.model
     const visuals = await basis.visuals()
@@ -124,7 +132,7 @@ export function codexStructuredLaunchPart(
         command,
         prefixArgs,
         args: [...prefixArgs, ...args, 'app-server'],
-        codexHome: accountHome.path,
+        codexHome,
         resumeThreadId,
         // Only created threads may be unsaved; resumed, forked and adopted threads were persisted.
         ...(resumeThreadId && head?.origin === 'created' ? { supersedeIfUnsaved: true } : {}),
@@ -136,7 +144,7 @@ export function codexStructuredLaunchPart(
         ...(visuals ? { visuals } : {})
       },
       env: withNativeChatVisualsEnv(
-        { ...environment, ...(accountHome.path ? { CODEX_HOME: accountHome.path } : {}) },
+        { ...environment, ...(codexHome ? { CODEX_HOME: codexHome } : {}) },
         visuals
       ),
       // Clear inherited scratch paths that may belong to another chat.

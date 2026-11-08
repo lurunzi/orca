@@ -1,8 +1,8 @@
-import { realpath, stat } from 'node:fs/promises'
-import { isAbsolute, join } from 'node:path'
+import { stat } from 'node:fs/promises'
+import { isAbsolute } from 'node:path'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import { agentSessionProviderHandleChainHead } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
-import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
+import { isNativeLocalLocation } from '../../../../shared/execution-host'
 import { agentSessionPinnedLaunchDirectory } from '../records/agent-session-record-launch-directory'
 import { structuredAgentRuntimeMetadata } from '../installation/structured-agent-runtime-metadata'
 import type { StructuredAgentTranscriptImport } from '../../../native-chat/structured-agent-cli-conversations'
@@ -91,26 +91,12 @@ export async function structuredSessionRecoveryOptions(
     if (!transcriptPath) {
       return { canSwitchAccount: false }
     }
-    const router = getClaudeProfileRouter()
-    let canSwitchAccount = false
-    if (
-      router &&
-      record.provider === 'claude' &&
-      record.location.wslDistro === null &&
-      metadata.launchFollowsSelection?.()
-    ) {
-      try {
-        const roots = await Promise.all(
-          [
-            store,
-            ...(await router.accountSelectionHomes(launchEnv)).map((home) => join(home, 'projects'))
-          ].map((root) => realpath(root))
-        )
-        canSwitchAccount = roots.every((root) => root === roots[0])
-      } catch {
-        canSwitchAccount = false
-      }
-    }
+    const switchable = metadata.accountSwitchable
+    const canSwitchAccount =
+      isNativeLocalLocation(record.location) &&
+      metadata.launchFollowsSelection?.() === true &&
+      switchable !== undefined &&
+      (await switchable({ record, store, launchEnv }).catch(() => false))
     return { canSwitchAccount, transcriptPath }
   } catch (error) {
     console.warn('Could not read chat recovery options', error)

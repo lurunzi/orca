@@ -194,3 +194,9 @@ export function resolveCodexStatusAccountState(
   }
   return getCodexStatusAccountsFromSettings(settings) ?? runtimeState
 }
+
+/** Host accounts a chat can move between; the system default counts unless known signed out. */
+export function signedInCodexAccountCount(state: CodexRateLimitAccountsState): number {
+  const hostAccounts = state.accounts.filter((account) => account.managedHomeRuntime !== 'wsl')
+  return hostAccounts.length + (state.systemDefault?.authKind === 'none' ? 0 : 1)
+}
