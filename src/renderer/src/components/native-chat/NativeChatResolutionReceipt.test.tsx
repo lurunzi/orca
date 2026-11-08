@@ -71,14 +71,24 @@ describe('resolution receipts', () => {
     expect(screen.getByText('First · Second')).toBeInTheDocument()
     expect(screen.getByText('Custom 100% name')).toBeInTheDocument()
     expect(screen.queryByText('Selected answer unavailable')).toBeNull()
+    expect(screen.queryByText('Second')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'First · Second' }))
+    expect(screen.getByText('Second')).toHaveClass('font-medium')
     expect(
       nativeChatReceiptAnswers({
         ...body,
         resolution: { ...body.resolution, selectedOptionId: 'question-group:invalid' }
       })
     ).toEqual([
-      { question: 'Features?', answer: null },
-      { question: 'Name?', answer: null }
+      {
+        question: 'Features?',
+        answer: null,
+        options: [
+          { label: 'First', selected: false },
+          { label: 'Second', selected: false }
+        ]
+      },
+      { question: 'Name?', answer: null, options: [] }
     ])
   })
 
@@ -242,11 +252,13 @@ describe('resolution receipts', () => {
       freeTextQuestionId: 'name/id',
       resolution: { ...approval.resolution, selectedOptionId: 'name%2Fid:hello%20world' }
     }
-    expect(nativeChatReceiptAnswers(body)).toEqual([{ question: null, answer: 'hello world' }])
+    expect(nativeChatReceiptAnswers(body)).toEqual([
+      { question: null, answer: 'hello world', options: [] }
+    ])
     for (const selectedOptionId of ['other:hello', 'name%2Fid:%invalid']) {
       expect(
         nativeChatReceiptAnswers({ ...body, resolution: { ...body.resolution, selectedOptionId } })
-      ).toEqual([{ question: null, answer: null }])
+      ).toEqual([{ question: null, answer: null, options: [] }])
     }
   })
 
@@ -265,6 +277,8 @@ describe('resolution receipts', () => {
       }
     }
 
-    expect(nativeChatReceiptAnswers(body)).toEqual([{ question: null, answer: typed }])
+    expect(nativeChatReceiptAnswers(body)).toEqual([
+      { question: null, answer: typed, options: [{ label: 'Default', selected: false }] }
+    ])
   })
 })
