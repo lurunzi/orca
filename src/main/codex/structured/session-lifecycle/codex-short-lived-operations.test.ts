@@ -331,6 +331,7 @@ it('reads cold quota through the invocation preparation and owned authentication
     f.owner
   )
   await expect(read(record(), new AbortController().signal)).resolves.toMatchObject({
+    pool: true,
     account: { type: 'chatgpt' },
     rateLimits: {
       provider: 'codex',

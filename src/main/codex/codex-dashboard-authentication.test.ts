@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { agentSessionRecordFixture } from '../../shared/agent-session/lifecycle/agent-session-record.test-fixture'
 import { AgentSessionPoolAccountOrigin } from '../../shared/agent-session/lifecycle/agent-session-pool-account'
 import type { StructuredAgentSessionAcquireInput } from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { readDashboardCodexAllocationContext } from '../dashboard-accounts/dashboard-allocation-reader'
@@ -99,6 +100,31 @@ function deferred<T>() {
 }
 
 describe('Codex Dashboard startup wiring', () => {
+  it('marks quota read on an authenticated live pool connection without relying on the record home', async () => {
+    const codex = setup()
+    codex.routes['account/rateLimits/read'] = () => ({
+      rateLimits: { primary: { usedPercent: 25, windowDurationMins: 300 } }
+    })
+    const adapter = adapterFor(codex)
+    try {
+      await acquireReadyCodexForTest(adapter, input())
+      const result = await adapter.readAccountUsage(
+        {
+          ...agentSessionRecordFixture(),
+          sessionId: 'session-1'
+        },
+        new AbortController().signal
+      )
+      expect(result).toMatchObject({
+        pool: true,
+        live: true,
+        rateLimits: { provider: 'codex', session: { usedPercent: 25, windowMinutes: 300 } }
+      })
+    } finally {
+      await adapter.closeAll()
+    }
+  })
+
   it('accepts an inherited pool identity when the current same-account version is newer', async () => {
     const adapter = adapterFor(setup())
     try {

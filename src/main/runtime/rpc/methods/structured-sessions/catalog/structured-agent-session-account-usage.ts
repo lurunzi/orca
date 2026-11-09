@@ -1,6 +1,7 @@
 import {
   supportsSessionAccountUsage,
-  type AgentSessionAccountUsage
+  type AgentSessionAccountUsage,
+  type AgentSessionUsageAccount
 } from '../../../../../../shared/agent-session/agent-session-account-usage'
 import type { AgentSessionRecord } from '../../../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { GlobalSettings } from '../../../../../../shared/global-settings-types'
@@ -32,8 +33,15 @@ export function sessionAccountUsageOffer(
       | 'activeCodexManagedAccountIdsByRuntime'
     >
   >,
-  state: RateLimitState | undefined
-) {
+  state: RateLimitState | undefined,
+  pool = false
+): {
+  account: AgentSessionUsageAccount | null
+  reset?: Extract<AgentSessionAccountUsage, { status: 'ok' }>['reset']
+} {
+  if (pool || record.poolAccount) {
+    return { account: { kind: 'shared' as const } }
+  }
   const home = normalizeRuntimePathForComparison(
     requireLegacyAgentSessionAccountHome(record.accountHome).path
   )
@@ -108,7 +116,8 @@ export const STRUCTURED_AGENT_SESSION_ACCOUNT_USAGE_METHODS = [
         const offer = sessionAccountUsageOffer(
           record,
           ctx.runtime.requireStore().getSettings(),
-          ctx.runtime.getUsageRateLimits()?.getState()
+          ctx.runtime.getUsageRateLimits()?.getState(),
+          result.pool === true
         )
         return {
           status: 'ok',

@@ -18,13 +18,14 @@ import type { CodexSession } from './codex-structured-session-state'
 import { DashboardCodexRefreshOperation } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { CodexShortLivedOperations } from './codex-short-lived-operations'
 import type { StructuredAgentSessionAdapter } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
+import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 
 const USAGE_RPC_TIMEOUT_MS = 10_000
 const COLD_USAGE_TIMEOUT_MS = 30_000
 
 async function readUsage(
   request: CodexAppServerRpc['request']
-): Promise<Omit<CodexAccountUsageRead, 'live'>> {
+): Promise<Omit<CodexAccountUsageRead, 'live' | 'pool'>> {
   const accountReply = await request('account/read', {}, { timeoutMs: USAGE_RPC_TIMEOUT_MS })
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Codex's account/read response owns the account envelope.
   const { account } = (accountReply ?? {}) as Pick<CodexAccountUsageRead, 'account'>
@@ -44,12 +45,27 @@ export function readCodexSessionAccountUsage(
   owner?: CodexShortLivedOperations
 ): NonNullable<StructuredAgentSessionAdapter['readAccountUsage']> {
   return async (record, signal) => {
-    const connection = sessions.get(record.sessionId)?.connection
-    if (connection && !connection.closed) {
+    const session = sessions.get(record.sessionId)
+    const connection = session?.connection
+    if (session && connection && !connection.closed) {
+      const pool = session.dashboardAdoption !== undefined
+      if ((process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined || record.poolAccount) && !pool) {
+        throw new DashboardAllocationError()
+      }
+      const assertPoolCurrent = () => {
+        if (
+          pool &&
+          (session.ended || connection.closed || sessions.get(record.sessionId) !== session)
+        ) {
+          throw new DashboardAllocationError()
+        }
+      }
+      assertPoolCurrent()
       const usage = await readUsage((method, params, options) =>
         connection.request(method, params, options)
       )
-      return { ...usage, live: true }
+      assertPoolCurrent()
+      return { ...usage, live: true, ...(pool ? { pool: true as const } : {}) }
     }
     const invocation = readInvocation()
     if (!invocation) {
@@ -66,7 +82,10 @@ export function readCodexSessionAccountUsage(
           operation: DashboardCodexRefreshOperation.ReadAccountUsage,
           serializeHome: true
         },
-        (rpc) => readUsage(rpc.request),
+        async (rpc, _cwd, identity) => ({
+          ...(await readUsage(rpc.request)),
+          ...(identity ? { pool: true as const } : {})
+        }),
         owner
       )
     }

@@ -17,6 +17,9 @@ import {
 import { SESSION } from '../protocol/structured-agent-session-rpc-client.test-fixture'
 import { CodexUsageApiKeyAuthError } from '../../../../../rate-limits/codex-rpc-rate-limit-mapper'
 import { sessionAccountUsageOffer } from './structured-agent-session-account-usage'
+import { AgentSessionPoolAccountOrigin } from '../../../../../../shared/agent-session/lifecycle/agent-session-pool-account'
+import type { AgentSessionRecord } from '../../../../../../shared/agent-session/lifecycle/agent-session-record'
+import { DashboardToolProvider } from '../../../../../../shared/dashboard-account-provider'
 
 const account = {
   id: 'work',
@@ -74,6 +77,39 @@ async function usage(overrides: Record<string, unknown>) {
 }
 
 describe('chat account usage', () => {
+  it('publishes pool quota as shared without provider email, local reset or internal metadata', async () => {
+    const { overrides } = install(
+      vi.fn().mockResolvedValue({
+        pool: true,
+        live: true,
+        account: { type: 'chatgpt', email: 'private-provider@example.com' },
+        rateLimits: createResetCreditLimits(999)
+      })
+    )
+    const result = await usage(overrides)
+    expect(result).toMatchObject({ status: 'ok', rateLimits: { updatedAt: 999 } })
+    expect(result).toHaveProperty('account', { kind: 'shared' })
+    expect(result).not.toHaveProperty('reset')
+    expect(result).not.toHaveProperty('pool')
+    expect(result).not.toHaveProperty('poolAccount')
+
+    const pinned = {
+      ...record,
+      poolAccount: {
+        version: 1,
+        origin: AgentSessionPoolAccountOrigin.Authenticated,
+        instanceId: 'instance-fixture',
+        provider: DashboardToolProvider.Codex,
+        accountId: 'pool-fixture',
+        bindingRevision: 1,
+        credentialVersion: 2
+      }
+    } satisfies AgentSessionRecord
+    expect(sessionAccountUsageOffer(pinned, settings, state)).toEqual({
+      account: { kind: 'shared' }
+    })
+  })
+
   it('uses the pinned home for the read and the host service snapshot for the reset offer', async () => {
     const { read, overrides } = install()
     expect(await usage(overrides)).toMatchObject({
