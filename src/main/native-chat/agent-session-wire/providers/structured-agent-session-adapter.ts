@@ -2,6 +2,7 @@ import type { DashboardCodexAdoptionState } from '../../../dashboard-accounts/da
 import type { DashboardCodexRefreshState } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { DashboardClaudeLaunchState } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import type { StructuredAgentSessionConversationCopyInput } from './structured-agent-session-conversation-copy-input'
+import type { StructuredAgentSessionProviderRenameInput } from './structured-agent-session-provider-rename-input'
 import type { CodexAccountUsageRead } from '../../../rate-limits/codex-rpc-rate-limit-mapper'
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import type { StructuredAgentSessionAdmitFreshInput } from '../delivery/structured-agent-session-input-admission'
@@ -356,11 +357,7 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
   ): Promise<AiVaultConversationCopy>
   /** Give the agent's own conversation the user's chat name, as the agent's own rename would:
    *  through the live child holding that conversation, otherwise at rest. Best effort. */
-  renameProviderSession?(input: {
-    record: AgentSessionRecord
-    providerSessionId: string
-    name: string
-  }): Promise<void>
+  renameProviderSession?(input: StructuredAgentSessionProviderRenameInput): Promise<void>
   /** Capture native invocation inputs at the committed explicit occurrence. */
   nameProviderConversation?(input: {
     record: AgentSessionRecord

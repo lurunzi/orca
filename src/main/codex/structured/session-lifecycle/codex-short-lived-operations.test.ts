@@ -33,6 +33,7 @@ import {
   type CodexAppServerRpc
 } from '../../app-server/codex-app-server-session'
 import { readCodexSessionAccountUsage } from './codex-session-account-usage'
+import { CodexStructuredSessionAdapter } from './codex-structured-session-adapter'
 import {
   resolveCodexHomeProcessLockKey,
   withCodexHomeProcessLock
@@ -58,7 +59,7 @@ const allocation: DashboardCodexAllocation = {
   expires_at: null
 }
 const next = { ...allocation, credential_version: 5, access_token: 'private-new-access' }
-const owners = new Set<CodexShortLivedOperations>()
+const owners = new Set<Pick<CodexShortLivedOperations, 'closeAll'>>()
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -120,6 +121,7 @@ const SERVER = String.raw`
 const send = (message) => process.stdout.write(JSON.stringify(message) + '\n')
 const events = []
 let accountRequest
+let renameFailed = false
 require('node:readline').createInterface({ input: process.stdin }).on('line', (line) => {
   const message = JSON.parse(line)
   if (message.method === 'initialize') {
@@ -152,6 +154,15 @@ require('node:readline').createInterface({ input: process.stdin }).on('line', (l
       primary: { usedPercent: 25, windowDurationMins: 300 },
       secondary: { usedPercent: 50, windowDurationMins: 10080 }
     } } })
+  }
+  if (message.method === 'thread/name/set') {
+    if (!events.includes('login') || !events.includes('account_read') ||
+        message.params.threadId !== 'thread-fixture' || message.params.name !== 'Pool rename') {
+      send({ id: message.id, error: { code: -32000, message: 'private-invalid-rename' } })
+    } else if (process.env.ORCA_TEST_RENAME_FAIL_ONCE === '1' && !renameFailed) {
+      renameFailed = true
+      send({ id: message.id, error: { code: -32000, message: 'rollout at private-provider-path is empty' } })
+    } else send({ id: message.id, result: {} })
   }
   if (message.method === 'test/body') {
     if (process.env.ORCA_TEST_REFRESH_AFTER_AUTH === '1') {
@@ -202,6 +213,24 @@ function prepared(refresh = false): CodexPreparedShortLivedInvocation {
       treeKillOnFinish: true
     }
   }
+}
+
+function renameAdapter() {
+  const adapter = new CodexStructuredSessionAdapter({
+    hostId: 'host-fixture',
+    readProcessStartTime: async () => 1234.5,
+    resolveLaunch: async () => {
+      throw new Error('unexpected long acquisition')
+    },
+    providerInvocation: {
+      resolveCommand: () => ({ command: process.execPath, prefixArgs: ['-e', SERVER, '--'] }),
+      resolveLaunchArgs: () => [],
+      resolveWorkspacePath: async () => __dirname,
+      resolveEnvironment: async () => ({ ...process.env, ...prepared().invocation.env })
+    }
+  })
+  owners.add(adapter)
+  return adapter
 }
 
 function fixture() {
@@ -316,6 +345,56 @@ it('authenticates before business and refreshes with this short-lived process sc
     }
   })
   expect(f.mailbox.read()).toEqual({ requests: [] })
+})
+
+it('renames a cold pool thread through the real adapter only after authentication', async () => {
+  const adapter = renameAdapter()
+  await expect(
+    adapter.renameProviderSession({
+      record: record(),
+      providerSessionId: 'thread-fixture',
+      name: 'Pool rename'
+    })
+  ).resolves.toBeUndefined()
+  expect(adapter.readDashboardCodexProcesses()).toEqual({ pending_acquisitions: 0, processes: [] })
+})
+
+it('does not retry a failed pool rename even if a second request would succeed', async () => {
+  vi.stubEnv('ORCA_TEST_RENAME_FAIL_ONCE', '1')
+  const adapter = renameAdapter()
+  const result = adapter.renameProviderSession({
+    record: record(),
+    providerSessionId: 'thread-fixture',
+    name: 'Pool rename'
+  })
+  await expect(result).rejects.toMatchObject({ message: 'dashboard_allocation_unavailable' })
+  await expect(result).rejects.not.toHaveProperty('cause')
+})
+
+it('cancels cold rename while its allocation snapshot is waiting', async () => {
+  const waiting = deferred<void>()
+  const reading = deferred<Awaited<ReturnType<typeof readDashboardCodexAllocationContext>>>()
+  vi.mocked(readDashboardCodexAllocationContext).mockImplementation(() => {
+    waiting.resolve()
+    return reading.promise
+  })
+  const adapter = renameAdapter()
+  const cancel = new AbortController()
+  const result = adapter.renameProviderSession({
+    record: record(),
+    providerSessionId: 'thread-fixture',
+    name: 'Pool rename',
+    signal: cancel.signal
+  })
+  const rejected = expect(result).rejects.toMatchObject({
+    message: 'dashboard_allocation_unavailable'
+  })
+  await waiting.promise
+  cancel.abort(new Error('private-cancelled-rename'))
+  await rejected
+  reading.resolve({ instanceId: 'instance-fixture', allocation })
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
 })
 
 it('reads cold quota through the invocation preparation and owned authentication path', async () => {

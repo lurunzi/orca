@@ -114,7 +114,8 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
     renameCodexProviderSession({
       ...input,
       session: this.sessions.get(input.record.sessionId),
-      invocation: this.deps.providerInvocation
+      invocation: this.deps.providerInvocation,
+      owner: this.shortLived
     })
 
   permissionModeRequiresAcquisition = permission.codexNativeResumeRequirement(this.sessions)

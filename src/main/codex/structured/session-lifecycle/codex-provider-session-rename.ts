@@ -23,6 +23,8 @@ import {
 } from '../../../native-chat/native-chat-visuals-delivery'
 import { CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS } from '../../../codex-cli/codex-read-only-app-server-args'
 import type { CodexSession } from './codex-structured-session-state'
+import type { StructuredAgentSessionProviderRenameInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-provider-rename-input'
+import { DashboardCodexRefreshOperation } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { CodexPoolIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-pool-account'
 import { waitForPromiseWithSignal } from '../../../../shared/abort-signal-reason'
 import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
@@ -77,56 +79,97 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 async function setThreadName(
   request: CodexAppServerRpc['request'],
   threadId: string,
-  name: string
+  name: string,
+  signal?: AbortSignal
 ): Promise<void> {
   for (const delay of EMPTY_ROLLOUT_RETRY_DELAYS_MS) {
+    signal?.throwIfAborted()
     try {
-      await request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS })
+      await waitForPromiseWithSignal(
+        request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS }),
+        signal
+      )
       return
     } catch (error) {
+      signal?.throwIfAborted()
       if (!(error instanceof Error) || !EMPTY_ROLLOUT.test(error.message)) {
         throw error
       }
-      await wait(delay)
+      await waitForPromiseWithSignal(wait(delay), signal)
     }
   }
-  await request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS })
+  signal?.throwIfAborted()
+  await waitForPromiseWithSignal(
+    request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS }),
+    signal
+  )
 }
 
 /** Codex's own /rename is `thread/name/set`. It names an unloaded thread straight in the
  *  account's thread store, so a chat at rest takes it from a short-lived app-server without
  *  resuming the thread. */
-export async function renameCodexProviderSession(input: {
-  session: CodexSession | undefined
-  record: AgentSessionRecord
-  providerSessionId: string
-  name: string
-  invocation?: CodexProviderInvocationDeps
-}): Promise<void> {
-  const { session, providerSessionId, name } = input
-  const live = session && !session.ended && !session.connection.closed ? session : null
-  if (live?.threadId === providerSessionId) {
-    await setThreadName(
-      (method, params, options) => live.connection.request(method, params, options),
-      providerSessionId,
-      name
+export async function renameCodexProviderSession(
+  input: StructuredAgentSessionProviderRenameInput & {
+    session: CodexSession | undefined
+    invocation?: CodexProviderInvocationDeps
+    owner?: CodexShortLivedOperations
+  }
+): Promise<void> {
+  const { session, providerSessionId, name, signal } = input
+  const pool =
+    process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined ||
+    !!input.record.poolAccount ||
+    !!session?.dashboardAdoption
+  try {
+    signal?.throwIfAborted()
+    const live = session && !session.ended && !session.connection.closed ? session : null
+    if (live?.threadId === providerSessionId) {
+      await setThreadName(
+        (method, params, options) => live.connection.request(method, params, options),
+        providerSessionId,
+        name,
+        signal
+      )
+      return
+    }
+    const { record, invocation, owner } = input
+    if (
+      record.provider !== 'codex' ||
+      !supportsCodexStructuredLocation(record.location) ||
+      !agentDrivesSession({ definition: () => CODEX_STRUCTURED_AGENT }, record)
+    ) {
+      throw new Error('unsupported Codex rename location, account or handles')
+    }
+    if (!invocation) {
+      throw new Error('Codex rename invocation is not configured')
+    }
+    await runCodexProviderAppServer(
+      record,
+      invocation,
+      {
+        timeoutMs: RENAME_TIMEOUT_MS,
+        signal,
+        operation: DashboardCodexRefreshOperation.RenameSession
+      },
+      async (rpc, _cwd, identity) => {
+        if (identity) {
+          await rpc.request(
+            'thread/name/set',
+            { threadId: providerSessionId, name },
+            { timeoutMs: RENAME_TIMEOUT_MS }
+          )
+          return
+        }
+        await setThreadName(rpc.request, providerSessionId, name, signal)
+      },
+      owner
     )
-    return
+  } catch (error) {
+    if (pool) {
+      throw new DashboardAllocationError()
+    }
+    throw error
   }
-  const { record, invocation } = input
-  if (
-    record.provider !== 'codex' ||
-    !supportsCodexStructuredLocation(record.location) ||
-    !agentDrivesSession({ definition: () => CODEX_STRUCTURED_AGENT }, record)
-  ) {
-    throw new Error('unsupported Codex rename location, account or handles')
-  }
-  if (!invocation) {
-    throw new Error('Codex rename invocation is not configured')
-  }
-  await runCodexProviderAppServer(record, invocation, { timeoutMs: RENAME_TIMEOUT_MS }, (rpc) =>
-    setThreadName(rpc.request, providerSessionId, name)
-  )
 }
 
 /** Runs one short-lived app-server for a chat at rest, launched as the chat is (configured
