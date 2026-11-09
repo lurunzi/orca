@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AgentSessionPoolAccountOrigin } from '../../shared/agent-session/lifecycle/agent-session-pool-account'
+import type { StructuredAgentSessionAcquireInput } from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { readDashboardCodexAllocationContext } from '../dashboard-accounts/dashboard-allocation-reader'
 import {
   DashboardAllocationState,
@@ -67,6 +69,27 @@ function setup() {
   return codex
 }
 const input = () => ({ identity: identityFor('session-1'), fence: 7, spawnToken: 'spawn-9' })
+const poolLaunch = () =>
+  ({
+    location: {
+      executionHostId: 'local',
+      workspaceId: 'ws-1',
+      workspaceKind: 'folder',
+      wslDistro: null
+    },
+    accountHome: { variable: 'CODEX_HOME', path: '/home/dev/.codex' },
+    poolAccount: {
+      version: 1,
+      origin: AgentSessionPoolAccountOrigin.InheritedCopy,
+      sourceSessionId: 'source-session',
+      instanceId: 'instance-fixture',
+      provider: DashboardToolProvider.Codex,
+      accountId: 'pool-fixture',
+      bindingRevision: 1,
+      credentialVersion: 1
+    }
+  }) satisfies NonNullable<StructuredAgentSessionAcquireInput['launch']>
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((done) => {
@@ -76,6 +99,49 @@ function deferred<T>() {
 }
 
 describe('Codex Dashboard startup wiring', () => {
+  it('accepts an inherited pool identity when the current same-account version is newer', async () => {
+    const adapter = adapterFor(setup())
+    try {
+      await acquireReadyCodexForTest(adapter, { ...input(), launch: poolLaunch() })
+      expect(adapter.readDashboardCodexProcesses().processes[0]).toMatchObject({
+        account_id: 'pool-fixture',
+        binding_revision: 1,
+        credential_version: 2
+      })
+    } finally {
+      await adapter.closeAll()
+    }
+  })
+
+  it('refuses a different original account before spawning or injecting credentials', async () => {
+    const codex = setup()
+    const adapter = adapterFor(codex)
+    const launch = poolLaunch()
+    launch.poolAccount.accountId = 'original-pool'
+    try {
+      await expect(adapter.acquire({ ...input(), launch })).rejects.toThrow(
+        'dashboard_allocation_unavailable'
+      )
+      expect(codex.connections).toEqual([])
+    } finally {
+      await adapter.closeAll()
+    }
+  })
+
+  it('does not downgrade a known pool identity to personal authentication when the pool environment disappears', async () => {
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', undefined)
+    const codex = setup()
+    const adapter = adapterFor(codex)
+    try {
+      await expect(adapter.acquire({ ...input(), launch: poolLaunch() })).rejects.toThrow(
+        'dashboard_allocation_unavailable'
+      )
+      expect(codex.connections).toEqual([])
+    } finally {
+      await adapter.closeAll()
+    }
+  })
+
   it('reports pending acquisition until successful thread publication, using the captured process identity', async () => {
     const codex = setup()
     const readStart = vi.fn(async () => 1700000000000.25)

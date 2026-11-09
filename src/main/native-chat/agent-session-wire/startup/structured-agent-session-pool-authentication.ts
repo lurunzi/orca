@@ -4,6 +4,7 @@ import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecy
 import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import {
   DashboardCodexPoolAuthenticationSchema,
+  canUseCodexPoolIdentity,
   type DashboardCodexPoolAuthentication
 } from '../../../dashboard-accounts/dashboard-codex-pool-authentication'
 import type { StructuredAgentSessionHostSession } from '../host/structured-agent-session-host-types'
@@ -57,14 +58,7 @@ export function recordStructuredAgentSessionPoolAuthentication(
     throw new DashboardAllocationError()
   }
   const previous = record.poolAccount
-  if (
-    previous &&
-    (previous.instanceId !== identity.instanceId ||
-      previous.provider !== identity.provider ||
-      previous.accountId !== identity.accountId ||
-      previous.bindingRevision > identity.bindingRevision ||
-      previous.credentialVersion > identity.credentialVersion)
-  ) {
+  if (previous && !canUseCodexPoolIdentity(previous, identity)) {
     throw new DashboardAllocationError()
   }
   return {

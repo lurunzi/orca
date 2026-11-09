@@ -100,7 +100,9 @@ export async function acquireCodexStructuredSession(
     acquisitions.assertCurrent(sessionId, attempt)
     const dashboardAuthentication = await prepareDashboardCodexAuthentication(
       codexDashboardAuthenticationCurrent({ sessions, acquisitions, attempt, acquireInput }),
-      input.mailbox
+      input.mailbox,
+      {},
+      acquireInput.launch?.poolAccount
     ).catch((error: unknown) => {
       throw launchPreparationFailure(error)
     })

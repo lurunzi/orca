@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { DashboardToolProvider } from '../../../../../shared/dashboard-account-provider'
+import { AgentSessionPoolAccountOrigin } from '../../../../../shared/agent-session/lifecycle/agent-session-pool-account'
+import { mintStructuredAgentSessionStartupAttempt } from '../../startup/structured-agent-session-startup-attempt-mint'
 import {
   HOST_TEST_NOW as NOW,
   HOST_TEST_SESSION as SESSION
@@ -71,6 +74,70 @@ it.each([false, true])(
     expect(current()).toBeNull()
   }
 )
+
+it('carries a persisted inherited pool identity into acquisition as an independent snapshot', async () => {
+  await store.transitionHandoff(SESSION, (record) => ({
+    ...record,
+    poolAccount: {
+      version: 1,
+      origin: AgentSessionPoolAccountOrigin.InheritedCopy,
+      instanceId: 'instance-1',
+      provider: DashboardToolProvider.Codex,
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7,
+      sourceSessionId: 'source-session'
+    }
+  }))
+  await restartWith(publishFirst)
+  const id = await heldBehindStart('hello')
+  const input = acquire.mock.calls.at(-1)![0]
+  const stored = store.requireWritableRecord(SESSION)
+  expect(input.launch?.poolAccount).toEqual({
+    version: 1,
+    origin: 'inherited_copy',
+    instanceId: 'instance-1',
+    provider: 'codex',
+    accountId: 'account-1',
+    bindingRevision: 3,
+    credentialVersion: 7,
+    sourceSessionId: 'source-session'
+  })
+  expect(input.launch?.poolAccount).not.toBe(stored.poolAccount)
+
+  const source = structuredClone(stored)
+  const attempt = mintStructuredAgentSessionStartupAttempt({
+    record: source,
+    identity: input.identity,
+    spawnToken: input.spawnToken
+  })
+  if (source.poolAccount?.origin !== AgentSessionPoolAccountOrigin.InheritedCopy) {
+    throw new Error('expected persisted inherited identity')
+  }
+  source.poolAccount.accountId = 'account-2'
+  source.poolAccount.bindingRevision = 4
+  source.poolAccount.credentialVersion = 8
+  source.poolAccount.sourceSessionId = 'another-source'
+  await store.transitionHandoff(SESSION, (record) => ({
+    ...record,
+    poolAccount: source.poolAccount
+  }))
+  for (const launch of [input.launch, attempt.launch]) {
+    expect(launch?.poolAccount).toEqual({
+      version: 1,
+      origin: 'inherited_copy',
+      instanceId: 'instance-1',
+      provider: 'codex',
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7,
+      sourceSessionId: 'source-session'
+    })
+  }
+  await proveOpen()
+  await eventually(async () => expect((await submission(id))?.dispatchState).toBe('accepted'))
+  await host.close(SESSION, 'evict')
+})
 
 describe('what a started child reports', () => {
   it('keeps provider reports out of the saved next-message choice', async () => {

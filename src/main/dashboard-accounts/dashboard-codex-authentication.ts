@@ -4,10 +4,11 @@ import type { ProviderProcessLaunch } from '../provider-process/provider-process
 import type { CodexAppServerServerRequest } from '../codex/app-server/codex-app-server-connection-types'
 import type { DashboardCodexLifecycleOptions, DashboardCodexRpc } from './dashboard-codex-rpc'
 import { readDashboardCodexAllocationContext } from './dashboard-allocation-reader'
+import type { CodexPoolIdentity } from '../../shared/agent-session/lifecycle/agent-session-pool-account'
 import {
-  CodexPoolIdentitySchema,
-  type CodexPoolIdentity
-} from '../../shared/agent-session/lifecycle/agent-session-pool-account'
+  codexPoolIdentityFromAllocation,
+  canUseCodexPoolIdentity
+} from './dashboard-codex-pool-authentication'
 import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
 import { DashboardCodexRefresh } from './dashboard-codex-refresh'
 import type { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
@@ -36,9 +37,13 @@ const AccountReadSchema = z.object({
 export async function prepareDashboardCodexAuthentication(
   current: () => boolean,
   mailbox: DashboardCodexRefreshMailbox,
-  options: DashboardCodexLifecycleOptions = {}
+  options: DashboardCodexLifecycleOptions = {},
+  expectedIdentity?: CodexPoolIdentity
 ): Promise<DashboardCodexAuthentication | null> {
   if (process.env.ORCA_DASHBOARD_INSTANCE_ID === undefined) {
+    if (expectedIdentity) {
+      throw new DashboardAllocationError()
+    }
     return null
   }
   if (process.env.ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT !== '1') {
@@ -65,13 +70,11 @@ export async function prepareDashboardCodexAuthentication(
     ) {
       throw new DashboardAllocationError()
     }
-    return new DashboardCodexAuthentication(
-      context.allocation,
-      current,
-      mailbox,
-      options,
-      context.instanceId
-    )
+    const identity = codexPoolIdentityFromAllocation(context.instanceId, context.allocation)
+    if (expectedIdentity && !canUseCodexPoolIdentity(expectedIdentity, identity)) {
+      throw new DashboardAllocationError()
+    }
+    return new DashboardCodexAuthentication(context.allocation, current, mailbox, options, identity)
   } catch {
     throw new DashboardAllocationError()
   }
@@ -111,18 +114,9 @@ export class DashboardCodexAuthentication {
     private readonly current: () => boolean,
     mailbox: DashboardCodexRefreshMailbox,
     private readonly options: DashboardCodexLifecycleOptions = {},
-    instanceId?: string
+    identity?: CodexPoolIdentity
   ) {
-    this.poolIdentity =
-      instanceId === undefined
-        ? null
-        : CodexPoolIdentitySchema.parse({
-            instanceId,
-            provider: allocation.provider,
-            accountId: allocation.account_id,
-            bindingRevision: allocation.binding_revision,
-            credentialVersion: allocation.credential_version
-          })
+    this.poolIdentity = identity ? { ...identity } : null
     this.allocation = allocation
     this.refresh = new DashboardCodexRefresh(allocation, current, () => this.reject(), mailbox, {
       signal: this.abort.signal,
