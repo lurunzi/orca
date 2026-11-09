@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { readDashboardCodexAllocation } from '../dashboard-accounts/dashboard-allocation-reader'
+import { readDashboardCodexAllocationContext } from '../dashboard-accounts/dashboard-allocation-reader'
 import {
   DashboardAllocationState,
   DashboardToolProvider
@@ -14,22 +14,31 @@ import {
   fakeCodex,
   identityFor
 } from './structured/session-lifecycle/codex-structured-session-adapter-fixture'
+import {
+  chat,
+  turn,
+  SESSION as HISTORY_SESSION,
+  THREAD as HISTORY_THREAD
+} from './structured/threads/codex-thread-catch-up-contract-test-fixture'
 
 vi.mock('../dashboard-accounts/dashboard-allocation-reader', () => ({
-  readDashboardCodexAllocation: vi.fn()
+  readDashboardCodexAllocationContext: vi.fn()
 }))
 beforeEach(() => {
   vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
   vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
-  vi.mocked(readDashboardCodexAllocation).mockResolvedValue({
-    provider: DashboardToolProvider.Codex,
-    state: DashboardAllocationState.Available,
-    account_id: 'pool-fixture',
-    binding_revision: 1,
-    credential_version: 2,
-    access_token: 'fixture-private-access',
-    chatgpt_account_id: 'workspace-fixture',
-    expires_at: null
+  vi.mocked(readDashboardCodexAllocationContext).mockResolvedValue({
+    instanceId: 'instance-fixture',
+    allocation: {
+      provider: DashboardToolProvider.Codex,
+      state: DashboardAllocationState.Available,
+      account_id: 'pool-fixture',
+      binding_revision: 1,
+      credential_version: 2,
+      access_token: 'fixture-private-access',
+      chatgpt_account_id: 'workspace-fixture',
+      expires_at: null
+    }
   })
 })
 afterEach(() => {
@@ -95,8 +104,27 @@ describe('Codex Dashboard startup wiring', () => {
       pending_acquisitions: 1,
       processes: []
     })
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'replacement-instance')
     thread.resolve({ thread: { id: 'thread-pool' }, model: 'gpt-live', reasoningEffort: 'medium' })
-    await opened
+    const result = await opened
+    expect(result.poolAuthentication).toEqual({
+      identity: {
+        instanceId: 'instance-fixture',
+        provider: 'codex',
+        accountId: 'pool-fixture',
+        bindingRevision: 1,
+        credentialVersion: 2
+      },
+      process: {
+        hostId: 'host-1',
+        pid: 4321,
+        processStartTimeMs: 1700000000000.25,
+        spawnToken: 'spawn-9'
+      }
+    })
+    expect(JSON.stringify(result.poolAuthentication)).not.toMatch(
+      /fixture-private-access|workspace-fixture/
+    )
     expect(adapter.readDashboardCodexProcesses()).toEqual({
       pending_acquisitions: 0,
       processes: [
@@ -129,21 +157,24 @@ describe('Codex Dashboard startup wiring', () => {
     const adapter = adapterFor(codex)
     await acquireReadyCodexForTest(adapter, input())
     const before = adapter.readDashboardCodexProcesses()
-    vi.mocked(readDashboardCodexAllocation).mockResolvedValue({
-      provider: DashboardToolProvider.Codex,
-      state: DashboardAllocationState.Available,
-      account_id: 'new-pool',
-      binding_revision: 2,
-      credential_version: 5,
-      access_token: 'new-private-access',
-      chatgpt_account_id: 'new-private-workspace',
-      expires_at: null
+    vi.mocked(readDashboardCodexAllocationContext).mockResolvedValue({
+      instanceId: 'replacement-instance',
+      allocation: {
+        provider: DashboardToolProvider.Codex,
+        state: DashboardAllocationState.Available,
+        account_id: 'new-pool',
+        binding_revision: 2,
+        credential_version: 5,
+        access_token: 'new-private-access',
+        chatgpt_account_id: 'new-private-workspace',
+        expires_at: null
+      }
     })
     const detached = adapter.readDashboardCodexProcesses()
     detached.processes[0]!.account_id = 'mutated'
     detached.processes[0]!.process.pid = 9999
     expect(adapter.readDashboardCodexProcesses()).toEqual(before)
-    expect(readDashboardCodexAllocation).toHaveBeenCalledOnce()
+    expect(readDashboardCodexAllocationContext).toHaveBeenCalledOnce()
     expect(JSON.stringify(before)).not.toMatch(
       /fixture-private-access|workspace-fixture|access_token|chatgpt_account_id/
     )
@@ -192,6 +223,67 @@ describe('Codex Dashboard startup wiring', () => {
       pending_acquisitions: 0,
       processes: []
     })
+  })
+
+  it('returns a pool receipt only after resumed history reaches the journal', async () => {
+    const history = await chat({ now: 1700000000000 })
+    const codex = setup()
+    codex.routes['thread/turns/list'] = () => ({ data: [turn(0)], nextCursor: null })
+    const adapter = adapterFor(codex, { resumeThreadId: HISTORY_THREAD })
+    try {
+      const acquired = await adapter.acquire({
+        identity: identityFor(HISTORY_SESSION),
+        fence: 1,
+        spawnToken: 'spawn-9',
+        events: history.deferred.sink
+      })
+      const result = await adapter.open({
+        sessionId: HISTORY_SESSION,
+        fence: 1,
+        acquisitionGeneration: acquired.acquisitionGeneration,
+        signal: new AbortController().signal
+      })
+      expect(history.texts()).toContain('assistant:answer 0')
+      expect(result.poolAuthentication?.identity).toEqual({
+        instanceId: 'instance-fixture',
+        provider: 'codex',
+        accountId: 'pool-fixture',
+        bindingRevision: 1,
+        credentialVersion: 2
+      })
+    } finally {
+      await adapter.closeAll()
+    }
+  })
+
+  it('refuses a pool receipt when required history is unwritten while keeping personal catch-up optional', async () => {
+    const events = {
+      appendItem: vi.fn(),
+      appendTombstone: vi.fn(),
+      publish: vi.fn(),
+      written: async () => ({
+        ok: false as const,
+        error: new Error('fixture-private-history-failure')
+      })
+    }
+    const pool = adapterFor(setup(), { resumeThreadId: 'restored-thread' })
+    try {
+      await expect(acquireReadyCodexForTest(pool, { ...input(), events })).rejects.toThrow(
+        'dashboard_allocation_unavailable'
+      )
+      expect(pool.readDashboardCodexProcesses()).toEqual({ pending_acquisitions: 1, processes: [] })
+    } finally {
+      await pool.closeAll()
+    }
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', undefined)
+    const personal = adapterFor(setup(), { resumeThreadId: 'restored-thread' })
+    try {
+      await expect(
+        acquireReadyCodexForTest(personal, { ...input(), events })
+      ).resolves.toMatchObject({ process: { pid: 4321 } })
+    } finally {
+      await personal.closeAll()
+    }
   })
 
   it('keeps unproven closes visible and only removes a record after its matching exit', async () => {
@@ -300,7 +392,7 @@ describe('Codex Dashboard startup wiring', () => {
     await expect(adapter.acquire(input())).rejects.toThrow()
     expect(resolveLaunch).not.toHaveBeenCalled()
     expect(codex.connections).toHaveLength(0)
-    expect(readDashboardCodexAllocation).not.toHaveBeenCalled()
+    expect(readDashboardCodexAllocationContext).not.toHaveBeenCalled()
     expect(adapter.readDashboardCodexProcesses()).toEqual({
       pending_acquisitions: 0,
       processes: []
@@ -382,7 +474,7 @@ describe('Codex Dashboard startup wiring', () => {
     const connection = codex.connections[0]!
     expect(connection.calls.some((call) => call.method.startsWith('account/'))).toBe(false)
     expect(connection.launch.env).toMatchObject({ OPENAI_API_KEY: 'local-key' })
-    expect(readDashboardCodexAllocation).not.toHaveBeenCalled()
+    expect(readDashboardCodexAllocationContext).not.toHaveBeenCalled()
     expect(adapter.readDashboardCodexProcesses()).toEqual({
       pending_acquisitions: 0,
       processes: []

@@ -3,7 +3,11 @@ import { waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
 import type { ProviderProcessLaunch } from '../provider-process/provider-process-launch'
 import type { CodexAppServerServerRequest } from '../codex/app-server/codex-app-server-connection-types'
 import type { DashboardCodexLifecycleOptions, DashboardCodexRpc } from './dashboard-codex-rpc'
-import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
+import { readDashboardCodexAllocationContext } from './dashboard-allocation-reader'
+import {
+  CodexPoolIdentitySchema,
+  type CodexPoolIdentity
+} from '../../shared/agent-session/lifecycle/agent-session-pool-account'
 import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
 import { DashboardCodexRefresh } from './dashboard-codex-refresh'
 import type { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
@@ -53,15 +57,21 @@ export async function prepareDashboardCodexAuthentication(
       throw new DashboardAllocationError()
     }
     // Connection ownership starts after spawn; acquisition rechecks before spawning.
-    const allocation = await waitForPromiseWithSignal(readDashboardCodexAllocation(), signal)
+    const context = await waitForPromiseWithSignal(readDashboardCodexAllocationContext(), signal)
     if (
-      !allocation ||
+      !context ||
       signal.aborted ||
       (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt)
     ) {
       throw new DashboardAllocationError()
     }
-    return new DashboardCodexAuthentication(allocation, current, mailbox, options)
+    return new DashboardCodexAuthentication(
+      context.allocation,
+      current,
+      mailbox,
+      options,
+      context.instanceId
+    )
   } catch {
     throw new DashboardAllocationError()
   }
@@ -95,12 +105,24 @@ export class DashboardCodexAuthentication {
   private deadlineTimer?: ReturnType<typeof setTimeout>
   private connection: DashboardCodexRpc | null = null
   private allocation: DashboardCodexAllocation | null
+  private readonly poolIdentity: CodexPoolIdentity | null
   constructor(
     allocation: DashboardCodexAllocation,
     private readonly current: () => boolean,
     mailbox: DashboardCodexRefreshMailbox,
-    private readonly options: DashboardCodexLifecycleOptions = {}
+    private readonly options: DashboardCodexLifecycleOptions = {},
+    instanceId?: string
   ) {
+    this.poolIdentity =
+      instanceId === undefined
+        ? null
+        : CodexPoolIdentitySchema.parse({
+            instanceId,
+            provider: allocation.provider,
+            accountId: allocation.account_id,
+            bindingRevision: allocation.binding_revision,
+            credentialVersion: allocation.credential_version
+          })
     this.allocation = allocation
     this.refresh = new DashboardCodexRefresh(allocation, current, () => this.reject(), mailbox, {
       signal: this.abort.signal,
@@ -162,6 +184,14 @@ export class DashboardCodexAuthentication {
     request: CodexAppServerServerRequest
   ): boolean {
     return this.refresh.handle(connection, request)
+  }
+
+  authenticatedPoolIdentity(): CodexPoolIdentity {
+    this.assertCurrent()
+    if (!this.authenticated || !this.poolIdentity) {
+      throw new DashboardAllocationError()
+    }
+    return { ...this.poolIdentity }
   }
 
   private reject(): void {

@@ -1,5 +1,6 @@
 import type { AgentSessionProcessIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { DashboardCodexBinding } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
+import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { DashboardCodexRefreshSource } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { AgentSessionAccountKind } from '../../../../shared/agent-session/agent-session-availability'
 import {
@@ -149,12 +150,13 @@ export async function openCodexStructuredSession(
   start.setPrimaryThreadId(opened.threadId)
   attempt.window.appliedSettings.observe(opened)
   const returnedTurns = Array.isArray(opened.thread?.turns) ? opened.thread.turns : []
-  if (
-    translator &&
-    input.events &&
-    (returnedTurns.length > 0 || (launch.resumeThreadId !== null && !opened.supersededThreadId))
-  ) {
-    await waitForPromiseWithSignal(
+  const needsHistory =
+    returnedTurns.length > 0 || (launch.resumeThreadId !== null && !opened.supersededThreadId)
+  if (start.dashboardAuthentication && needsHistory && (!translator || !input.events)) {
+    throw new DashboardAllocationError()
+  }
+  if (translator && input.events && needsHistory) {
+    const historyReady = await waitForPromiseWithSignal(
       catchUpCodexThread({
         connection,
         threadId: opened.threadId,
@@ -173,6 +175,9 @@ export async function openCodexStructuredSession(
       openInput.signal
     )
     current()
+    if (start.dashboardAuthentication && !historyReady) {
+      throw new DashboardAllocationError()
+    }
   }
   const configured =
     opened.serviceTier === undefined
@@ -230,6 +235,12 @@ export async function openCodexStructuredSession(
   // Fork: the composer's next-prompt suggestion, restored on a resumed thread.
   session.promptSuggestion = new CodexPromptSuggestion(session, () => input.events?.publish())
   current()
+  const poolAuthentication = start.dashboardAuthentication
+    ? {
+        identity: start.dashboardAuthentication.authenticatedPoolIdentity(),
+        process: { ...start.process }
+      }
+    : undefined
   sessions.set(sessionId, session)
   for (const event of attempt.window.drain()) {
     event()
@@ -253,6 +264,7 @@ export async function openCodexStructuredSession(
   })
   session.skillReport.refresh()
   return {
+    ...(poolAuthentication ? { poolAuthentication } : {}),
     link: codexProviderHandleLink({
       threadId: opened.threadId,
       ...(opened.supersededThreadId

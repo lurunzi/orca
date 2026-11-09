@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { readDashboardCodexAllocation } from '../dashboard-accounts/dashboard-allocation-reader'
+import {
+  readDashboardCodexAllocation,
+  readDashboardCodexAllocationContext
+} from '../dashboard-accounts/dashboard-allocation-reader'
 import {
   DashboardAllocationState,
   DashboardToolProvider
@@ -13,7 +16,8 @@ import {
 } from './structured/session-lifecycle/codex-structured-session-adapter-fixture'
 
 vi.mock('../dashboard-accounts/dashboard-allocation-reader', () => ({
-  readDashboardCodexAllocation: vi.fn()
+  readDashboardCodexAllocation: vi.fn(),
+  readDashboardCodexAllocationContext: vi.fn()
 }))
 const allocation = (version = 1) =>
   ({
@@ -94,6 +98,10 @@ beforeEach(() => {
   vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
   vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
   vi.mocked(readDashboardCodexAllocation).mockResolvedValue(allocation())
+  vi.mocked(readDashboardCodexAllocationContext).mockResolvedValue({
+    instanceId: 'instance-fixture',
+    allocation: allocation()
+  })
 })
 afterEach(() => {
   vi.useRealTimers()

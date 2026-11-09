@@ -9,7 +9,7 @@ import {
   DashboardToolProvider,
   type DashboardCodexAllocation
 } from './dashboard-allocation-protocol'
-import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
+import { readDashboardCodexAllocationContext } from './dashboard-allocation-reader'
 import { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
 import {
   DashboardCodexAuthentication,
@@ -29,7 +29,7 @@ const scope: DashboardCodexRefreshScope = {
     spawnToken: 'spawn-fixture'
   }
 }
-vi.mock('./dashboard-allocation-reader', () => ({ readDashboardCodexAllocation: vi.fn() }))
+vi.mock('./dashboard-allocation-reader', () => ({ readDashboardCodexAllocationContext: vi.fn() }))
 const allocation: DashboardCodexAllocation = {
   provider: DashboardToolProvider.Codex,
   state: DashboardAllocationState.Available,
@@ -88,7 +88,7 @@ describe('Dashboard Codex external authentication', () => {
     expect(
       await prepareDashboardCodexAuthentication(() => true, new DashboardCodexRefreshMailbox())
     ).toBeNull()
-    expect(readDashboardCodexAllocation).not.toHaveBeenCalled()
+    expect(readDashboardCodexAllocationContext).not.toHaveBeenCalled()
     vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
     vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', 'true')
     await expect(
@@ -96,13 +96,16 @@ describe('Dashboard Codex external authentication', () => {
     ).rejects.toMatchObject({
       message: 'dashboard_allocation_unavailable'
     })
-    expect(readDashboardCodexAllocation).not.toHaveBeenCalled()
+    expect(readDashboardCodexAllocationContext).not.toHaveBeenCalled()
     vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
-    vi.mocked(readDashboardCodexAllocation).mockResolvedValueOnce(allocation)
+    vi.mocked(readDashboardCodexAllocationContext).mockResolvedValueOnce({
+      instanceId: 'instance-fixture',
+      allocation
+    })
     expect(
       await prepareDashboardCodexAuthentication(() => true, new DashboardCodexRefreshMailbox())
     ).toBeInstanceOf(DashboardCodexAuthentication)
-    vi.mocked(readDashboardCodexAllocation).mockResolvedValueOnce(null)
+    vi.mocked(readDashboardCodexAllocationContext).mockResolvedValueOnce(null)
     await expect(
       prepareDashboardCodexAuthentication(() => true, new DashboardCodexRefreshMailbox())
     ).rejects.toMatchObject({
