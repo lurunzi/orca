@@ -51,14 +51,21 @@ export async function readDashboardAllocation(): Promise<DashboardAllocationSnap
     throw new DashboardAllocationError()
   }
 }
-export async function readDashboardCodexAllocation(): Promise<DashboardCodexAllocation | null> {
+export type DashboardCodexAllocationContext = {
+  instanceId: string
+  allocation: DashboardCodexAllocation
+}
+export async function readDashboardCodexAllocationContext(): Promise<DashboardCodexAllocationContext | null> {
   const snapshot = await readDashboardAllocation()
   if (!snapshot) {
     return null
   }
   const binding = snapshot.bindings[0]
   requireAvailableAllocation(binding)
-  return binding
+  return { instanceId: snapshot.instance_id, allocation: binding }
+}
+export async function readDashboardCodexAllocation(): Promise<DashboardCodexAllocation | null> {
+  return (await readDashboardCodexAllocationContext())?.allocation ?? null
 }
 function requireAvailableAllocation(
   binding: DashboardAllocationSnapshot['bindings'][number]

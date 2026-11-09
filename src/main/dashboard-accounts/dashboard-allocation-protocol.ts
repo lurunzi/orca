@@ -1,9 +1,7 @@
 import { z } from 'zod'
+import { DashboardToolProvider } from '../../shared/dashboard-account-provider'
 
-export enum DashboardToolProvider {
-  Codex = 'codex',
-  ClaudeCode = 'claude_code'
-}
+export { DashboardToolProvider } from '../../shared/dashboard-account-provider'
 export enum DashboardAllocationState {
   Unassigned = 'unassigned',
   Available = 'available',
