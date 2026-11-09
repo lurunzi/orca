@@ -111,6 +111,7 @@ export type TerminalInit = {
 }
 
 export type TerminalWebViewHandle = {
+  readPromptSuggestion?: () => Promise<string | null>
   // iOS can preserve the view but lose document state; await liveness before foreground replay.
   prepareForForegroundRecovery: () => void
   write: (data: string) => void

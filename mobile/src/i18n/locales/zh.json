@@ -188,7 +188,10 @@
       "sendQueue": "加入队列",
       "sendSteer": "立即发送",
       "sendQueueHint": "在当前回合结束后运行",
-      "sendSteerHint": "加入智能体当前正在进行的工作"
+      "sendSteerHint": "加入智能体当前正在进行的工作",
+      "useSuggestion": "使用建议：{{text}}",
+      "useSuggestionHint": "填入草稿，不发送",
+      "dismissSuggestion": "忽略建议"
     },
     "contextUsage": {
       "label": "上下文 {{used}}/{{window}} token，已用 {{percent}}%",

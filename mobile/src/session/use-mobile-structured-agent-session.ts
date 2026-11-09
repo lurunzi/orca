@@ -276,6 +276,7 @@ export function useMobileStructuredAgentSession(
       loadEarlier
     },
     isWorking: isWorking || queueSendsNext,
+    promptSuggestion: connected && !isWorking && !queueSendsNext ? state.promptSuggestion : null,
     canStop,
     sendFollowUp: turnIndicator.sendFollowUp ?? null,
     turnId,

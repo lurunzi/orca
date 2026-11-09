@@ -64,6 +64,10 @@ import type { MobileNativeChatStatus } from './use-mobile-native-chat-session'
 import type { OlderPagePhase } from '../use-mobile-older-page-loader'
 import { MobileNativeChatOpenFileContext } from './mobile-native-chat-open-file-context'
 import { MobileNativeChatLowerRegion } from './MobileNativeChatLowerRegion'
+import {
+  MobileNativeChatPromptSuggestionContext,
+  type MobileNativeChatFieldSuggestion
+} from './composer/use-mobile-prompt-suggestion'
 
 export type MobileNativeChatInputLockReason = 'disconnected' | 'waiting'
 
@@ -127,6 +131,7 @@ type ChatViewProps = MobileNativeChatSendProps &
     sessionOptions?: MobileNativeChatSessionOptionPickersProps | null
     contextUsage?: NativeChatContextUsageSummary | null
     structuredComposer?: MobileNativeChatStructuredComposer | null
+    promptSuggestion?: MobileNativeChatFieldSuggestion | null
     askRequiresTerminal?: boolean
     promptKey?: string | null
     onOpenFile?: (relativePath: string) => void
@@ -190,6 +195,7 @@ export function MobileNativeChatView({
   sessionOptions,
   contextUsage = null,
   structuredComposer: structured = null,
+  promptSuggestion = null,
   ask,
   askKey,
   onDismissAsk,
@@ -346,29 +352,31 @@ export function MobileNativeChatView({
       <MobileNativeChatSendErrorBanner message={sendErrorMessage} onDismiss={onDismissSendError} />
       {trayContent}
       <View style={promptOwnsInput ? styles.hidden : undefined}>
-        <MobileNativeChatDraftComposer
-          draftScopeKey={composerScopeKey}
-          structured={structuredActivityUi ? structured : null}
-          draftKey={draftKey}
-          onChangeText={onComposerTextChange}
-          onSend={handleSend}
-          sendSurfaceId={sendSurfaceId}
-          {...{
-            getSendCompletionGeneration,
-            getComposerEditGeneration,
-            inputRef,
-            sendFollowUp
-          }}
-          {...{ agent, sessionOptions, contextUsage }}
-          {...{ onAttachImage, onPasteImages, attachments, onRemoveAttachment }}
-          {...{ isAttaching, onMicPress, micActive, micStarting, micProcessing }}
-          {...{ dictationMode, onMicPressIn, onMicPressOut }}
-          disabled={lockReason !== null}
-          sendDisabled={expandedPromptOwnsSend}
-          placeholder={composerPlaceholder}
-          {...{ filePaths, onNeedFiles, skillDiscovery, onNeedSkills }}
-          stop={canStop ? { onStop, held: turnIndicator?.stopRequestInFlight === true } : null}
-        />
+        <MobileNativeChatPromptSuggestionContext value={promptSuggestion}>
+          <MobileNativeChatDraftComposer
+            draftScopeKey={composerScopeKey}
+            structured={structuredActivityUi ? structured : null}
+            draftKey={draftKey}
+            onChangeText={onComposerTextChange}
+            onSend={handleSend}
+            sendSurfaceId={sendSurfaceId}
+            {...{
+              getSendCompletionGeneration,
+              getComposerEditGeneration,
+              inputRef,
+              sendFollowUp
+            }}
+            {...{ agent, sessionOptions, contextUsage }}
+            {...{ onAttachImage, onPasteImages, attachments, onRemoveAttachment }}
+            {...{ isAttaching, onMicPress, micActive, micStarting, micProcessing }}
+            {...{ dictationMode, onMicPressIn, onMicPressOut }}
+            disabled={lockReason !== null}
+            sendDisabled={expandedPromptOwnsSend}
+            placeholder={composerPlaceholder}
+            {...{ filePaths, onNeedFiles, skillDiscovery, onNeedSkills }}
+            stop={canStop ? { onStop, held: turnIndicator?.stopRequestInFlight === true } : null}
+          />
+        </MobileNativeChatPromptSuggestionContext>
       </View>
     </>
   )

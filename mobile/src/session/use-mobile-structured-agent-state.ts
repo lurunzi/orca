@@ -14,10 +14,10 @@ import { isFinalAgentSessionReadRefusal } from '../../../src/shared/agent-sessio
 import {
   EMPTY_STRUCTURED_AGENT_SESSION,
   oldestStructuredAgentSessionCursor,
-  reduceStructuredAgentSession,
   type StructuredAgentSessionAction,
   type StructuredAgentSessionState
 } from '../../../src/shared/agent-session/structured-agent-session-reducer'
+import { reduceWithPromptSuggestion } from '../../../src/shared/structured-agent-session-prompt-suggestion-reducer'
 import { subscribeConnectionRevival } from '../transport/connection-revival-signal'
 import { readRuntimeStatusProbe, recordRuntimeStatusProbe } from '../transport/runtime-status-probe'
 import { hostStatusProbe, readProbedHostStatus } from '../transport/host-status-probe-operations'
@@ -98,7 +98,7 @@ export function useMobileStructuredAgentState(args: {
       }
       setSessionStates((current) => {
         const previous = current.get(sessionKey) ?? EMPTY_STRUCTURED_AGENT_SESSION
-        const next = reduceStructuredAgentSession(previous, action, Date.now())
+        const next = reduceWithPromptSuggestion(previous, action, Date.now())
         if (next === previous) {
           return current
         }

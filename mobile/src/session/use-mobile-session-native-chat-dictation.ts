@@ -16,6 +16,7 @@ import {
   isDictationSetupRequiredError
 } from '../dictation/mobile-dictation-setup'
 import { useMobileNativeChatController } from './native-chat/use-mobile-native-chat-controller'
+import type { MobileNativeChatController } from './native-chat/mobile-native-chat-controller-contract'
 import { useMobileDictationLeaveHold } from './mobile-dictation-leave-hold'
 import { useMobileDictationHaptics } from './use-mobile-dictation-haptics'
 import { useMobileDictationSilenceStop } from './use-mobile-dictation-silence-stop'
@@ -50,6 +51,7 @@ export function useMobileSessionNativeChatDictation(
     deviceTokenRef,
     dictationRouteContextRef,
     activeHandleRef,
+    readTerminalPromptSuggestion,
     activeSessionTab,
     flushPendingLiveInputBeforeExternalSend,
     canSend,
@@ -73,23 +75,27 @@ export function useMobileSessionNativeChatDictation(
     activeHandle,
     connected: connState === 'connected'
   })
-  const nativeChatController = useMobileNativeChatController({
-    client,
-    pairedHostClient,
-    hostId,
-    worktreeId,
-    activeSessionTab,
-    activeSessionTabId,
-    activeHandleRef,
-    deviceTokenRef,
-    nativeChatTranscriptIsLocalReadable,
-    nativeChatInputLeaseReady,
-    connState,
-    agentSessionHostSupport,
-    onSendError: nativeChatSendError.show,
-    onQueuedEditNotice: showToast,
-    onSendResolved: nativeChatSendError.clear
-  })
+  const nativeChatController: MobileNativeChatController = {
+    ...useMobileNativeChatController({
+      client,
+      pairedHostClient,
+      hostId,
+      worktreeId,
+      activeSessionTab,
+      activeSessionTabId,
+      activeHandleRef,
+      deviceTokenRef,
+      nativeChatTranscriptIsLocalReadable,
+      nativeChatInputLeaseReady,
+      connState,
+      agentSessionHostSupport,
+      onSendError: nativeChatSendError.show,
+      onQueuedEditNotice: showToast,
+      onSendResolved: nativeChatSendError.clear
+    }),
+    // Only the session knows its terminal views; a terminal-backed chat reads Claude's dim suggestion there.
+    nativeChatReadTerminalPromptSuggestion: readTerminalPromptSuggestion
+  }
   const { toggleTabChatView, showNativeChat, showNativeChatRef } = nativeChatController
   nativeChatSendError.bannerMountedRef.current = showNativeChat
   nativeChatSendError.keepWhile(nativeChatController.nativeChatCommandRefusalCauses)

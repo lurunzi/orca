@@ -26,6 +26,7 @@ import { useMobileNativeChatMarkdownLinks } from './use-mobile-native-chat-markd
 import { MobileMarkdownLinksContext } from '../../components/mobile-markdown-links-context'
 import type { ConnectionState } from '../../transport/types'
 import { useMobileTranslation } from '../../i18n/use-mobile-translation'
+import { mobileNativeChatFieldSuggestion } from './composer/use-mobile-prompt-suggestion'
 
 type Props = {
   controller: MobileNativeChatController
@@ -260,6 +261,12 @@ function MobileNativeChatOverlayContent({
     isWorking: controller.nativeChatTurnActive
   })
   const continueFailed = sendErrorMessage === null && continuation?.failed === true
+  const promptSuggestion = mobileNativeChatFieldSuggestion(controller, {
+    scopeKey: `${sendSurfaceId}:${sessionId ?? ''}`,
+    blocked: inputLockReason !== null || micActive || images.isAttaching,
+    attachmentCount: images.attachments.length + (structuredComposer?.files.length ?? 0),
+    getFocusGeneration: getSendCompletionGeneration
+  })
   return (
     <MobileNativeChatRowOverlaysHost
       conversation={{ surfaceId: sendSurfaceId, sessionId }}
@@ -372,6 +379,7 @@ function MobileNativeChatOverlayContent({
                       sessionOptions={controller.nativeChatSessionOptions}
                       contextUsage={controller.nativeChatContextUsage}
                       structuredComposer={structuredComposer}
+                      promptSuggestion={promptSuggestion}
                       keyboardInset={keyboardInset}
                     />
                   </MobileNativeChatNoticeContext.Provider>

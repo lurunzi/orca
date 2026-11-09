@@ -13,10 +13,12 @@ import { applyTerminalTheme } from './terminal-theme'
 import { init, resize, write } from './terminal-init'
 import { applyTextScale } from './text-scaling'
 import { resetWriteQueue } from './write-queue'
+import { replyPromptSuggestion } from './prompt-suggestion'
 
 export type TerminalHostMessage = {
   active?: boolean
   id?: number
+  requestId?: number
   type?: string
   cols?: number
   rows?: number
@@ -54,6 +56,8 @@ export function handleMsg(scope: TerminalDocumentScope, msg: TerminalHostMessage
   }
   if (msg.type === 'ping') {
     notify(scope, { type: 'pong', pingId: msg.id })
+  } else if (msg.type === 'read-prompt-suggestion' && typeof msg.requestId === 'number') {
+    replyPromptSuggestion(scope, msg.requestId)
   } else if (msg.type === 'init') {
     holdHostFrame(scope, msg)
     init(

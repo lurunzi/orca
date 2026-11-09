@@ -13,6 +13,8 @@ import {
 } from '../../../components/composer-input/composer-input-styles'
 import type { MobileNativeChatComposerFieldProps } from './mobile-native-chat-composer-field-skill'
 import { MobileNativeChatComposerFieldCopy } from './MobileNativeChatComposerFieldCopy'
+import { useMobileNativeChatFieldSuggestion } from './use-mobile-prompt-suggestion'
+import { MobileNativeChatPromptSuggestion } from './MobileNativeChatPromptSuggestion'
 
 // Share of the space above the keyboard the field may grow into before it scrolls.
 const MAX_HEIGHT_SHARE = 0.35
@@ -52,6 +54,7 @@ export function MobileNativeChatComposerField({
   const [fieldHeight, setFieldHeight] = useState(0)
   const ownRef = useRef<TextInput>(null)
   const input = ref ?? ownRef
+  const suggestion = useMobileNativeChatFieldSuggestion(value, props.onChangeText, input)
   useTextInputSelectionReveal(input)
   const paste = useEffectEvent((event: ClipboardEvent) => onWebPaste?.(event))
   // react-native-web forwards no paste prop; its TextInput ref is the textarea itself.
@@ -100,7 +103,7 @@ export function MobileNativeChatComposerField({
         value={value}
         style={[composerInputStyles.messageText, sizing, copied ? clearText().field : null]}
         onScroll={skillToken ? (event) => setScrollTop(scrollTopOf(event)) : undefined}
-        placeholder={dictationPreview ? undefined : placeholder}
+        placeholder={dictationPreview || suggestion.text ? undefined : placeholder}
         {...props}
         onKeyPress={(event) => {
           onKeyPress?.(event)
@@ -124,6 +127,13 @@ export function MobileNativeChatComposerField({
           }
         }}
       />
+      {suggestion.text ? (
+        <MobileNativeChatPromptSuggestion
+          text={suggestion.text}
+          onAccept={() => void suggestion.accept()}
+          onDismiss={suggestion.dismiss}
+        />
+      ) : null}
     </View>
   )
 }

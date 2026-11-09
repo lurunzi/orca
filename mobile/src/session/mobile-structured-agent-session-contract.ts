@@ -43,6 +43,7 @@ export type StructuredMobileSession = Omit<
     session: MobileNativeChatSession
     asyncQuestionSourceScope: string
     isWorking: boolean
+    promptSuggestion?: string | null
     /** Desktop's Stop rule: a running turn, or conversation Stop while working or sending. */
     canStop: boolean
     /** While the agent works on a host that queues: what a tap on Send does and whether holding it offers the other way; null otherwise. */

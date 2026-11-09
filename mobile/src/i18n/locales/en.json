@@ -2812,7 +2812,10 @@
       "sendQueue": "Queue",
       "sendSteer": "Steer",
       "sendQueueHint": "Runs after the current turn",
-      "sendSteerHint": "Goes into what the agent is doing now"
+      "sendSteerHint": "Goes into what the agent is doing now",
+      "useSuggestion": "Use suggestion: {{text}}",
+      "useSuggestionHint": "Fills the draft without sending",
+      "dismissSuggestion": "Dismiss suggestion"
     },
     "contextUsage": {
       "label": "Context {{used}} of {{window}} tokens, {{percent}}% used",

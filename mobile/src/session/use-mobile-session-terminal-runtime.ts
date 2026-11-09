@@ -115,6 +115,13 @@ export function useMobileSessionTerminalRuntime(scope: MobileSessionScreenStateM
   // Fit the unrounded measured frame; window height can exceed visible area.
   const terminalFrameRef = useRef<TerminalFrame | null>(null)
   const activeSessionTab = sessionTabs.find((tab) => tab.id === activeSessionTabId) ?? null
+  const readTerminalPromptSuggestion = useCallback((): Promise<string | null> => {
+    const handle = activeHandleRef.current
+    return (
+      (handle && terminalRefs.current.get(handle)?.readPromptSuggestion?.()) ||
+      Promise.resolve(null)
+    )
+  }, [])
   const framesLivePaste = useCallback(
     (handle: string): boolean => ptyModesRef.current.get(handle)?.bracketedPasteMode === true,
     []
@@ -230,7 +237,8 @@ export function useMobileSessionTerminalRuntime(scope: MobileSessionScreenStateM
     terminalInventoryRecoveryScope,
     registerTerminalInventoryRecoveryAction,
     signalTerminalInventoryRecovery,
-    getLiveInteractionGeneration: getLiveInputInteractionGeneration
+    getLiveInteractionGeneration: getLiveInputInteractionGeneration,
+    readTerminalPromptSuggestion
   }
 }
 

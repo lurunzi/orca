@@ -67,6 +67,9 @@ export type MobileNativeChatController = {
   nativeChatActionablePromptIds: readonly string[] | undefined
   nativeChatCommandRefusalCauses: MobileNativeChatCommandRefusalCauses
   nativeChatCanStop: boolean
+  /** Host-published on a structured chat; a terminal-backed chat reads its screen instead. */
+  nativeChatPromptSuggestion?: string | null
+  nativeChatReadTerminalPromptSuggestion?: () => Promise<string | null>
   /** While the agent works on a host that queues: what a tap on Send does and whether holding it offers the other way; null otherwise. */
   nativeChatSendFollowUp: NativeChatSendFollowUp | null
   nativeChatStreamingText?: string
