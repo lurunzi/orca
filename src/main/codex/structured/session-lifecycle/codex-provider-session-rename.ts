@@ -172,6 +172,47 @@ export async function renameCodexProviderSession(
   }
 }
 
+export async function prepareCodexProviderInvocation(
+  record: AgentSessionRecord,
+  invocation: CodexProviderInvocationDeps,
+  options: CodexShortLivedOperationOptions,
+  signal?: AbortSignal
+): Promise<CodexPreparedShortLivedInvocation> {
+  signal?.throwIfAborted()
+  const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
+  const cwd = await codexProviderProbeCwd(record, invocation, signal)
+  const { command, prefixArgs, environment } = await waitForPromiseWithSignal(
+    resolveCodexStructuredInvocation({
+      ...invocation,
+      ...(signal ? { signal } : {}),
+      resolveWorkingDirectory: () => cwd
+    }),
+    signal
+  )
+  const args = codexStructuredLaunchArgs(
+    await waitForPromiseWithSignal(Promise.resolve(invocation.resolveLaunchArgs()), signal)
+  )
+  signal?.throwIfAborted()
+  const env = Object.fromEntries(
+    Object.entries(environment ?? {}).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined
+    )
+  )
+  return {
+    cwd,
+    invocation: {
+      command,
+      args: [...prefixArgs, ...args, ...CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS],
+      cwd,
+      cliPath: command,
+      env: { ...env, CODEX_HOME: codexHome },
+      envToDelete: [NATIVE_CHAT_SCRATCH_DIR_ENV, LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV],
+      ...options,
+      ...(signal ? { signal } : {})
+    }
+  }
+}
+
 /** Runs one short-lived app-server for a chat at rest, launched as the chat is (configured
  *  command, arguments and environment, pinned home and directory) without resuming its thread. */
 export async function runCodexProviderAppServer<T>(
@@ -184,41 +225,8 @@ export async function runCodexProviderAppServer<T>(
   if (!owner && (process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined || record.poolAccount)) {
     throw new DashboardAllocationError()
   }
-  const prepare = async (signal?: AbortSignal): Promise<CodexPreparedShortLivedInvocation> => {
-    signal?.throwIfAborted()
-    const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
-    const cwd = await codexProviderProbeCwd(record, invocation, signal)
-    const { command, prefixArgs, environment } = await waitForPromiseWithSignal(
-      resolveCodexStructuredInvocation({
-        ...invocation,
-        ...(signal ? { signal } : {}),
-        resolveWorkingDirectory: () => cwd
-      }),
-      signal
-    )
-    const args = codexStructuredLaunchArgs(
-      await waitForPromiseWithSignal(Promise.resolve(invocation.resolveLaunchArgs()), signal)
-    )
-    signal?.throwIfAborted()
-    const env = Object.fromEntries(
-      Object.entries(environment ?? {}).filter(
-        (entry): entry is [string, string] => entry[1] !== undefined
-      )
-    )
-    return {
-      cwd,
-      invocation: {
-        command,
-        args: [...prefixArgs, ...args, ...CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS],
-        cwd,
-        cliPath: command,
-        env: { ...env, CODEX_HOME: codexHome },
-        envToDelete: [NATIVE_CHAT_SCRATCH_DIR_ENV, LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV],
-        ...options,
-        ...(signal ? { signal } : {})
-      }
-    }
-  }
+  const prepare = (signal?: AbortSignal) =>
+    prepareCodexProviderInvocation(record, invocation, options, signal)
   if (owner) {
     return owner.run(record, options, prepare, body)
   }

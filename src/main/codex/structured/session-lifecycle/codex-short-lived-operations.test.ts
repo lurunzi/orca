@@ -1,8 +1,12 @@
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { access } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { agentJournalItemKey } from '../../../../shared/agent-session/journal/agent-session-journal-item-key'
+import type { StructuredAgentSessionConversationCopyInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-conversation-copy-input'
+import { readCodexLocalHistory } from '../../../native-chat/codex-local-history'
+import type * as LocalHistory from '../../../native-chat/codex-local-history'
 import { codexProviderProbeCwd } from './codex-provider-session-rename'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   AgentSessionPoolAccountOrigin,
@@ -47,6 +51,15 @@ vi.mock('../../../dashboard-accounts/dashboard-allocation-reader', () => ({
   readDashboardCodexAllocation: vi.fn(),
   readDashboardCodexAllocationContext: vi.fn()
 }))
+
+vi.mock('../../../native-chat/codex-local-history', async (importOriginal) => {
+  const original = await importOriginal<typeof LocalHistory>()
+  return { ...original, readCodexLocalHistory: vi.fn(original.readCodexLocalHistory) }
+})
+
+const copyHomes = new Set<string>()
+const SOURCE_THREAD = '00000000-0000-4000-8000-000000000001'
+const CHILD_THREAD = '00000000-0000-4000-8000-000000000002'
 
 const allocation: DashboardCodexAllocation = {
   provider: DashboardToolProvider.Codex,
@@ -155,6 +168,17 @@ require('node:readline').createInterface({ input: process.stdin }).on('line', (l
       secondary: { usedPercent: 50, windowDurationMins: 10080 }
     } } })
   }
+  if (message.method === 'thread/fork') {
+    if (process.env.ORCA_TEST_PERSONAL_COPY_ERROR === '1') {
+      send({ id: message.id, error: { code: -32000, message: 'active turn is running' } })
+      return
+    }
+    if (!events.includes('login') || !events.includes('account_read') ||
+        message.params.threadId !== '00000000-0000-4000-8000-000000000001' ||
+        message.params.lastTurnId !== 'copy-turn' || process.env.ORCA_TEST_COPY_FAIL === '1') {
+      send({ id: message.id, error: { code: -32000, message: 'private-copy-rejection' } })
+    } else send({ id: message.id, result: { thread: { id: '00000000-0000-4000-8000-000000000002' } } })
+  }
   if (message.method === 'thread/name/set') {
     if (!events.includes('login') || !events.includes('account_read') ||
         message.params.threadId !== 'thread-fixture' || message.params.name !== 'Pool rename') {
@@ -215,7 +239,7 @@ function prepared(refresh = false): CodexPreparedShortLivedInvocation {
   }
 }
 
-function renameAdapter() {
+function coldAdapter() {
   const adapter = new CodexStructuredSessionAdapter({
     hostId: 'host-fixture',
     readProcessStartTime: async () => 1234.5,
@@ -231,6 +255,65 @@ function renameAdapter() {
   })
   owners.add(adapter)
   return adapter
+}
+
+async function poolCopyInput(): Promise<StructuredAgentSessionConversationCopyInput> {
+  const home = await mkdtemp(join(tmpdir(), 'orca-pool-copy-'))
+  copyHomes.add(home)
+  await mkdir(join(home, 'sessions'), { recursive: true })
+  const rows = [
+    { type: 'session_meta', payload: { id: SOURCE_THREAD, history_mode: 'paginated' } },
+    { type: 'event_msg', payload: { type: 'task_started', turn_id: 'copy-turn' } },
+    ...['UserMessage', 'AgentMessage'].map((type, index) => ({
+      type: 'event_msg',
+      payload: {
+        type: 'item_completed',
+        item: {
+          type,
+          id: `copy-item-${index}`,
+          content: [{ type: 'text', text: 'Saved copy fixture' }]
+        }
+      }
+    })),
+    { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'copy-turn' } }
+  ]
+  await writeFile(
+    join(home, 'sessions', `rollout-2026-11-04T00-00-00-${SOURCE_THREAD}.jsonl`),
+    `${rows.map((row, ordinal) => JSON.stringify({ ...row, ordinal })).join('\n')}\n`
+  )
+  const source = record()
+  source.accountHome = { variable: 'CODEX_HOME', path: home }
+  source.poolAccount = {
+    version: 1,
+    origin: AgentSessionPoolAccountOrigin.Authenticated,
+    instanceId: 'instance-fixture',
+    provider: DashboardToolProvider.Codex,
+    accountId: 'pool-fixture',
+    bindingRevision: 2,
+    credentialVersion: 2
+  }
+  return {
+    record: source,
+    accountHome: source.accountHome,
+    providerSessionId: SOURCE_THREAD,
+    identity: {
+      sessionId: source.sessionId,
+      workspaceId: 'workspace-fixture',
+      hostId: 'local',
+      agent: 'codex',
+      providerHandle: null
+    },
+    checkpoint: {
+      settled: true,
+      turnId: 'copy-turn',
+      selectedItemId: agentJournalItemKey({
+        provider: 'legacy',
+        agent: 'codex',
+        sessionId: SOURCE_THREAD,
+        recordId: `${SOURCE_THREAD}:copy-item-1`
+      })
+    }
+  }
 }
 
 function fixture() {
@@ -277,6 +360,14 @@ beforeEach(() => {
 afterEach(async () => {
   await Promise.all([...owners].map((owner) => owner.closeAll()))
   owners.clear()
+  for (const home of copyHomes) {
+    const target = resolve(home)
+    if (!target.startsWith(resolve(join(tmpdir(), 'orca-pool-copy-')))) {
+      throw new Error('unexpected copy fixture cleanup path')
+    }
+    await rm(target, { recursive: true, force: true })
+  }
+  copyHomes.clear()
   vi.restoreAllMocks()
   vi.resetAllMocks()
   vi.unstubAllEnvs()
@@ -347,8 +438,69 @@ it('authenticates before business and refreshes with this short-lived process sc
   expect(f.mailbox.read()).toEqual({ requests: [] })
 })
 
+it('copies after authentication and returns only the same-operation pool identity', async () => {
+  const adapter = coldAdapter()
+  await expect(adapter.copyConversation(await poolCopyInput())).resolves.toEqual({
+    sessionId: CHILD_THREAD,
+    poolCopy: {
+      provider: 'codex',
+      sourceSessionId: 'session-fixture',
+      sourceProviderSessionId: SOURCE_THREAD,
+      targetProviderSessionId: CHILD_THREAD,
+      identity: {
+        instanceId: 'instance-fixture',
+        provider: 'codex',
+        accountId: 'pool-fixture',
+        bindingRevision: 3,
+        credentialVersion: 4
+      }
+    }
+  })
+  expect(adapter.readDashboardCodexProcesses()).toEqual({ pending_acquisitions: 0, processes: [] })
+})
+
+it('keeps provider copy failure fixed without publishing a receipt or cause', async () => {
+  vi.stubEnv('ORCA_TEST_COPY_FAIL', '1')
+  const adapter = coldAdapter()
+  const result = adapter.copyConversation(await poolCopyInput())
+  await expect(result).rejects.toMatchObject({ message: 'dashboard_allocation_unavailable' })
+  await expect(result).rejects.not.toHaveProperty('cause')
+})
+
+it('preserves the personal active-turn refusal through owned adapter cleanup', async () => {
+  vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', undefined)
+  vi.stubEnv('ORCA_TEST_PERSONAL_COPY_ERROR', '1')
+  const input = await poolCopyInput()
+  delete input.record!.poolAccount
+  const adapter = coldAdapter()
+  await expect(adapter.copyConversation(input)).rejects.toMatchObject({
+    message:
+      'Codex could not copy this chat while a response was running. Wait for it to finish, then try again.'
+  })
+})
+
+it('registers copy before history preparation so shutdown cancels a stalled file read', async () => {
+  const adapter = coldAdapter()
+  const started = deferred<void>()
+  const reading = deferred<number>()
+  vi.mocked(readCodexLocalHistory).mockImplementationOnce(() => {
+    started.resolve()
+    return reading.promise
+  })
+  const result = adapter.copyConversation(await poolCopyInput())
+  const rejected = expect(result).rejects.toMatchObject({
+    message: 'dashboard_allocation_unavailable'
+  })
+  await started.promise
+  await adapter.closeAll()
+  await rejected
+  reading.resolve(0)
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
+})
+
 it('renames a cold pool thread through the real adapter only after authentication', async () => {
-  const adapter = renameAdapter()
+  const adapter = coldAdapter()
   await expect(
     adapter.renameProviderSession({
       record: record(),
@@ -361,7 +513,7 @@ it('renames a cold pool thread through the real adapter only after authenticatio
 
 it('does not retry a failed pool rename even if a second request would succeed', async () => {
   vi.stubEnv('ORCA_TEST_RENAME_FAIL_ONCE', '1')
-  const adapter = renameAdapter()
+  const adapter = coldAdapter()
   const result = adapter.renameProviderSession({
     record: record(),
     providerSessionId: 'thread-fixture',
@@ -378,7 +530,7 @@ it('cancels cold rename while its allocation snapshot is waiting', async () => {
     waiting.resolve()
     return reading.promise
   })
-  const adapter = renameAdapter()
+  const adapter = coldAdapter()
   const cancel = new AbortController()
   const result = adapter.renameProviderSession({
     record: record(),

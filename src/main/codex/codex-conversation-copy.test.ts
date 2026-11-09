@@ -9,7 +9,8 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { agentJournalItemKey } from '../../shared/agent-session/journal/agent-session-journal-item-key'
 import { agentSessionRecordFixture } from '../native-chat/agent-session-record-test-fixture'
-import { copyCodexConversation, codexForkHistory } from './codex-conversation-copy'
+import { copyCodexConversation } from './codex-conversation-copy'
+import { codexForkHistory } from './codex-conversation-copy-boundary'
 import type { CodexAppServerRpc } from './app-server/codex-app-server-session'
 
 const state = vi.hoisted(() => ({

@@ -95,7 +95,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   }
 
   copyConversation: NonNullable<SessionAdapter['copyConversation']> = (input) =>
-    copyCodexConversation(input, this.deps.providerInvocation)
+    copyCodexConversation(input, this.deps.providerInvocation, this.shortLived)
   readAccountUsage: NonNullable<SessionAdapter['readAccountUsage']>
 
   supportsLocation = supportsCodexStructuredLocation
