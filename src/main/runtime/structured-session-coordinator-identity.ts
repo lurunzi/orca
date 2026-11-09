@@ -14,20 +14,20 @@
 
 import type { StructuredSessionOrchestrationIdentityStatus as Status } from '../../shared/structured-session-orchestration-identity'
 import type { AgentSessionRecord } from '../../shared/agent-session/lifecycle/agent-session-record'
-import { isTuiAgent } from '../../shared/tui-agent-config'
-import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-host'
-import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-registry'
-import type { OrchestrationDb } from './orchestration/db'
-import { readStructuredSessionGateFacts } from './orchestration/structured-mailbox-pointer-host'
+import { isTuiAgent } from '../../shared/agent-launch/catalog/tui-agent-config'
+import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-host'
+import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-registry'
+import type { OrchestrationDb } from './orchestration/db/orchestration-db'
+import { readStructuredSessionGateFacts } from './orchestration/mailbox/structured-pointer/structured-mailbox-pointer-host'
 import { structuredSessionIdentityRegistryRow } from './structured-session-identity-registry-row'
-import { structuredWorkerOwned } from './structured-worker-custody'
+import { structuredWorkerOwned } from './orchestration/terminal-authority/structured-sessions/structured-worker-custody'
 import {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerHostScope,
   structuredWorkerIdentities,
   structuredWorkerProcessIncarnation
-} from './structured-worker-identity'
+} from './orchestration/terminal-authority/structured-sessions/structured-worker-identity'
 
 export type StructuredSessionCoordinatorIdentityDeps = {
   getDb: () => OrchestrationDb

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { buildNewTabAgentMenuRows } from './new-tab-agent-menu-rows'
+import { buildNewTabAgentMenuRows } from '../../../shared/agent-launch/picker/agent-launch-picker-rows'
 
 const input = {
   detectedOnHost: ['claude', 'antigravity', 'gemini'] as const,
@@ -15,6 +15,20 @@ it('lists Antigravity with the chats when its terminal opens the transcript chat
   ).toEqual([
     { kind: 'chat', agent: 'claude' },
     { kind: 'cli', agent: 'antigravity', opensTranscriptChat: true },
+    { kind: 'cli', agent: 'gemini' }
+  ])
+})
+
+it('lists Antigravity as a structured chat once its host runs Antigravity chats', () => {
+  expect(
+    buildNewTabAgentMenuRows({
+      ...input,
+      hostChatAnswer: () => 'yes',
+      settings: { agentDefaultSurface: 'chat' as const }
+    })
+  ).toEqual([
+    { kind: 'chat', agent: 'claude' },
+    { kind: 'chat', agent: 'antigravity' },
     { kind: 'cli', agent: 'gemini' }
   ])
 })

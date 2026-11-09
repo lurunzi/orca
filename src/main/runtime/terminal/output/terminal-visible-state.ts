@@ -1,24 +1,20 @@
 import { OrcaRuntimeWithCaptureProviderTerminalBuffer } from './provider-buffer-capture'
-import {
-  TERMINAL_INTERACTIVE_WAIT_PROBE_TIMEOUT_MS,
-  type RuntimeTerminalProjection
-} from '../../orca-runtime-core'
-import { buildPreview } from '../../terminal-tail-state'
+import { TERMINAL_INTERACTIVE_WAIT_PROBE_TIMEOUT_MS } from '../wait/terminal-interactive-probe-budget'
+import type { RuntimeTerminalProjection } from './terminal-projection'
+import { buildPreview } from './tail/terminal-tail-state'
 import type {
   RuntimeHeadlessTerminal,
   RuntimeVisibleTerminalState
-} from '../../runtime-terminal-state-records'
+} from '../records/runtime-terminal-state-records'
 import {
   VISIBLE_TERMINAL_SNAPSHOT_RETRY_MS,
   VISIBLE_TERMINAL_SNAPSHOT_TIMEOUT_MS
-} from '../../orca-runtime-postlude'
-import {
-  parseTerminalVisibleSnapshot,
-  projectTerminalVisibleLines
-} from '../../orca-runtime-terminal-projection'
-import { visibleNonBlankTerminalLines } from '../../terminal-tail-read'
-import type { RuledScreen } from '../../screen-input-veto'
-import { withTimeout } from '../../runtime-async-boundaries'
+} from './provider-snapshot-budget'
+import { projectTerminalVisibleLines } from '../view/orca-runtime-terminal-projection'
+import { visibleNonBlankTerminalLines } from './tail/terminal-tail-read'
+import type { RuledScreen } from '../wait/screen-input-veto'
+import { HeadlessEmulator } from '../../../daemon/emulation/headless-emulator'
+import { withTimeout } from '../../../../shared/promise-timeout-fallback'
 
 export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeWithCaptureProviderTerminalBuffer {
   protected async visibleSnapshotPreview(ptyId: string, preview: string): Promise<string> {
@@ -78,17 +74,11 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
 
     const generation = this.getPtyLifecycleGeneration(ptyId)
     const outputSequence = this.getPtyOutputSequence(ptyId)
-    const cached = this.providerVisibleStateByPtyId.get(ptyId)
-    const trackedMode = this.providerModeTrackersByPtyId.get(ptyId)
-    if (
-      cached?.generation === generation &&
-      outputSequence <= cached.sequence &&
-      (!cached.headlessWriteChain ||
-        cached.headlessWriteChain === this.headlessTerminals.get(ptyId)?.writeChain) &&
-      (!trackedMode || trackedMode.isAlternateScreen === cached.isAlternateScreen)
-    ) {
+    const cached = this.readCurrentProviderVisibleState(ptyId)
+    if (cached) {
       return cached
     }
+    const trackedMode = this.providerModeTrackersByPtyId.get(ptyId)
     if (trackedMode && !trackedMode.isAlternateScreen) {
       const headlessState = await this.readHeadlessVisibleTerminalState(ptyId)
       return headlessState
@@ -100,6 +90,27 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
             generation
           }
     }
+    return this.captureProviderVisibleState(ptyId)
+  }
+
+  /** The provider's last frame while no later output or mode switch has outdated it. */
+  protected readCurrentProviderVisibleState(ptyId: string): RuntimeVisibleTerminalState | null {
+    const cached = this.providerVisibleStateByPtyId.get(ptyId)
+    const trackedMode = this.providerModeTrackersByPtyId.get(ptyId)
+    return cached?.generation === this.getPtyLifecycleGeneration(ptyId) &&
+      this.getPtyOutputSequence(ptyId) <= cached.sequence &&
+      (!cached.headlessWriteChain ||
+        cached.headlessWriteChain === this.headlessTerminals.get(ptyId)?.writeChain) &&
+      (!trackedMode || trackedMode.isAlternateScreen === cached.isAlternateScreen)
+      ? cached
+      : null
+  }
+
+  /** Asks the provider for its current frame and caches it; null while it cannot give one now. */
+  protected async captureProviderVisibleState(
+    ptyId: string
+  ): Promise<RuntimeVisibleTerminalState | null> {
+    const generation = this.getPtyLifecycleGeneration(ptyId)
     if ((this.providerVisibleRetryAtByPtyId.get(ptyId) ?? 0) > Date.now()) {
       return null
     }
@@ -215,7 +226,8 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     // placeholder reads as one, so a typed draft and an empty composer would look the same.
     return {
       lines: visibleNonBlankTerminalLines(state.emulator.getVisibleLines()),
-      alternateScreen: state.emulator.isAlternateScreen
+      alternateScreen: state.emulator.isAlternateScreen,
+      pendingOutput: state.outputSequence !== this.getPtyOutputSequence(ptyId)
     }
   }
 
@@ -234,7 +246,26 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
     return state
   }
 
-  protected parseVisibleSnapshot = parseTerminalVisibleSnapshot
+  protected async parseVisibleSnapshot(snapshot: {
+    data: string
+    cols: number
+    rows: number
+  }): Promise<RuntimeTerminalProjection> {
+    if (snapshot.data.length === 0) {
+      return { lines: [] }
+    }
+    const emulator = new HeadlessEmulator({
+      cols: snapshot.cols,
+      rows: snapshot.rows,
+      scrollback: 0
+    })
+    try {
+      await emulator.write(`\x1b[2J\x1b[3J\x1b[H${snapshot.data}`)
+      return projectTerminalVisibleLines(emulator)
+    } finally {
+      emulator.dispose()
+    }
+  }
 
   protected async readRendererVisibleSnapshotLines(
     ptyId: string

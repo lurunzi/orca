@@ -4,19 +4,19 @@ import {
   isAiVaultScanCancelledError,
   isAiVaultSessionResumableContent,
   type AiVaultSession
-} from '../../../../shared/ai-vault-types'
+} from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { useAppStore } from '@/store'
-import { createBrowserUuid } from '@/lib/browser-uuid'
-import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
+import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/non-secure-context-uuid'
+import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { cursorSessionMatchesWorkspace } from '@/lib/cursor-transcript-tab'
-import { prepareAiVaultSessionForTerminalResume } from '@/lib/ai-vault-session-resume-preparation'
-import { buildAiVaultResumeStartupForWorktree } from '@/lib/ai-vault-resume-command'
+import { prepareAiVaultSessionForTerminalResume } from '@/lib/agent-session/resume/history/ai-vault-session-resume-preparation'
+import { buildAiVaultResumeStartupForWorktree } from '@/lib/agent-session/resume/history/ai-vault-resume-command'
 import { launchAiVaultSessionInNewTab } from '@/lib/launch-ai-vault-session'
-import { pasteAgentLaunchPromptOnceReady } from '@/lib/launch-agent-tab-prompt-paste'
+import { pasteAgentLaunchPromptOnceReady } from '@/lib/agent-session/launch/prompt/launch-agent-tab-prompt-paste'
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'
 import { translate } from '@/i18n/i18n'
-import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault-session-launch-target'
+import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target'
 
 const RECHECK_MS = 60_000
 

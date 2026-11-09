@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { HeadlessEmulator } from '../daemon/headless-emulator'
-import { createTranscriptPane, TRANSCRIPT_PANE_PTY_ID } from './agent-transcript-pane-test-harness'
-import { projectTerminalVisibleLines } from './orca-runtime-terminal-projection'
+import { HeadlessEmulator } from '../daemon/emulation/headless-emulator'
+import {
+  createTranscriptPane,
+  TRANSCRIPT_PANE_PTY_ID
+} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+import { projectTerminalVisibleLines } from './terminal/view/orca-runtime-terminal-projection'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn(() => null) },

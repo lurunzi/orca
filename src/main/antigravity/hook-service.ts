@@ -2,11 +2,14 @@ import { statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { SFTPWrapper } from 'ssh2'
-import type { AgentHookInstallState, AgentHookInstallStatus } from '../../shared/agent-hook-types'
+import type {
+  AgentHookInstallState,
+  AgentHookInstallStatus
+} from '../../shared/agent-hook-listener/configuration/agent-hook-types'
 import {
   getSharedManagedScriptPath,
   readHooksJson,
-  wrapPosixHookCommandForExec,
+  wrapPosixHookCommand,
   writeHooksJson,
   writeManagedScript,
   type HookDefinition
@@ -28,6 +31,8 @@ import {
   ANTIGRAVITY_PRE_TOOL_USE_DECISION,
   type AntigravityEvent
 } from './hook-events'
+import { quotePosixShell } from '../../shared/shell/launch/shell-argument-quoting'
+import { HOOK_PARENT_CAPTURE } from '../agent-hooks/hook-process-capture'
 import { getManagedScript, getWindowsWrapperScript } from './hook-script'
 import {
   buildInstalledConfig,
@@ -63,14 +68,14 @@ function getWindowsWrapperScriptPath(event: AntigravityEvent): string {
 }
 
 function getPosixManagedCommand(scriptPath: string, event: AntigravityEvent): string {
-  // Why: Antigravity's ACP host execs this string as argv[0] rather than running it through a shell,
-  // so it must stay one spawnable token (#16087) — see wrapPosixHookCommandForExec.
-  return wrapPosixHookCommandForExec(
+  const command = wrapPosixHookCommand(
     scriptPath,
     { ORCA_ANTIGRAVITY_EVENT: event.eventName },
     // Keep tools usable if the managed script disappears: silence denies PreToolUse.
     event.eventName === 'PreToolUse' ? { fallbackStdout: ANTIGRAVITY_PRE_TOOL_USE_DECISION } : {}
   )
+  // ACP hosts tokenize the command into argv; the shell must be the executable, not `if`.
+  return `/bin/sh -c ${quotePosixShell(`${HOOK_PARENT_CAPTURE}${command}`)}`
 }
 
 function getManagedCommand(scriptPath: string, event: AntigravityEvent): string {

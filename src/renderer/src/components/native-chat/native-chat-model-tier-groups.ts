@@ -2,6 +2,7 @@ import type {
   SessionOptionDescriptor,
   SessionOptionSelectChoice
 } from '../../../../shared/native-chat/input/native-chat-session-options'
+import { sayNativeChatSessionOptionTranslated } from './native-chat-session-option-labels-text'
 
 // The picker groups CLI variants without changing the actual model ids sent to the host.
 const TIER_BY_LABEL: Record<string, string> = {
@@ -200,7 +201,7 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
     projected.push({
       ...model,
       id: 'effort',
-      label: 'Effort',
+      label: sayNativeChatSessionOptionTranslated('effort'),
       category: 'thought_level',
       kind: {
         type: 'select',
@@ -221,7 +222,7 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
     projected.push({
       ...model,
       id: 'thinking',
-      label: 'Thinking',
+      label: sayNativeChatSessionOptionTranslated('thinking'),
       category: 'model_config',
       settable: model.settable && Boolean(thinkingModelValues),
       kind: { type: 'boolean', currentValue: thinking === true }
@@ -236,7 +237,7 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
     projected.push({
       ...model,
       id: 'serviceTier',
-      label: 'Speed',
+      label: sayNativeChatSessionOptionTranslated('speed'),
       category: 'mode',
       kind: {
         type: 'select',

@@ -2,30 +2,34 @@ import type {
   AiVaultListResult,
   AiVaultScanIssue,
   AiVaultSession
-} from '../../shared/ai-vault-types'
+} from '../../shared/ai-vault/contracts/ai-vault-types'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import { withSpan } from '../observability/tracer'
 import { sessionSortTime } from './session-scanner-accumulator'
 import { dedupeScannedSessions } from './session-root-dedup'
 import {
   createAntigravityWorkspaceResolver,
-  readLocalAntigravityHistory
-} from './session-scanner-antigravity-history'
+  readLocalAntigravityHistory,
+  readLocalAntigravitySummaryWorkspaces
+} from './scanners/antigravity/session-scanner-antigravity-history'
 import { sessionCandidatesFromDiscoveries } from './session-scanner-candidates'
 import { parseSessionCandidates } from './session-scanner-candidate-parse'
-import { createSessionParseStats } from './session-scanner-parse-cache'
+import { createSessionParseStats } from './parse-cache/session-scanner-parse-cache'
 import { recordSessionScanIssue } from './session-scan-issues'
 import { aiVaultScanWorkload, noteAiVaultScanReading } from './ai-vault-scan-progress'
 import { yieldScanInventory } from './session-scanner-scope-inventory'
 import { prepareScopeScan, scanInScopeSessions } from './session-scanner-scope-walk'
 import { discoverAiVaultSessionSources } from './session-scanner-source-discovery'
-import { cursorChatMetaRefusals, withCursorChatMetaScan } from './session-scanner-cursor-chat-meta'
+import {
+  cursorChatMetaRefusals,
+  withCursorChatMetaScan
+} from './scanners/cursor/session-scanner-cursor-chat-meta'
 import type { AiVaultScanOptions } from './session-scanner-types'
 import { clampPositiveInteger } from './session-scanner-values'
 import { throwIfAiVaultScanCancelled } from './ai-vault-scan-cancellation'
-import { DEFAULT_AI_VAULT_SCAN_LIMIT } from '../../shared/ai-vault-session-depth'
-import { withDevinSessionsDbScan } from './session-scanner-devin-db'
-import { withOpenCodeSqliteScanScope } from './session-scanner-opencode-sqlite-scan-scope'
+import { DEFAULT_AI_VAULT_SCAN_LIMIT } from '../../shared/ai-vault/scanning/ai-vault-session-depth'
+import { withDevinSessionsDbScan } from './scanners/devin/session-scanner-devin-db'
+import { withOpenCodeSqliteScanScope } from './scanners/opencode/sqlite/session-scanner-opencode-sqlite-scan-scope'
 
 const SESSION_PARSE_CANDIDATE_MULTIPLIER = 2
 
@@ -51,8 +55,9 @@ async function scanAiVaultSessionStores(options: AiVaultScanOptions): Promise<Ai
         const executionHostId = options.executionHostId ?? LOCAL_EXECUTION_HOST_ID
         const issues: AiVaultScanIssue[] = []
         const parseStats = createSessionParseStats()
-        const antigravityWorkspaceResolver = createAntigravityWorkspaceResolver((path) =>
-          readLocalAntigravityHistory(path, options.signal)
+        const antigravityWorkspaceResolver = createAntigravityWorkspaceResolver(
+          (path) => readLocalAntigravityHistory(path, options.signal),
+          (path) => readLocalAntigravitySummaryWorkspaces(path, options.signal)
         )
         throwIfAiVaultScanCancelled(options.signal)
         const discoveries = await discoverAiVaultSessionSources({

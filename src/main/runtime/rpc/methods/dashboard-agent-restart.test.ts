@@ -3,14 +3,14 @@ import type { RpcContext } from '../core'
 import { mapDispatcherError } from '../dispatcher-error-response'
 import { DASHBOARD_AGENT_RESTART_METHOD as method } from './dashboard-agent-restart'
 import { DASHBOARD_ACCOUNT_METHODS } from './dashboard-accounts'
-import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
+import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { DashboardToolProvider as Tool } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import {
   DashboardAgentRestartCode as Code,
   DashboardAgentRestartError
 } from '../../../dashboard-accounts/dashboard-agent-restart-protocol'
 
-vi.mock('../../../native-chat/agent-session-wire/structured-agent-session-registry', () => ({
+vi.mock('../../../native-chat/agent-session-wire/host/structured-agent-session-registry', () => ({
   getStructuredAgentSessionHost: vi.fn()
 }))
 beforeEach(() => {

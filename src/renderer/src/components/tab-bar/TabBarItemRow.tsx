@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { useAppStore } from '@/store'
 import { useTranslation } from 'react-i18next'
 import { shallow } from 'zustand/shallow'
-import type { GitFileStatus } from '../../../../shared/git-status-types'
+import type { GitFileStatus } from '../../../../shared/git/status/git-status-types'
 import type { OpenFile } from '../../store/slices/editor'
 import SortableTab from './SortableTab'
 import TerminalSortableTab from './TerminalSortableTab'
@@ -16,7 +16,7 @@ import {
   useStructuredChatTabConversationName,
   useStructuredChatTabNamingFailure
 } from '@/runtime/structured-conversation-name'
-import { agentTypeToIconAgent } from '@/lib/agent-status'
+import { agentTypeToIconAgent } from '../../../../shared/agent-status/presentation/agent-type-icon-agent'
 import { formatSimulatorTabLabel } from '@/lib/simulator-tab-label'
 import { resolveUnifiedTabLabel } from '../../../../shared/tab-title-resolution'
 
@@ -128,7 +128,8 @@ function TabBarItemRow({
         tab={{
           id: item.id,
           worktreeId,
-          title: conversationName ??
+          title:
+            conversationName ??
             resolveUnifiedTabLabel(item.data, generatedTabTitlesEnabled, item.data.label),
           customTitle: item.data.customLabel,
           color: item.data.color

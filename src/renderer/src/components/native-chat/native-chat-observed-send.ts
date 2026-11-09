@@ -33,7 +33,7 @@ export function sendNativeChatObservedWrites(
       clearConfirmDurationMs(options) +
       submitConfirmDurationMs(options) +
       (options.settleDelayMs ?? 0),
-    ({ isCancelled, delay, markSubmitted, markSubmitWritten }) => {
+    ({ isCancelled, delay, markSubmitted, markSubmitWritten, markWriteStarted }) => {
       let reportedUnconfirmed = false
       let acknowledged = true
       const writeAt = (index: number): void => {
@@ -46,8 +46,9 @@ export function sendNativeChatObservedWrites(
             if (isCancelled()) {
               return
             }
-            options.onDeliverySettled?.(acknowledged && confirmed)
-            markSubmitted()
+            const settled = acknowledged && confirmed
+            options.onDeliverySettled?.(settled)
+            markSubmitted(settled ? 'submitted' : 'uncertain')
           }
           if (options.submitConfirmation) {
             markSubmitWritten()
@@ -67,6 +68,7 @@ export function sendNativeChatObservedWrites(
           if (isCancelled()) {
             return
           }
+          markWriteStarted()
           void sendRuntimePtyInputVerified(ptyId, write.data, 'driving', writeOptions)
             .then((accepted) => {
               if (isCancelled()) {
@@ -75,7 +77,7 @@ export function sendNativeChatObservedWrites(
               if (!accepted) {
                 options.onWriteRejected?.()
                 options.onDeliverySettled?.(false)
-                markSubmitted()
+                markSubmitted(index === 0 ? 'not-submitted' : 'uncertain')
                 return
               }
               writeAt(index + 1)
@@ -92,7 +94,7 @@ export function sendNativeChatObservedWrites(
               }
               if (options.stopOnUnconfirmed) {
                 options.onDeliverySettled?.(false)
-                markSubmitted()
+                markSubmitted('uncertain')
                 return
               }
               writeAt(index + 1)
@@ -109,6 +111,7 @@ export function sendNativeChatObservedWrites(
         options,
         delay,
         () => writeAt(0),
+        markSubmitted,
         () => {
           lineTouched = true
         }

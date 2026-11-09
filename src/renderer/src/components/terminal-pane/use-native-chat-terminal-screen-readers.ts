@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { readClaudeTerminalPromptSuggestion } from '../../../../shared/claude-terminal-prompt-suggestion'
-import { readTerminalCursorLineContext } from '../../../../shared/terminal-cursor-line-context'
-import { readTerminalComposerTypedText } from '../../../../shared/terminal-composer-draft'
+import { readTerminalCursorLineContext } from '../../../../shared/terminal/input/terminal-cursor-line-context'
+import { readTerminalComposerTypedText } from '../../../../shared/terminal/input/terminal-composer-draft'
 import type { TerminalPaneTitleController } from './use-terminal-pane-title-state'
 
 /** Reads the chat leaf's live terminal screen for the native chat composer. */

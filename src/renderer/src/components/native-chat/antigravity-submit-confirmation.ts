@@ -1,8 +1,8 @@
 // Antigravity (agy) submit confirmation: read agy's framed composer off the
 // terminal screen to tell whether a chat send's Enter actually submitted.
 
-import { TUI_AGENT_CONFIG } from '../../../../shared/tui-agent-config'
-import { countAgentTuiInputLines } from '../../../../shared/agent-tui-input-clear'
+import { TUI_AGENT_CONFIG } from '../../../../shared/agent-launch/catalog/tui-agent-config'
+import { countAgentTuiInputLines } from '../../../../shared/agent-launch/startup/agent-tui-input-clear'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
 import { stripScrollbackAnsi } from './native-chat-scrape-fallback'
 import type { NativeChatSendOptions } from './native-chat-runtime-send'

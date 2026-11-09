@@ -14,7 +14,7 @@ import {
   activateStructuredAgentSessionById
 } from './agent-session/structured-agent-session-tab-activation'
 import { useAppStore } from '@/store'
-import { runtimeEnvironmentIdOrLocalUnlessTwin } from './worktree-runtime-owner'
+import { runtimeEnvironmentIdOrLocalUnlessTwin } from './workspace/ownership/worktree-runtime-owner'
 import { callRuntimeRpc, runtimeEnvironmentSupportsCapability } from '@/runtime/runtime-rpc-client'
 import type { RuntimeClientTarget } from '../../../shared/runtime-client-target'
 import { runtimeTargetForOwnerEnvironment } from '@/runtime/runtime-client-target'
@@ -173,23 +173,25 @@ async function executeDesktopStructuredSession(
   deps: StructuredSessionOpenAdapterDeps,
   locate?: StructuredSessionOpenDeps['locate']
 ): Promise<StructuredSessionOpenResult> {
-  return openStructuredAgentSession(source, {
-    locate:
-      locate ??
-      (async (address, messageIds) => {
-        try {
-          return await withStructuredSessionRestoreTimeout(
-            callRuntimeRpc<OrchestrationPartyLocationResult>(
-              owner,
-              'orchestration.partyLocation',
-              { address, ...(messageIds.length ? { messageIds } : {}) },
-              { timeoutMs: STRUCTURED_SESSION_RESTORE_TIMEOUT_MS }
-            )
+  const party =
+    (method: 'orchestration.partyLocation' | 'orchestration.partyOpen') =>
+    async (address: string, messageIds: readonly string[]) => {
+      try {
+        return await withStructuredSessionRestoreTimeout(
+          callRuntimeRpc<OrchestrationPartyLocationResult>(
+            owner,
+            method,
+            { address, ...(messageIds.length ? { messageIds } : {}) },
+            { timeoutMs: STRUCTURED_SESSION_RESTORE_TIMEOUT_MS }
           )
-        } catch (error) {
-          return structuredSessionOpenFailure(error)
-        }
-      }),
+        )
+      } catch (error) {
+        return structuredSessionOpenFailure(error)
+      }
+    }
+  return openStructuredAgentSession(source, {
+    locate: locate ?? party('orchestration.partyLocation'),
+    ...(locate ? {} : { open: party('orchestration.partyOpen') }),
     tabs: (target) => deps.tabs(target, owner),
     activate: (tab, target) =>
       deps

@@ -1,15 +1,17 @@
 import type { DashboardClaudeLaunchState } from '../../dashboard-accounts/dashboard-claude-launch-protocol'
-import type { ClaudeSession } from './claude-structured-session-state'
+import type { ClaudeSession, ClaudeSessionExit } from './claude-structured-session-state'
+import { retainsClaudePoolRootExit } from './claude-structured-close-exit-observation'
 
 export function readClaudeDashboardLaunches(
   sessions: ReadonlyMap<string, ClaudeSession>,
-  pendingAcquisitions: number
+  pendingAcquisitions: number,
+  exits: ReadonlyMap<string, ClaudeSessionExit>
 ): DashboardClaudeLaunchState {
   const processes: DashboardClaudeLaunchState['processes'] = []
-  for (const [sessionId, session] of sessions) {
+  const append = (sessionId: string, session: ClaudeSession, retiring = false): void => {
     const launch = session.dashboardLaunch
     if (!launch) {
-      continue
+      return
     }
     const { binding, process } = launch
     processes.push({
@@ -27,8 +29,16 @@ export function readClaudeDashboardLaunches(
       },
       initialized: launch.initialized,
       connection_open: !session.connection.closed,
-      closing: Boolean(session.closeFinalization) || session.connection.closed
+      closing: retiring || Boolean(session.closeFinalization) || session.connection.closed
     })
+  }
+  for (const [sessionId, session] of sessions) {
+    append(sessionId, session)
+  }
+  for (const [sessionId, exit] of exits) {
+    if (!sessions.has(sessionId) && retainsClaudePoolRootExit(exit.session)) {
+      append(sessionId, exit.session, true)
+    }
   }
   return { pending_acquisitions: pendingAcquisitions, processes }
 }

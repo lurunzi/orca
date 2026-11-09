@@ -8,7 +8,7 @@ import { DashboardCodexProcessesResponseSchema } from '../../../dashboard-accoun
 import { DashboardCodexRefreshesResponseSchema } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import { DashboardClaudeLaunchesResponseSchema } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import { readDashboardAllocationStatus } from '../../../dashboard-accounts/dashboard-allocation-status'
-import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
+import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 
 import { requireLocalDashboardCaller } from './dashboard-account-local-caller'
 import { DASHBOARD_AGENT_RESTART_METHOD } from './dashboard-agent-restart'

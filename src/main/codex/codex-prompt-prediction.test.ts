@@ -1,14 +1,14 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { initializeCodexAppServerConnection } from './app-server/codex-app-server-handshake'
 import { CodexAppServerUnsupportedError } from './app-server/codex-app-server-session'
-import type { CodexStructuredSessionEvent } from './codex-structured-session-state'
+import type { CodexStructuredSessionEvent } from './structured/session-lifecycle/codex-structured-session-state'
 import { supportsCodexPredictionFork } from './codex-prompt-prediction'
 import {
   acquired,
   fakeCodex,
   THREAD_ID,
   USER_MESSAGE
-} from './codex-structured-session-adapter-fixture'
+} from './structured/session-lifecycle/codex-structured-session-adapter-fixture'
 
 afterEach(() => vi.useRealTimers())
 

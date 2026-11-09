@@ -1,21 +1,20 @@
 import { claudeProfileHistoryDirs } from '../claude-accounts/claude-profile-installed-router'
 import { homedir } from 'node:os'
 import { extname, join } from 'node:path'
-import type { AgentType } from '../../shared/agent-status-types'
+import type { AgentType } from '../../shared/agent-status/contracts/agent-status-types'
 import {
   resolveNativeChatTranscriptAgent,
   type NativeChatTranscriptAgent
 } from '../../shared/native-chat/native-chat-agent-support'
 import { isWslUncPath } from '../../shared/wsl-paths'
-import { walkSessionFiles } from '../ai-vault/session-scanner-discovery'
-import { AI_VAULT_AGENT_SOURCES } from '../ai-vault/session-scanner-agent-sources'
-import { resolveOmpSessionsDir } from '../ai-vault/omp-session-root'
+import { forEachSessionFile } from '../ai-vault/session-scanner-discovery'
+import { resolveOmpSessionsDir } from '../ai-vault/scanners/omp/omp-session-root'
 import {
   claudeProjectsHostDirs,
   codexHomeSessionsDir,
   uniqueDirs
 } from '../ai-vault/session-scanner-roots'
-import { resolveOrcaManagedCodexHomePath } from '../codex/codex-home-paths'
+import { resolveOrcaManagedCodexHomePath } from '../codex/configuration/homes/codex-home-paths'
 import {
   findGrokChatHistoryBySessionId,
   resolveGrokSessionsDir
@@ -24,12 +23,12 @@ import {
   hostAdditionalCodexHomePaths,
   needsWslHostResolution,
   toHostReadableTranscriptPath,
-  wslAgentSessionsDirs,
-  wslCursorProjectsDirs
+  wslAgentSessionsDirs
 } from './host-readable-transcript-path'
-import { resolveCursorSessionFile } from './cursor-session-file-resolver'
+import { resolveCursorSessionFileFromRoot } from './cursor-session-file-resolver'
 import { SESSION_FILE_ID_LAYOUTS, type SessionIdLookupAgent } from './session-file-id-layouts'
 import { findWslSessionPath } from './wsl-session-path-scan'
+import { findClaudeSessionFile } from './session-file-resolver-claude-probe'
 import { parseSshTranscriptPath } from './ssh-transcript-path'
 import { wslTranscriptFsRefusal, type WslTranscriptFsError } from './wsl-transcript-fs-gate'
 
@@ -61,6 +60,8 @@ function grokSessionsDir(): string {
 export type ResolveSessionFileOptions = {
   strictErrors?: boolean
   claudeProjectsDir?: string
+  /** Claude only: probe this cwd's project bucket first in each root. */
+  cwd?: string
   /** Defaults to managed Codex then CODEX_HOME/~/.codex, in order. */
   codexSessionsDirs?: string[]
   grokSessionsDir?: string
@@ -161,6 +162,7 @@ async function resolveSessionFileById(
     const override = options.claudeProjectsDir
     return resolveTiered('claude', trimmedId, override ? [override] : claudeProjectsDirs(), {
       wslTier: wslTier && !override,
+      cwd: options.cwd,
       signal,
       strictErrors: options.strictErrors
     })
@@ -175,15 +177,7 @@ async function resolveSessionFileById(
     })
   }
   if (transcriptAgent === 'cursor') {
-    const overrideDir = options.cursorProjectsDir
-    return resolveCursorSessionFile(
-      trimmedId,
-      [AI_VAULT_AGENT_SOURCES.cursor.rootDirs({ cursorProjectsDir: overrideDir }, [])[0]].filter(
-        (dir): dir is string => Boolean(dir)
-      ),
-      overrideDir ? undefined : wslCursorProjectsDirs,
-      signal
-    )
+    return resolveCursorSessionFileFromRoot(trimmedId, options.cursorProjectsDir, signal)
   }
   if (transcriptAgent === 'antigravity') {
     // A conversation id is one directory segment, never a caller-supplied path.
@@ -230,23 +224,18 @@ async function resolveTiered(
   options: {
     wslTier: boolean
     accountDirs?: () => readonly string[]
+    cwd?: string
     signal?: AbortSignal
     strictErrors?: boolean
   }
 ): Promise<string | null> {
   const { signal } = options
-  const hit = await findFirstInDirs(agent, sessionId, hostDirs, signal, options.strictErrors)
+  const hit = await findFirstInDirs(agent, sessionId, hostDirs, options)
   if (hit) {
     return hit
   }
   const accountDirs = (options.accountDirs?.() ?? []).filter((dir) => !hostDirs.includes(dir))
-  const accountHit = await findFirstInDirs(
-    agent,
-    sessionId,
-    accountDirs,
-    signal,
-    options.strictErrors
-  )
+  const accountHit = await findFirstInDirs(agent, sessionId, accountDirs, options)
   if (accountHit || !options.wslTier) {
     return accountHit
   }
@@ -254,22 +243,25 @@ async function resolveTiered(
   // Defer WSL process/filesystem discovery until host roots miss.
   const wslDirs = (await wslAgentSessionsDirs(agent)).filter((dir) => !hostDirs.includes(dir))
   signal?.throwIfAborted()
-  return findFirstInDirs(agent, sessionId, wslDirs, signal, options.strictErrors)
+  return findFirstInDirs(agent, sessionId, wslDirs, options)
 }
 
+type HostLookupOptions = { cwd?: string; signal?: AbortSignal; strictErrors?: boolean }
+
+// Each root finishes (cwd bucket, then every bucket) before the next, so account order still wins.
 async function findFirstInDirs(
   agent: SessionIdLookupAgent,
   sessionId: string,
   dirs: readonly string[],
-  signal?: AbortSignal,
-  strictErrors?: boolean
+  options: HostLookupOptions
 ): Promise<string | null> {
+  const { signal, strictErrors } = options
   let unavailable: WslTranscriptFsError | undefined
   for (const dir of dirs) {
     try {
       const hit = isWslUncPath(dir)
         ? await findWslSessionPath(agent, dir, sessionId, signal)
-        : await findHostSessionFile(agent, dir, sessionId, signal, strictErrors)
+        : await findHostSessionFile(agent, dir, sessionId, options)
       if (hit) {
         return hit
       }
@@ -292,9 +284,9 @@ async function findHostSessionFile(
   agent: SessionIdLookupAgent,
   root: string,
   sessionId: string,
-  signal?: AbortSignal,
-  strictErrors?: boolean
+  options: HostLookupOptions
 ): Promise<string | null> {
+  const { signal, strictErrors } = options
   if (agent === 'grok' && !strictErrors) {
     // Bound main-thread work with direct-layout async lookup rather than a recursive scan.
     signal?.throwIfAborted()
@@ -302,17 +294,39 @@ async function findHostSessionFile(
     signal?.throwIfAborted()
     return history
   }
+  if (agent === 'claude') {
+    return findClaudeSessionFile(root, sessionId, options)
+  }
   const { fileMatchesId, directoryPredicate } = SESSION_FILE_ID_LAYOUTS[agent]
   const wanted = (id: string): boolean => id === sessionId
-  // The walk handles missing roots; synchronous existence probes would block the main thread.
-  const files = await walkSessionFiles(root, agent, [], {
-    extensions: new Set(['.jsonl']),
-    filePredicate: (path) => fileMatchesId(path, sessionId),
-    directoryPredicate: directoryPredicate
-      ? (name, depth) => directoryPredicate(name, depth, wanted)
-      : undefined,
-    signal,
-    strictErrors
-  })
-  return files[0] ?? null
+  // An id names one file, so the walk stops at the first match through its own abort reason.
+  const found = new AbortController()
+  let hit: string | null = null
+  try {
+    // The walk handles missing roots; synchronous existence probes would block the main thread.
+    await forEachSessionFile(
+      root,
+      agent,
+      [],
+      {
+        extensions: new Set(['.jsonl']),
+        filePredicate: (path) => fileMatchesId(path, sessionId),
+        directoryPredicate: directoryPredicate
+          ? (name, depth) => directoryPredicate(name, depth, wanted)
+          : undefined,
+        signal: signal ? AbortSignal.any([signal, found.signal]) : found.signal,
+        strictErrors
+      },
+      (path) => {
+        hit ??= path
+        found.abort()
+      }
+    )
+  } catch (error) {
+    if (hit === null || signal?.aborted) {
+      throw error
+    }
+  }
+  signal?.throwIfAborted()
+  return hit
 }

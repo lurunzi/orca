@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { findCursorTranscriptTerminal } from './cursor-transcript-terminal'
-import { makePaneKey } from '../../../shared/stable-pane-id'
+import { makePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
 
 const leaf = '11111111-1111-4111-8111-111111111111'
 const paneKey = makePaneKey('tab', leaf)
@@ -88,5 +88,17 @@ it('keeps the conversation without redirecting a disconnected split to the prima
     ptyId: null
   })
   state.tabsByWorktree.wt = []
+  expect(findCursorTranscriptTerminal(state, 'wt', 'external')).toBeNull()
+})
+
+it('does not attach a reader to a leaf that was removed from a surviving split', () => {
+  const state = fixture()
+  state.terminalLayoutsByTabId.tab.root = { type: 'leaf', leafId: 'replacement' }
+  expect(findCursorTranscriptTerminal(state, 'wt', 'external')).toBeNull()
+})
+
+it('does not borrow a previous session while a live replacement has no provider identity', () => {
+  const state = fixture()
+  delete state.agentStatusByPaneKey[paneKey].providerSession
   expect(findCursorTranscriptTerminal(state, 'wt', 'external')).toBeNull()
 })

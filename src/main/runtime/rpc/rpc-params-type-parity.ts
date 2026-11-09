@@ -3,12 +3,20 @@ import type {
   RpcParams
 } from '../../../shared/rpc-contract/rpc-params-catalog.generated'
 import type { RpcAnyMethodDeclaration } from './core'
-import type { ALL_RPC_METHODS } from './methods'
+import type { ALL_RPC_METHODS } from './methods/rpc-method-registry'
 
 type RegisteredMethod = (typeof ALL_RPC_METHODS)[number]
 
 // These schemas reach into src/main and have no shared catalog entry.
-type UncataloguedMethod = 'emulator.install' | 'orchestration.send' | 'orchestration.taskUpdate'
+type UncataloguedMethod =
+  | 'emulator.install'
+  | 'orchestration.send'
+  | 'orchestration.taskUpdate'
+  | 'dashboard.accounts.status'
+  | 'dashboard.accounts.codexProcesses'
+  | 'dashboard.accounts.codexRefreshes'
+  | 'dashboard.accounts.claudeLaunches'
+  | 'dashboard.accounts.restartAgent'
 
 type IsAny<T> = 0 extends 1 & T ? true : false
 

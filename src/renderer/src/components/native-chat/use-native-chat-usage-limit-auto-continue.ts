@@ -11,6 +11,10 @@ import {
   isNativeChatUsageLimitCutSchedulable,
   type NativeChatUsageLimitCut
 } from '../../../../shared/native-chat/native-chat-usage-limit-cut'
+import {
+  nativeChatUsageLimitAutoContinueKind,
+  usageLimitContinueStateForCut
+} from '../../../../shared/native-chat/native-chat-usage-limit-auto-continue'
 import type { NativeChatUsageLimitAutoContinueState } from './NativeChatUsageLimitAutoContinue'
 
 const invalidatedByClock = (): (() => void) => () => {}
@@ -33,16 +37,26 @@ export function useNativeChatUsageLimitAutoContinue(
     [capability, knownReset, feed]
   )
   // Select one primitive: every status event replaces the summary, and the notice rows read this.
-  const readCutState = useCallback(() => {
+  const readCutState = useCallback(
+    () =>
+      turnItemId === undefined
+        ? undefined
+        : usageLimitContinueStateForCut(feed.getSnapshot().get(sessionId)?.usageLimitContinue, {
+            turnItemId,
+            resetsAt
+          }),
+    [feed, sessionId, turnItemId, resetsAt]
+  )
+  const subscribe = useCallback(
+    (listener: () => void) => feed.subscribeSession(sessionId, listener),
+    [feed, sessionId]
+  )
+  const cutState = useSyncExternalStore(subscribe, readCutState)
+  const readContinueAt = useCallback(() => {
     const current = feed.getSnapshot().get(sessionId)?.usageLimitContinue
-    return resetsAt !== undefined &&
-      current !== undefined &&
-      current.turnItemId === turnItemId &&
-      current.resetsAt === resetsAt
-      ? current.state
-      : undefined
-  }, [feed, sessionId, turnItemId, resetsAt])
-  const cutState = useSyncExternalStore(feed.subscribe, readCutState)
+    return readCutState() === 'scheduled' ? current?.continueAt : undefined
+  }, [feed, sessionId, readCutState])
+  const continueAt = useSyncExternalStore(subscribe, readContinueAt)
   const turnEndedAt = cut?.turnEndedAt
   // A row on screen when its cut ages out hides the automatic line; the host alone decides sends.
   // The shared minute clock only re-renders; fresh wall time decides, read on every render.
@@ -81,20 +95,18 @@ export function useNativeChatUsageLimitAutoContinue(
       .finally(() => setCancelling(false))
   }, [cancelling, readCutState, target, sessionId, turnItemId, resetsAt])
   return useMemo<NativeChatUsageLimitAutoContinueState | null>(() => {
-    if (
-      capability !== 'supported' ||
-      resetsAt === undefined ||
-      cutState === undefined ||
-      !schedulable
-    ) {
+    const kind =
+      capability === 'supported'
+        ? nativeChatUsageLimitAutoContinueKind(cutState, {
+            schedulable,
+            localHost: target.kind === 'local'
+          })
+        : null
+    if (kind === null || resetsAt === undefined) {
       return null
     }
-    if (cutState === 'off') {
-      return target.kind === 'local' ? { kind: 'off' } : null
-    }
-    if (cutState !== 'scheduled') {
-      return { kind: 'cancelled' }
-    }
-    return { kind: 'scheduled', resetsAt, cancelDisabled: cancelling, cancel }
-  }, [capability, resetsAt, cutState, schedulable, target.kind, cancelling, cancel])
+    return kind === 'scheduled'
+      ? { kind, resetsAt: continueAt ?? resetsAt, cancelDisabled: cancelling, cancel }
+      : { kind }
+  }, [capability, resetsAt, continueAt, cutState, schedulable, target.kind, cancelling, cancel])
 }

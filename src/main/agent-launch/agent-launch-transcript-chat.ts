@@ -1,7 +1,8 @@
 import { initialTranscriptChatView } from '../../shared/transcript-chat-launch-view'
 import type { AgentLaunchExecution, AgentLaunchSurfaceExecution } from './agent-launch-execution'
 import { createLaunchPromptInputs } from './agent-launch-legacy-host'
-import { readAgentLaunchModeSettings, type AgentLaunchModeReceipt } from './agent-launch-mode'
+import type { AgentLaunchModeReceipt } from '../../shared/agent-launch/contracts/agent-launch-intent'
+import { readAgentLaunchModeSettings } from './agent-launch-mode'
 
 /** Fork: a transcript-backed terminal agent opens as its transcript chat when Chat UI is on. */
 export function transcriptTerminalViewMode(
@@ -16,6 +17,7 @@ export function transcriptTerminalViewMode(
         ? undefined
         : readAgentLaunchModeSettings(execution.runtime, intent),
       connectionId,
+      ...(intent.surface ? { requestedSurface: intent.surface } : {}),
       ...(intent.prompt?.delivery === 'draft' ? { draft: intent.prompt.text } : {})
     }) ?? 'terminal'
   )

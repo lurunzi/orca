@@ -1,4 +1,4 @@
-import type { StructuredAgentSessionAcquireInput } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
+import type { StructuredAgentSessionAcquireInput } from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import type { ProviderProcessLaunch } from '../provider-process/provider-process-launch'
 import { dashboardCodexChildLaunch } from '../dashboard-accounts/dashboard-codex-authentication'
 import type {
@@ -6,7 +6,7 @@ import type {
   CodexAcquisitionRegistry,
   CodexSession,
   CodexStructuredLaunch
-} from './codex-structured-session-state'
+} from './structured/session-lifecycle/codex-structured-session-state'
 
 export function codexStructuredChildLaunch(
   launch: CodexStructuredLaunch,

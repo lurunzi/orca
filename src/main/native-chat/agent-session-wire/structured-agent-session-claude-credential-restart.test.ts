@@ -1,8 +1,8 @@
 import { expect, it, vi } from 'vitest'
 import { DashboardAgentRestartCode } from '../../dashboard-accounts/dashboard-agent-restart-protocol'
 import { DashboardToolProvider } from '../../dashboard-accounts/dashboard-allocation-protocol'
-import { fixture } from './structured-agent-session-claude-stop-contract-test-fixture'
-import { HOST_TEST_SESSION as SESSION } from './structured-agent-session-host-test-data'
+import { fixture } from './host/testing/structured-agent-session-claude-stop-contract-test-fixture'
+import { HOST_TEST_SESSION as SESSION } from './host/testing/structured-agent-session-host-test-data'
 
 it('releases a strict credential close after the original Claude connection reports its late root exit', async () => {
   const { host, store, claude } = fixture

@@ -2,27 +2,28 @@ import type {
   ReadTerminalScreenReadiness,
   TerminalScreenReadiness
 } from '../../terminal-screen-readiness'
-import { isShellProcess } from '../../../../shared/agent-detection'
+import { isShellProcess } from '../../../../shared/agent-status/process/shell-process-detection'
 import type {
   RuntimeTerminalWait,
   RuntimeTerminalWaitBlockedReason
 } from '../../../../shared/runtime-terminal-contracts'
-import { detectTerminalWaitBlockedReason } from '../../terminal-wait-detection'
+import { detectTerminalWaitBlockedReason } from './terminal-wait-detection'
 import {
   buildPtyTerminalWaitBlockedResult,
   buildPtyTerminalWaitResult
-} from '../../terminal-wait-results'
-import { buildTerminalWaitText } from '../../terminal-wait-tail-state'
+} from './terminal-wait-results'
+import { buildTerminalWaitText } from './terminal-wait-tail-state'
 import {
   evaluateTuiIdle,
   type QuietForegroundLane,
+  type TuiIdleEvaluationInput,
   type TuiIdleVerdict
-} from '../../tui-idle-evidence'
+} from './tui-idle-evidence'
 import {
   outputClockOf,
   ptyTuiIdleEvidence,
   type TuiIdleEvidenceSource
-} from '../../tui-idle-evidence-source'
+} from './tui-idle-evidence-source'
 
 /** Open lanes accept missing clocks as uncorroborated quiet for unseen daemon output; caller timeouts remain and delivery cannot use this lane.
  * Known agents on after-paint lanes must first paint their own command output, excluding shell prompts/echo. */
@@ -40,8 +41,8 @@ function isQuietForQuiescence(
   }
   return Date.now() - lastOutputAt >= quiescenceMs
 }
-import type { TerminalWaiter } from '../../runtime-terminal-contracts'
-import type { RuntimePtyWorktreeRecord } from '../../runtime-terminal-state-records'
+import type { TerminalWaiter } from './terminal-waiter'
+import type { RuntimePtyWorktreeRecord } from '../records/runtime-terminal-state-records'
 
 /**
  * A pane whose current screen is authoritative (Antigravity) settles from that screen alone.
@@ -58,6 +59,14 @@ export function screenReadinessVerdict(
     return { kind: 'blocked', reason: screen.blockedReason }
   }
   return screen.ready ? { kind: 'ready-strong' } : { kind: 'working' }
+}
+
+/** The agent's own status report (OSC 7501 or hooks) outranks the screen; the screen rules panes without one. */
+export function screenRuledTuiIdleVerdict(
+  screen: TerminalScreenReadiness | null | undefined,
+  input: TuiIdleEvaluationInput
+): TuiIdleVerdict {
+  return (input.firstPartyStatus ? null : screenReadinessVerdict(screen)) ?? evaluateTuiIdle(input)
 }
 
 type RuntimeTerminalIdlePollDependencies = TuiIdleEvidenceSource & {
@@ -143,12 +152,13 @@ export class RuntimeTerminalIdlePolls {
     const readWaitText = () =>
       buildTerminalWaitText(pty.tailBuffer, pty.tailPartialLine, pty.preview)
     return {
-      verdict:
-        screenReadinessVerdict(this.deps.getScreenReadiness?.(pty.ptyId, readWaitText())) ??
-        evaluateTuiIdle({
+      verdict: screenRuledTuiIdleVerdict(
+        this.deps.getScreenReadiness?.(pty.ptyId, readWaitText()),
+        {
           ...ptyTuiIdleEvidence(this.deps, pty, readWaitText),
           launchReadiness: entry.waiter.launchReadiness
-        }),
+        }
+      ),
       ptyId: pty.ptyId,
       ready: () => buildPtyTerminalWaitResult(handle, 'tui-idle', pty),
       blocked: (reason) => buildPtyTerminalWaitBlockedResult(handle, 'tui-idle', pty, reason),

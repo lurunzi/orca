@@ -20,8 +20,9 @@ import {
   type AgentSessionContinuationRequest
 } from '@/lib/agent-session-continuation'
 import { ClaudeSwitcherMenu } from '@/components/status-bar/ClaudeSwitcherMenu'
+import { CodexSwitcherMenu } from '@/components/status-bar/CodexSwitcherMenu'
 import { ProviderAccountChatButton } from '@/components/status-bar/ProviderAccountChatButton'
-import { isTuiAgent } from '../../../../shared/tui-agent-config'
+import { isTuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent-config'
 import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
 import type { AgentSessionOptionsResult } from '../../../../shared/agent-session/options/agent-session-options-result'
 import { executionHostIdForStructuredTarget } from '@/runtime/structured-agent-session-owner'
@@ -105,33 +106,37 @@ export function NativeChatUsageLimitActionsProvider({
     directory.runtimeEnvironmentId ===
       (pane.target.kind === 'environment' ? pane.target.environmentId : null)
   let account: ReactNode = null
-  if (pane.agent === 'claude' && active && pane.isVisible) {
+  const accountProvider =
+    pane.agent === 'claude' ? 'claude' : pane.agent === 'codex' ? 'codex' : null
+  if (accountProvider && active && pane.isVisible) {
     if (canSwitchAccount === undefined) {
-      account = <ProviderAccountChatButton provider="claude" target={pane.target} disabled />
-    } else if (canSwitchAccount) {
       account = (
-        <ClaudeSwitcherMenu
-          key={executionHostIdForStructuredTarget(pane.target)}
-          claude={null}
-          compact
-          iconOnly
-          chatAction={{
-            target: pane.target,
-            canSwitch: async () => {
-              const current = intent.current
-              if (!current || !active) {
-                return false
-              }
-              const result = await callStructuredAgentSession<AgentSessionOptionsResult>(
-                pane.target,
-                'agentSession.options',
-                { sessionId: pane.sessionId }
-              )
-              return intent.current === current && result.canSwitchAccount === true
-            }
-          }}
-        />
+        <ProviderAccountChatButton provider={accountProvider} target={pane.target} disabled />
       )
+    } else if (canSwitchAccount) {
+      const chatAction = {
+        target: pane.target,
+        canSwitch: async () => {
+          const current = intent.current
+          if (!current || !active) {
+            return false
+          }
+          const result = await callStructuredAgentSession<AgentSessionOptionsResult>(
+            pane.target,
+            'agentSession.options',
+            { sessionId: pane.sessionId }
+          )
+          return intent.current === current && result.canSwitchAccount === true
+        }
+      }
+      const menu = { compact: true, iconOnly: true, chatAction }
+      const key = executionHostIdForStructuredTarget(pane.target)
+      account =
+        accountProvider === 'claude' ? (
+          <ClaudeSwitcherMenu key={key} claude={null} {...menu} />
+        ) : (
+          <CodexSwitcherMenu key={key} codex={null} {...menu} />
+        )
     }
   }
   const openHandOff = useCallback(async (): Promise<void> => {

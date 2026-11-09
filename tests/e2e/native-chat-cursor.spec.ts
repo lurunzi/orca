@@ -18,7 +18,7 @@ import {
 async function enableCursorNativeChat(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const nextSettings = await window.api.settings.set({
-      experimentalNativeChat: true,
+      nativeChatProviders: { cursor: true },
       uiLanguage: 'en',
       nativeChatSessionOptions: {
         cursor: {
@@ -76,7 +76,7 @@ function line(record: unknown): string {
 }
 
 test.describe('Cursor Native Chat', () => {
-  test('renders, tails, controls and preserves a Cursor conversation', async ({
+  test('preserves a Cursor conversation when a model change cannot be verified', async ({
     electronApp,
     orcaPage
   }, testInfo) => {
@@ -94,6 +94,10 @@ test.describe('Cursor Native Chat', () => {
     await ensureTerminalVisible(orcaPage)
     await waitForActiveTerminalManager(orcaPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
+    await electronApp.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('pty:confirmForegroundProcess')
+      ipcMain.handle('pty:confirmForegroundProcess', () => 'cursor-agent')
+    })
 
     const descriptor = await waitForActivePaneHookDescriptor(orcaPage)
     const ptyId = await waitForActivePanePtyId(orcaPage)
@@ -175,7 +179,7 @@ test.describe('Cursor Native Chat', () => {
     await orcaPage.getByRole('button', { name: 'Show terminal' }).click()
     await expect(chatRoot).toHaveCount(0)
     await expect(orcaPage.getByRole('textbox', { name: 'Terminal input' })).toBeVisible()
-    await orcaPage.getByRole('button', { name: 'Show chat view' }).click()
+    await orcaPage.getByRole('button', { name: 'Continue in Chat UI' }).click()
     await expect(chatRoot).toBeVisible()
     await expect(chatRoot.getByText(liveText)).toBeVisible()
     await orcaPage.screenshot({ path: path.join(screenshotDir, '02-cursor-live-restored.png') })
@@ -183,16 +187,18 @@ test.describe('Cursor Native Chat', () => {
     const modelButton = chatRoot.getByRole('button', { name: 'Model' })
     await expect(modelButton).toBeVisible()
     await modelButton.click()
-    await orcaPage.getByRole('menuitemradio', { name: 'GPT-5.3 Codex' }).click()
-    const modeButton = chatRoot.getByRole('button', { name: 'Effort' })
-    await expect(modeButton).toBeEnabled()
-    await modeButton.click()
-    await expect(orcaPage.getByText('Fast mode', { exact: true })).toBeVisible()
+    await orcaPage.getByRole('option', { name: 'GPT-5.3 Codex' }).click()
+    await expect(
+      orcaPage.getByText('Could not verify the model change; open the terminal to check.', {
+        exact: true
+      })
+    ).toBeVisible()
     await orcaPage.keyboard.press('Escape')
+    await expect(chatRoot.getByText(liveText)).toBeVisible()
 
     await clearTerminalPtyWriteLog(electronApp)
     const prompt = 'Cursor composer routed to the active PTY'
-    await chatRoot.getByPlaceholder('Send a message…').fill(prompt)
+    await chatRoot.getByRole('textbox').fill(prompt)
     await chatRoot.getByRole('button', { name: 'Send' }).click()
     await expect
       .poll(

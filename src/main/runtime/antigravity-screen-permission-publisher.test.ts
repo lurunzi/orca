@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Terminal } from '@xterm/headless'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import type { AgentStatusIpcPayload } from '../../shared/agent-status-types'
-import type { RuntimeVisibleTerminalState } from './runtime-terminal-state-records'
+import type { AgentStatusIpcPayload } from '../../shared/agent-status/contracts/agent-status-ipc-payload'
+import type { RuntimeVisibleTerminalState } from './terminal/records/runtime-terminal-state-records'
 import { AntigravityScreenPermissionPublisher } from './antigravity-screen-permission-publisher'
 
 const baseline: AgentStatusIpcPayload = {

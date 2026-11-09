@@ -54,7 +54,7 @@ describe('resolveNativeChatLaunchDraftSend composer readiness', () => {
       agent: 'claude',
       readInputLine: () => '',
       readScreen: () => screen
-    }).sendOptions?.composerReady()
+    }).sendOptions?.composerReady?.()
 
   it('holds a draft replacement until the composer is painted', () => {
     expect(resolve('$ claude --prefill ...')).toBe(false)

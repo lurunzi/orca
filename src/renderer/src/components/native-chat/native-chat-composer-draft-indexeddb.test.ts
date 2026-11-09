@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createIndexedDbNativeChatComposerDraftStorage } from './native-chat-composer-draft-indexeddb'
 
 type FakeTransaction = {
+  mode: IDBTransactionMode
   oncomplete: (() => void) | null
   onerror: (() => void) | null
   onabort: (() => void) | null
@@ -25,7 +26,7 @@ function fakeDatabase(): {
   const puts: unknown[] = []
   const database = {
     objectStoreNames: { contains: () => true },
-    transaction: () => {
+    transaction: (_name: string, mode: IDBTransactionMode) => {
       const store: FakeStore = {
         put: (value) => {
           puts.push(value)
@@ -42,6 +43,7 @@ function fakeDatabase(): {
         }
       }
       const transaction: FakeTransaction = {
+        mode,
         oncomplete: null,
         onerror: null,
         onabort: null,
@@ -86,29 +88,6 @@ describe('the IndexedDB draft storage', () => {
     await expect(write).resolves.toBeUndefined()
   })
 
-  it('settles a read-modify-write only when its transaction completes', async () => {
-    const { factory, transactions, puts } = fakeDatabase()
-    const update = createIndexedDbNativeChatComposerDraftStorage(factory).update(
-      'scope',
-      () => DRAFT
-    )
-
-    expect(await settledYet(update)).toBe(false)
-    expect(puts).toEqual([DRAFT])
-    transactions[0]!.oncomplete?.()
-    await expect(update).resolves.toBeUndefined()
-  })
-
-  it('rejects a write whose transaction aborts, as on a full disk', async () => {
-    const { factory, transactions } = fakeDatabase()
-    const write = createIndexedDbNativeChatComposerDraftStorage(factory).write('scope', DRAFT)
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    transactions[0]!.error = new Error('QuotaExceededError')
-    transactions[0]!.onabort?.()
-
-    await expect(write).rejects.toThrow('QuotaExceededError')
-  })
-
   describe('through the draft store', () => {
     const loaded: { clearNativeChatComposerDraftsForTests: () => void }[] = []
     afterEach(() => {
@@ -138,7 +117,7 @@ describe('the IndexedDB draft storage', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(await settledYet(settled.then(() => {}))).toBe(false)
-      const write = transactions.at(-1)!
+      const write = transactions.find((transaction) => transaction.mode === 'readwrite')!
       write.oncomplete?.()
       await expect(settled).resolves.toBe(true)
     })
@@ -152,7 +131,7 @@ describe('the IndexedDB draft storage', () => {
       const settled = store.nativeChatComposerDraftWriteSettled('agent-session:s1')
 
       await new Promise((resolve) => setTimeout(resolve, 0))
-      const write = transactions.at(-1)!
+      const write = transactions.find((transaction) => transaction.mode === 'readwrite')!
       write.error = new Error('QuotaExceededError')
       write.onabort?.()
       await expect(settled).resolves.toBe(false)

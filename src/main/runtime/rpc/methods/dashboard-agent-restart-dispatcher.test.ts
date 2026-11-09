@@ -3,9 +3,9 @@ import { RpcDispatcher } from '../dispatcher'
 import { OrcaRuntimeService } from '../../orca-runtime'
 import { DASHBOARD_AGENT_RESTART_METHOD as method } from './dashboard-agent-restart'
 import { DashboardAgentRestartCode } from '../../../dashboard-accounts/dashboard-agent-restart-protocol'
-import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
+import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 
-vi.mock('../../../native-chat/agent-session-wire/structured-agent-session-registry', () => ({
+vi.mock('../../../native-chat/agent-session-wire/host/structured-agent-session-registry', () => ({
   getStructuredAgentSessionHost: vi.fn()
 }))
 afterEach(() => vi.resetAllMocks())

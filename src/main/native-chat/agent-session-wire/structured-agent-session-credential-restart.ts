@@ -8,11 +8,11 @@ import {
 } from '../../dashboard-accounts/dashboard-agent-restart-protocol'
 import { DashboardToolProvider } from '../../dashboard-accounts/dashboard-allocation-protocol'
 import type { AgentSessionProcessIdentity } from '../../../shared/agent-session/lifecycle/agent-session-record'
-import type { StructuredAgentSessionAttachContext } from './structured-agent-session-attach-context'
-import { stopStructuredAgentSessionAgentUnderSerialize } from './structured-agent-session-host-lifetime'
-import { claimOperationStart } from './structured-agent-session-agent-start'
-import { sameProviderChild } from './structured-agent-session-provider-child'
-import { holdUnsentSends } from '../agent-session-journal/journal-unsent-send-hold'
+import type { StructuredAgentSessionAttachContext } from './acquisition/structured-agent-session-attach-context'
+import { stopStructuredAgentSessionAgentUnderSerialize } from './termination/structured-agent-session-host-lifetime'
+import { claimOperationStart } from './startup/structured-agent-session-agent-start'
+import { sameProviderChild } from './host/structured-agent-session-provider-child'
+import { holdUnsentSends } from '../agent-session-journal/queued-messages/journal-unsent-send-hold'
 
 const nativeAgents: Readonly<Record<DashboardToolProvider, string>> = {
   [DashboardToolProvider.Codex]: 'codex',

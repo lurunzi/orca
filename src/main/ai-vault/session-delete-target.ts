@@ -1,5 +1,5 @@
 import { basename, dirname, extname, join, resolve } from 'node:path'
-import type { AiVaultAgent } from '../../shared/ai-vault-types'
+import type { AiVaultAgent } from '../../shared/ai-vault/contracts/ai-vault-types'
 import {
   isAiVaultDeletableAgent,
   isAiVaultSyntheticSessionPath,
@@ -7,7 +7,7 @@ import {
   type AiVaultSessionDeleteRejectionCode,
   type AiVaultSessionDeleteRemoval,
   type AiVaultSessionDeleteValidationResult
-} from '../../shared/ai-vault-session-deletion'
+} from '../../shared/ai-vault/contracts/ai-vault-session-deletion'
 import {
   LOCAL_EXECUTION_HOST_ID,
   normalizeExecutionHostId,
@@ -19,7 +19,8 @@ import {
   isDiscoverableSessionFile,
   sessionRowRootDirs
 } from './session-scanner-agent-sources'
-import { subagentTranscriptsDirFor } from './session-scanner-subagent-transcripts'
+import { subagentTranscriptsDirFor } from './scanners/claude/session-scanner-subagent-transcripts'
+import { isCursorAcpSessionMetaPath } from './session-scanner-cursor-acp-parser'
 import type { AiVaultScanOptions } from './session-scanner-types'
 
 // These sessions own their containing directory, including companion files.
@@ -92,7 +93,10 @@ function sessionDeleteRemovals(args: {
 }): readonly AiVaultSessionDeleteRemoval[] | null {
   const { agent, resolvedPath, matchedRoot, roots } = args
 
-  if (AI_VAULT_WHOLE_DIRECTORY_DELETE_AGENTS.has(agent)) {
+  if (
+    AI_VAULT_WHOLE_DIRECTORY_DELETE_AGENTS.has(agent) ||
+    (agent === 'cursor' && isCursorAcpSessionMetaPath(resolvedPath))
+  ) {
     const sessionDir = dirname(resolvedPath)
     if (sessionDir === matchedRoot || !isPathInsideOrEqual(matchedRoot, sessionDir)) {
       return null

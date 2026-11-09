@@ -1,4 +1,4 @@
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { NativeChatLiveSession } from './native-chat-live-session-contract'
 import type { useStructuredAgentSession } from './use-structured-agent-session'
 

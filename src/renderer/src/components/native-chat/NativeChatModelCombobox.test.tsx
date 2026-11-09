@@ -13,10 +13,31 @@ const CHOICES = [
   { value: 'opus', label: 'Opus 4.8' }
 ]
 
+const CURSOR_CHOICES = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'grok-4.7-high-fast', label: 'Grok 4.7' },
+  { value: 'cursor-grok-4.6-high', label: 'Grok 4.6' },
+  { value: 'composer-2.5-fast', label: 'Composer 2.5' },
+  { value: 'claude-opus-5-5-medium', label: 'Claude Opus 5.5' },
+  { value: 'gemini-4-argon-medium', label: 'Gemini 4 Argon' },
+  { value: 'gpt-5.6-sol-medium', label: 'GPT-5.6 Sol' },
+  { value: 'claude-fable-5-1-high', label: 'Claude Fable 5.1' },
+  { value: 'claude-opus-4-8-high', label: 'Claude Opus 4.8' },
+  { value: 'gpt-5.2-high', label: 'GPT-5.2' },
+  { value: 'gemini-3.8-flash-low', label: 'Gemini 3.8 Flash' }
+]
+
 const settle = (): Promise<void> =>
   act(async () => new Promise((resolve) => setTimeout(resolve, 30)))
 
-type ComboboxOptions = { readOnly?: boolean; readOnlyReason?: string | null }
+type ComboboxOptions = {
+  readOnly?: boolean
+  readOnlyReason?: string | null
+  agent?: string
+  grouped?: boolean
+  choices?: typeof CHOICES
+  currentValue?: string
+}
 type OnSelect = ReturnType<typeof vi.fn<(value: string) => void>>
 
 async function renderCombobox(
@@ -25,12 +46,14 @@ async function renderCombobox(
   const onSelect = vi.fn<(value: string) => void>()
   render(
     <NativeChatModelCombobox
-      choices={CHOICES}
-      currentValue="opus"
+      choices={props.choices ?? CHOICES}
+      currentValue={props.currentValue ?? 'opus'}
       readOnly={props.readOnly ?? false}
       readOnlyReason={props.readOnlyReason ?? null}
       busy={false}
       onSelect={onSelect}
+      agent={props.agent}
+      grouped={props.grouped}
     />
   )
   await settle()
@@ -101,5 +124,66 @@ describe('NativeChatModelCombobox', () => {
     fireEvent.keyDown(search, { key: 'Enter' })
     fireEvent.click(screen.getByRole('option', { name: /GPT-5.2 Codex/ }))
     expect(onSelect).not.toHaveBeenCalled()
+  })
+})
+
+describe('NativeChatModelCombobox (Cursor grouped)', () => {
+  it('renders sections with variant suffixes and collapses overflow', async () => {
+    await renderCombobox({
+      choices: CURSOR_CHOICES,
+      currentValue: 'claude-opus-5-5-medium',
+      agent: 'cursor'
+    })
+    expect(screen.getByText('Cursor Models')).not.toBeNull()
+    expect(screen.getByText('Other Models')).not.toBeNull()
+    expect(screen.getByText('More models')).not.toBeNull()
+    expect(screen.getByText('High Fast')).not.toBeNull()
+
+    const models = listedModels()
+    expect(models).toContain('auto')
+    expect(models).toContain('grok-4.7-high-fast')
+    expect(models).toContain('claude-opus-5-5-medium')
+    expect(models).not.toContain('claude-opus-4-8-high')
+    expect(models).not.toContain('gpt-5.2-high')
+  })
+
+  it('expands More models in place when clicked', async () => {
+    await renderCombobox({
+      choices: CURSOR_CHOICES,
+      currentValue: 'claude-opus-5-5-medium',
+      agent: 'cursor'
+    })
+    fireEvent.click(screen.getByText('More models'))
+    await settle()
+
+    const models = listedModels()
+    expect(models).toContain('claude-opus-4-8-high')
+    expect(models).toContain('gpt-5.2-high')
+    expect(models).toContain('gemini-3.8-flash-low')
+  })
+
+  it('finds collapsed models when searching', async () => {
+    const { search } = await renderCombobox({
+      choices: CURSOR_CHOICES,
+      currentValue: 'claude-opus-5-5-medium',
+      agent: 'cursor'
+    })
+    fireEvent.change(search, { target: { value: '4.8' } })
+    await settle()
+
+    expect(listedModels()).toEqual(['claude-opus-4-8-high'])
+  })
+
+  it('keeps selected overflow model visible in the main list', async () => {
+    await renderCombobox({
+      choices: CURSOR_CHOICES,
+      currentValue: 'gpt-5.2-high',
+      agent: 'cursor'
+    })
+    const models = listedModels()
+    expect(models).toContain('gpt-5.2-high')
+    expect(screen.getByRole('option', { current: true }).getAttribute('data-value')).toBe(
+      'gpt-5.2-high'
+    )
   })
 })

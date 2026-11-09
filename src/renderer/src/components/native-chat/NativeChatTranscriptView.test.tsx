@@ -1,10 +1,13 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render as renderComponent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import type { NativeChatSessionTransport } from './native-chat-session-transport'
 import { installNativeChatMessageListTestViewport } from './native-chat-message-list-test-viewport'
+import { TooltipProvider } from '@/components/ui/tooltip'
+
+const render = (ui: React.ReactElement) => renderComponent(ui, { wrapper: TooltipProvider })
 
 type FrameHandler = Parameters<NativeChatSessionTransport['subscribe']>[1]
 const mocks = vi.hoisted(() => {
@@ -36,7 +39,7 @@ vi.mock('./use-cursor-transcript-resume', () => ({
 vi.mock('@/lib/cursor-transcript-terminal', () => ({
   findCursorTranscriptTerminal: mocks.terminal
 }))
-vi.mock('@/lib/worktree-runtime-owner', () => ({
+vi.mock('@/lib/workspace/ownership/worktree-runtime-owner', () => ({
   getKnownExecutionHostIdForWorktree: () => 'runtime:worker-host'
 }))
 vi.mock('./NativeChatResolvedView', () => ({
@@ -98,7 +101,8 @@ it('keeps an editable draft with the transcript while switching away and back', 
     'cursor',
     'worker',
     expect.any(Number),
-    source.transcriptPath
+    source.transcriptPath,
+    { wakeWslDistro: false }
   )
   await act(async () => {
     mocks.frame?.({ type: 'appended', messages: [message('two', 'Next worker response')] })

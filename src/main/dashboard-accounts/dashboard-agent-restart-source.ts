@@ -6,7 +6,7 @@ import {
 } from './dashboard-agent-restart-protocol'
 import { DashboardCodexAdoptionStateSchema } from './dashboard-codex-adoption-protocol'
 import { DashboardClaudeLaunchStateSchema } from './dashboard-claude-launch-protocol'
-import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-host'
+import type { StructuredAgentSessionHost } from '../native-chat/agent-session-wire/host/structured-agent-session-host'
 
 type PoolProcess = {
   session_id: string

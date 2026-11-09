@@ -4,15 +4,14 @@ import type { RuntimeTerminalCreate } from '../../../../../../shared/runtime-ter
  * Structured create refusals fail start through the worker error contract instead of silently downgrading. */
 
 import type { AgentLaunchPreferences } from '../../../../../../shared/agent-session/agent-session-host-authority'
-import type { TuiAgent } from '../../../../../../shared/tui-agent'
+import type { TuiAgent } from '../../../../../../shared/agent-launch/catalog/tui-agent'
+import { isTranscriptChatAgent } from '../../../../../../shared/transcript-chat-launch-view'
 import { executeAgentLaunch } from '../../../../../agent-launch/agent-launch-executor'
 import type { AgentLaunchSurfaceFactory } from '../../../../../agent-launch/agent-launch-surface-factories'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
-import type { OrchestrationDb } from '../../../../orchestration/db'
-import {
-  WORKER_START_VOCABULARY,
-  type WorkerStartModeReceipt
-} from '../../orchestration-worker-start-mode'
+import type { OrchestrationDb } from '../../../../orchestration/db/orchestration-db'
+import { WORKER_START_VOCABULARY } from '../structured-workers/orchestration-worker-start-mode'
+import type { AgentLaunchModeReceipt as WorkerStartModeReceipt } from '../../../../../../shared/agent-launch/contracts/agent-launch-intent'
 import { tearDownFailedWorkerStart } from './failed-worker-start-teardown'
 import type { WorkerStartInput } from './worker-start-schema'
 import {
@@ -128,6 +127,9 @@ async function launchWorkerAgent(
   let structuredSession: WorkerStructuredSession | null = null
   let terminalCreation: RuntimeTerminalCreate | undefined
   let launched: Awaited<ReturnType<typeof executeAgentLaunch>>
+  const existingConnectionId = existing
+    ? await transcriptChatConnectionId(args.runtime, agent, existing.id)
+    : undefined
   try {
     launched = await executeAgentLaunch({
       runtime: args.runtime,
@@ -135,7 +137,11 @@ async function launchWorkerAgent(
         agent,
         // The worker's own factory builds the create from the dispatch, so the target carries none.
         target: existing
-          ? { kind: 'existing', worktree: existing.id }
+          ? {
+              kind: 'existing',
+              worktree: existing.id,
+              ...(existingConnectionId !== undefined ? { connectionId: existingConnectionId } : {})
+            }
           : { kind: 'create-worktree', create: {} },
         launchSource: 'orchestration'
       },
@@ -195,7 +201,8 @@ async function launchWorkerAgent(
     await tearDownFailedWorkerStart({
       runtime: args.runtime,
       structuredSession,
-      dispatchId: args.dispatchId
+      dispatchId: args.dispatchId,
+      error
     })
     throw error
   }
@@ -243,12 +250,13 @@ function workerSurfaceFactory(
         fence: session.fence
       }
     },
-    createTerminalAgent: async ({ worktreeId }) => {
+    createTerminalAgent: async ({ worktreeId, viewMode }) => {
       recordSurfaceStage(worktreeId)
       const terminal = await createExistingWorktreeWorkerTerminal({
         runtime: args.runtime,
         worktreeId,
         agent,
+        ...(viewMode === 'chat' ? { viewMode } : {}),
         ...(args.launchPreferences ? { launchPreferences: args.launchPreferences } : {}),
         taskId: args.taskId,
         effects: args.effects
@@ -260,6 +268,23 @@ function workerSurfaceFactory(
         ...(terminal.warning ? { warning: terminal.warning } : {})
       }
     }
+  }
+}
+
+/** Fork: the executor opens a transcript chat only for a workspace it knows is local, so name the connection. */
+async function transcriptChatConnectionId(
+  runtime: OrcaRuntimeService,
+  agent: TuiAgent,
+  worktreeId: string
+): Promise<string | null | undefined> {
+  if (!isTranscriptChatAgent(agent)) {
+    return undefined
+  }
+  try {
+    return (await runtime.showTerminalWorkspaceLaunchScope(`id:${worktreeId}`)).connectionId
+  } catch {
+    // An unknown connection keeps the worker a terminal, as before.
+    return undefined
   }
 }
 

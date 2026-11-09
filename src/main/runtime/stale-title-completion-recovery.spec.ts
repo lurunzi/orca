@@ -2,14 +2,14 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AgentStatusIpcPayload } from '../../shared/agent-status-types'
+import type { AgentStatusIpcPayload } from '../../shared/agent-status/contracts/agent-status-ipc-payload'
 import type { RuntimeMobileSessionTabsSnapshot } from '../../shared/runtime-types'
-import { extractAllOscTitleEntries } from '../../shared/osc-title-extraction'
+import { extractAllOscTitleEntries } from '../../shared/agent-status/title/osc-title-extraction'
 import { settledWriteStub } from '../providers/settled-pty-write-stub'
 import { paneKeyPtyId, ptyPaneKey, rememberPaneKeyForPty } from '../ipc/pty/pane/key-state'
 import { mainProcessState } from '../startup/main-process-state'
 import { driveSyntheticTitleFromHookStatus } from '../startup/synthetic-title-runtime'
-import { createLongPollServer } from './runtime-rpc-long-poll-server.test-fixture'
+import { createLongPollServer } from './rpc/server/runtime-rpc-long-poll-server.test-fixture'
 import {
   createBoundRun,
   createDatabase,
@@ -131,11 +131,25 @@ describe('hook title evidence and completion recovery', () => {
   it('delivers mail to a program that reports its status but never sets a title', async () => {
     vi.useFakeTimers()
     const db = createDatabase('orca-titleless-program-status-')
-    const { runtime, write } = createRuntime(db, { launchAgent: 'antigravity' })
+    const { runtime } = createRuntime(db, { launchAgent: 'antigravity' })
+    const write = vi.fn((_ptyId: string, _data: string) => true)
+    runtime.setPtyController({
+      write,
+      writeWithSettlement: settledWriteStub(write),
+      kill: vi.fn(),
+      getForegroundProcess: async () => 'agy',
+      getSize: () => ({ cols: 120, rows: 40 })
+    })
     const run = createBoundRun(db, 'Titleless Run')
     await runtime.listTerminals()
     runtime.onPtyData(PTY_ID, '\x1b]7501;state=working:app=antigravity\x07', 1)
-    runtime.onPtyData(PTY_ID, '\x1b]7501;state=done:app=antigravity\x07> ', 2)
+    runtime.seedHeadlessTerminal(PTY_ID, '\x1b[0m', { cols: 120, rows: 40 })
+    runtime.onPtyData(
+      PTY_ID,
+      readFileSync(join(__dirname, '__fixtures__', 'antigravity-ready-default-127.txt'), 'utf8'),
+      Date.now()
+    )
+    runtime.onPtyData(PTY_ID, '\x1b]7501;state=done:app=antigravity\x07', 2)
     insertDirectRunMessage(db, run.id, 'Worker done')
     runtime.notifyMessageArrived(`run:${run.id}`, 'worker_done')
     await vi.advanceTimersByTimeAsync(5_000)

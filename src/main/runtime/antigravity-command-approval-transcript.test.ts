@@ -2,8 +2,11 @@ import { makeAgentStatusStoreWiring } from './agent-status-store-wiring.test-fix
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { createTranscriptPane, TRANSCRIPT_PANE_PTY_ID } from './agent-transcript-pane-test-harness'
-import { extractLastOscTitle } from '../../shared/osc-title-extraction'
+import {
+  createTranscriptPane,
+  TRANSCRIPT_PANE_PTY_ID
+} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+import { extractLastOscTitle } from '../../shared/agent-status/title/osc-title-extraction'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn(() => null) },

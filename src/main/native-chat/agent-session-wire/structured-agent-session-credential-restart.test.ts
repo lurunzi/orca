@@ -5,21 +5,21 @@ import {
   type DashboardAgentRestartRequest
 } from '../../dashboard-accounts/dashboard-agent-restart-protocol'
 import { DashboardToolProvider } from '../../dashboard-accounts/dashboard-allocation-protocol'
-import { AgentSessionAcquisitionRootExitObservedError } from './structured-agent-session-acquisition-errors'
-import { holdDelivery } from './structured-agent-session-delivery-hold.test-fixture'
+import { AgentSessionAcquisitionRootExitObservedError } from './acquisition/structured-agent-session-acquisition-errors'
+import { holdDelivery } from './host/testing/structured-agent-session-delivery-hold.test-fixture'
 import {
   hostTestState,
   attach,
   CALLER,
   envelope,
   accepted
-} from './structured-agent-session-host-test-harness'
+} from './host/testing/structured-agent-session-host-test-harness'
 import {
   HOST_TEST_SESSION as SESSION,
   HOST_TEST_THREAD as THREAD,
   HOST_TEST_NOW as NOW,
   hostTestMessage
-} from './structured-agent-session-host-test-data'
+} from './host/testing/structured-agent-session-host-test-data'
 
 async function target(): Promise<DashboardAgentRestartRequest> {
   await attach()

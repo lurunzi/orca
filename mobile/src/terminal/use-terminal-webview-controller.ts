@@ -1,7 +1,7 @@
-import { parseTerminalKittyKeyboardFlags } from '../../../src/shared/terminal-kitty-keyboard-flags'
+import { parseTerminalKittyKeyboardFlags } from '../../../src/shared/terminal/protocol/input-modes/terminal-kitty-keyboard-flags'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { readTerminalCellBox, type TerminalCellBox } from './terminal-cell-box'
-import { fitDimensionsFromCell } from './terminal-grid-fit'
+import { readTerminalCellBox } from './terminal-cell-box'
+import { useTerminalWebViewFitDimensions } from './use-terminal-webview-fit-dimensions'
 import type {
   TerminalInit,
   TerminalWebViewHandle,
@@ -16,6 +16,7 @@ import { routeTerminalQueryReply } from './terminal-webview-query-reply-routing'
 import { useTerminalWebViewReadyPromises } from './terminal-webview-ready-promises'
 import { createTerminalWriteCoalescer } from './terminal-write-coalescer'
 import { isTerminalGestureInput } from './terminal-gesture-input'
+import { useTerminalPromptSuggestionReads } from './terminal-prompt-suggestion-reads'
 
 // Share readiness, queues, coalescing and imperative handles across hosts; only document command/notify transport differs.
 
@@ -23,6 +24,8 @@ export type TerminalWebViewTransport = {
   post: (command: TerminalWebViewCommand & { id: number }) => void
   // Native recovery must ping the exact retained document because iOS can lose its JS state; embedded pages have no separate process.
   pingsOnForegroundRecovery: () => boolean
+  // False for an in-process document: no bridge hop to batch writes for.
+  coalesce?: boolean
 }
 
 export function useTerminalWebViewController(
@@ -51,7 +54,7 @@ export function useTerminalWebViewController(
     onTextScaleChange,
     onCellBoxChange
   } = props
-  const { pingsOnForegroundRecovery, post } = transport
+  const { coalesce, pingsOnForegroundRecovery, post } = transport
   const isWebReadyRef = useRef(false)
   const pendingMessages = useMemo(() => createTerminalWebViewPendingMessages(), [])
   const messageIdRef = useRef(0)
@@ -59,7 +62,7 @@ export function useTerminalWebViewController(
   const terminalThemeKey = useMemo(() => JSON.stringify(terminalTheme ?? null), [terminalTheme])
   // Await init’s ready after its render chain so follow-up fit uses its measured cell box.
   const promises = useTerminalWebViewReadyPromises()
-  const cellBoxRef = useRef<TerminalCellBox | null>(null)
+  const { cellBoxRef, fitDimensions } = useTerminalWebViewFitDimensions(textScale)
   const { clearEngineError, engineError, reportEngineError, reportNativeEngineError } =
     useTerminalWebViewEngineErrorState(onEngineError)
   const { armWebReadyWatchdog, clearWebReadyWatchdog } = useTerminalWebReadyWatchdog(
@@ -92,10 +95,11 @@ export function useTerminalWebViewController(
     [pendingMessages, sendToDocument]
   )
 
-  // Coalesce busy PTY output to avoid paying bridge/IPC/paint overhead for every stream frame.
+  // Native coalesces busy PTY output to avoid paying bridge/IPC/paint overhead for every stream frame.
   const writeCoalescer = useMemo(
-    () => createTerminalWriteCoalescer((data) => postMessage({ type: 'write', data })),
-    [postMessage]
+    () =>
+      createTerminalWriteCoalescer((data) => postMessage({ type: 'write', data }), { coalesce }),
+    [coalesce, postMessage]
   )
 
   useEffect(() => {
@@ -103,6 +107,11 @@ export function useTerminalWebViewController(
       writeCoalescer.clear()
     }
   }, [writeCoalescer])
+  const { suggestionReads, readPromptSuggestion } = useTerminalPromptSuggestionReads(
+    isWebReadyRef,
+    writeCoalescer,
+    sendToDocument
+  )
 
   const confirmWebReady = useCallback(
     (notifyParent: boolean) => {
@@ -137,6 +146,7 @@ export function useTerminalWebViewController(
 
   const receive = useCallback(
     (msg: Record<string, unknown>) => {
+      suggestionReads.receive(msg)
       routeTerminalQueryReply(msg, onTerminalQueryReply)
       if (
         interactionActive &&
@@ -202,19 +212,21 @@ export function useTerminalWebViewController(
       onOpenUrl,
       onTextScaleChange,
       onCellBoxChange,
-      writeCoalescer
+      writeCoalescer,
+      suggestionReads
     ]
   )
 
   // Drop the old generation’s queue; its pre-snapshot chunks would corrupt the replacement buffer.
   const resetReadiness = useCallback(() => {
+    suggestionReads.clear()
     isWebReadyRef.current = false
     pendingPingIdRef.current = null
     pendingMessages.clear()
     writeCoalescer.clear()
     cellBoxRef.current = null
     armWebReadyWatchdog()
-  }, [armWebReadyWatchdog, pendingMessages, writeCoalescer])
+  }, [armWebReadyWatchdog, pendingMessages, writeCoalescer, suggestionReads])
 
   useEffect(() => {
     postMessage({ type: 'set-theme', terminalTheme })
@@ -224,23 +236,14 @@ export function useTerminalWebViewController(
     postMessage({ type: 'set-font-scale', fontScale: textScale })
   }, [postMessage, textScale])
 
-  const fitDimensions = useCallback(
-    (frame: TerminalFrame) => {
-      const cell = cellBoxRef.current
-      // A cell box measured at another text scale cannot authorize this grid’s fit.
-      return cell && cell.fontScale === textScale && frame.width > 0 && frame.height > 0
-        ? fitDimensionsFromCell(cell, frame.width, frame.height)
-        : null
-    },
-    [textScale]
-  )
-
   const handle = useMemo<TerminalWebViewHandle>(
     () => ({
+      readPromptSuggestion,
       prepareForForegroundRecovery() {
         if (!pingsOnForegroundRecovery()) {
           return
         }
+        suggestionReads.clear()
         // Only direct ping bypasses invalid readiness; queue init/write until this exact document proves liveness.
         isWebReadyRef.current = false
         armWebReadyWatchdog()
@@ -277,6 +280,7 @@ export function useTerminalWebViewController(
         postMessage({ type: 'reflow', cols, rows, frame })
       },
       clear() {
+        suggestionReads.clear()
         writeCoalescer.clear()
         postMessage({ type: 'clear' })
       },
@@ -302,7 +306,9 @@ export function useTerminalWebViewController(
       pingsOnForegroundRecovery,
       postMessage,
       promises,
+      readPromptSuggestion,
       sendToDocument,
+      suggestionReads,
       terminalTheme,
       textScale,
       writeCoalescer

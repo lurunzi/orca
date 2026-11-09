@@ -1,15 +1,18 @@
-import * as Submission from '../../agent-prompt-submission-verification'
-import { selectFreshExplicitAgentStatus } from '../../runtime-hook-agent-row-selection'
+import { selectFreshExplicitAgentStatus } from '../../workspaces/process-listing/runtime-hook-agent-row-selection'
 import { OrcaRuntimeWithPluginHookedTerminalInput } from './terminal-plugin-hooked-input'
 import type { RuntimeTerminalAgentStatus } from '../../../../shared/runtime-types'
-import type { RuntimeTerminalAgentStatusSnapshot } from '../../runtime-terminal-agent-status-query'
-import { getDisplayPromptLifecycle } from '../../runtime-worktree-status-projection'
-import type { RuntimePtyWorktreeRecord } from '../../runtime-terminal-state-records'
-import { hasCompatibleAgentTitleIdentity } from '../../../../shared/agent-title-owner'
-import type { PtyForegroundProcessRead } from '../../runtime-terminal-contracts'
-import { recognizeAgentProcess } from '../../../../shared/agent-process-recognition'
-import { settleForegroundShellExit } from '../../windows-shell-exit-proof'
-import type { AgentStatus } from '../../../../shared/agent-detection'
+import type { RuntimeTerminalAgentStatusSnapshot } from '../query/runtime-terminal-agent-status-query'
+import { getDisplayPromptLifecycle } from '../../workspaces/process-listing/runtime-worktree-status-projection'
+import type { RuntimePtyWorktreeRecord } from '../records/runtime-terminal-state-records'
+import { hasCompatibleAgentTitleIdentity } from '../../../../shared/agent-status/title/agent-title-owner'
+import type { PtyForegroundProcessRead } from '../lifecycle/pty-foreground-observation-state'
+import { recognizeAgentProcess } from '../../../../shared/agent-status/process/agent-process-recognition'
+import type {
+  AgentPromptActivity,
+  AgentPromptWaitTextCache
+} from './agent-prompt-submission-verification'
+import { readAgentPromptWaitText } from './agent-prompt-submission-verification'
+import type { AgentStatus } from '../../../../shared/agent-status/title/agent-title-core'
 
 export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends OrcaRuntimeWithPluginHookedTerminalInput {
   protected abstract getPaneKeyForTerminalHandle(handle: string): string | null
@@ -36,7 +39,9 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
     }
   }
 
-  getTerminalAgentStatus(handle: string): Promise<RuntimeTerminalAgentStatus> {
+  async getTerminalAgentStatus(handle: string): Promise<RuntimeTerminalAgentStatus> {
+    // A restored permission wait reads its screen first, so a dialog answered after the restart lifts it (#35962).
+    await this.refreshRestoredWait(handle, this.getTerminalAgentStatusPtyId(handle))
     return this.terminalAgentStatus.getStatus(handle)
   }
 
@@ -66,7 +71,7 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
     ptyId: string,
     afterTitleObservation = 0
   ): Promise<PtyForegroundProcessRead> | null {
-    return this.ptyForegroundAgent.read(ptyId, afterTitleObservation)
+    return this.ptyForegroundAgent.readConfirmingShellFallback(ptyId, afterTitleObservation)
   }
 
   protected async recheckHookAgentPresenceForPty(
@@ -138,7 +143,7 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
   private confirmLegacyPtyAgentExit(
     ptyId: string,
     recoverCompletedHook: boolean,
-    _keepOnSilence: boolean
+    keepOnSilence: boolean
   ): void {
     const pty = this.ptysById.get(ptyId)
     const handle = this.handleByPtyId.get(ptyId)
@@ -153,8 +158,11 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
     const titleObservedAt = pty?.lastOscTitleAt ?? null
     const foregroundRead = this.readPtyForegroundProcessFromController(ptyId, titleObservedAt ?? 0)
     if (!pty?.connected || !foregroundRead) {
-      // Fork: unverifiable foreground evidence never closes chat, owner or not (07da011304).
-      this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
+      if (keepOnSilence) {
+        this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
+      } else if (!recoverCompletedHook) {
+        this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
+      }
       return
     }
     void foregroundRead.then((result) => {
@@ -195,25 +203,17 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
         this.restoreDisprovedAgentExit(ptyId, confirmedStatus)
         return
       }
-      const keep = (): void => {
+      const answered =
+        result.controller === this.ptyController &&
+        result.available &&
+        typeof result.process === 'string'
+      if (!keepOnSilence || answered) {
+        if (!recoverCompletedHook) {
+          this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' })
+        }
+      } else {
         this.ptyTitleTrackersByPtyId.get(ptyId)?.tracker.restoreLastAgentExit()
       }
-      const confirmShell = result.controller.confirmShellForeground
-      settleForegroundShellExit({
-        process:
-          !recoverCompletedHook && result.controller === this.ptyController && result.available
-            ? (result.process ?? undefined)
-            : undefined,
-        isLocalWindowsPty:
-          process.platform === 'win32' && !current.connectionId && current.isWsl !== true,
-        confirmShell: confirmShell && (() => confirmShell.call(result.controller, ptyId)),
-        isCurrent: () =>
-          this.ptysById.get(ptyId) === pty &&
-          pty?.connected === true &&
-          pty.incarnationId === incarnationId,
-        exit: () => this.recordTerminalSideEffectFact(ptyId, { kind: 'agent-exited' }),
-        keep
-      })
     })
   }
 
@@ -238,7 +238,7 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
 
   protected getFreshExplicitAgentStatusForHandle(
     handle: string,
-    paneKeyOverride?: string | null
+    ptyId: string
   ): {
     status: NonNullable<RuntimeTerminalAgentStatus['status']>
     updatedAt: number
@@ -246,16 +246,17 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
   } | null {
     return selectFreshExplicitAgentStatus({
       handle,
-      paneKey: paneKeyOverride ?? this.getPaneKeyForTerminalHandle(handle),
-      hookRows: this.getAgentStatusSnapshotFn?.() ?? []
+      paneKey: this.getPaneKeyForTerminalHandle(handle),
+      hookRows: this.getAgentStatusSnapshotFn?.() ?? [],
+      screenMayHoldDialog: () => this.screenMayHoldAgentDialog(ptyId)
     })
   }
 
   protected getAgentPromptActivity(
     handle: string,
     ptyId: string,
-    waitTextCache?: Submission.AgentPromptWaitTextCache
-  ): Submission.AgentPromptActivity {
+    waitTextCache?: AgentPromptWaitTextCache
+  ): AgentPromptActivity {
     this.assertLiveTerminalHandleTargetsPty(handle, ptyId)
     const outputSequence = this.getPtyOutputSequence(ptyId)
     const explicit = this.getFreshExplicitAgentStatusForPty(handle, ptyId)
@@ -276,7 +277,7 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
         lifecycle.updatedAt > explicit.updatedAt ||
         (lifecycle.updatedAt === explicit.updatedAt && lifecycle.status === 'permission'))
     const waitText = waitTextCache
-      ? Submission.readAgentPromptWaitText(
+      ? readAgentPromptWaitText(
           waitTextCache,
           outputSequence,
           () => this.getTerminalAgentStatusSnapshot(handle, ptyId).waitText
@@ -313,7 +314,7 @@ export abstract class OrcaRuntimeWithSerializeAgentPromptSubmission extends Orca
   }
 
   protected getFreshExplicitAgentStatusForPty(handle: string, ptyId: string) {
-    const explicit = this.getFreshExplicitAgentStatusForHandle(handle)
+    const explicit = this.getFreshExplicitAgentStatusForHandle(handle, ptyId)
     const floor = this.agentPromptExplicitStatusFloorByPtyId.get(ptyId)
     return explicit && (floor === undefined || explicit.updatedAt > floor) ? explicit : null
   }

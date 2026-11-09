@@ -1,5 +1,8 @@
 import type { DashboardCodexAdoptionState } from '../dashboard-accounts/dashboard-codex-adoption-protocol'
-import type { CodexAcquisitionRegistry, CodexSession } from './codex-structured-session-state'
+import type {
+  CodexAcquisitionRegistry,
+  CodexSession
+} from './structured/session-lifecycle/codex-structured-session-state'
 
 export function readCodexDashboardAdoptions(
   sessions: ReadonlyMap<string, CodexSession>,

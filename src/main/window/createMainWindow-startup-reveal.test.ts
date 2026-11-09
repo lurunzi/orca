@@ -6,7 +6,9 @@ vi.mock('electron', async () =>
 vi.mock('./macos-tahoe-release', async () =>
   (await import('./createMainWindow-test-harness')).macosTahoeReleaseMock()
 )
-vi.mock('../app-icon', async () => (await import('./createMainWindow-test-harness')).appIconMock())
+vi.mock('./desktop-integration/app-icon', async () =>
+  (await import('./createMainWindow-test-harness')).appIconMock()
+)
 vi.mock('../browser/browser-manager', async () =>
   (await import('./createMainWindow-test-harness')).browserManagerMock()
 )
@@ -51,13 +53,15 @@ describe('createMainWindow', () => {
       setWebRTCIPHandlingPolicy: vi.fn(),
       invalidate: vi.fn(),
       setWindowOpenHandler: vi.fn(),
-      send: vi.fn()
+      send: vi.fn(),
+      removeListener: vi.fn()
     }
     const browserWindowInstance = {
       webContents,
       on: vi.fn((event, handler) => {
         windowHandlers[event] = handler
       }),
+      removeListener: vi.fn(),
       isDestroyed: vi.fn(() => false),
       isMaximized: vi.fn(() => false),
       isFullScreen: vi.fn(() => false),
@@ -118,6 +122,32 @@ describe('createMainWindow', () => {
         vi.advanceTimersByTime(10_000)
         expect(browserWindowInstance.show).not.toHaveBeenCalled()
         expect(browserWindowInstance.loadFile).not.toHaveBeenCalled()
+      })
+    } finally {
+      trustRenderer.mockRestore()
+    }
+  })
+
+  it('rolls back owned isMaximized handler when subsequent IPC registration fails', () => {
+    vi.useFakeTimers()
+    const { browserWindowInstance } = createStartupRevealWindowFixture()
+    const trustRenderer = vi.spyOn(ui, 'setTrustedUIRendererWebContentsId')
+    const failure = new Error('subsequent listener registration failed')
+    vi.mocked(ipcMain.on).mockImplementation((channel: string) => {
+      if (channel === 'ui:sync-traffic-lights') {
+        throw failure
+      }
+      return ipcMain
+    })
+
+    try {
+      withPlatform('win32', () => {
+        expect(() => createMainWindow(null)).toThrow(failure)
+        expect(browserWindowInstance.destroy).toHaveBeenCalledOnce()
+        expect(trustRenderer).not.toHaveBeenCalled()
+        expect(ipcMain.removeHandler).toHaveBeenCalledWith('window:isMaximized')
+        expect(app.removeListener).toHaveBeenCalledWith('before-quit', expect.any(Function))
+        expect(powerMonitorRemoveListenerMock).toHaveBeenCalledWith('resume', expect.any(Function))
       })
     } finally {
       trustRenderer.mockRestore()

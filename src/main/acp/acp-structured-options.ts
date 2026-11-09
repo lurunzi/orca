@@ -1,3 +1,5 @@
+import { acpSelectChoices } from './acp-select-choices'
+import { acpInitializeForkSupport } from './acp-fork-support'
 import type {
   AgentSessionModelOption,
   AgentSessionOptionChoice,
@@ -5,61 +7,34 @@ import type {
 } from '../../shared/agent-session/agent-session-wire'
 import type { AgentSessionOptionsResult } from '../../shared/agent-session/options/agent-session-options-result'
 import type { AcpStructuredConnection } from './acp-structured-connection'
-import type { AcpDialect } from './acp-dialects/acp-dialect'
+import {
+  acpFastOption,
+  selectAcpConfigOption,
+  withAcpFastMode,
+  type AcpSelectOption,
+  type AcpStructuredOptionsDialect
+} from './acp-dialect-config-options'
 import {
   unpickedSessionConfiguredChoice,
   withLiveCatalogListing,
   type AgentModelCatalogConfiguredChoice,
   type AgentModelCatalogLiveListing
 } from '../native-chat/agent-model-catalog/agent-model-catalog-entry'
-import {
-  SessionConfigSelectGroupSchema,
-  SessionConfigSelectOptionSchema,
-  type AvailableCommand,
-  type InitializeResponse,
-  type SessionConfigOption,
-  type SessionConfigSelectOption,
-  type SessionModelState
+import type {
+  AvailableCommand,
+  InitializeResponse,
+  SessionConfigOption,
+  SessionModelState
 } from './generated/acp-protocol.generated'
-
-type SelectOption = Extract<SessionConfigOption, { type: 'select' }>
 
 export type AcpOptionWrite =
   | { method: 'config'; configId: string; value: string }
   | { method: 'model'; modelId: string }
 
-function selectChoices(option: SelectOption): SessionConfigSelectOption[] {
-  const choices: SessionConfigSelectOption[] = []
-  for (const entry of option.options) {
-    const group = SessionConfigSelectGroupSchema.safeParse(entry)
-    if (group.success) {
-      choices.push(...group.data.options)
-      continue
-    }
-    const choice = SessionConfigSelectOptionSchema.safeParse(entry)
-    if (choice.success) {
-      choices.push(choice.data)
-    }
-  }
-  return choices
-}
-
-function isSelect(option: SessionConfigOption): option is SelectOption {
-  return option.type === 'select'
-}
-
 export class AcpStructuredOptions {
-  constructor(
-    private readonly dialect: Pick<
-      AcpDialect,
-      | 'modelEfforts'
-      | 'withheldCommands'
-      | 'effortChangesModel'
-      | 'clampsUnlistedEffort'
-      | 'builtinCommands'
-    > = {}
-  ) {}
+  constructor(private readonly dialect: AcpStructuredOptionsDialect = {}) {}
 
+  private forkSupport: AgentSessionOptionsResult['forkSupport'] = 'unknown'
   private configOptions: SessionConfigOption[] = []
   private models: SessionModelState | null = null
   private commands: AgentSessionSlashCommand[] | undefined
@@ -71,11 +46,19 @@ export class AcpStructuredOptions {
   readonly appliedInput = new Map<string, string>()
   readonly applied = new Map<string, string>()
   writeRevision = 0
+  /** Orca's own writes in flight; config changes outside them are the agent's own. */
+  writing = 0
+  /** While Orca's hidden model command runs, its reply belongs to it, never to the chat. */
+  commandReply: string | null = null
+  // What a launch-line or model-command selection resolved to. The agent never echoes the raw
+  // selector, so a concrete change away from this retires it; ordinary control proof never does.
+  private selectorProof: Readonly<Record<string, string | undefined>> | null = null
 
   invalidateInput(key: string): void {
     this.appliedInput.delete(key)
     if (key === 'model') {
       this.appliedInput.delete('effort')
+      this.appliedInput.delete('fastMode')
     }
     if (key === 'effort' && this.dialect.effortChangesModel) {
       this.appliedInput.delete('model')
@@ -94,6 +77,40 @@ export class AcpStructuredOptions {
     this.models = response.models ?? null
     this.resolvesConfig = origin === 'new'
     this.appliedInput.clear()
+    this.selectorProof = null
+  }
+
+  /** The session runs a model the launch line applied, so sends need not write it again. */
+  adoptLaunchModel(model: string): void {
+    this.appliedInput.set('model', model)
+    this.picked.add('model')
+    this.selectorProof = this.currentValues()
+  }
+
+  /** `resolvedModel` marks selector proof: the model the agent's own command reported. */
+  adoptOwnWrite(key: string, value: string, resolvedModel?: string): void {
+    this.appliedInput.set(key, value)
+    if (resolvedModel !== undefined) {
+      this.selectorProof = { ...this.currentValues(), model: resolvedModel }
+    } else if (key === 'model') {
+      this.selectorProof = null
+    } else if (this.selectorProof) {
+      this.selectorProof = { ...this.selectorProof, effort: this.currentValues().effort }
+    }
+  }
+
+  matchesNativeRestoredModel(value: string): boolean {
+    if (
+      this.resolvesConfig ||
+      this.picked.has('model') ||
+      (this.dialect.effortChangesModel && this.picked.has('effort'))
+    ) {
+      return false
+    }
+    return (
+      value.length > 0 &&
+      (this.select('model')?.currentValue ?? this.models?.currentModelId) === value
+    )
   }
 
   notePick(key: string): void {
@@ -101,8 +118,22 @@ export class AcpStructuredOptions {
   }
 
   adoptConfigOptions(configOptions: SessionConfigOption[] | null | undefined): void {
-    if (configOptions) {
-      this.configOptions = configOptions
+    if (!configOptions) {
+      return
+    }
+    this.configOptions = configOptions
+    const proof = this.selectorProof
+    if (!proof || this.writing > 0) {
+      return
+    }
+    // A role or :level selector carries thinking too; missing values are no concrete change.
+    const now = this.currentValues()
+    const drifted = (key: string) =>
+      now[key] !== undefined && proof[key] !== undefined && now[key] !== proof[key]
+    if (drifted('model') || drifted('effort')) {
+      this.selectorProof = null
+      this.appliedInput.delete('model')
+      this.appliedInput.delete('effort')
     }
   }
 
@@ -114,6 +145,7 @@ export class AcpStructuredOptions {
 
   /** Each process proves its own built-ins; session rows alone cannot. */
   adoptInitialize(initialized: InitializeResponse): void {
+    this.forkSupport = acpInitializeForkSupport(initialized)
     this.isBuiltin = this.dialect.builtinCommands?.(initialized) ?? (() => false)
     if (this.reportedCommands) {
       this.adoptCommands(this.reportedCommands)
@@ -150,15 +182,26 @@ export class AcpStructuredOptions {
       const option = this.select('thought_level')
       return option ? { method: 'config', configId: option.id, value } : null
     }
+    if (key === 'fastMode' && (value === 'true' || value === 'false')) {
+      const option = acpFastOption(this.configOptions, this.dialect.fastOptionId)
+      return option ? { method: 'config', configId: option.id, value } : null
+    }
     return null
   }
 
+  listedModelIds(): string[] {
+    const modelOption = this.select('model')
+    return modelOption
+      ? acpSelectChoices(modelOption).map((choice) => choice.value)
+      : (this.models?.availableModels.map((model) => model.modelId) ?? [])
+  }
+
   /** Native choices never establish an unobserved model's capability or configured default. */
-  read(): Pick<AgentSessionOptionsResult, 'models' | 'current'> {
+  read(): Pick<AgentSessionOptionsResult, 'models' | 'current' | 'forkSupport'> {
     const modelOption = this.select('model')
     const effortOption = this.select('thought_level')
     const sessionEfforts: AgentSessionOptionChoice[] = effortOption
-      ? selectChoices(effortOption).map((choice) => ({
+      ? acpSelectChoices(effortOption).map((choice) => ({
           value: choice.value,
           label: choice.name,
           ...(choice.description ? { description: choice.description } : {})
@@ -166,7 +209,7 @@ export class AcpStructuredOptions {
       : []
     const currentModel = (modelOption?.currentValue ?? this.models?.currentModelId) || undefined
     const listed: { id: string; label: string; description?: string }[] = modelOption
-      ? selectChoices(modelOption).map((choice) => ({
+      ? acpSelectChoices(modelOption).map((choice) => ({
           id: choice.value,
           label: choice.name,
           ...(choice.description ? { description: choice.description } : {})
@@ -202,14 +245,15 @@ export class AcpStructuredOptions {
       }
     })
     const confirmed = [...(currentModel ? ['model'] : []), ...(effortOption ? ['effort'] : [])]
-    return {
+    return withAcpFastMode(this.configOptions, this.dialect.fastOptionId, {
       models,
+      forkSupport: this.forkSupport,
       current: {
         ...(currentModel ? { model: currentModel } : {}),
         ...(effortOption ? { effort: effortOption.currentValue } : {}),
         confirmed
       }
-    }
+    })
   }
 
   /** Unpicked new-session default: null if unlisted, undefined if the session cannot establish it. */
@@ -231,7 +275,8 @@ export class AcpStructuredOptions {
     const { current } = this.read()
     return {
       ...(current.model ? { model: current.model } : {}),
-      ...(current.effort ? { effort: current.effort } : {})
+      ...(current.effort ? { effort: current.effort } : {}),
+      ...(current.fastMode !== undefined ? { fastMode: String(current.fastMode) } : {})
     }
   }
 
@@ -246,9 +291,13 @@ export class AcpStructuredOptions {
       return this.applied.get('permissionMode') ?? null
     }
     const current = this.select('mode')?.currentValue
-    return current
+    const mode = current
       ? (Object.entries(values).find(([, value]) => value === current)?.[0] ?? null)
       : null
+    // Orca's own Full access runs the agent in its ask mode.
+    return mode === 'ask' && this.applied.get('permissionMode') === 'full-access'
+      ? 'full-access'
+      : mode
   }
 
   // Match the mode category rather than assuming an agent's config ID.
@@ -256,11 +305,16 @@ export class AcpStructuredOptions {
     return this.select('mode')?.id ?? 'mode'
   }
 
-  private select(category: string): SelectOption | null {
-    const option = this.configOptions.find(
-      (entry) => entry.category === category || (category === 'model' && entry.id === 'model')
-    )
-    return option && isSelect(option) ? option : null
+  // Only the running values, so config notifications don't project the whole catalog again.
+  private currentValues(): Readonly<Record<string, string | undefined>> {
+    return {
+      model: (this.select('model')?.currentValue ?? this.models?.currentModelId) || undefined,
+      effort: this.select('thought_level')?.currentValue
+    }
+  }
+
+  private select(category: string): AcpSelectOption | null {
+    return selectAcpConfigOption(this.configOptions, category, this.dialect.effortOptionIds)
   }
 }
 

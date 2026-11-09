@@ -1,4 +1,4 @@
-import type { ClipboardEventHandler, KeyboardEventHandler, RefObject } from 'react'
+import type { ClipboardEventHandler, KeyboardEventHandler, ReactNode, RefObject } from 'react'
 import type { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
 import type { ComposerAutocomplete } from '../../../../shared/native-chat/input/native-chat-composer-autocomplete'
 import type { NativeChatPickerItem } from '../../../../shared/native-chat/input/native-chat-picker-items'
@@ -10,11 +10,15 @@ import type { NativeChatFollowUpBehavior } from '../../../../shared/native-chat/
 import type { NativeChatComposerInput } from './native-chat-composer-input'
 import type { NativeChatMentionFiles } from './use-native-chat-mention-files'
 import type { NativeChatComposerNotice } from './native-chat-composer-notice'
-import type { NativeChatContextUsageSummary } from './native-chat-context-usage-summary'
+import type { NativeChatContextUsageSummary } from '../../../../shared/native-chat/native-chat-context-usage-summary'
 import type { CoordinatorUnavailableReason } from './NativeChatCoordinatorToggle'
 import type { NativeChatAfterStopSend } from './native-chat-composer-target'
-import type { NativeChatOptionPickerRequest } from './native-chat-composer-types'
+import type {
+  NativeChatComposerImageAttachment,
+  NativeChatOptionPickerRequest
+} from './native-chat-composer-types'
 import type { NativeChatComposerGoalMode } from './use-native-chat-composer-submit'
+import type { NativeChatSteerChordPreview } from './use-native-chat-steer-chord-preview'
 
 export type NativeChatComposerFieldProps = {
   editSession?: { cancel: () => void }
@@ -74,6 +78,9 @@ export type NativeChatComposerFieldProps = {
   onDictationHoldStart: () => void
   onDictationHoldEnd: () => void
   onSend: () => void
+  /** Held Cmd/Ctrl: Send shows, and a click runs, what Cmd/Ctrl+Enter would do. */
+  steerPreview?: NativeChatSteerChordPreview | null
+  onSteerPreview?: () => void
   onStop?: () => void
   sessionOptionsSurface: SessionOptionsSurface | null
   sessionOptionsSnapshot: SessionOptionDescriptor[]
@@ -82,19 +89,7 @@ export type NativeChatComposerFieldProps = {
   goalMode?: NativeChatComposerGoalMode
   agent?: string
   launchPrompt?: { placeholder: string }
+  workspaceFooter?: ReactNode
 }
 
-export type NativeChatComposerImageAttachment = {
-  id: string
-  /** Empty while `pending`: the clipboard image has no agent-readable path yet. */
-  path: string
-  connectionId?: string
-  /** Show clipboard thumbnails immediately, without waiting for disk/upload completion. */
-  previewUrl?: string
-  /** True while the pasted image is still being written to disk or uploaded. */
-  pending?: boolean
-  /** The file's name while it uploads: a dropped or picked file, not a pasted image. */
-  pendingName?: string
-  /** Set on an image the draft names but can't send: the file to attach again. */
-  unavailableName?: string
-}
+export type { NativeChatComposerImageAttachment } from './native-chat-composer-types'

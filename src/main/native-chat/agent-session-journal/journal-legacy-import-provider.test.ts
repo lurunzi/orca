@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
 import { removeTree } from '../../../shared/windows-transient-lock-removal'
-import { prepareLegacyTranscriptImport } from './journal-legacy-import'
+import { prepareLegacyTranscriptImport } from './history-import/journal-legacy-import'
 
 const roots: string[] = []
 

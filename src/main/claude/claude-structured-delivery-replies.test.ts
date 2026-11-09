@@ -13,7 +13,7 @@ import { agentJournalItemKey } from '../../shared/agent-session/journal/agent-se
 import { projectNativeChatTranscript } from '../../shared/native-chat/transcript/native-chat-transcript-projection'
 import { latestStructuredAgentSessionUserItem } from '../../shared/agent-session/requests/structured-agent-session-latest-request'
 import { projectStructuredItemsToNativeChat } from '../../shared/agent-session/view/structured-agent-session-projection'
-import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
+import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
 import { createClaudeJournalTranslator } from './structured/journal/claude-structured-journal-translation'
 
 const SESSION = 'claude-session'

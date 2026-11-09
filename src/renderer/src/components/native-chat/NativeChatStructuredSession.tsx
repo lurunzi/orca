@@ -27,6 +27,7 @@ import { NativeChatFindBar } from './NativeChatFindBar'
 import { nativeChatQueueFollowUps } from '../../../../shared/native-chat/input/native-chat-follow-up-behavior'
 import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
 import { useNativeChatLinkActions } from './use-native-chat-link-actions'
+import { NativeChatLinkClickContext } from './native-chat-link-click-context'
 import { useNativeChatFileLinkContext } from './use-native-chat-file-link-context'
 import { useRecheckNativeChatFileLinksWhenTurnEnds } from './use-native-chat-file-link-existence'
 import { useNativeChatTabOwnerWorktreeId } from './use-native-chat-tab-owner'
@@ -43,7 +44,7 @@ import { useNativeChatComposerError } from './use-native-chat-composer-notice'
 import { useNativeChatProvisionalLaunch } from './use-native-chat-provisional-launch'
 import { useStructuredAgentSessionHostExecution } from './StructuredAgentSessionStatusBridge'
 import { useNativeChatRewindHost } from './use-native-chat-rewind-host'
-import { NativeChatRewindContext } from './native-chat-rewind-context'
+import { NativeChatRowActionsProvider } from './NativeChatRowActionsProvider'
 import { NativeChatQueuedMessageList } from './NativeChatQueuedMessageList'
 import { nativeChatStructuredStopControls } from './native-chat-structured-stop-controls'
 import { useAppStore } from '../../store'
@@ -60,15 +61,9 @@ import { useNativeChatHostSendGate } from './use-native-chat-host-send-gate'
 import { useNativeChatAvailabilityNotice } from './use-native-chat-availability-notice'
 import { useStructuredAgentSessionStartFailureFacts } from './use-structured-agent-session-start-failure-facts'
 import { pendingPromptsAllUnanswerableHere } from '../../../../shared/agent-session/agent-session-approval-subject'
-import {
-  isClaudeSignInFailureKind,
-  NativeChatClaudeSignInContext,
-  useNativeChatClaudeSignIn
-} from './native-chat-claude-sign-in'
+import { NativeChatSignInContext, useNativeChatSignIn } from './native-chat-sign-in'
 
-export function NativeChatStructuredSession(
-  props: Omit<NativeChatStructuredViewProps, 'mode'>
-): React.JSX.Element {
+export function NativeChatStructuredSession(props: Omit<NativeChatStructuredViewProps, 'mode'>) {
   const ownerWorktreeId = useNativeChatTabOwnerWorktreeId(props.tabId)
   const fileLinkContext = useNativeChatFileLinkContext(props.tabId)
   const provisionalLaunch = useNativeChatProvisionalLaunch(ownerWorktreeId, props.sessionId)
@@ -79,7 +74,7 @@ export function NativeChatStructuredSession(
   const queueFollowUps = useAppStore((store) => nativeChatQueueFollowUps(store.settings))
   const composerRef = useRef<NativeChatComposerHandle>(null)
   // Paste target while a question card replaces the composer.
-  const questionAnswerInputRef = useRef<HTMLInputElement>(null)
+  const questionAnswerInputRef = useRef<HTMLTextAreaElement>(null)
   const { rewindHost, focusComposer } = useNativeChatRewindHost(props, composerRef)
   const controller = useStructuredAgentSession({
     ...props,
@@ -151,7 +146,6 @@ export function NativeChatStructuredSession(
     rootRef,
     { sessionId: props.sessionId, isVisible: props.isVisible }
   )
-  const fileLinkProps = { onLinkClick, allowFileUriLinks: onLinkClick !== undefined }
   const handOff = useNativeChatHandOff({
     pane: props,
     directory: fileLinkContext,
@@ -162,6 +156,7 @@ export function NativeChatStructuredSession(
   const paneCommands = useStructuredNativeChatPaneCommands({
     pane: props,
     handOff,
+    sessionContext: controller,
     ownerWorktreeId,
     rootRef,
     composerRef,
@@ -200,7 +195,7 @@ export function NativeChatStructuredSession(
     optionPickerRequest,
     setOptionPickerRequest,
     onError: reportComposerError,
-    onSubmitted: submits.revealLatest,
+    reveal: submits,
     sendBlockedReason: hostSendGate.sendBlockedReason ?? install.sendBlockedReason
   })
   const continuation = useNativeChatInterruptedContinuation({
@@ -215,8 +210,15 @@ export function NativeChatStructuredSession(
   })
 
   const launch = { ...provisionalLaunch, retry: submits.retryLaunch }
+  const signIn = useNativeChatSignIn({
+    ...props,
+    worktreeId: ownerWorktreeId,
+    failure: provisionalLaunch.failure,
+    startFailures
+  })
   const availability = useNativeChatAvailabilityNotice({
     unavailable: controller.unavailable,
+    signIn: props.agent === 'claude' ? null : signIn,
     agent: props.agent,
     wslDistro: continuation.view.wslDistro,
     launchFailure: provisionalLaunch.lifecycle === 'failed' ? provisionalLaunch.failure : null,
@@ -224,27 +226,22 @@ export function NativeChatStructuredSession(
     submissions: controller.submissions,
     deliveryNotices
   })
-  const claudeSignIn = useNativeChatClaudeSignIn({
-    agent: props.agent,
-    target: props.target,
-    failure: provisionalLaunch.failure,
-    failureRows: startFailures.filter((fact) => isClaudeSignInFailureKind(fact.kind)).length
-  })
   // While Install shows, it says what to do; a start failure's "send again" or Retry can't help.
   const notices = structuredSessionNotices({
     launch: install.slot.kind === 'install' ? { ...launch, lifecycle: null } : launch,
     agentLabel,
     // Said once: on the pane when the failure took it, else in the composer's notices.
     sessionError: viewState.kind === 'error' || !readFailure ? controller.error : readFailure.text,
+    readRefusal: viewState.kind !== 'error' && readFailure ? controller.readRefusal : undefined,
     composerError: composerError ?? continuation.continueError,
-    claudeSignIn,
+    signIn,
     availability,
     hostPermission: hostSendGate.notice
   })
   if (hostNotice) {
     notices.push(hostNotice)
   }
-  return (
+  const root = (
     <div
       ref={rootRef}
       data-native-chat-root="true"
@@ -290,7 +287,7 @@ export function NativeChatStructuredSession(
           ) : viewState.kind === 'empty' ? (
             <NativeChatEmptyPane slot={install.slot} agent={props.agent} />
           ) : (
-            <NativeChatRewindContext.Provider value={controller.rewind.surface}>
+            <NativeChatRowActionsProvider pane={props} chat={controller}>
               <NativeChatUsageLimitActionsProvider
                 recovery={controller}
                 pane={props}
@@ -298,7 +295,7 @@ export function NativeChatStructuredSession(
                 messages={controller.messages}
                 view={continuation.view}
               >
-                <NativeChatClaudeSignInContext.Provider value={claudeSignIn}>
+                <NativeChatSignInContext.Provider value={signIn}>
                   <NativeChatMessageList
                     // A rewind or a /clear replaces the conversation; nothing the old one held carries over.
                     key={`${controller.epoch}:${controller.contextClear.clears}`}
@@ -318,14 +315,14 @@ export function NativeChatStructuredSession(
                     awaitingInput={prompt === null ? null : 'shown'}
                     turnActivity={controller.turnActivity}
                     stopping={stopControls.stopping}
-                    {...fileLinkProps}
+                    structuredAttachments
                     runtimeContext={imageRuntimeContext}
                     deliveryNotices={deliveryNotices}
                     jumpRequest={paneCommands.inbox.jumpRequest}
                   />
-                </NativeChatClaudeSignInContext.Provider>
+                </NativeChatSignInContext.Provider>
               </NativeChatUsageLimitActionsProvider>
-            </NativeChatRewindContext.Provider>
+            </NativeChatRowActionsProvider>
           )}
         </NativeChatContextClearFade>
       </NativeChatCrewFrame>
@@ -345,12 +342,13 @@ export function NativeChatStructuredSession(
             sessionId={props.sessionId}
             paneKey={paneKey}
             isVisible={props.isVisible}
-            backgroundTasks={controller.backgroundTasks}
-            stopBackgroundTask={controller.stopBackgroundTask}
+            tasks={controller}
+            messageListRef={submits.messageListRef}
           />
           {prompt ? null : (
             <NativeChatStructuredComposerTabStrips
               tabId={props.tabId}
+              runtimeContext={imageRuntimeContext}
               threadGoal={controller.threadGoal}
               transport={transport}
               isWorking={controller.isWorking}
@@ -364,11 +362,9 @@ export function NativeChatStructuredSession(
             <NativeChatStructuredPromptCards
               controller={controller}
               prompt={prompt}
-              agent={props.agent}
               response={promptResponse}
               shouldFocus={!promptsUnanswerable && props.isVisible && props.isFocusedGroup}
               answerInputRef={questionAnswerInputRef}
-              {...fileLinkProps}
             />
           ) : null}
           {nativeChatStructuredAsyncQuestion(props, controller, session, transport, submits)}
@@ -396,4 +392,5 @@ export function NativeChatStructuredSession(
       <LinkActionPopover request={linkActionRequest} onClose={closeLinkActions} />
     </div>
   )
+  return <NativeChatLinkClickContext value={onLinkClick}>{root}</NativeChatLinkClickContext>
 }

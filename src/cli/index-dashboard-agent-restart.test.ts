@@ -16,7 +16,7 @@ const { callMock, constructorMock } = vi.hoisted(() => ({
   constructorMock: vi.fn()
 }))
 vi.mock('./runtime-client', async () => {
-  const { RuntimeClientError, RuntimeRpcFailureError } = await import('./runtime/types')
+  const { RuntimeClientError, RuntimeRpcFailureError } = await import('./runtime/types.js')
   return {
     RuntimeClientError,
     RuntimeRpcFailureError,

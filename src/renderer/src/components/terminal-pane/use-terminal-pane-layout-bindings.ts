@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useAppStore } from '../../store'
 import { EMPTY_LAYOUT } from './layout-serialization'
 import { resolveTerminalLayoutActiveLeafId } from './terminal-layout-leaf-ids'
-import { shouldIgnoreStalePanePtyLayoutBinding } from './pty-connection/pane-pty-layout-binding'
+import { shouldIgnoreStalePanePtyLayoutBinding } from './pty-connection/reattach/pane-pty-layout-binding'
 import { useExpandCollapseActions } from './expand-collapse'
 import type { TerminalPaneLayoutController } from './use-terminal-pane-layout-persistence'
 
@@ -16,6 +16,7 @@ export function useTerminalPaneLayoutBindings(controller: TerminalPaneLayoutCont
     pendingPaneSizeRefreshFrameIdsRef,
     persistLayoutSnapshot,
     setExpandedPaneId,
+    setPaneLayoutRevision,
     setTabLayout,
     setTabPaneExpanded,
     tabId
@@ -55,6 +56,8 @@ export function useTerminalPaneLayoutBindings(controller: TerminalPaneLayoutCont
           ...layoutWithoutPtyBindings,
           ptyIdsByLeafId: { ...existingBindings, [leafId]: ptyId }
         })
+        // Main can publish this same layout before the renderer's transport attaches.
+        setPaneLayoutRevision((revision) => revision + 1)
         return
       }
       const nextBindings = { ...existingBindings }
@@ -76,7 +79,7 @@ export function useTerminalPaneLayoutBindings(controller: TerminalPaneLayoutCont
       }
       setTabLayout(tabId, nextLayout)
     },
-    [setTabLayout, tabId, paneTransportsRef]
+    [setTabLayout, tabId, paneTransportsRef, setPaneLayoutRevision]
   )
   const writePanePtyLayoutBinding = useCallback(
     (paneId: number, ptyId: string | null, repairActiveLeafOnClear: boolean): void => {

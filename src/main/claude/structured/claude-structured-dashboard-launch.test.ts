@@ -4,11 +4,14 @@ import {
   adapterFor,
   fakeClaude,
   identityFor,
-  PROVIDER_SESSION_ID
+  PROVIDER_SESSION_ID,
+  USER_MESSAGE
 } from './claude-structured-session-test-support'
 import { claudeOpened } from './claude-structured-startup-settled-test-support'
 import { ClaudeStructuredSessionAdapter } from './claude-structured-session-adapter'
 import { DashboardAllocationErrorCode } from '../../dashboard-accounts/dashboard-allocation-protocol'
+import { AgentSessionAcquisitionRootExitObservedError } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-acquisition-errors'
+import type { ClaudeStructuredSessionEvent } from './claude-structured-session-state'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -24,12 +27,13 @@ function fixture(holdInit = false, pooled = true) {
   })
   const binding = { account_id: 'pool-claude', binding_revision: 2, credential_version: 1 }
   const launch = pooled ? { dashboardBinding: binding } : {}
-  const adapter = (holdInit ? adapterAtPublishFor : adapterFor)(claude, launch)
+  const events: ClaudeStructuredSessionEvent[] = []
+  const adapter = (holdInit ? adapterAtPublishFor : adapterFor)(claude, launch, events)
   cleanups.push(async () => {
     claude.dispose()
     await adapter.closeAll()
   })
-  return { claude, binding, adapter }
+  return { claude, binding, adapter, events }
 }
 const acquire = (adapter: ReturnType<typeof fixture>['adapter'], spawnToken = 'spawn-1') =>
   adapter.acquire({ identity: identityFor(), fence: 7, spawnToken })
@@ -224,6 +228,123 @@ describe('Claude pool process startup evidence', () => {
     }
     await closing
     expect(adapter.readDashboardClaudeLaunches().processes).toEqual([])
+  })
+
+  it('reports a retiring child until root exit and fences its late exit from the replacement', async () => {
+    const { claude, binding, adapter, events } = fixture()
+    const first = await acquire(adapter)
+    const connection = claude.connections[0]
+    const entered = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const ended = Promise.withResolvers<void>()
+    const publish = events.push.bind(events)
+    vi.spyOn(events, 'push').mockImplementation((...published) => {
+      const length = publish(...published)
+      if (published.some((event) => event.type === 'ended' && event.fence === 7)) {
+        ended.resolve()
+      }
+      return length
+    })
+    vi.spyOn(connection, 'close').mockImplementation(async () => {
+      entered.resolve()
+      await release.promise
+      connection.closed = true
+      return true
+    })
+    vi.spyOn(connection, 'send').mockImplementationOnce(async (_message, beforeDispatch) => {
+      await beforeDispatch?.()
+      connection.handlers.onMessage?.({
+        type: 'system',
+        subtype: 'ui_panes',
+        session_id: PROVIDER_SESSION_ID,
+        focus_requested_id: 'plugin-pane',
+        panes: [{ id: 'plugin-pane', plugin: 'fixture-plugin' }]
+      })
+    })
+    try {
+      await adapter.dispatch({
+        sessionId: 'session-1',
+        clientMessageId: 'plugin-input',
+        body: USER_MESSAGE,
+        fence: 7
+      })
+      await entered.promise
+      expect(events).toContainEqual(expect.objectContaining({ type: 'retiring', fence: 7 }))
+      connection.exitVerdict = {
+        root: 'unverifiable',
+        tree: 'unverifiable',
+        killDelivered: true
+      }
+      release.resolve()
+      await adapter.drainObservedExits()
+      const retiring = [
+        {
+          session_id: 'session-1',
+          fence: 7,
+          acquisition_generation: first.acquisitionGeneration,
+          account_id: 'pool-claude',
+          binding_revision: 2,
+          credential_version: 1,
+          process: {
+            hostId: 'host-1',
+            pid: 4321,
+            processStartTimeMs: 1700000000000,
+            spawnToken: 'spawn-1'
+          },
+          initialized: true,
+          connection_open: false,
+          closing: true
+        }
+      ]
+      expect(adapter.readDashboardClaudeLaunches().processes).toEqual(retiring)
+      await expect(adapter.releaseAcquisition({ sessionId: 'session-1' })).rejects.toMatchObject({
+        name: 'AgentSessionAcquisitionRootExitObservedError',
+        deathEvidenceKind: 'kill-delivered'
+      })
+      await expect(
+        adapter.acquire({ identity: identityFor(), fence: 8, spawnToken: 'spawn-2' })
+      ).rejects.toBeInstanceOf(AgentSessionAcquisitionRootExitObservedError)
+      expect(adapter.readDashboardClaudeLaunches()).toEqual({
+        pending_acquisitions: 0,
+        processes: retiring
+      })
+      expect(events.filter((event) => event.type === 'ended')).toEqual([])
+      connection.exitVerdict = { root: 'exited', tree: 'exited' }
+      connection.handlers.onExit?.(new Error('retired root exited'), { expected: true })
+      await ended.promise
+      await adapter.drainObservedExits()
+      expect(adapter.readDashboardClaudeLaunches().processes).toEqual([])
+    } finally {
+      release.resolve()
+    }
+    binding.credential_version = 2
+    const replacement = await adapter.acquire({
+      identity: identityFor(),
+      fence: 8,
+      spawnToken: 'spawn-2'
+    })
+    connection.handlers.onExit?.(new Error('late retired exit'))
+    expect(adapter.readDashboardClaudeLaunches().processes).toEqual([
+      expect.objectContaining({
+        fence: 8,
+        acquisition_generation: replacement.acquisitionGeneration,
+        credential_version: 2,
+        process: {
+          hostId: 'host-1',
+          pid: 4321,
+          processStartTimeMs: 1700000000000,
+          spawnToken: 'spawn-2'
+        },
+        closing: false
+      })
+    ])
+    expect(events.filter((event) => event.type === 'ended')).toEqual([
+      expect.objectContaining({
+        fence: 7,
+        acquisitionGeneration: first.acquisitionGeneration,
+        cause: 'unexpected-exit'
+      })
+    ])
   })
 
   it('does not let a stale exit clear the replacement process or change its version', async () => {

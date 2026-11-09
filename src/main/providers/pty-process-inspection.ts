@@ -1,18 +1,31 @@
 import type { IPtyProvider } from './pty-provider-contract'
-import type { PtyIncarnationId } from '../../shared/pty-incarnation'
+import type { PtyIncarnationId } from '../../shared/terminal/pty/lifecycle/pty-incarnation'
 import {
   classifyTerminalProcessInspectionFailure,
   clientOnlyUnverifiableInspection,
-  type TerminalProcessInspection
-} from '../../shared/terminal-process-inspection'
-
-export type PtyProcessInspection = TerminalProcessInspection
+  type TerminalProcessInspection as PtyProcessInspection
+} from '../../shared/terminal/pty/lifecycle/terminal-process-inspection'
 
 type CompletionSensitivePtyProvider = IPtyProvider & {
   inspectProcess?: (
     id: string,
     options?: PtyProcessInspectionOptions
   ) => Promise<PtyProcessInspection>
+}
+
+/** Chat exit decisions need anchored host inspection, not a raw shell fallback. */
+export async function confirmPtyProviderForegroundProcess(
+  provider: Pick<CompletionSensitivePtyProvider, 'inspectProcess' | 'confirmForegroundProcess'>,
+  ptyId: string
+): Promise<string | null> {
+  try {
+    if (provider.inspectProcess) {
+      return (await provider.inspectProcess(ptyId, { scanChildProcesses: true })).foregroundProcess
+    }
+    return (await provider.confirmForegroundProcess?.(ptyId)) ?? null
+  } catch {
+    return null
+  }
 }
 
 /** scanChildProcesses requests decision-time evidence; steady polls may rely on the next tick to correct stale reads. */

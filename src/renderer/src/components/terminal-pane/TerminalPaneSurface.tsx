@@ -1,7 +1,7 @@
 import { TerminalCrewPortals } from '../orchestration-crew/TerminalCrewPortals'
 import { createPortal } from 'react-dom'
-import { TerminalPaneFileDropOwner } from './TerminalPaneFileDropOwner'
-import { makePaneKey } from '../../../../shared/stable-pane-id'
+import { TerminalPaneFileDropOwner } from './input/file-drop/TerminalPaneFileDropOwner'
+import { makePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
 import TerminalSearch from '@/components/TerminalSearch'
 import { DaemonActionDialog } from '@/components/shared/useDaemonActions'
 import { AgentSessionContinuationDialog } from '@/components/agent-session-continuation/AgentSessionContinuationDialog'
@@ -16,7 +16,7 @@ import { TerminalSessionStateSaveFailureDialog } from './TerminalSessionStateSav
 import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
 import { TerminalAgentSessionForkDialog } from './TerminalAgentSessionForkDialog'
 import { SessionRestoredBannerPortals } from './SessionRestoredBannerPortals'
-import { handleInternalTerminalFileDrop } from './terminal-drop-handler'
+import { handleInternalTerminalFileDrop } from './input/file-drop/terminal-drop-handler'
 import { TerminalQuickCommandEditorDialog } from './TerminalQuickCommandEditorDialog'
 import { TerminalPaneNativeChatPortal } from './TerminalPaneNativeChatPortal'
 import { TerminalPaneSleepingPortals } from './TerminalPaneSleepingPortals'
@@ -30,9 +30,11 @@ import {
 import type { TerminalPaneController } from './use-terminal-pane-controller'
 import { canCloseTerminalPane, terminalPaneCloseLabel } from './terminal-pane-close-affordance'
 import { useAppStore } from '@/store'
-import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
+import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 import { useWslHostStartCardReplacesPaneError } from './use-wsl-host-stopped-pane'
+import { terminalPaneMenuAddToChat } from './clipboard/terminal-pane-menu-copy-actions'
+import { terminalPaneHeaderChatToggleProps } from './terminal-pane-header-chat-toggle'
 
 export function TerminalPaneSurface({
   controller
@@ -43,8 +45,6 @@ export function TerminalPaneSurface({
     activeAgentId,
     activePane,
     activePaneCanContinueInNewSession,
-    activePaneCanResumeInChat,
-    activePaneCanToggleChat,
     activePaneIsChatLeaf,
     activatePaneTitleInteraction,
     agentSessionContinuation,
@@ -72,7 +72,6 @@ export function TerminalPaneSurface({
     handleRenameSubmit,
     handleRequestClosePane,
     handleStartRename,
-    handleToggleNativeChat,
     hiddenStartupStyle,
     isActive,
     isTabPinned,
@@ -213,13 +212,14 @@ export function TerminalPaneSurface({
       activePane
         ? createPortal(
             <TerminalErrorToast
-              error={visibleTerminalError}
+              error={visibleTerminalError.error}
+              resourceLimit={visibleTerminalError.resourceLimit}
               agentId={activeAgentId}
               paneOnClient={paneOnClient}
               onDismiss={dismissTerminalError}
               onRestartDaemon={() => daemonActions.setPending('restart')}
               onRetry={
-                isPaneOwnerRecoveryError(visibleTerminalError)
+                isPaneOwnerRecoveryError(visibleTerminalError.error)
                   ? () =>
                       Promise.resolve(
                         paneTransportsRef.current.get(activePane.id)?.retryRecovery?.() ?? false
@@ -279,6 +279,11 @@ export function TerminalPaneSurface({
           contextMenu.menuPaneId !== null && contextMenu.menuPaneId === expandedPaneId
         }
         onCopy={() => void contextMenu.onCopy()}
+        addToChat={
+          contextMenu.open
+            ? terminalPaneMenuAddToChat(contextMenu.menuPane, tabId, worktreeId)
+            : null
+        }
         onSelectAll={contextMenu.onSelectAll}
         onPaste={() => void contextMenu.onPaste()}
         onSplitRight={contextMenu.onSplitRight}
@@ -364,10 +369,7 @@ export function TerminalPaneSurface({
         hiddenStartupStyle={hiddenStartupStyle}
         managerRef={managerRef}
         paneTransportsRef={paneTransportsRef}
-        canShowTerminal={activePaneIsChatLeaf}
-        canShowChat={activePaneCanToggleChat && !activePaneIsChatLeaf}
-        onToggleNativeChat={handleToggleNativeChat}
-        canResumeInNewNativeChat={activePaneCanResumeInChat}
+        {...terminalPaneHeaderChatToggleProps(controller)}
         canContinueAgentSessionInNewSession={activePaneCanContinueInNewSession}
         onContinueAgentSessionInNewSession={(pane) =>
           contextMenu.runForPane(pane.id, contextMenu.onContinueAgentSessionInNewSession)

@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
     group: vi.fn(),
     type: vi.fn(),
     state: {
+      agentStatusByPaneKey: {},
+      retainedAgentsByPaneKey: {},
       activeWorktreeId: 'wt-chat',
       activeWorkspaceExecutionHostId: 'local' as const,
       unifiedTabsByWorktree
@@ -40,11 +42,13 @@ vi.mock('@/runtime/runtime-rpc-client', async (original) => ({
   callRuntimeRpc: mocks.rpc,
   runtimeEnvironmentSupportsCapability: async () => true
 }))
-vi.mock('@/components/terminal-pane/terminal-handle-links', () => ({
+vi.mock('@/components/terminal-pane/links/handles/terminal-handle-links', () => ({
   focusRendererTerminalHandle: mocks.focus,
   focusRuntimeTerminalHandle: mocks.remoteFocus
 }))
-vi.mock('./worktree-activation', () => ({ activateAndRevealWorktree: mocks.reveal }))
+vi.mock('./workspace/activation/worktree-activation', () => ({
+  activateAndRevealWorktree: mocks.reveal
+}))
 vi.mock('./wsl-moved-chat-activation', () => ({ activateWslMovedWorkspace: () => false }))
 import { openAgentMessageSender } from './open-agent-message-sender'
 import { RuntimeRpcCallError } from '@/runtime/runtime-rpc-result'
@@ -135,7 +139,7 @@ it.each([
     }
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith(
       host,
-      'orchestration.partyLocation',
+      'orchestration.partyOpen',
       { address: 'term_worker', messageIds: ['m1'] },
       { timeoutMs: 5000 }
     )

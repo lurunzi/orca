@@ -77,8 +77,12 @@ export async function readClaudeFastModeAccountAvailability(
     if (!apiKey && !token) {
       return unconfirmedClaudeFastMode()
     }
-    await ensureElectronProxyFromEnvironment({ probeUrl: AVAILABILITY_URL })
-    const response = await getMainHttpClient().fetch(AVAILABILITY_URL, {
+    const httpClient = getMainHttpClient()
+    const proxySession = httpClient.proxySession()
+    if (proxySession) {
+      await ensureElectronProxyFromEnvironment({ proxySession, probeUrl: AVAILABILITY_URL })
+    }
+    const response = await httpClient.fetch(AVAILABILITY_URL, {
       headers: {
         'User-Agent': 'claude-code/2.1.0',
         ...(apiKey

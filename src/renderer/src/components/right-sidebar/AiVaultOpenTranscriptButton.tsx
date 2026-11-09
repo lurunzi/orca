@@ -2,8 +2,8 @@ import { MessagesSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 import { openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
-import { activateAndRevealWorktree } from '@/lib/worktree-activation'
-import type { AiVaultSession } from '../../../../shared/ai-vault-types'
+import { activateAndRevealWorktree } from '@/lib/workspace/activation/worktree-activation'
+import type { AiVaultSession } from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 
 /** The workspace a Cursor session's read-only transcript tab opens in; SSH transcripts stay remote. */

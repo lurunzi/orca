@@ -1,6 +1,6 @@
-import type { AgentStatusIpcPayload } from '../../shared/agent-status-types'
+import type { AgentStatusIpcPayload } from '../../shared/agent-status/contracts/agent-status-ipc-payload'
 import type { AntigravityScreenPermissionObservation } from '../agent-hooks/server/server-ingest-antigravity-screen'
-import type { RuntimeVisibleTerminalState } from './runtime-terminal-state-records'
+import type { RuntimeVisibleTerminalState } from './terminal/records/runtime-terminal-state-records'
 import { isAntigravityCommandApprovalScreen } from './antigravity-command-approval-screen'
 import {
   isAntigravityWorkingTerminalScreen,

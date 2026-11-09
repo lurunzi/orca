@@ -6,12 +6,12 @@ import {
 } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { DASHBOARD_ACCOUNT_METHODS } from './dashboard-accounts'
 import { readDashboardAllocationStatus } from '../../../dashboard-accounts/dashboard-allocation-status'
-import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
+import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 
 vi.mock('../../../dashboard-accounts/dashboard-allocation-status', () => ({
   readDashboardAllocationStatus: vi.fn()
 }))
-vi.mock('../../../native-chat/agent-session-wire/structured-agent-session-registry', () => ({
+vi.mock('../../../native-chat/agent-session-wire/host/structured-agent-session-registry', () => ({
   getStructuredAgentSessionHost: vi.fn()
 }))
 afterEach(() => {

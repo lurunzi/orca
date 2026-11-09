@@ -5,16 +5,17 @@ import {
   AGENT_PROMPT_BRACKETED_PASTE_END,
   AGENT_PROMPT_BRACKETED_PASTE_START,
   buildAgentPromptPasteBytes
-} from '../../../shared/agent-prompt-injection'
+} from '../../../shared/agent-launch/startup/agent-prompt-injection'
 import { ORCA_DISPATCH_PROMPT_LEAD_LINE } from '../../../shared/orca-dispatch-status-prompt'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { acknowledgeAgentPromptSubmit } from '../orca-runtime-test-mocks.spec'
+import './runtime-test-module-registration.spec'
+import { acknowledgeAgentPromptSubmit } from '../orca-runtime-test-mocks/setup.spec'
 import {
   TEST_WORKTREE_PATH,
   cursorBusyScreen,
   cursorReadyScreen,
   store
-} from '../orca-runtime-test-fixtures.spec'
+} from './orca-runtime-test-fixtures.spec'
 
 const antigravityCapturedReady = readFileSync(
   join(__dirname, '..', '__fixtures__', 'antigravity-ready-default-127.txt'),

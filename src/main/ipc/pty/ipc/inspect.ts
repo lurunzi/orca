@@ -1,7 +1,10 @@
 import { isRemoteRuntimePtyId } from '../../../../shared/remote-runtime/remote-runtime-pty-id'
 import { getPtyIpc } from '../pty-host-bindings'
-import { inspectPtyProviderProcessForRenderer } from '../../../providers/pty-process-inspection'
-import { clientOnlyUnverifiableInspection } from '../../../../shared/terminal-process-inspection'
+import {
+  confirmPtyProviderForegroundProcess,
+  inspectPtyProviderProcessForRenderer
+} from '../../../providers/pty-process-inspection'
+import { clientOnlyUnverifiableInspection } from '../../../../shared/terminal/pty/lifecycle/terminal-process-inspection'
 import {
   getProviderForPty,
   hasPtyProviderForInspection,
@@ -161,7 +164,7 @@ export function installPtyInspectIpcHandlers(deps: {
       }
       const provider = getProviderForPty(args.id)
       // Cached foreground identity cannot authorize a command-boundary decision.
-      return provider.confirmForegroundProcess?.(args.id) ?? null
+      return confirmPtyProviderForegroundProcess(provider, args.id)
     }
   )
 

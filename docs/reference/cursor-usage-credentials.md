@@ -9,11 +9,11 @@ never runs `cursor-agent login` on the user's behalf.
 `readCursorAuthSession()` (`src/main/rate-limits/cursor-auth.ts`) tries three
 stores in order and takes the first that yields a token with a WorkOS subject:
 
-| Order | Source | Location | Who writes it |
-| --- | --- | --- | --- |
-| 1 | `keychain` | macOS login keychain, service `cursor-access-token`, account `cursor-user` | `cursor-agent` 2026.06+ |
-| 2 | `cli` | `~/.cursor/auth.json` (`%APPDATA%\Cursor\auth.json`, `$XDG_CONFIG_HOME/cursor/auth.json`) | older `cursor-agent` builds, and non-macOS hosts |
-| 3 | `desktop` | Cursor IDE `state.vscdb`, key `cursorAuth/accessToken` | the Cursor IDE |
+| Order | Source     | Location                                                                                  | Who writes it                                    |
+| ----- | ---------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 1     | `keychain` | macOS login keychain, service `cursor-access-token`, account `cursor-user`                | `cursor-agent` 2026.06+                          |
+| 2     | `cli`      | `~/.cursor/auth.json` (`%APPDATA%\Cursor\auth.json`, `$XDG_CONFIG_HOME/cursor/auth.json`) | older `cursor-agent` builds, and non-macOS hosts |
+| 3     | `desktop`  | Cursor IDE `state.vscdb`, key `cursorAuth/accessToken`                                    | the Cursor IDE                                   |
 
 **The keychain entry is the one current CLIs use.** Reading only `auth.json`
 finds nothing on an up-to-date macOS install, which is why the fallback order
@@ -39,7 +39,7 @@ reports `isAuthenticated: true` with an access token that expired months ago.
 
 There is **no documented individual-user usage API**. Cursor documents plenty of
 APIs for all plans — Cloud Agents, Origin, and the TypeScript/Python SDKs — but
-every documented *usage and billing* surface (Admin, Analytics) is team- or
+every documented _usage and billing_ surface (Admin, Analytics) is team- or
 organization-scoped behind an Enterprise `crsr_` key, and none of them exposes a
 solo subscriber's own consumption. See [Cursor's API
 index](https://cursor.com/docs/api). So Orca reads the same dashboard route the

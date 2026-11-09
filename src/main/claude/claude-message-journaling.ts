@@ -1,7 +1,10 @@
 import { writeClaudeTerminalFailure } from './claude-terminal-failure'
 import { agentSessionFailureWords } from '../../shared/agent-session/failures/agent-session-failure-words'
-import { agentJournalItemKey } from '../../shared/agent-session/journal/agent-session-journal-item-key'
-import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
+import {
+  agentJournalItemKey,
+  agentJournalSubmissionKey
+} from '../../shared/agent-session/journal/agent-session-journal-item-key'
+import type { StructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
 import type { ClaudeBackgroundTaskRows } from './claude-background-task-rows'
 import type { ClaudeToolOriginRegistry } from './claude-tool-origin-registry'
 import {
@@ -18,6 +21,7 @@ import {
   type ClaudeToolUse
 } from './structured/journal/claude-structured-item-translation'
 import { claudeEnvelopeStopHookFeedbackRow } from './claude-stop-hook-feedback'
+import { snapshotClaudeReadImages } from './claude-read-image-snapshots'
 import {
   appendUnmodeledContent,
   type ClaudeProviderFrameFallback
@@ -27,7 +31,12 @@ import type { createClaudeStreamedTextCheckpoints } from './claude-streamed-text
 import type { ClaudeStreamedThinking } from './claude-streamed-thinking'
 import type { ClaudeProvisionalRowCorrections } from './claude-provisional-row-corrections'
 import type { ClaudeSubagentIdentities } from './claude-subagent-identities'
-import { claudeTurnOpenedBySendEcho, type ClaudeTurnSource } from './claude-turn-opening'
+import {
+  claudeStreamTurnSource,
+  claudeStreamTurnStartSource,
+  claudeTurnOpenedBySendEcho,
+  type ClaudeTurnSource
+} from './claude-turn-opening'
 import type { ClaudeOpenTurn } from './claude-open-turn'
 import type { ClaudeAssistantFailures } from './claude-assistant-failures'
 import type { ClaudeUsageLimits } from './claude-usage-limits'
@@ -51,13 +60,31 @@ export type ClaudeMessageJournalContext = {
   threadGoal: ClaudeThreadGoal
 }
 
+export function journalClaudeStream(
+  ctx: ClaudeMessageJournalContext,
+  message: Record<string, unknown>,
+  observedAt: number
+): boolean {
+  const delta = ctx.streamedBlocks.observe(message, observedAt)
+  const thinking = ctx.streamedThinking.observe(message, observedAt)
+  // Prefer message_start; use the first content delta for older streams that omit it.
+  const source =
+    delta || thinking ? claudeStreamTurnSource(message) : claudeStreamTurnStartSource(message)
+  ctx.turn.ensureOpen(message, source, observedAt)
+  if (delta) {
+    ctx.streamedText.append(delta.identity, delta.text, delta.parentToolUseId)
+  }
+  return delta !== null || thinking
+}
+
 export function journalClaudeMessage(
   ctx: ClaudeMessageJournalContext,
   message: Record<string, unknown>,
   startsTurn: boolean,
   observedAt: number,
   /** Host clock on the submission that produced this send, when known. */
-  requestedAt?: number
+  requestedAt?: number,
+  clientMessageId?: string
 ): boolean {
   const envelope = readClaudeMessageEnvelope(message)
   if (!envelope) {
@@ -161,7 +188,11 @@ export function journalClaudeMessage(
       input: null
     }
     const resultIdentity = claudeToolIdentity(envelope.sessionId, result.toolUseId)
-    const resultBody = claudeToolBody({ tool, result })
+    const resultBody = claudeToolBody({
+      tool,
+      result,
+      resultImagePaths: snapshotClaudeReadImages(tool, result)
+    })
     ctx.sink.appendItem(resultIdentity, resultBody, {
       ...stamp(resultIdentity, resultBody),
       lifecycle: true
@@ -200,7 +231,10 @@ export function journalClaudeMessage(
   })
   if (sendEchoTurn) {
     ctx.turn.allowReopen()
-    ctx.turn.open(sendEchoTurn, observedAt)
+    // Output can open the send's turn before its echo confirms delivery.
+    if (!clientMessageId || ctx.turn.userItemId !== agentJournalSubmissionKey(clientMessageId)) {
+      ctx.turn.open(sendEchoTurn, observedAt)
+    }
   }
   if (changed) {
     ctx.sink.publish()

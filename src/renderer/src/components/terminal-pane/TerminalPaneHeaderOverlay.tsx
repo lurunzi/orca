@@ -13,10 +13,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { translate } from '@/i18n/i18n'
 import { canCloseTerminalPane, terminalPaneCloseLabel } from './terminal-pane-close-affordance'
 import { isImeCompositionKeyDown } from '@/lib/ime-composition-keyboard-event'
-import type { PtyTransport } from './pty-transport-types'
-import { TerminalPaneHeaderDropSurface } from './TerminalPaneHeaderDropSurface'
+import type { PtyTransport } from './pty-transport/pty-transport-types'
+import { TerminalPaneHeaderDropSurface } from './input/file-drop/TerminalPaneHeaderDropSurface'
 import { TerminalPaneResumeInChatButton } from './TerminalPaneResumeInChatButton'
-import { makePaneKey } from '../../../../shared/stable-pane-id'
+import { makePaneKey } from '../../../../shared/workspace-layout/stable-pane-id'
+import { NativeChatSettingsButton } from '../native-chat/NativeChatSettingsButton'
 
 export type PaneTitleOverlayRect = {
   left: number
@@ -350,6 +351,7 @@ export default function TerminalPaneHeaderOverlay({
                       </TooltipContent>
                     </Tooltip>
                   ) : null}
+                  {canShowTerminal && isActivePane ? <NativeChatSettingsButton /> : null}
                 </div>
               </>
             )}

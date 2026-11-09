@@ -1,10 +1,17 @@
-import { AgentSessionAcquisitionRootExitObservedError } from '../../native-chat/agent-session-wire/structured-agent-session-acquisition-errors'
-import type { StructuredAgentSessionAcquireInput } from '../../native-chat/agent-session-wire/structured-agent-session-adapter'
+import { AgentSessionAcquisitionRootExitObservedError } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-acquisition-errors'
+import type { StructuredAgentSessionAcquireInput } from '../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import type {
   ClaudeAcquireCallbacks,
   ClaudeSession,
   ClaudeStructuredSessionAdapterDeps
 } from './claude-structured-session-state'
+
+export function retainsClaudePoolRootExit(session: ClaudeSession): boolean {
+  const verdict = session.connection.exitVerdict
+  return Boolean(
+    session.dashboardLaunch && verdict.root !== 'exited' && verdict.processless !== true
+  )
+}
 
 export function markClaudeCloseAwaitingRootExit(session: ClaudeSession, verdict: Error): void {
   if (

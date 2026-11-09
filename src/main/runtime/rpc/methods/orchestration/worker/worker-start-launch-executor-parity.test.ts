@@ -6,21 +6,19 @@ import {
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RuntimeTerminalCreate } from '../../../../../../shared/runtime-terminal-create-contract'
-import {
-  downgradeAgentLaunchModeForHost,
-  type AgentLaunchModeReceipt
-} from '../../../../../agent-launch/agent-launch-mode'
-import { setStructuredAgentSessionHost } from '../../../../../native-chat/agent-session-wire/structured-agent-session-registry'
+import { downgradeAgentLaunchModeForHost } from '../../../../../agent-launch/agent-launch-mode'
+import type { AgentLaunchModeReceipt } from '../../../../../../shared/agent-launch/contracts/agent-launch-intent'
+import { setStructuredAgentSessionHost } from '../../../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
-import type { OrchestrationDb } from '../../../../orchestration/db'
-import { WORKER_START_VOCABULARY } from '../../orchestration-worker-start-mode'
-import { structuredWorkerIdentities } from '../../../../structured-worker-identity'
+import type { OrchestrationDb } from '../../../../orchestration/db/orchestration-db'
+import { WORKER_START_VOCABULARY } from '../structured-workers/orchestration-worker-start-mode'
+import { structuredWorkerIdentities } from '../../../../orchestration/terminal-authority/structured-sessions/structured-worker-identity'
 import type { WorkerEffect } from './worker-topology'
 import { WorkerStartParams } from '../../../../../../shared/rpc-contract/orchestration-worker-start-params'
 
 const sessionCreate = vi.hoisted((): { refusal: { code: string } | null } => ({ refusal: null }))
 
-vi.mock('../../structured-agent-session-create', () => ({
+vi.mock('../../structured-sessions/creation/structured-agent-session-create', () => ({
   createStructuredAgentSessionForWorktree: async (args: { envelope: { sessionId: string } }) =>
     sessionCreate.refusal
       ? { ok: false, refusal: { code: sessionCreate.refusal.code, message: 'refused here' } }
@@ -95,7 +93,12 @@ function fakes() {
 
 function place(
   f: ReturnType<typeof fakes>,
-  args: { mode: AgentLaunchModeReceipt; existing?: boolean; terminal?: string }
+  args: {
+    mode: AgentLaunchModeReceipt
+    existing?: boolean
+    terminal?: string
+    agent?: 'claude' | 'cursor'
+  }
 ) {
   return placeWorkerAgent({
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the placement calls only the methods faked here.
@@ -114,7 +117,7 @@ function place(
     creationTarget: args.existing ? undefined : CREATION_TARGET,
     resolvedWorktree: args.existing ? EXISTING : undefined,
     mode: args.mode,
-    agent: args.terminal ? undefined : 'claude',
+    agent: args.terminal ? undefined : (args.agent ?? 'claude'),
     launchPreferences: undefined,
     effects: f.effects,
     onStage: (stage) => f.failedStages.push(stage)
@@ -301,5 +304,23 @@ describe('a fresh worker through the launch executor', () => {
     expect(f.runtime.createTerminal).not.toHaveBeenCalled()
     expect(f.runtime.createManagedWorktree).not.toHaveBeenCalled()
     expect(f.stages).toEqual([])
+  })
+
+  it('opens a Cursor worker in an existing worktree as its transcript chat when Chat UI is on', async () => {
+    const f = fakes()
+    const runtime = Object.assign(f.runtime, {
+      requireStore: () => ({ getSettings: () => ({ nativeChatProviders: { cursor: true } }) }),
+      showTerminalWorkspaceLaunchScope: vi.fn(async () => ({
+        id: 'wt_existing',
+        connectionId: null
+      }))
+    })
+
+    await place({ ...f, runtime }, { mode: TERMINAL, existing: true, agent: 'cursor' })
+
+    expect(f.runtime.createTerminal).toHaveBeenCalledWith(
+      'id:wt_existing',
+      expect.objectContaining({ startupAgent: 'cursor', viewMode: 'chat' })
+    )
   })
 })

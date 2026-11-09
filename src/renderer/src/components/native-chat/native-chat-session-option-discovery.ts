@@ -1,4 +1,4 @@
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { createClaudeCatalogOptions } from '../../../../shared/agent-session/options/agent-session-option-catalog-claude-codex'
 import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
 import { catalogModelsFromModelDiscovery } from '../../../../shared/native-chat/input/native-chat-discovered-catalog-models'
@@ -6,9 +6,9 @@ import {
   getCommitMessageModelDiscoveryHostKeyForLocalRuntime,
   getCommitMessageModelDiscoveryHostKeyForScope,
   LOCAL_COMMIT_MESSAGE_HOST_KEY
-} from '../../../../shared/commit-message-host-key'
+} from '../../../../shared/source-control/ai/generation/commit-message-host-key'
 import { runtimeTargetForWorkspaceOwner } from '@/lib/resolve-owner'
-import { hasExplicitTuiLaunchCommand } from '../../../../shared/tui-agent-launch-command-override'
+import { hasExplicitTuiLaunchCommand } from '../../../../shared/agent-launch/startup/tui-agent-launch-command-override'
 import { getConnectionIdFromState } from '@/lib/connection-context'
 import {
   getLocalProjectExecutionRuntimeContext,
@@ -21,8 +21,12 @@ import type {
   AgentSessionModelCatalogResult,
   AgentSessionModelOption
 } from '../../../../shared/agent-session/agent-session-wire'
-import { useAppStore } from '@/store'
-import { findKnownWorktreeById } from '@/store/slices/worktrees/listing/detected-worktree-meta'
+import { useAppStore } from '@/store/index'
+import { selectFileListWorktree } from '@/store/selectors'
+import {
+  loadNativeChatEnrichedModels,
+  readNativeChatEnrichedModels
+} from './native-chat-session-option-enrichment'
 
 export type NativeChatModelDiscoveryContext = {
   hostKey: string
@@ -54,6 +58,31 @@ export function resolveNativeChatModelDiscoveryContext(
     Object.entries(state.tabsByWorktree ?? {}).find(([, tabs]) =>
       tabs.some((tab) => tab.id === terminalTabId)
     )?.[0] ?? null
+  return resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
+}
+
+/** A launch resolves its worktree's discovery host before the tab exists. */
+export function resolveNativeChatModelDiscoveryContextForWorktree(
+  worktreeId: string | null
+): NativeChatModelDiscoveryContext | null {
+  const state = useAppStore.getState()
+  const runtime = resolveWorktreeModelDiscoveryRuntime(state, worktreeId)
+  if (!runtime) {
+    return null
+  }
+  // The context omits a null connection id; the host key still needs it to mean "this machine".
+  const scope = getRuntimeGitScope(runtime.target, getConnectionIdFromState(state, worktreeId))
+  return {
+    hostKey: resolveNativeChatModelDiscoveryHostKey(state, worktreeId, runtime.worktreePath, scope),
+    runtime
+  }
+}
+
+/** How to ask a worktree's owner for models; null when the owner cannot be named. */
+export function resolveWorktreeModelDiscoveryRuntime(
+  state: ReturnType<typeof useAppStore.getState>,
+  worktreeId: string | null
+): RuntimeGitContext | null {
   const connectionId = getConnectionIdFromState(state, worktreeId)
   if (worktreeId && connectionId === undefined) {
     return null
@@ -65,17 +94,12 @@ export function resolveNativeChatModelDiscoveryContext(
   if (!target) {
     return null
   }
-  const worktreePath = worktreeId ? (findKnownWorktreeById(state, worktreeId)?.path ?? '') : ''
-  const scope = getRuntimeGitScope(target, connectionId)
   return {
-    hostKey: resolveNativeChatModelDiscoveryHostKey(state, worktreeId, worktreePath, scope),
-    runtime: {
-      target,
-      prefs: state.settings,
-      worktreeId,
-      worktreePath,
-      ...(connectionId ? { connectionId } : {})
-    }
+    target,
+    prefs: state.settings,
+    worktreeId,
+    worktreePath: selectFileListWorktree(state, worktreeId)?.path ?? '',
+    ...(connectionId ? { connectionId } : {})
   }
 }
 
@@ -142,4 +166,30 @@ export async function discoverNativeChatCatalogModels(
     agent,
     await discoverRuntimeCommitMessageModels(context, agent)
   )
+}
+
+/** Model ids already discovered this session on the worktree's host; null before any discovery. */
+export function readNativeChatDiscoveredModelIdsForWorktree(
+  agent: AgentType,
+  worktreeId: string | null
+): string[] | null {
+  const context = resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
+  const models = context ? readNativeChatEnrichedModels(agent, context.hostKey) : null
+  return models ? models.map((model) => model.id) : null
+}
+
+/** The models a terminal-backed chat on this worktree's host lists, shared with its in-chat picker. */
+export async function loadNativeChatCatalogModelsForWorktree(
+  agent: AgentType,
+  worktreeId: string | null
+): Promise<CatalogModel[] | null> {
+  const context = resolveNativeChatModelDiscoveryContextForWorktree(worktreeId)
+  if (!context) {
+    return null
+  }
+  return await loadNativeChatEnrichedModels({
+    agent,
+    hostKey: context.hostKey,
+    discover: () => discoverNativeChatCatalogModels(agent, context.runtime, context.hostKey)
+  })
 }

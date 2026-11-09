@@ -6,13 +6,15 @@ import {
   flushSessionParseCachePersist,
   initSessionParseCachePersistence,
   resetSessionParseCachePersistenceForTests
-} from './session-parse-cache-persistence'
+} from './parse-cache/session-parse-cache-persistence'
 import {
   createSessionParseStats,
-  parseAgentSessionFileCached,
+  parseAgentSessionFileCached
+} from './parse-cache/session-scanner-parse-cache'
+import {
+  getSessionParseCacheEntry,
   resetSessionParseCacheForTests
-} from './session-scanner-parse-cache'
-import { getSessionParseCacheEntry } from './session-parse-cache-store'
+} from './parse-cache/session-parse-cache-store'
 import type { SessionFileCandidate } from './session-scanner-types'
 
 let root: string | undefined

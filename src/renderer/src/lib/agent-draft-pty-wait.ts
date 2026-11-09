@@ -1,10 +1,10 @@
 // Waiting for an agent tab's PTY to bind and for its composer to accept a draft.
 import { waitForAntigravityDraftReady } from './antigravity-draft-readiness'
-import type { TuiAgent } from '../../../shared/tui-agent'
+import type { TuiAgent } from '../../../shared/agent-launch/catalog/tui-agent'
 import { useAppStore } from '@/store'
 import { inspectRuntimeTerminalProcess } from '@/runtime/runtime-terminal-inspection'
 import { waitForAgentDraftInputReady } from './agent-draft-readiness'
-import { isExpectedAgentProcess } from '../../../shared/agent-process-recognition'
+import { isExpectedAgentProcess } from '../../../shared/agent-status/process/agent-process-recognition'
 
 export function waitForAgentDraftInputReadyOnTab(args: {
   tabId: string

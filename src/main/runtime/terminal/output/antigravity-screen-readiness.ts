@@ -1,4 +1,4 @@
-import { OrcaRuntimeWithVisibleSnapshotPreview } from './terminal-visible-state'
+import { OrcaRuntimeWithRestoredAgentDialogScreen } from './restored-agent-dialog-screen'
 import { isAntigravityCommandApprovalScreen } from '../../antigravity-command-approval-screen'
 import { AntigravityScreenPermissionPublisher } from '../../antigravity-screen-permission-publisher'
 import {
@@ -6,7 +6,7 @@ import {
   type TerminalScreenReadiness
 } from '../../terminal-screen-readiness'
 
-export abstract class OrcaRuntimeWithAntigravityScreenReadiness extends OrcaRuntimeWithVisibleSnapshotPreview {
+export abstract class OrcaRuntimeWithAntigravityScreenReadiness extends OrcaRuntimeWithRestoredAgentDialogScreen {
   protected readonly antigravityScreenPermissions = new AntigravityScreenPermissionPublisher({
     baseline: (ptyId) => {
       const pty = this.ptysById.get(ptyId)

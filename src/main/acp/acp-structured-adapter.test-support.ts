@@ -1,14 +1,16 @@
 import { FakeAcpChild } from './acp-scripted-connection.test-fixture'
+import type { AgentSessionExecutionOptions } from '../../shared/agent-session/options/agent-session-execution-options'
 export { FakeAcpChild, PID } from './acp-scripted-connection.test-fixture'
 
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { vi } from 'vitest'
+import { onTestFinished, vi } from 'vitest'
 import { z } from 'zod'
 import type { AgentJournalMessageItem } from '../../shared/agent-session/journal/agent-session-journal-types'
-import type { AgentChatPermissionChoice } from '../../shared/agent-chat-permission-mode'
-import type { StructuredAgentSessionLifecycleEvent } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
-import type { StructuredAgentSessionProviderOpenResult } from '../native-chat/agent-session-wire/structured-agent-session-provider-open-contract'
+import type { AgentChatPermissionChoice } from '../../shared/agent-launch/permissions/agent-chat-permission-mode'
+import type { StructuredAgentSessionLifecycleEvent } from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
+import type { StructuredAgentSessionProviderOpenResult } from '../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
 import {
   openProviderTimelineRig,
   SESSION,
@@ -19,6 +21,7 @@ import { type AcpScriptedAgent, tick, type FakeFrame } from './acp-scripted-agen
 import type { AcpStructuredLaunch } from './acp-structured-launch-resolution'
 import { AcpStructuredSessionAdapter } from './acp-structured-session-adapter'
 import type { AcpStructuredSessionAdapterDeps } from './acp-structured-session-adapter-deps'
+import { AgentSessionStartFailure } from '../native-chat/agent-session-wire/startup/structured-agent-session-start-failure'
 
 export const GROK = acpLaunchSpecFor('grok')!
 const RIG_ENV = { PATH: '/usr/bin', ORCA_PANE_KEY: 'tab-1:pane-1', ORCA_AGENT_HOOK_PORT: '1234' }
@@ -57,7 +60,10 @@ export type AcpAdapterRig = {
   lifecycle: StructuredAgentSessionLifecycleEvent[]
   readonly ended: Extract<StructuredAgentSessionLifecycleEvent, { type: 'ended' }>[]
   started(): StructuredAgentSessionProviderOpenResult
+  /** The error the adapter's verdict carries, as the agent or connection gave it. */
   openFailure(): unknown
+  /** The adapter's verdict on the failed open. */
+  openVerdict(): AgentSessionStartFailure | undefined
   settled: Parameters<NonNullable<AcpStructuredSessionAdapterDeps['onDispatchSettledLate']>>[0][]
   acquire(options?: {
     fence?: number
@@ -86,13 +92,25 @@ export async function openAcpAdapterRig(
   const spawned: string[] = []
   const lifecycle: StructuredAgentSessionLifecycleEvent[] = []
   const settled: AcpAdapterRig['settled'] = []
-  let openFailure: unknown
+  let openVerdict: AgentSessionStartFailure | undefined
   let opened: StructuredAgentSessionProviderOpenResult | null = null
   const startListeners = new Set<() => void>()
   const spec = options.spec ?? GROK
+  const dataDirectory =
+    options.deps?.dataDirectory ??
+    (spec.privateTempDirectory
+      ? await mkdtemp(process.platform === 'win32' ? join(tmpdir(), 'orca-acp-') : '/tmp/o')
+      : join(tmpdir(), 'orca-acp-adapter-rig'))
+  if (spec.privateTempDirectory && !options.deps?.dataDirectory) {
+    onTestFinished(() => rm(dataDirectory, { recursive: true, force: true }))
+  }
   // Use a scratch account folder for agents that prepare one.
   const { prepare, resolve, environment } = spec.account
-  const scratch = { launchEnv: {}, stateDirectory: tmpdir() }
+  const stateDirectory = prepare ? await mkdtemp(join(tmpdir(), 'orca-acp-account-')) : tmpdir()
+  if (prepare) {
+    onTestFinished(() => rm(stateDirectory, { recursive: true, force: true }))
+  }
+  const scratch = { launchEnv: {}, stateDirectory }
   const account = prepare ? environment(await resolve(scratch), {}) : {}
   const resolveLaunch: AcpStructuredSessionAdapterDeps['resolveLaunch'] =
     options.deps?.resolveLaunch ??
@@ -151,7 +169,7 @@ export async function openAcpAdapterRig(
       return child
     },
     readProcessStartTime: async () => 1_700_000_000_000,
-    dataDirectory: join(tmpdir(), 'orca-acp-adapter-rig'),
+    dataDirectory,
     onDispatchSettledLate: (settlement) => settled.push(settlement),
     mintGeneration: () => 'gen-acp',
     now: () => 5_000,
@@ -185,10 +203,11 @@ export async function openAcpAdapterRig(
       }
       return opened
     },
-    openFailure: () => openFailure,
+    openFailure: () => openVerdict?.cause,
+    openVerdict: () => openVerdict,
     settled,
     acquire: async (acquireOptions = {}) => {
-      openFailure = undefined
+      openVerdict = undefined
       opened = null
       const acquisition = await adapter.acquire({
         identity: {
@@ -218,7 +237,10 @@ export async function openAcpAdapterRig(
             signal: acquireOptions.signal ?? new AbortController().signal
           })
         } catch (error) {
-          openFailure = error
+          if (!(error instanceof AgentSessionStartFailure)) {
+            throw new Error('the ACP adapter must answer a failed open with its verdict')
+          }
+          openVerdict = error
           await adapter.closeSession(SESSION)
         }
       }
@@ -248,8 +270,19 @@ const HELLO: AgentJournalMessageItem = {
   blocks: [{ type: 'text', text: 'hello' }]
 }
 
-export function sendHello(rig: AcpAdapterRig, clientMessageId: string, fence = 1) {
-  return rig.adapter.dispatch({ sessionId: SESSION, clientMessageId, body: HELLO, fence })
+export function sendHello(
+  rig: AcpAdapterRig,
+  clientMessageId: string,
+  fence = 1,
+  executionOptions?: AgentSessionExecutionOptions
+) {
+  return rig.adapter.dispatch({
+    sessionId: SESSION,
+    clientMessageId,
+    body: HELLO,
+    fence,
+    ...(executionOptions ? { executionOptions } : {})
+  })
 }
 
 export function replyChunk(promptId: string, text: string, meta: Record<string, unknown> = {}) {

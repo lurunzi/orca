@@ -34,7 +34,8 @@ const ToolMetadata = {
   mcpIdentity: z.object({ server: z.string(), tool: z.string() }).optional(),
   exitCode: z.number().int().optional(),
   durationMs: z.number().nonnegative().optional(),
-  webSearchResults: z.array(z.object({ title: z.string(), url: z.string() })).optional()
+  webSearchResults: z.array(z.object({ title: z.string(), url: z.string() })).optional(),
+  resultImagePaths: z.array(z.string()).optional()
 }
 
 /** Provider IDs are opaque; reject all-whitespace values without rewriting valid IDs. */
@@ -149,6 +150,12 @@ const Resolution = z.object({
     )
     .optional(),
   resolvedBy: z.string().nullable(),
+  resolvedByDevice: z
+    .discriminatedUnion('kind', [
+      z.object({ kind: z.literal('current') }),
+      z.object({ kind: z.literal('named'), name: z.string() })
+    ])
+    .optional(),
   resolvedAt: z.number().nullable()
 })
 
@@ -172,7 +179,9 @@ const MessageBody = z.object({
   blocks: z.array(Block),
   // Open like roles: a send mode a newer build writes must not turn the row malformed.
   sentAs: z.string().min(1).optional(),
-  command: z.object({ name: z.string().min(1) }).optional(),
+  command: z
+    .object({ name: z.string().min(1), instructions: z.string().min(1).optional() })
+    .optional(),
   skills: z.array(z.object({ name: z.string().min(1), path: z.string().min(1) })).optional(),
   // Open like `sentAs`: a state a newer host writes reads as completed, never malformed.
   state: z.string().min(1).optional(),
@@ -255,7 +264,8 @@ const KnownItemBody = z.discriminatedUnion('kind', [
     providerFrame: ProviderFrame.optional(),
     threadGoal: AgentJournalThreadGoalStateSchema.optional(),
     failure: AgentSessionFailureFactSchema.optional(),
-    orcaStop: z.object({ cause: z.string().min(1) }).optional()
+    orcaStop: z.object({ cause: z.string().min(1) }).optional(),
+    forkedFrom: z.object({ sessionId: z.string().min(1) }).optional()
   }),
   z.object({
     kind: z.literal('turn'),

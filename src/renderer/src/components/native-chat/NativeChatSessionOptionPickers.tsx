@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -39,6 +39,7 @@ export type NativeChatSessionOptionPickersProps = {
   pickerRequest?: NativeChatOptionPickerRequest | null
   /** Where focus lands after a visit that changed something; see `useNativeChatPickerFocusReturn`. */
   focusComposer?: () => void
+  agent?: string
 }
 
 /** A descriptor write in flight; its value shows until it settles. */
@@ -109,9 +110,12 @@ function PickerTrigger(props: {
             className="max-w-64"
             onKeyDown={props.onKeyDown}
           >
-            <span className="truncate text-chat-foreground">{props.modelLabel}</span>
-            {props.optionsLabel ? <span className="shrink-0">{props.optionsLabel}</span> : null}
-            <ChevronDown className="size-3" />
+            <span data-composer-label className="flex min-w-0 items-center gap-1">
+              <span className="truncate text-chat-foreground">{props.modelLabel}</span>
+              {props.optionsLabel ? <span className="shrink-0">{props.optionsLabel}</span> : null}
+              <ChevronDown className="size-3" />
+            </span>
+            <SlidersHorizontal data-composer-compact-icon className="hidden size-3.5" />
           </Button>
         </PopoverTrigger>
       </TooltipTrigger>
@@ -152,6 +156,7 @@ function SessionOptionPopover(props: {
   onSet: (descriptor: SessionOptionDescriptor, value: SessionOptionValue) => void
   onAction: (descriptor: SessionOptionDescriptor) => void
   focusComposer?: () => void
+  agent?: string
 }): React.JSX.Element {
   const { model, options, pendingIds, demandModelCatalog } = props
   const canOpen = [model, ...options].some(
@@ -285,6 +290,7 @@ function SessionOptionPopover(props: {
             readOnlyReason={modelReason}
             busy={pendingIds.has(model.id)}
             onSelect={(value) => set(model, value)}
+            agent={props.agent}
           />
         ) : (
           <NativeChatSessionOptionWriteGroup
@@ -323,7 +329,8 @@ function NativeChatSessionOptionPickersInner({
   snapshot,
   isWorking,
   pickerRequest,
-  focusComposer
+  focusComposer,
+  agent
 }: NativeChatSessionOptionPickersProps): React.JSX.Element | null {
   useUiLanguageRevision()
   const [pending, setPending] = useState<ReadonlyMap<string, PendingPick>>(() => new Map())
@@ -367,12 +374,13 @@ function NativeChatSessionOptionPickersInner({
       )
     )
   )
-  const reportedModel = projected.snapshot.find((descriptor) => descriptor.category === 'model')
-  if (!surface || !reportedModel) {
+  const model = projected.snapshot.find((descriptor) => descriptor.category === 'model')
+  if (!surface || !model) {
     return null
   }
-  const model = reportedModel
-  const options = sortNativeChatSessionOptions(projected.snapshot)
+  const options = sortNativeChatSessionOptions(projected.snapshot).filter(
+    (descriptor) => descriptor.id !== 'interactionMode'
+  )
 
   return (
     <div className="flex min-w-0 items-center text-chat-foreground-faint">
@@ -384,6 +392,7 @@ function NativeChatSessionOptionPickersInner({
         queued={queued.size > 0}
         pendingIds={new Set(pending.keys())}
         request={pickerRequest ?? null}
+        agent={agent}
         onSet={(descriptor, value) => {
           const variantModel =
             descriptor.id === 'thinking'

@@ -2,7 +2,7 @@ import { isAntigravityCommandApprovalScreen } from './antigravity-command-approv
 import {
   detectTerminalWaitBlockedReason,
   isKnownReadyPromptPreview
-} from './terminal-wait-detection'
+} from './terminal/wait/terminal-wait-detection'
 import type { RuntimeTerminalWaitBlockedReason } from '../../shared/runtime-types'
 
 const ANTIGRAVITY_FRAME = /^\u2500{8,}$/
@@ -67,9 +67,9 @@ export function isAntigravityWorkingTerminalScreen(tail: readonly string[]): boo
   return (
     (footer.startsWith('esc to cancel') && composerAt(-2)) ||
     (footer.startsWith('? for shortcuts') &&
-      /\u00b7 [1-9]\d* task\(s\) \u00b7 \/tasks$/.test(footer) &&
+      /\u00B7 [1-9]\d* task\(s\) \u00B7 \/tasks$/.test(footer) &&
       ANTIGRAVITY_FRAME.test(rows.at(-2) ?? '') &&
-      /^\u25cf \[\d{2}:\d{2}:\d{2}\] .+ running$/.test(rows.at(-3) ?? '') &&
+      /^\u25CF \[\d{2}:\d{2}:\d{2}\] .+ running$/.test(rows.at(-3) ?? '') &&
       composerAt(-4))
   )
 }

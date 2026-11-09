@@ -1,9 +1,11 @@
 import { expect, it, vi } from 'vitest'
 import { newTabLaunchFields } from './launch-agent-new-tab-fields'
-import type { AgentLaunchExecutionContext } from './launch-agent-execution-context'
+import type { AgentLaunchExecutionContext } from './agent-session/launch/new-tab/launch-agent-execution-context'
 
 vi.mock('@/store', () => ({
-  useAppStore: { getState: () => ({ settings: { experimentalNativeChat: true } }) }
+  useAppStore: {
+    getState: () => ({ settings: { nativeChatProviders: { cursor: true, antigravity: true } } })
+  }
 }))
 
 const context: AgentLaunchExecutionContext = {

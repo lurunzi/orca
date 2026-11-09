@@ -10,7 +10,7 @@ import {
   acquireReadyCodexForTest,
   fakeCodex,
   identityFor
-} from './codex-structured-session-adapter-fixture'
+} from './structured/session-lifecycle/codex-structured-session-adapter-fixture'
 
 vi.mock('../dashboard-accounts/dashboard-allocation-reader', () => ({
   readDashboardCodexAllocation: vi.fn()

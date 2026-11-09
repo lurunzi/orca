@@ -113,7 +113,7 @@ vi.mock('@/runtime/runtime-rpc-client', async (importOriginal) =>
   ).runtimeRpcClientWithLayoutApply({
     ...(await importOriginal<typeof RpcClientModule>()),
     callRuntimeRpc: mocks.callRuntimeRpc,
-    ensureRuntimeEnvironmentCompatible: vi.fn(async () => undefined)
+    ensureRuntimeEnvironmentCompatible: vi.fn(async () => null)
   })
 )
 vi.mock('@/runtime/runtime-layout-client', async (importOriginal) =>
@@ -137,7 +137,7 @@ vi.mock('@/store/index', async () =>
 
 import { resetStructuredAgentSessionSendsForTests } from '@/components/native-chat/structured-agent-session-message-sender'
 import { clearNativeChatDraftCacheForTests } from '@/components/native-chat/native-chat-draft-cache'
-import { adoptAgentSessionLaunchVerdict } from '../../agent-session-launch-plan'
+import { adoptAgentSessionLaunchVerdict } from './routing/agent-session-launch-plan'
 import {
   beginStructuredAgentSessionProvisionalLaunch,
   type StructuredAgentSessionProvisionalLaunch

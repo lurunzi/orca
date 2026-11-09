@@ -8,7 +8,7 @@ import {
   DashboardAgentRestartResponseSchema
 } from '../../../dashboard-accounts/dashboard-agent-restart-protocol'
 import { DASHBOARD_AGENT_RESTART_SOURCES } from '../../../dashboard-accounts/dashboard-agent-restart-source'
-import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
+import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 
 export const DASHBOARD_AGENT_RESTART_METHOD = defineMethod({
   name: 'dashboard.accounts.restartAgent',

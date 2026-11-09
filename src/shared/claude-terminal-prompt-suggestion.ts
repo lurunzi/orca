@@ -1,7 +1,7 @@
 import {
   readTerminalCursorLineContext,
   type TerminalCursorContextSource
-} from './terminal-cursor-line-context'
+} from './terminal/input/terminal-cursor-line-context'
 
 /** Only accept a complete dim suggestion in Claude's otherwise empty input frame. */
 export function readClaudeTerminalPromptSuggestion(

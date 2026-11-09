@@ -13,7 +13,7 @@ export function ProviderAccountChatButton({
   target,
   ...buttonProps
 }: ComponentProps<typeof Button> & {
-  provider: 'claude'
+  provider: 'claude' | 'codex'
   target: RuntimeClientTarget
   add?: boolean
   disabled: boolean
@@ -51,7 +51,7 @@ export function ProviderAccountChatButton({
 }
 
 export function providerChatAccountControl(
-  provider: 'claude',
+  provider: 'claude' | 'codex',
   action: ChatAccountAction | undefined,
   loaded: boolean,
   signedInCount: number,

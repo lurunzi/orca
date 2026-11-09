@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import {
   mobileNativeChatComposerSkillStyles as styles,
@@ -7,6 +7,8 @@ import {
 import { MobileNativeChatComposerFieldCopy } from './MobileNativeChatComposerFieldCopy'
 import { useMobileColorScheme } from '../../../theme/use-mobile-color-scheme'
 import { composerInputStyles } from '../../../components/composer-input/composer-input-styles'
+import { useMobileNativeChatFieldSuggestion } from './use-mobile-prompt-suggestion'
+import { MobileNativeChatPromptSuggestion } from './MobileNativeChatPromptSuggestion'
 
 export function MobileNativeChatComposerField({
   value,
@@ -14,10 +16,16 @@ export function MobileNativeChatComposerField({
   dictationPreview,
   placeholder,
   ref,
+  onKeyboardSubmit: _onKeyboardSubmit,
+  onWebPaste: _onWebPaste,
   ...props
 }: MobileNativeChatComposerFieldProps) {
   useMobileColorScheme()
   const [fieldHeight, setFieldHeight] = useState(0)
+  const ownRef = useRef<TextInput>(null)
+  const input = ref ?? ownRef
+  const suggestion = useMobileNativeChatFieldSuggestion(value, props.onChangeText, input)
+  const fieldPlaceholder = suggestion.text ? undefined : placeholder
   // Keep one tree so a skill or dictation coming and going cannot remount the field and drop focus.
   return (
     <View
@@ -26,9 +34,9 @@ export function MobileNativeChatComposerField({
     >
       {skillToken && !dictationPreview ? (
         <TextInput
-          ref={ref}
+          ref={input}
           style={composerInputStyles.messageText}
-          placeholder={placeholder}
+          placeholder={fieldPlaceholder}
           {...props}
         >
           <Text style={styles.token}>{skillToken}</Text>
@@ -37,14 +45,14 @@ export function MobileNativeChatComposerField({
       ) : (
         // Stays controlled by the draft while previewing, so typing and selection track it; only its text is hidden.
         <TextInput
-          ref={ref}
+          ref={input}
           value={value}
           style={
             dictationPreview
               ? [composerInputStyles.messageText, frameStyles.hiddenText]
               : composerInputStyles.messageText
           }
-          placeholder={dictationPreview ? undefined : placeholder}
+          placeholder={dictationPreview ? undefined : fieldPlaceholder}
           {...props}
         />
       )}
@@ -55,6 +63,13 @@ export function MobileNativeChatComposerField({
           dictationPreview={dictationPreview}
           fieldHeight={fieldHeight}
           scrollTop={0}
+        />
+      ) : null}
+      {suggestion.text ? (
+        <MobileNativeChatPromptSuggestion
+          text={suggestion.text}
+          onAccept={() => void suggestion.accept()}
+          onDismiss={suggestion.dismiss}
         />
       ) : null}
     </View>

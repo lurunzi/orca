@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { decodeCursorTranscriptLine } from '../../src/main/native-chat/transcript-line-decoders-cursor'
 import {
   pendingSendsAsMessages,
-  prunePendingSends,
-  launchPromptAsMessage
-} from '../../src/renderer/src/components/native-chat/native-chat-pending'
+  prunePendingSends
+} from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
+import { launchPromptAsMessage } from '../../src/renderer/src/components/native-chat/native-chat-pending'
 
 function cursorMessage(role: 'user' | 'assistant', text: string, id: string) {
   const message = decodeCursorTranscriptLine(

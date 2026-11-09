@@ -3,10 +3,21 @@ import path from 'node:path'
 import type * as ClaudeCredentials from '../rate-limits/claude-oauth-credentials'
 import { readClaudeFastModeAccountAvailability } from './claude-fast-mode-account-availability'
 
-const mocks = vi.hoisted(() => ({ fetch: vi.fn(), read: vi.fn(), keychain: vi.fn() }))
-vi.mock('../network/http-client', () => ({ getMainHttpClient: () => ({ fetch: mocks.fetch }) }))
+const mocks = vi.hoisted(() => ({
+  fetch: vi.fn(),
+  read: vi.fn(),
+  keychain: vi.fn(),
+  proxySession: vi.fn(),
+  proxy: vi.fn()
+}))
+vi.mock('../network/http-client', () => ({
+  getMainHttpClient: () => ({
+    fetch: mocks.fetch,
+    proxySession: mocks.proxySession
+  })
+}))
 vi.mock('node:fs/promises', () => ({ readFile: mocks.read }))
-vi.mock('../network/proxy-settings', () => ({ ensureElectronProxyFromEnvironment: vi.fn() }))
+vi.mock('../network/proxy-settings', () => ({ ensureElectronProxyFromEnvironment: mocks.proxy }))
 vi.mock('../rate-limits/claude-oauth-credentials', async (original) => ({
   ...(await original<typeof ClaudeCredentials>()),
   readClaudeCredentialsFromStrictKeychain: mocks.keychain
@@ -24,9 +35,29 @@ const unavailable = { supported: false, reason: 'availability-unconfirmed' }
 
 beforeEach(() => {
   vi.resetAllMocks()
+  mocks.proxySession.mockReturnValue(null)
   mocks.keychain.mockResolvedValue({ token: null })
   mocks.read.mockResolvedValue(JSON.stringify({ claudeAiOauth: { accessToken: 'test-oauth' } }))
   mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ enabled: true }) })
+})
+
+it('uses the host HTTP client without requiring an Electron session in headless hosts', async () => {
+  expect(await read(launch, {})).toEqual(enabled)
+  expect(mocks.proxy).not.toHaveBeenCalled()
+  expect(mocks.fetch).toHaveBeenCalledTimes(1)
+})
+
+it('preserves the desktop proxy policy before checking account availability', async () => {
+  const proxySession = {}
+  mocks.proxySession.mockReturnValue(proxySession)
+  expect(await read(launch, {})).toEqual(enabled)
+  expect(mocks.proxy).toHaveBeenCalledWith({
+    proxySession,
+    probeUrl: 'https://api.anthropic.com/api/claude_code_penguin_mode'
+  })
+  expect(mocks.proxy.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.fetch.mock.invocationCallOrder[0]
+  )
 })
 
 it('checks the pinned account without changing its credentials or billing', async () => {

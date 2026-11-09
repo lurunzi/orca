@@ -1,26 +1,24 @@
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
-import { pathSegments } from './session-file-discovery'
 import { resolveAbsoluteDirOverride } from '../../shared/absolute-dir-override'
-import type { AiVaultAgent } from '../../shared/ai-vault-types'
-import type { AiVaultDeletableAgent } from '../../shared/ai-vault-session-deletion'
+import type { AiVaultAgent } from '../../shared/ai-vault/contracts/ai-vault-types'
+import type { AiVaultDeletableAgent } from '../../shared/ai-vault/contracts/ai-vault-session-deletion'
 import { resolveGrokSessionsDir } from '../../shared/grok-session-paths'
 import { resolveKiroHomeDir } from '../../shared/kiro-home'
-import { uniqueCodexSessionsDirs } from './session-scanner-codex-paths'
+import { uniqueCodexSessionsDirs } from './scanners/codex/session-scanner-codex-paths'
 import {
   clineMessagesPathForMetadata,
-  isClineSessionMetadataPath
-} from './session-scanner-cline-parser'
-import { cursorChatMetaPath } from './session-scanner-cursor-chat-meta'
-import { devinSessionsDbDependencyPath } from './session-scanner-devin-db'
-import { resolveKimiSessionsDir } from './session-scanner-kimi-paths'
-import { resolveMuseSessionsDir } from './session-scanner-muse-paths'
-import {
-  isKiroSessionMetadataPath,
   kiroTranscriptPathForMetadata
-} from './session-scanner-kiro-parser'
-import { OPENCLAW_AGENT_SOURCE } from './openclaw-session-layout'
-import { isOmpConversationDirectory } from './session-scanner-omp-subagent-transcripts'
+} from '../../shared/ai-vault/session-display/ai-vault-session-log-resource'
+import { isClineSessionMetadataPath } from './scanners/cline/session-scanner-cline-parser'
+import { CURSOR_AGENT_SOURCE } from './cursor-session-source'
+import { devinSessionsDbDependencyPath } from './scanners/devin/session-scanner-devin-db'
+import { resolveKimiSessionsDir } from './scanners/kimi/session-scanner-kimi-paths'
+import { resolveMuseSessionsDir } from '../../shared/muse-session-log'
+import { isKiroSessionMetadataPath } from './scanners/kiro/session-scanner-kiro-parser'
+
+import { OPENCLAW_AGENT_SOURCE } from './scanners/openclaw/openclaw-session-layout'
+import { isOmpConversationDirectory } from './scanners/omp/session-scanner-omp-subagent-transcripts'
 import {
   claudeProjectsRootDirs,
   codexHomeSessionsDir,
@@ -29,7 +27,7 @@ import {
   wslHomeSessionDirs
 } from './session-scanner-roots'
 import { getHermesHome } from '../hermes/hermes-default-home'
-import { SUBAGENT_DIR_NAME } from './session-scanner-subagent-transcripts'
+import { SUBAGENT_DIR_NAME } from './scanners/claude/session-scanner-subagent-transcripts'
 import type { AiVaultScanOptions } from './session-scanner-types'
 import { normalizeAgentSessionsDir, primeAgentSessionsDirFromEnv } from './session-scanner-values'
 
@@ -39,7 +37,6 @@ const COPILOT_SESSIONS_DIR = join(
   resolveAbsoluteDirOverride(process.env.COPILOT_HOME, join(homedir(), '.copilot')),
   'session-state'
 )
-const CURSOR_PROJECTS_DIR = join(homedir(), '.cursor', 'projects')
 const CODEBUDDY_PROJECTS_DIR = join(homedir(), '.codebuddy', 'projects')
 const ROVO_SESSIONS_DIR = join(homedir(), '.rovodev', 'sessions')
 export function piSessionHistorySessionsDir(): string {
@@ -142,16 +139,7 @@ export const AI_VAULT_AGENT_SOURCES: AiVaultAgentSourceTable = {
       ]),
     extensions: ['.jsonl']
   },
-  cursor: {
-    rootDirs: (options, wslHomeDirs) =>
-      sessionRootDirs(options.cursorProjectsDir ?? CURSOR_PROJECTS_DIR, wslHomeDirs, [
-        '.cursor',
-        'projects'
-      ]),
-    extensions: ['.jsonl'],
-    filePredicate: (filePath) => pathSegments(filePath).includes('agent-transcripts'),
-    contentDependencyPath: cursorChatMetaPath
-  },
+  cursor: CURSOR_AGENT_SOURCE,
   grok: {
     rootDirs: (options, wslHomeDirs) => [
       options.grokSessionsDir ?? resolveGrokSessionsDir(),

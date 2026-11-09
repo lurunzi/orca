@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { Tab } from '../../../../shared/tab-types'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'
-import { getKnownExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
+import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { NativeChatResolvedView } from './NativeChatResolvedView'
 import { NativeChatFileLinkExistenceProvider } from './use-native-chat-file-link-existence'
 import { CursorTranscriptComposer } from './CursorTranscriptComposer'
@@ -17,6 +17,11 @@ import { useNativeChatImageRuntimeContext } from './native-chat-image-runtime-co
 import { selectNativeChatViewState } from './native-chat-view-state'
 import { NativeChatMessageList } from './NativeChatMessageList'
 import { NativeChatEmptyState } from './NativeChatEmptyState'
+import { reconcileCursorTranscriptTabs } from '@/lib/cursor-transcript-tab'
+import {
+  readNativeChatComposerDraft,
+  subscribeToNativeChatComposerDraft
+} from './native-chat-composer-draft-store'
 
 export function NativeChatTranscriptView({
   tabId,
@@ -32,6 +37,11 @@ export function NativeChatTranscriptView({
   isFocusedGroup: boolean
 }): React.JSX.Element {
   const [sending, setSending] = useState(false)
+  const subscribeDraft = useCallback(
+    (listener: () => void) => subscribeToNativeChatComposerDraft(tabId, listener),
+    [tabId]
+  )
+  const draft = useSyncExternalStore(subscribeDraft, () => readNativeChatComposerDraft(tabId))
   const terminal = useAppStore(
     useShallow((state) =>
       getKnownExecutionHostIdForWorktree(state, worktreeId) ===
@@ -40,6 +50,11 @@ export function NativeChatTranscriptView({
         : null
     )
   )
+  useEffect(() => {
+    if (terminal && !sending && draft.text === '' && draft.images.length === 0) {
+      reconcileCursorTranscriptTabs(worktreeId)
+    }
+  }, [terminal, sending, draft, worktreeId])
   if (terminal && !sending) {
     return (
       <NativeChatFileLinkExistenceProvider tabId={terminal.tabId}>

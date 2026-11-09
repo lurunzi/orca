@@ -2,16 +2,16 @@ import { afterEach, expect, it } from 'vitest'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
 import { claudeProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import {
+  HOST_TEST_SESSION as SESSION,
   hostTestAttachParams,
   hostTestCatalogReadOperation,
   hostTestOperationId
-} from './structured-agent-session-host-test-data'
+} from './host/testing/structured-agent-session-host-test-data'
 import {
   createRestTestRig,
   REST_TEST_CALLER as CALLER,
-  REST_TEST_SESSION as SESSION,
   type RestTestRig
-} from './structured-agent-session-rest-test-rig'
+} from './host/testing/structured-agent-session-rest-test-rig'
 
 function catalogListing(modelSupported: boolean) {
   return {

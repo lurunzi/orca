@@ -1,7 +1,7 @@
 import { sendNativeChatObservedWrites } from './native-chat-observed-send'
 import { agentImagePasteWrites } from '../../../../shared/agent-image-paste'
 import { agentImagePastePath } from '../../../../shared/agent-image-paste-path'
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
 import {
@@ -66,7 +66,7 @@ export function sendNativeChatMessageWithImageAttachments(
     ptyId,
     durationMs,
     (ctx) => {
-      const { isCancelled, delay } = ctx
+      const { isCancelled, delay, markSubmitted, markWriteStarted } = ctx
       if (isCancelled()) {
         return
       }
@@ -78,6 +78,7 @@ export function sendNativeChatMessageWithImageAttachments(
           if (isCancelled()) {
             return
           }
+          markWriteStarted()
           for (const payload of agentImagePasteWrites(
             agent,
             imagePaths.map((path) =>
@@ -96,6 +97,7 @@ export function sendNativeChatMessageWithImageAttachments(
           }
           delay(submitDelayMs, () => writeNativeChatSubmit(ptyId, options, ctx))
         },
+        markSubmitted,
         () => {
           lineTouched = true
         }

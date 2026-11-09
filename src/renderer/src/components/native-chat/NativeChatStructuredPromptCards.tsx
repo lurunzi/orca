@@ -1,5 +1,4 @@
-import type { ComponentProps, RefObject } from 'react'
-import type { AgentType } from '../../../../shared/agent-status-types'
+import type { RefObject } from 'react'
 import { agentSessionPromptQuestions } from '../../../../shared/agent-session/agent-session-question-answer'
 import { chatApprovalFromJournal } from '../../../../shared/native-chat/input/native-chat-interactive-prompt'
 import { NativeChatApprovalCard } from './NativeChatApprovalCard'
@@ -11,31 +10,25 @@ import type { useStructuredAgentSession } from './use-structured-agent-session'
 type PromptController = Parameters<typeof cancelStructuredPrompt>[0] &
   Pick<ReturnType<typeof useStructuredAgentSession>, 'prompts'>
 
-type NativeChatStructuredPromptCardsProps = Pick<
-  ComponentProps<typeof NativeChatApprovalCard>,
-  'onLinkClick' | 'allowFileUriLinks'
-> & {
+type NativeChatStructuredPromptCardsProps = {
   controller: PromptController
   prompt: PromptController['prompts'][number]
-  agent: AgentType
   response: ReturnType<typeof useStructuredPromptResponseHold>
   shouldFocus: boolean
-  answerInputRef: RefObject<HTMLInputElement | null>
+  answerInputRef: RefObject<HTMLTextAreaElement | null>
 }
 
 /** The shown structured prompt as its approval or question card. */
 export function NativeChatStructuredPromptCards({
   controller,
   prompt,
-  agent,
   response,
   shouldFocus,
-  answerInputRef,
-  ...fileLinkProps
+  answerInputRef
 }: NativeChatStructuredPromptCardsProps): React.JSX.Element {
   const approval = prompt.body.kind === 'approval' ? chatApprovalFromJournal(prompt.body) : null
   const questionBody = prompt.body.kind === 'question' ? prompt.body : null
-  const cancelPrompt = () => cancelStructuredPrompt(controller, prompt, agent)
+  const cancelPrompt = () => cancelStructuredPrompt(controller, prompt)
   return (
     <>
       {approval ? (
@@ -46,7 +39,6 @@ export function NativeChatStructuredPromptCards({
           isSubmitting={response.holds(prompt)}
           onCancel={cancelPrompt}
           shouldFocus={shouldFocus}
-          {...fileLinkProps}
         />
       ) : null}
       {questionBody ? (

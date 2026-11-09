@@ -8,20 +8,20 @@ import {
   buildPtyTerminalWaitExitError,
   buildPtyTerminalWaitResult,
   getPtyTerminalState
-} from '../../terminal-wait-results'
+} from './terminal-wait-results'
 import { readsTrustedScreen } from '../../agent-state-rules/agent-state-rules-engine'
 import { showsScreenProbeBanner } from '../../agent-state-rules/agent-state-text-anchors'
-import { buildTerminalWaitText } from '../../terminal-wait-tail-state'
-import { evaluateTuiIdle, type TuiIdleVerdict } from '../../tui-idle-evidence'
+import { buildTerminalWaitText } from './terminal-wait-tail-state'
+import type { TuiIdleVerdict } from './tui-idle-evidence'
 import {
   outputClockOf,
   ptyTuiIdleEvidence,
   type TuiIdleEvidenceSource
-} from '../../tui-idle-evidence-source'
-import type { TuiAgent } from '../../../../shared/tui-agent'
-import type { TerminalWaiter } from '../../runtime-terminal-contracts'
-import type { RuntimePtyWorktreeRecord } from '../../runtime-terminal-state-records'
-import { screenReadinessVerdict, type RuntimeTerminalIdlePolls } from './terminal-idle-polls'
+} from './tui-idle-evidence-source'
+import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
+import type { TerminalWaiter } from './terminal-waiter'
+import type { RuntimePtyWorktreeRecord } from '../records/runtime-terminal-state-records'
+import { screenRuledTuiIdleVerdict, type RuntimeTerminalIdlePolls } from './terminal-idle-polls'
 import type { RuntimeTerminalWaiterRegistry } from './terminal-waiter-registry'
 
 /** Probe unseen/provider-only panes and clockless screen-ruled agents with untrusted restored models; clocked panes settle through quiet polling. profile.screenProbeBanner also opts in. */
@@ -64,9 +64,9 @@ export class RuntimeTerminalWait {
 
   /** Why one helper: the immediate check and the poll must rank the same terminal the same way. */
   private evaluate(pty: RuntimePtyWorktreeRecord, waitText: string): TuiIdleVerdict {
-    return (
-      screenReadinessVerdict(this.deps.getScreenReadiness?.(pty.ptyId, waitText)) ??
-      evaluateTuiIdle(ptyTuiIdleEvidence(this.deps, pty, () => waitText))
+    return screenRuledTuiIdleVerdict(
+      this.deps.getScreenReadiness?.(pty.ptyId, waitText),
+      ptyTuiIdleEvidence(this.deps, pty, () => waitText)
     )
   }
 

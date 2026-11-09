@@ -1,11 +1,12 @@
 // Publish and track the child before handshaking so startup cancellation can reach it.
 
 import { initializeAcpStructuredSession } from './acp-structured-handshake'
-import {
-  AgentSessionPreSpawnError,
-  type AgentSessionAcquisition,
-  type StructuredAgentSessionAcquireInput
-} from '../native-chat/agent-session-wire/structured-agent-session-adapter'
+import '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
+import { AgentSessionPreSpawnError } from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter-errors'
+import type {
+  AgentSessionAcquisition,
+  StructuredAgentSessionAcquireInput
+} from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { providerTimelineSink } from '../native-chat/agent-session-timeline/provider-timeline-plan'
 import { providerSpawnedProcessIdentity } from '../provider-process/provider-spawned-process-identity'
 import { acpPrivateTempConnect } from './acp-private-temp'
@@ -17,7 +18,8 @@ import {
 import type { AcpSessionEvent } from './acp-session-runtime'
 import type { AcpStructuredConnection } from './acp-structured-connection'
 import { acpAgentName } from './acp-structured-agent-definitions'
-import { AcpStructuredLane, acpLaneChildWorkDelivery } from './acp-structured-lane'
+import { AcpStructuredLane } from './acp-structured-lane'
+import { acpLaneChildWorkDelivery } from './acp-lane-child-work-delivery'
 import { NO_ACP_CHILD_STOPS } from './acp-structured-child-stop'
 import { prepareAcpStructuredLaunch } from './acp-structured-launch-preparation'
 import { AcpStructuredOptions } from './acp-structured-options'
@@ -27,7 +29,7 @@ import { asReattachHistory, routeAcpSessionEvent } from './acp-structured-sessio
 import type { AcpStructuredSessionAdapterDeps } from './acp-structured-session-adapter-deps'
 import type { AcpStructuredTurnsDeps } from './acp-structured-turns'
 import { RequestPermissionResponseSchema } from './generated/acp-protocol.generated'
-import { createStructuredAgentSessionLogger } from '../native-chat/agent-session-wire/structured-agent-session-logger'
+import { createStructuredAgentSessionLogger } from '../native-chat/agent-session-wire/host/structured-agent-session-logger'
 
 const MAX_EARLY_FRAMES = 2_048
 
@@ -73,14 +75,9 @@ export async function acquireAcpStructuredSession(input: {
     history: AcpLoadHistory | null
   } = { lane: null, reattaching: false, history: null }
   const options = new AcpStructuredOptions(launch.spec.dialect)
-  // Agent-initiated turns cannot open interactive requests; settled request content may still show.
   const prompts = new AcpStructuredPrompts(
     () => slot.lane,
-    () => isAcpReadySession(session) && session.turns?.acceptsRequests === true,
-    () =>
-      isAcpReadySession(session) &&
-      (session.turns.acceptsRequests ||
-        (!session.turns.running && !session.turns.stopped && session.lane.openTurnId !== null))
+    () => isAcpReadySession(session) && session.turns?.acceptsRequests === true
   )
   const early: (() => void)[] = []
   const whenLane = (deliver: () => void): void => {
@@ -90,6 +87,8 @@ export async function acquireAcpStructuredSession(input: {
       early.push(deliver)
     }
   }
+  // Without a full-access mode of its own, the agent asks and Orca answers.
+  const orcaApproves = launch.fullAccess && !spec.permissionModeConfig?.values['full-access']
   // Keep the last abort check and spawn synchronous when no temp directory is needed.
   const connect = spec.privateTempDirectory
     ? await acpPrivateTempConnect(deps, closedBeforeSpawn)
@@ -104,15 +103,20 @@ export async function acquireAcpStructuredSession(input: {
     },
     {
       clientInfo: { name: 'orca', version: '1' },
+      clientCapabilities: {
+        ...spec.dialect.clientCapabilities,
+        ...(spec.clientCapabilitiesMeta ? { _meta: { ...spec.clientCapabilitiesMeta } } : {})
+      },
+      retryBusyPrompts: spec.agent === 'omp',
       ...(spec.signIn ? { signIn: spec.signIn } : {}),
       onPermission: (request, context) => {
         if (!isAcpReadySession(session) || !session.turns?.acceptsRequests) {
-          // No interactive prompt remains during Stop, steering or an agent-initiated turn.
+          // Nobody can answer during Stop, a steer or teardown.
           return { outcome: { outcome: 'cancelled' } }
         }
         // Do not auto-approve questions or permissions enforced by the agent's own mode.
         const claimed = spec.dialect.request?.('session/request_permission', request)
-        if (launch.fullAccess && !spec.permissionModeConfig && !claimed) {
+        if (orcaApproves && !claimed) {
           const allow = request.options.find((option) => option.kind === 'allow_once')
           if (allow) {
             return { outcome: { outcome: 'selected', optionId: allow.optionId } }
@@ -148,7 +152,7 @@ export async function acquireAcpStructuredSession(input: {
       onExit: () => input.onExit(session)
     }
   )
-  if (!spec.permissionModeConfig) {
+  if (!spec.permissionModeConfig || orcaApproves) {
     options.applied.set('permissionMode', launch.fullAccess ? 'full-access' : 'ask')
   }
   // From here, cancellation closes this connection even before exit is proven.

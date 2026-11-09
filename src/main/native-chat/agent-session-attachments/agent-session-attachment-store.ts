@@ -1,6 +1,9 @@
 // Per-upload directories preserve original filenames without collisions; atomic commit hides partial bytes.
 
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { readAttachmentTextChunk } from './agent-session-attachment-text-read'
+import type { AttachmentTextRequest } from '../../../shared/attachment-text-source'
 import { appendFile, mkdir, rm, writeFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import {
@@ -171,6 +174,25 @@ export class AgentSessionAttachmentStore {
     return finalPath
   }
 
+  /** Content-addressed so repeated reads and transcript replays share one copy. Synchronous so the
+   *  journal row naming the file is never written before it exists. */
+  storeSnapshotSync(name: string, bytes: Buffer): string {
+    const digest = createHash('sha256').update(bytes).digest('hex')
+    // Upload directories must be UUID-shaped for claims and store-path parsing.
+    const uploadId = [0, 8, 12, 16, 20]
+      .map((start, index, starts) => digest.slice(start, starts[index + 1] ?? 32))
+      .join('-')
+    const uploadDir = join(this.rootDir, uploadId)
+    const finalPath = join(uploadDir, sanitizeAgentSessionAttachmentName(name))
+    if (!existsSync(finalPath)) {
+      mkdirSync(uploadDir, { recursive: true })
+      const partPath = join(uploadDir, AGENT_SESSION_ATTACHMENT_PART_FILE)
+      writeFileSync(partPath, bytes)
+      renameSync(partPath, finalPath)
+    }
+    return finalPath
+  }
+
   async abortUpload(args: { callerKey: string; uploadId: string }): Promise<{ aborted: true }> {
     const upload = this.uploads.peek(args.uploadId)
     if (upload) {
@@ -184,6 +206,10 @@ export class AgentSessionAttachmentStore {
   }
 
   /** Refuse out-of-store paths and previews exceeding the remote reply budget. */
+  readTextChunk(request: AttachmentTextRequest, maxContentBytes?: number) {
+    return readAttachmentTextChunk(this.rootDir, request, maxContentBytes)
+  }
+
   async readPreview(filePath: string, maxContentBytes?: number): Promise<RuntimeFilePreviewResult> {
     if (
       !IMAGE_FILE_MIME_TYPES[extname(filePath).toLowerCase()] ||

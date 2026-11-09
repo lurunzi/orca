@@ -2,7 +2,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { create } from 'zustand'
-import type { AiVaultSession } from '../../../../shared/ai-vault-types'
+import type { AiVaultSession } from '../../../../shared/ai-vault/contracts/ai-vault-types'
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
@@ -20,20 +20,20 @@ vi.mock('@/store', () => ({
     getState: () => state.getState()
   })
 }))
-vi.mock('@/lib/worktree-runtime-owner', () => ({
+vi.mock('@/lib/workspace/ownership/worktree-runtime-owner', () => ({
   getKnownExecutionHostIdForWorktree: () => mocks.host
 }))
-vi.mock('../right-sidebar/ai-vault-session-launch-target', () => ({
+vi.mock('../right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target', () => ({
   resolveAiVaultTargetWorkspacePath: () => mocks.path
 }))
-vi.mock('@/lib/ai-vault-session-resume-preparation', () => ({
+vi.mock('@/lib/agent-session/resume/history/ai-vault-session-resume-preparation', () => ({
   prepareAiVaultSessionForTerminalResume: mocks.prepare
 }))
-vi.mock('@/lib/ai-vault-resume-command', () => ({
+vi.mock('@/lib/agent-session/resume/history/ai-vault-resume-command', () => ({
   buildAiVaultResumeStartupForWorktree: mocks.build
 }))
 vi.mock('@/lib/launch-ai-vault-session', () => ({ launchAiVaultSessionInNewTab: mocks.launch }))
-vi.mock('@/lib/launch-agent-tab-prompt-paste', () => ({
+vi.mock('@/lib/agent-session/launch/prompt/launch-agent-tab-prompt-paste', () => ({
   pasteAgentLaunchPromptOnceReady: mocks.deliver
 }))
 vi.mock('@/lib/cursor-transcript-terminal', () => ({ findCursorTranscriptTerminal: mocks.find }))

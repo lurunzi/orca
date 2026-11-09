@@ -2,12 +2,15 @@
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { create } from 'zustand'
-import type { AiVaultListResult, AiVaultSession } from '../../../../shared/ai-vault-types'
+import type {
+  AiVaultListResult,
+  AiVaultSession
+} from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type { Tab } from '../../../../shared/tab-types'
 import type * as TranscriptTabModule from '@/lib/cursor-transcript-tab'
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(() => true) }))
+const mocks = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(() => true), reconcile: vi.fn() }))
 type State = {
   activeWorktreeId: string
   path: string
@@ -26,19 +29,20 @@ const store = create<State>(() => ({
 }))
 vi.mock('@/store', () => ({ useAppStore: (...args: Parameters<typeof store>) => store(...args) }))
 // Zustand's imperative reads are part of the discovery fence.
-vi.mock('@/lib/worktree-runtime-owner', () => ({
+vi.mock('@/lib/workspace/ownership/worktree-runtime-owner', () => ({
   getKnownExecutionHostIdForWorktree: (state: State) => state.host
 }))
-vi.mock('../right-sidebar/ai-vault-session-launch-target', () => ({
+vi.mock('../right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target', () => ({
   resolveAiVaultTargetWorkspacePath: (state: State) => state.path
 }))
 vi.mock('@/lib/cursor-transcript-tab', async (original) => ({
   ...(await original<typeof TranscriptTabModule>()),
-  openCursorTranscriptTab: mocks.open
+  openCursorTranscriptTab: mocks.open,
+  reconcileCursorTranscriptTabs: mocks.reconcile
 }))
 import { useAppStore } from '@/store'
 import { CursorTranscriptDiscoveryGate } from './CursorTranscriptDiscoveryGate'
-Object.assign(useAppStore, { getState: store.getState })
+Object.assign(useAppStore, { getState: store.getState, subscribe: store.subscribe })
 
 function session(id: string, overrides: Partial<AiVaultSession> = {}): AiVaultSession {
   return {

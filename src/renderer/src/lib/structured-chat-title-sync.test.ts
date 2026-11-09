@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AiVaultSessionTitlesResult } from '../../../shared/ai-vault-session-title'
+import type { AiVaultSessionTitlesResult } from '../../../shared/ai-vault/contracts/ai-vault-session-title'
 import type { Tab } from '../../../shared/tab-types'
 import { resolveUnifiedTabLabel } from '../../../shared/tab-title-resolution'
 import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
 import { createTestStore, makeUnifiedTab } from '../store/slices/store-test-helpers'
-import { collectAiVaultTitleRequests } from './ai-vault-tab-title-requests'
-import { aiVaultTitleSyncInputsChanged } from './ai-vault-tab-title-sync-inputs'
-import { startAiVaultTabTitleSync } from './ai-vault-tab-title-sync'
+import { collectAiVaultTitleRequests } from './agent-session/history/title-sync/ai-vault-tab-title-requests'
+import { aiVaultTitleSyncInputsChanged } from './agent-session/history/title-sync/ai-vault-tab-title-sync-inputs'
+import { startAiVaultTabTitleSync } from './agent-session/history/title-sync/ai-vault-tab-title-sync'
 
 vi.mock('sonner', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() } }))
 
@@ -99,7 +99,7 @@ describe('structured chat conversation titles', () => {
     })
     expect(tab().aiVaultTitle?.title).toBe('History name')
     expect(resolveUnifiedTabLabel(tab(), false)).toBe('My name')
-    store.getState().setTabCustomTitle(TAB_ID, null)
+    store.getState().setTabCustomLabel(TAB_ID, null)
     expect(resolveUnifiedTabLabel(tab(), false)).toBe('History name')
     const before = store.getState()
     store.getState().setAiVaultTabTitle(TAB_ID, tab().aiVaultTitle ?? null)

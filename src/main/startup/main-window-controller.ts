@@ -16,6 +16,7 @@ import {
 } from './windows-install-dir-acl-recovery'
 import { logStartupMilestone } from './startup-diagnostics'
 import { notifyMainWindowBecameVisible } from '../window/main-window-visibility'
+import { safelyRevealWindow } from '../window/focus-existing-window'
 import { setTrayAttention } from '../tray/system-tray'
 import { createSystemTrayDeferred, showRendererRecoveryPrompt } from './main-window-actions'
 import { attachMainWindowCoreServices } from './main-window-core-services'
@@ -38,7 +39,7 @@ import {
 } from './synthetic-title-runtime'
 import { requireMainWindowServices } from './main-window-service-readiness'
 import { recordRendererLaunchFailureProbe } from '../window/renderer-launch-failure-probe'
-import { trackBrowserExtensionMainWindow } from '../browser/extensions/browser-extension-window-model'
+import { trackBrowserExtensionMainWindow } from '../browser/extensions/tabs-and-windows/browser-extension-window-model'
 
 import { isResourceWindowVisible } from '../window/resource-view-admission'
 import {
@@ -52,7 +53,20 @@ const AGENT_STATE_CRASH_BREADCRUMB_MIN_INTERVAL_MS = 30_000
 export function openMainWindow(options: { revealOnDidFinishLoad?: boolean } = {}): BrowserWindow {
   // Activation can open the window while deferred startup is still waiting.
   if (state.mainWindow && !state.mainWindow.isDestroyed()) {
-    return state.mainWindow
+    // A reused unshown window must still honor the caller's reveal policy.
+    const reused = state.mainWindow
+    if (options.revealOnDidFinishLoad === true && !reused.isVisible()) {
+      if (reused.webContents.isLoading()) {
+        reused.webContents.once('did-finish-load', () => {
+          if (!reused.isDestroyed() && !reused.isVisible()) {
+            safelyRevealWindow(reused)
+          }
+        })
+      } else {
+        safelyRevealWindow(reused)
+      }
+    }
+    return reused
   }
   logStartupMilestone('open-main-window-start')
   const { store, keybindings } = requireMainWindowServices({

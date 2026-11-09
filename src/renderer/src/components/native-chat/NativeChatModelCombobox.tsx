@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { Check } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Check, ChevronRight } from 'lucide-react'
 import {
   Command,
   CommandEmpty,
@@ -15,6 +15,7 @@ import { nativeChatSessionChoiceLabel } from '../../../../shared/native-chat/inp
 import { sayNativeChatSessionOptionTranslated as say } from './native-chat-session-option-labels-text'
 import { NativeChatSessionOptionChoiceBody } from './NativeChatSessionOptionChoiceBody'
 import { NativeChatSessionOptionWriteGroup } from './NativeChatSessionOptionWriteGroup'
+import { getModelVariantSuffix, groupCursorModels } from './cursor-model-groups'
 
 type NativeChatModelComboboxProps = {
   choices: readonly SessionOptionSelectChoice[]
@@ -26,6 +27,10 @@ type NativeChatModelComboboxProps = {
   busy: boolean
   /** Called for a model other than the current one; the list stays as it is. */
   onSelect: (value: string) => void
+  /** The chat agent; when cursor, enables grouped layout. */
+  agent?: string
+  /** Explicitly enables grouped layout. */
+  grouped?: boolean
 }
 
 // Why not cmdk's scorer: it matches scattered letters and reorders the host's list.
@@ -41,10 +46,59 @@ export function NativeChatModelCombobox({
   readOnly,
   readOnlyReason,
   busy,
-  onSelect
+  onSelect,
+  agent,
+  grouped
 }: NativeChatModelComboboxProps): React.JSX.Element {
   const searchLabel = translate('components.native-chat.composer.searchModels', 'Search models…')
   const search = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState(false)
+
+  const hasSearch = query.trim().length > 0
+  const visibleChoices = useMemo(
+    () => choices.filter((choice) => !choice.searchOnly || hasSearch),
+    [choices, hasSearch]
+  )
+  const isGrouped = grouped ?? agent === 'cursor'
+  const groups = useMemo(
+    () => (isGrouped ? groupCursorModels(visibleChoices, currentValue) : null),
+    [isGrouped, visibleChoices, currentValue]
+  )
+
+  const showMoreModels = expanded || hasSearch
+
+  const renderModelItem = (choice: SessionOptionSelectChoice): React.JSX.Element => {
+    const label = nativeChatSessionChoiceLabel(choice, say)
+    const current = choice.value === currentValue
+    const suffix = isGrouped ? getModelVariantSuffix(choice.value) : null
+    return (
+      <CommandItem
+        key={choice.value}
+        value={choice.value}
+        keywords={[label, suffix ?? '', choice.description ?? '']}
+        selection="palette"
+        disabled={readOnly}
+        aria-current={current || undefined}
+        onSelect={() => {
+          if (!current) {
+            onSelect(choice.value)
+          }
+        }}
+      >
+        <NativeChatSessionOptionChoiceBody
+          label={label}
+          suffix={suffix}
+          description={nativeChatModelDescription(choice.value, choice.description)}
+        />
+        {/* Reserve the check slot so selecting a model cannot rewrap its label. */}
+        <span className="ml-auto flex size-3.5 shrink-0 items-center justify-center">
+          {current ? <Check className="size-3.5 text-muted-foreground" /> : null}
+        </span>
+      </CommandItem>
+    )
+  }
+
   return (
     <Command
       surface="inline"
@@ -53,7 +107,7 @@ export function NativeChatModelCombobox({
       filter={modelChoiceFilter}
       defaultValue={currentValue}
     >
-      <CommandInput ref={search} placeholder={searchLabel} />
+      <CommandInput ref={search} placeholder={searchLabel} value={query} onValueChange={setQuery} />
       {readOnly && readOnlyReason ? (
         <div className="px-3 py-1.5 text-xs text-muted-foreground">{readOnlyReason}</div>
       ) : null}
@@ -74,36 +128,55 @@ export function NativeChatModelCombobox({
           )}
         </CommandEmpty>
         <NativeChatSessionOptionWriteGroup busy={busy}>
-          <CommandGroup>
-            {choices.map((choice) => {
-              const label = nativeChatSessionChoiceLabel(choice, say)
-              const current = choice.value === currentValue
-              return (
-                <CommandItem
-                  key={choice.value}
-                  value={choice.value}
-                  keywords={[label, choice.description ?? '']}
-                  selection="palette"
-                  disabled={readOnly}
-                  aria-current={current || undefined}
-                  onSelect={() => {
-                    if (!current) {
-                      onSelect(choice.value)
-                    }
-                  }}
+          {!isGrouped || !groups ? (
+            <CommandGroup>{visibleChoices.map(renderModelItem)}</CommandGroup>
+          ) : (
+            <>
+              {groups.autoModel ? (
+                <CommandGroup>{renderModelItem(groups.autoModel)}</CommandGroup>
+              ) : null}
+              {groups.cursorModels.length > 0 ? (
+                <CommandGroup
+                  heading={translate(
+                    'components.native-chat.composer.cursorModels',
+                    'Cursor Models'
+                  )}
                 >
-                  <NativeChatSessionOptionChoiceBody
-                    label={label}
-                    description={nativeChatModelDescription(choice.value, choice.description)}
-                  />
-                  {/* Reserve the check slot so selecting a model cannot rewrap its label. */}
-                  <span className="ml-auto flex size-3.5 shrink-0 items-center justify-center">
-                    {current ? <Check className="size-3.5 text-muted-foreground" /> : null}
-                  </span>
-                </CommandItem>
-              )
-            })}
-          </CommandGroup>
+                  {groups.cursorModels.map(renderModelItem)}
+                </CommandGroup>
+              ) : null}
+              {groups.otherModels.length > 0 ? (
+                <CommandGroup
+                  heading={translate('components.native-chat.composer.otherModels', 'Other Models')}
+                >
+                  {groups.otherModels.map(renderModelItem)}
+                </CommandGroup>
+              ) : null}
+              {showMoreModels ? (
+                groups.moreModels.length > 0 ? (
+                  <CommandGroup
+                    heading={translate('components.native-chat.composer.moreModels', 'More models')}
+                  >
+                    {groups.moreModels.map(renderModelItem)}
+                  </CommandGroup>
+                ) : null
+              ) : groups.moreModels.length > 0 ? (
+                <CommandGroup>
+                  <CommandItem
+                    value="more-models"
+                    keywords={[]}
+                    selection="palette"
+                    onSelect={() => setExpanded(true)}
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {translate('components.native-chat.composer.moreModels', 'More models')}
+                    </span>
+                    <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
+                  </CommandItem>
+                </CommandGroup>
+              ) : null}
+            </>
+          )}
         </NativeChatSessionOptionWriteGroup>
       </CommandList>
     </Command>
