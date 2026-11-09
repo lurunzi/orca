@@ -30,7 +30,7 @@ export function CodexSwitcherMenu({
   iconOnly: boolean
   asSubmenu?: boolean
   triggerContent?: React.ReactNode
-  /** Switch the account one chat's next start uses; see `useCodexSwitcherController`. */
+  /** Switch the account one chat's next start uses; see `use-codex-switcher-controller.ts`. */
   chatAction?: ChatAccountAction
 }): React.JSX.Element | null {
   const {
