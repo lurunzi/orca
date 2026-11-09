@@ -15,6 +15,7 @@ export async function prepareForkFounding(
     return
   }
   await params.fork.revalidate()
+  request.poolCopy = params.fork.poolCopy
   const last = items?.at(-1)
   request.forkedFrom = {
     sessionId: params.fork.sessionId,

@@ -6,7 +6,7 @@ import type { StructuredAgentSessionProviderRenameInput } from './structured-age
 import type { CodexAccountUsageRead } from '../../../rate-limits/codex-rpc-rate-limit-mapper'
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import type { StructuredAgentSessionAdmitFreshInput } from '../delivery/structured-agent-session-input-admission'
-import type { AiVaultConversationCopy } from '../../../../shared/ai-vault/resume/ai-vault-resume-preparation'
+import type { StructuredAgentSessionConversationCopyResult } from './structured-agent-session-conversation-copy-result'
 import type { AgentChatPermissionChoice } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import type {
   AgentSessionRewindFork,
@@ -354,7 +354,7 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
   /** Copy the provider conversation without changing the chat’s ID; omit for CLI-based forks. */
   copyConversation?(
     input: StructuredAgentSessionConversationCopyInput
-  ): Promise<AiVaultConversationCopy>
+  ): Promise<StructuredAgentSessionConversationCopyResult>
   /** Give the agent's own conversation the user's chat name, as the agent's own rename would:
    *  through the live child holding that conversation, otherwise at rest. Best effort. */
   renameProviderSession?(input: StructuredAgentSessionProviderRenameInput): Promise<void>

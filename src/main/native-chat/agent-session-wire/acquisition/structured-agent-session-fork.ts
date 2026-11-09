@@ -24,7 +24,10 @@ import {
 } from '../../../runtime/agent-session/structured-agent-session-create-adoption'
 import { structuredAgentRuntimeMetadata } from '../../../runtime/agent-session/installation/structured-agent-runtime-metadata'
 import type { StructuredAgentSessionHost } from '../host/structured-agent-session-host'
-import type { AgentSessionAttachParams } from './structured-agent-session-attach'
+import {
+  agentSessionForkAttachment,
+  type AgentSessionAttachParams
+} from './structured-agent-session-attach'
 
 export async function prepareStructuredAgentSessionFork(input: {
   host: StructuredAgentSessionHost
@@ -199,7 +202,17 @@ export async function prepareStructuredAgentSessionFork(input: {
         'providerRejected'
       )
     })
-  await requireCurrent()
+  const fork = agentSessionForkAttachment({
+    source: record,
+    itemId: input.throughItemId,
+    agent: input.agent,
+    copy,
+    providerSessionId,
+    requireCurrent,
+    readSource: () => host.deps.store.requireWritableRecord(record.sessionId),
+    rowSessionId: metadata.sessionHistory.rowSessionId
+  })
+  await fork.revalidate()
   if (!copy.sessionId.trim() || copy.sessionId === providerSessionId) {
     fail(`${name} did not save an independent chat copy. Try again.`)
   }
@@ -220,14 +233,10 @@ export async function prepareStructuredAgentSessionFork(input: {
     workspaceCwd,
     conversationName: title
   })
-  await requireCurrent()
+  await fork.revalidate()
   return {
     envelope: input.envelope,
-    fork: {
-      sessionId: record.sessionId,
-      itemId: input.throughItemId,
-      revalidate: requireCurrent
-    },
+    fork,
     location: input.location,
     provider: input.agent,
     agent: input.agent,
