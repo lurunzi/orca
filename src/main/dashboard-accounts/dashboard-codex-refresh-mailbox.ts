@@ -3,6 +3,7 @@ import { DashboardToolProvider } from './dashboard-allocation-protocol'
 import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
 import {
   DashboardCodexRefreshRequestSchema,
+  DashboardCodexRefreshScopeSchema,
   type DashboardCodexRefreshRequest,
   type DashboardCodexRefreshScope,
   type DashboardCodexRefreshState
@@ -23,11 +24,10 @@ export class DashboardCodexRefreshMailbox {
     deadline: number,
     current: () => boolean
   ): () => void {
+    const captured = DashboardCodexRefreshScopeSchema.parse(scope)
     const request = DashboardCodexRefreshRequestSchema.parse({
-      session_id: scope.session_id,
-      fence: scope.fence,
-      acquisition_generation: scope.acquisition_generation,
-      process: { ...scope.process },
+      ...captured,
+      process: { ...captured.process },
       account_id: binding.account_id,
       binding_revision: binding.binding_revision,
       credential_version: binding.credential_version,

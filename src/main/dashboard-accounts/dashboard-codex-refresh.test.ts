@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import type { CodexAppServerConnection } from '../codex/app-server/codex-app-server-connection-types'
+import type { DashboardCodexLifecycleOptions } from './dashboard-codex-rpc'
 import {
   DashboardAllocationState,
   DashboardToolProvider,
@@ -8,8 +9,14 @@ import {
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
 import { DashboardCodexRefresh } from './dashboard-codex-refresh'
 import { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
+import {
+  DashboardCodexRefreshOperation,
+  DashboardCodexRefreshSource,
+  type DashboardCodexRefreshScope
+} from './dashboard-codex-refresh-protocol'
 
-const scope = {
+const scope: DashboardCodexRefreshScope = {
+  source: DashboardCodexRefreshSource.Session,
   session_id: 'session-fixture',
   fence: 7,
   acquisition_generation: 'generation-1',
@@ -38,7 +45,7 @@ const request = (id = 1) => ({
   method: 'account/chatgptAuthTokens/refresh',
   params: { reason: 'unauthorized', previousAccountId: 'workspace-fixture' }
 })
-function fixture(current = () => true) {
+function fixture(current = () => true, options: DashboardCodexLifecycleOptions = {}) {
   const connection: CodexAppServerConnection = {
     pid: 42,
     closed: false,
@@ -50,7 +57,7 @@ function fixture(current = () => true) {
   }
   const failed = vi.fn()
   const mailbox = new DashboardCodexRefreshMailbox()
-  const refresh = new DashboardCodexRefresh(allocation, current, failed, mailbox)
+  const refresh = new DashboardCodexRefresh(allocation, current, failed, mailbox, options)
   refresh.activate(connection, scope)
   return { connection, failed, refresh, mailbox }
 }
@@ -205,6 +212,36 @@ it('rejects an overlapping request without replacing the original wait', async (
     chatgptPlanType: null
   })
   expect(vi.getTimerCount()).toBe(0)
+})
+
+it('cancels a short-lived refresh during a file read without any late reply', async () => {
+  const cancel = new AbortController()
+  const f = fixture(() => true, { signal: cancel.signal })
+  f.refresh.activate(f.connection, {
+    source: DashboardCodexRefreshSource.ShortLivedOperation,
+    operation_id: 'operation-fixture',
+    operation: DashboardCodexRefreshOperation.ReadAccountUsage,
+    source_session_id: 'session-fixture',
+    process: scope.process
+  })
+  const reading = deferred()
+  vi.mocked(readDashboardCodexAllocation).mockReturnValueOnce(reading.promise)
+  f.refresh.handle(f.connection, request())
+  expect(f.mailbox.read().requests).toMatchObject([
+    {
+      source: 'short_lived_operation',
+      operation_id: 'operation-fixture',
+      operation: 'read_account_usage',
+      source_session_id: 'session-fixture'
+    }
+  ])
+  cancel.abort(new Error('private-new-access'))
+  expect(f.mailbox.read()).toEqual({ requests: [] })
+  f.refresh.dispose()
+  reading.resolve(next)
+  await reading.promise
+  expect(f.connection.respond).not.toHaveBeenCalled()
+  expect(f.connection.respondWithError).not.toHaveBeenCalled()
 })
 
 it('does not enable credential replies before pinned-version authentication', async () => {

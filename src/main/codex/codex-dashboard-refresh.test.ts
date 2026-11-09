@@ -96,6 +96,7 @@ beforeEach(() => {
   vi.mocked(readDashboardCodexAllocation).mockResolvedValue(allocation())
 })
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllEnvs()
   vi.resetAllMocks()
 })
@@ -180,7 +181,35 @@ describe('Codex Dashboard refresh callback wiring', () => {
     }
   })
 
+  it('keeps a published connection refreshable after one allocation read fails', async () => {
+    const codex = setup()
+    const adapter = adapterFor(codex)
+    try {
+      await acquireReadyCodexForTest(adapter, input())
+      const connection = codex.connections.at(-1)!
+      const failed = waitForReply(connection)
+      vi.mocked(readDashboardCodexAllocation).mockRejectedValueOnce(
+        new Error('fixture-private-transient-read')
+      )
+      requestRefresh(connection, 84)
+      await expect(failed).resolves.toEqual({
+        id: 84,
+        code: -32001,
+        message: 'Dashboard credential refresh is not available'
+      })
+      expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
+      vi.mocked(readDashboardCodexAllocation).mockResolvedValue(allocation(2))
+      const replied = waitForReply(connection)
+      requestRefresh(connection, 85)
+      await expect(replied).resolves.toEqual({ id: 85, result: refreshed })
+      expect(adapter.readDashboardCodexProcesses().processes[0]!.credential_version).toBe(1)
+    } finally {
+      await adapter.closeAll()
+    }
+  })
+
   it('refuses late credentials when the original child is released while its allocation read is pending', async () => {
+    vi.useFakeTimers()
     const codex = setup()
     const adapter = adapterFor(codex)
     const reading = deferred<ReturnType<typeof allocation>>()
@@ -188,7 +217,6 @@ describe('Codex Dashboard refresh callback wiring', () => {
     try {
       await acquireReadyCodexForTest(adapter, input())
       const connection = codex.connections.at(-1)!
-      const replied = waitForReply(connection)
       vi.mocked(readDashboardCodexAllocation).mockImplementationOnce(() => {
         entered.resolve()
         return reading.promise
@@ -199,14 +227,8 @@ describe('Codex Dashboard refresh callback wiring', () => {
       expect(await adapter.releaseAcquisition({ sessionId: 'session-1' })).toBe(true)
       expect(adapter.readDashboardCodexRefreshes()).toEqual({ requests: [] })
       reading.resolve(allocation(2))
-      await expect(replied).resolves.toEqual({
-        id: 83,
-        code: -32001,
-        message: 'Dashboard credential refresh is not available'
-      })
-      expect(
-        connection.replies.filter((reply) => reply.id === 83 && reply.result !== undefined)
-      ).toEqual([])
+      await vi.advanceTimersByTimeAsync(0)
+      expect(connection.replies.filter((reply) => reply.id === 83)).toEqual([])
       expect(adapter.readDashboardCodexProcesses()).toEqual({
         pending_acquisitions: 0,
         processes: []

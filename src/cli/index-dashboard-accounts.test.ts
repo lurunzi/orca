@@ -4,6 +4,7 @@ import { HANDLER_COMMAND_KEYS, type HandlerContext } from './dispatch'
 import { DASHBOARD_ACCOUNT_HANDLERS } from './handlers/dashboard-accounts'
 import { COMMAND_SPECS } from './specs'
 import { ignoresRemoteSelection } from './remote-selection-scope'
+import { DashboardCodexRefreshSource } from '../main/dashboard-accounts/dashboard-codex-refresh-protocol'
 import {
   DashboardAllocationState,
   DashboardToolProvider
@@ -117,7 +118,7 @@ describe('local Dashboard allocation status command', () => {
     'keeps an unavailable adapter distinct from an empty %s report',
     async (command) => {
       const common = {
-        schema_version: 1,
+        schema_version: command === 'codex-refreshes' ? 2 : 1,
         instance_id: 'instance-fixture',
         runtime_id: 'runtime-fixture'
       }
@@ -148,7 +149,7 @@ describe('local Dashboard allocation status command', () => {
     async (command) => {
       callMock.mockResolvedValue({
         result: {
-          schema_version: 1,
+          schema_version: command === 'codex-refreshes' ? 2 : 1,
           instance_id: 'instance-fixture',
           runtime_id: 'runtime-fixture',
           supported: false,
@@ -166,7 +167,7 @@ describe('local Dashboard allocation status command', () => {
     'queries pending refresh metadata without leaking the RPC envelope %#',
     async ({ flags }) => {
       const result = {
-        schema_version: 1,
+        schema_version: 2,
         instance_id: 'instance-fixture',
         runtime_id: 'runtime-fixture',
         supported: true,
@@ -174,6 +175,7 @@ describe('local Dashboard allocation status command', () => {
           {
             request_id: 'request-fixture',
             provider: DashboardToolProvider.Codex,
+            source: DashboardCodexRefreshSource.Session,
             session_id: 'session-fixture',
             fence: 7,
             acquisition_generation: 'generation-fixture',
@@ -293,7 +295,7 @@ describe('local Dashboard allocation status command', () => {
         command === 'status'
           ? allocationStatus()
           : {
-              schema_version: 1,
+              schema_version: command === 'codex-refreshes' ? 2 : 1,
               instance_id: 'instance-fixture',
               runtime_id: 'runtime-fixture',
               supported: true,

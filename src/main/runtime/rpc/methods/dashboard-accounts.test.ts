@@ -5,6 +5,7 @@ import {
   DashboardAllocationState
 } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { DASHBOARD_ACCOUNT_METHODS } from './dashboard-accounts'
+import { DashboardCodexRefreshSource } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import { readDashboardAllocationStatus } from '../../../dashboard-accounts/dashboard-allocation-status'
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 
@@ -86,7 +87,7 @@ describe('local Dashboard account RPC', () => {
       await expect(
         refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
       ).resolves.toEqual({
-        schema_version: 1,
+        schema_version: 2,
         instance_id: 'fixture-instance',
         runtime_id: 'fixture-runtime',
         supported: false
@@ -100,7 +101,7 @@ describe('local Dashboard account RPC', () => {
       await expect(
         refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
       ).resolves.toEqual({
-        schema_version: 1,
+        schema_version: 2,
         instance_id: 'fixture-instance',
         runtime_id: 'fixture-runtime',
         supported: true,
@@ -122,6 +123,7 @@ describe('local Dashboard account RPC', () => {
         {
           request_id: 'request-fixture',
           provider: DashboardToolProvider.Codex,
+          source: DashboardCodexRefreshSource.Session,
           session_id: 'session-fixture',
           fence: 7,
           acquisition_generation: 'generation-fixture',
@@ -147,7 +149,7 @@ describe('local Dashboard account RPC', () => {
       await expect(
         refreshes.handler({}, context({ caller: { kind: 'local-cli' } }))
       ).resolves.toEqual({
-        schema_version: 1,
+        schema_version: 2,
         instance_id: 'fixture-instance',
         runtime_id: 'fixture-runtime',
         supported: true,

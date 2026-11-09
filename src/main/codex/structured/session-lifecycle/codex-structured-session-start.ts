@@ -1,5 +1,6 @@
 import type { AgentSessionProcessIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { DashboardCodexBinding } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
+import { DashboardCodexRefreshSource } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { AgentSessionAccountKind } from '../../../../shared/agent-session/agent-session-availability'
 import {
   throwIfSignalAborted,
@@ -112,6 +113,7 @@ export async function openCodexStructuredSession(
   if (start.dashboardAuthentication) {
     dashboardBinding = await waitForPromiseWithSignal(
       start.dashboardAuthentication.authenticate(connection, version, {
+        source: DashboardCodexRefreshSource.Session,
         session_id: sessionId,
         fence: input.fence,
         acquisition_generation: generation,

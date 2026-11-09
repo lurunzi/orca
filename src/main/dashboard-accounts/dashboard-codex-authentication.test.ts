@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { CodexAppServerConnection } from '../codex/app-server/codex-app-server-connection-types'
+import type { DashboardCodexLifecycleOptions, DashboardCodexRpc } from './dashboard-codex-rpc'
+import {
+  DashboardCodexRefreshSource,
+  type DashboardCodexRefreshScope
+} from './dashboard-codex-refresh-protocol'
 import {
   DashboardAllocationState,
   DashboardToolProvider,
@@ -13,7 +17,8 @@ import {
   prepareDashboardCodexAuthentication
 } from './dashboard-codex-authentication'
 
-const scope = {
+const scope: DashboardCodexRefreshScope = {
+  source: DashboardCodexRefreshSource.Session,
   session_id: 'session-fixture',
   fence: 7,
   acquisition_generation: 'generation-1',
@@ -40,14 +45,19 @@ const readyAccount = () => ({
   requiresOpenaiAuth: true,
   workspaceRouting: { chatgptAccountId: 'workspace-fixture', backendOrigin: 'https://chatgpt.com' }
 })
+function authentication(options: DashboardCodexLifecycleOptions = {}) {
+  return new DashboardCodexAuthentication(
+    allocation,
+    () => true,
+    new DashboardCodexRefreshMailbox(),
+    options
+  )
+}
 function connected(auth: DashboardCodexAuthentication) {
-  const connection: CodexAppServerConnection = {
-    pid: 42,
+  const connection: DashboardCodexRpc = {
     closed: false,
-    notify: vi.fn(),
     respond: vi.fn(),
     respondWithError: vi.fn(),
-    close: vi.fn(async () => true),
     request: vi.fn(async (method) => {
       if (method === 'account/login/start') {
         auth.handleNotification('account/login/completed', {
@@ -135,11 +145,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('waits for external login proof and checks the allocated workspace before succeeding', async () => {
-    const auth = new DashboardCodexAuthentication(
-      allocation,
-      () => true,
-      new DashboardCodexRefreshMailbox()
-    )
+    const auth = authentication()
     const connection = connected(auth)
     const adopted = await auth.authenticate(connection, '0.166.0', scope)
     expect(adopted).toEqual({
@@ -192,11 +198,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('rejects a login completion failure even when the login RPC succeeds', async () => {
-    const auth = new DashboardCodexAuthentication(
-      allocation,
-      () => true,
-      new DashboardCodexRefreshMailbox()
-    )
+    const auth = authentication()
     const connection = connected(auth)
     vi.mocked(connection.request).mockImplementationOnce(async () => {
       auth.handleNotification('account/login/completed', {
@@ -212,38 +214,49 @@ describe('Dashboard Codex external authentication', () => {
     expect(connection.request).toHaveBeenCalledTimes(1)
   })
 
-  it('rejects missing external-mode evidence and bounds the notification wait', async () => {
-    const auth = new DashboardCodexAuthentication(
-      allocation,
-      () => true,
-      new DashboardCodexRefreshMailbox()
-    )
+  it('disposes an authentication wait even when login notifications are lost', async () => {
+    const auth = authentication()
     const connection = connected(auth)
-    const deadline = new AbortController()
-    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
-    vi.mocked(connection.request).mockImplementationOnce(async () => {
-      auth.handleNotification('account/login/completed', {
-        loginId: null,
-        success: true,
-        error: null
-      })
-      return { type: 'chatgptAuthTokens' }
+    vi.mocked(connection.request).mockResolvedValueOnce({ type: 'chatgptAuthTokens' })
+    const waiting = Promise.withResolvers<void>()
+    vi.spyOn(AbortSignal, 'timeout').mockImplementationOnce(() => {
+      waiting.resolve()
+      return new AbortController().signal
     })
     const attempt = auth.authenticate(connection, '0.166.0', scope)
-    const rejected = expect(attempt).rejects.toMatchObject({
-      message: 'dashboard_allocation_unavailable'
-    })
-    deadline.abort()
+    const rejected = expect(attempt).rejects.toThrow('dashboard_allocation_unavailable')
+    await waiting.promise
+    auth.dispose()
+    auth.dispose()
     await rejected
-    expect(connection.request).toHaveBeenCalledTimes(1)
+    expect(connection.request).not.toHaveBeenCalledWith(
+      'account/read',
+      expect.anything(),
+      expect.anything()
+    )
+  })
+
+  it('cancels login without continuing account checks after a late reply', async () => {
+    const signal = new AbortController()
+    const auth = authentication({ signal: signal.signal })
+    const connection = connected(auth)
+    const login = Promise.withResolvers<unknown>()
+    vi.mocked(connection.request).mockReturnValueOnce(login.promise)
+    const attempt = auth.authenticate(connection, '0.166.0', scope)
+    const rejected = expect(attempt).rejects.toThrow('dashboard_allocation_unavailable')
+    signal.abort(new Error('fixture-private-access'))
+    await rejected
+    login.resolve({ type: 'chatgptAuthTokens' })
+    await login.promise
+    expect(connection.request).not.toHaveBeenCalledWith(
+      'account/read',
+      expect.anything(),
+      expect.anything()
+    )
   })
 
   it('rejects a different workspace and hides official RPC errors', async () => {
-    const auth = new DashboardCodexAuthentication(
-      allocation,
-      () => true,
-      new DashboardCodexRefreshMailbox()
-    )
+    const auth = authentication()
     const connection = connected(auth)
     vi.mocked(connection.request).mockResolvedValueOnce({ type: 'chatgptAuthTokens' })
     const failed = auth.authenticate(connection, '0.166.0', scope)
@@ -258,11 +271,7 @@ describe('Dashboard Codex external authentication', () => {
       workspaceRouting: { chatgptAccountId: 'other' }
     })
     await expect(failed).rejects.toMatchObject({ message: 'dashboard_allocation_unavailable' })
-    const next = new DashboardCodexAuthentication(
-      allocation,
-      () => true,
-      new DashboardCodexRefreshMailbox()
-    )
+    const next = authentication()
     vi.mocked(connection.request).mockRejectedValueOnce(new Error('secret fixture-private-access'))
     await expect(next.authenticate(connection, '0.166.0', scope)).rejects.toMatchObject({
       message: 'dashboard_allocation_unavailable'
@@ -270,11 +279,7 @@ describe('Dashboard Codex external authentication', () => {
   })
 
   it('rejects a refresh for another workspace while login is pending', async () => {
-    const auth = new DashboardCodexAuthentication(
-      allocation,
-      () => true,
-      new DashboardCodexRefreshMailbox()
-    )
+    const auth = authentication()
     const connection = connected(auth)
     vi.mocked(connection.request).mockImplementationOnce(async () => {
       expect(

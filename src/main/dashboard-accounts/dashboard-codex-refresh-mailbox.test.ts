@@ -1,19 +1,26 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { DashboardToolProvider } from './dashboard-allocation-protocol'
 import { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
-import { DashboardCodexRefreshesResponseSchema } from './dashboard-codex-refresh-protocol'
+import {
+  DashboardCodexRefreshesResponseSchema,
+  DashboardCodexRefreshSource,
+  DashboardCodexRefreshOperation,
+  type DashboardCodexRefreshScope
+} from './dashboard-codex-refresh-protocol'
 
-const scope = () => ({
-  session_id: 'session-fixture',
-  fence: 7,
-  acquisition_generation: 'generation-1',
-  process: {
-    hostId: 'host-fixture',
-    pid: 42,
-    processStartTimeMs: 1234.5,
-    spawnToken: 'spawn-fixture'
-  }
-})
+const scope = () =>
+  ({
+    source: DashboardCodexRefreshSource.Session,
+    session_id: 'session-fixture',
+    fence: 7,
+    acquisition_generation: 'generation-1',
+    process: {
+      hostId: 'host-fixture',
+      pid: 42,
+      processStartTimeMs: 1234.5,
+      spawnToken: 'spawn-fixture'
+    }
+  }) satisfies DashboardCodexRefreshScope
 const binding = () => ({ account_id: 'pool-fixture', binding_revision: 3, credential_version: 4 })
 afterEach(() => {
   vi.useRealTimers()
@@ -51,6 +58,54 @@ it('copies metadata on registration and every read and removes a completed reque
   expect(mailbox.read()).toEqual({ requests: [] })
 })
 
+it('retains an operation identity without borrowing a session lease or accepting mixed source fields', () => {
+  const mailbox = new DashboardCodexRefreshMailbox()
+  const operation = {
+    source: DashboardCodexRefreshSource.ShortLivedOperation,
+    operation_id: 'operation-1',
+    operation: DashboardCodexRefreshOperation.ReadAccountUsage,
+    source_session_id: 'session-fixture',
+    process: {
+      hostId: 'host-fixture',
+      pid: 84,
+      processStartTimeMs: 2000,
+      spawnToken: 'operation-spawn'
+    }
+  } satisfies DashboardCodexRefreshScope
+  const deadline = Date.now() + 9000
+  mailbox.register(operation, binding(), deadline, () => true)
+  operation.operation_id = 'replacement-operation'
+  operation.process.pid = 999
+  const observed = mailbox.read().requests[0]!
+  expect(observed).toEqual({
+    source: DashboardCodexRefreshSource.ShortLivedOperation,
+    operation_id: 'operation-1',
+    operation: DashboardCodexRefreshOperation.ReadAccountUsage,
+    source_session_id: 'session-fixture',
+    process: {
+      hostId: 'host-fixture',
+      pid: 84,
+      processStartTimeMs: 2000,
+      spawnToken: 'operation-spawn'
+    },
+    account_id: 'pool-fixture',
+    binding_revision: 3,
+    credential_version: 4,
+    provider: DashboardToolProvider.Codex,
+    request_id: expect.any(String),
+    deadline_at: deadline
+  })
+  expect(
+    DashboardCodexRefreshesResponseSchema.safeParse({
+      schema_version: 2,
+      instance_id: 'instance-fixture',
+      runtime_id: 'runtime-fixture',
+      supported: true,
+      requests: [{ ...observed, fence: 7 }]
+    }).success
+  ).toBe(false)
+})
+
 it('removes expired or no-longer-owned requests without retaining a second process record', () => {
   vi.useFakeTimers()
   const mailbox = new DashboardCodexRefreshMailbox()
@@ -68,7 +123,7 @@ it('removes expired or no-longer-owned requests without retaining a second proce
 
 it('keeps unsupported responses distinct and rejects private fields and unsafe deadlines', () => {
   const common = {
-    schema_version: 1,
+    schema_version: 2,
     instance_id: 'instance-fixture',
     runtime_id: 'runtime-fixture'
   }

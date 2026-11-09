@@ -1,10 +1,8 @@
 import { z } from 'zod'
 import { delayUnlessAborted } from '../../shared/abort-aware-delay'
 import { throwIfSignalAborted, waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
-import type {
-  CodexAppServerConnection,
-  CodexAppServerServerRequest
-} from '../codex/app-server/codex-app-server-connection-types'
+import type { CodexAppServerServerRequest } from '../codex/app-server/codex-app-server-connection-types'
+import type { DashboardCodexLifecycleOptions, DashboardCodexRpc } from './dashboard-codex-rpc'
 import { readDashboardCodexAllocation } from './dashboard-allocation-reader'
 import type { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
 import type { DashboardCodexRefreshScope } from './dashboard-codex-refresh-protocol'
@@ -23,33 +21,55 @@ export class DashboardCodexRefresh {
   private readonly revision: number
   private readonly workspace: string
   private version: number
-  private connection: CodexAppServerConnection | null = null
+  private connection: DashboardCodexRpc | null = null
   private scope: DashboardCodexRefreshScope | null = null
   private pending = false
+  private disposed = false
+  private cancelPending?: () => void
+  private readonly onAbort = () => this.dispose()
 
   constructor(
     allocation: DashboardCodexAllocation,
     private readonly current: () => boolean,
     private readonly failed: () => void,
-    private readonly mailbox: DashboardCodexRefreshMailbox
+    private readonly mailbox: DashboardCodexRefreshMailbox,
+    private readonly options: DashboardCodexLifecycleOptions = {}
   ) {
     this.accountId = allocation.account_id
     this.revision = allocation.binding_revision
     this.workspace = allocation.chatgpt_account_id
     this.version = allocation.credential_version
+    options.signal?.addEventListener('abort', this.onAbort, { once: true })
+    if (options.signal?.aborted) {
+      this.dispose()
+    }
   }
 
-  activate(connection: CodexAppServerConnection, scope: DashboardCodexRefreshScope): void {
+  dispose(): void {
+    if (this.disposed) {
+      return
+    }
+    this.disposed = true
+    this.connection = null
+    this.scope = null
+    this.cancelPending?.()
+    this.options.signal?.removeEventListener('abort', this.onAbort)
+  }
+
+  activate(connection: DashboardCodexRpc, scope: DashboardCodexRefreshScope): void {
+    if (this.disposed) {
+      throw new DashboardAllocationError()
+    }
     this.connection = connection
     this.scope = { ...scope, process: { ...scope.process } }
   }
 
-  handle(
-    connection: CodexAppServerConnection | null,
-    request: CodexAppServerServerRequest
-  ): boolean {
+  handle(connection: DashboardCodexRpc | null, request: CodexAppServerServerRequest): boolean {
     if (request.method !== 'account/chatgptAuthTokens/refresh' || !connection) {
       return false
+    }
+    if (this.disposed || this.options.signal?.aborted) {
+      return true
     }
     if (this.pending) {
       this.reject(connection, request.id)
@@ -60,15 +80,17 @@ export class DashboardCodexRefresh {
       !params.success ||
       (params.data.previousAccountId != null && params.data.previousAccountId !== this.workspace)
     ) {
-      this.failed()
       this.reject(connection, request.id)
+      this.failed()
       return true
     }
     this.pending = true
     void this.reply(connection, request.id)
       .catch(() => {
-        this.failed()
-        this.reject(connection, request.id)
+        if (!this.disposed) {
+          this.reject(connection, request.id)
+          this.failed()
+        }
       })
       .finally(() => {
         this.pending = false
@@ -76,11 +98,19 @@ export class DashboardCodexRefresh {
     return true
   }
 
-  private async reply(connection: CodexAppServerConnection, id: string | number): Promise<void> {
+  private async reply(connection: DashboardCodexRpc, id: string | number): Promise<void> {
     const abort = new AbortController()
-    const deadline = Date.now() + 9000
-    const timer = setTimeout(() => abort.abort(), 9000)
+    const deadline = Math.min(Date.now() + 9000, this.options.deadlineAt ?? Infinity)
+    const timer = setTimeout(
+      () => abort.abort(new DashboardAllocationError()),
+      Math.max(0, deadline - Date.now())
+    )
     let unregister: (() => void) | undefined
+    this.cancelPending = () => {
+      unregister?.()
+      clearTimeout(timer)
+      abort.abort(new DashboardAllocationError())
+    }
     try {
       this.assertCurrent(connection, abort.signal, deadline)
       if (!this.scope) {
@@ -94,7 +124,12 @@ export class DashboardCodexRefresh {
           credential_version: this.version
         },
         deadline,
-        () => connection === this.connection && !connection.closed && this.current()
+        () =>
+          !this.disposed &&
+          !abort.signal.aborted &&
+          connection === this.connection &&
+          !connection.closed &&
+          this.current()
       )
       for (;;) {
         this.assertCurrent(connection, abort.signal, deadline)
@@ -122,20 +157,24 @@ export class DashboardCodexRefresh {
           return
         }
         await delayUnlessAborted(250, abort.signal)
+        this.assertCurrent(connection, abort.signal, deadline)
       }
     } finally {
       unregister?.()
       clearTimeout(timer)
+      this.cancelPending = undefined
     }
   }
 
   private assertCurrent(
-    connection: CodexAppServerConnection,
+    connection: DashboardCodexRpc,
     signal: AbortSignal,
     deadline: number
   ): void {
     throwIfSignalAborted(signal)
     if (
+      this.disposed ||
+      this.options.signal?.aborted ||
       Date.now() >= deadline ||
       connection !== this.connection ||
       connection.closed ||
@@ -145,7 +184,10 @@ export class DashboardCodexRefresh {
     }
   }
 
-  private reject(connection: CodexAppServerConnection, id: string | number): void {
+  private reject(connection: DashboardCodexRpc, id: string | number): void {
+    if (this.disposed || this.options.signal?.aborted || connection.closed) {
+      return
+    }
     try {
       connection.respondWithError(id, -32001, 'Dashboard credential refresh is not available')
     } catch {

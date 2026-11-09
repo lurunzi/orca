@@ -67,6 +67,7 @@ export const DASHBOARD_ACCOUNT_METHODS = [
         const state = adapter?.readDashboardCodexRefreshes?.()
         return DashboardCodexRefreshesResponseSchema.parse({
           ...common,
+          schema_version: 2,
           ...(state === undefined ? { supported: false } : { supported: true, ...state })
         })
       } catch {
