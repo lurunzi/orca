@@ -50,6 +50,7 @@ function createCodexAdapter(context: StructuredAgentAdapterContext): StructuredA
     ...(deps.resolveCodexCommand ? { resolveCommand: deps.resolveCodexCommand } : {})
   }
   return new CodexStructuredSessionAdapter({
+    hostId: deps.hostId,
     providerInvocation,
     resolveAccountKind: deps.resolveCodexAccountKind,
     atRestCommands: createCodexAtRestSkillCatalog({

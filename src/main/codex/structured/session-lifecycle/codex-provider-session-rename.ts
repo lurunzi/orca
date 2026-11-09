@@ -23,6 +23,14 @@ import {
 } from '../../../native-chat/native-chat-visuals-delivery'
 import { CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS } from '../../../codex-cli/codex-read-only-app-server-args'
 import type { CodexSession } from './codex-structured-session-state'
+import type { CodexPoolIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-pool-account'
+import { waitForPromiseWithSignal } from '../../../../shared/abort-signal-reason'
+import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
+import type {
+  CodexShortLivedOperations,
+  CodexShortLivedOperationOptions,
+  CodexPreparedShortLivedInvocation
+} from './codex-short-lived-operations'
 
 export type CodexProviderInvocationDeps = CodexStructuredInvocationDeps & {
   resolveLaunchArgs: () => Promise<string[]> | string[]
@@ -32,21 +40,29 @@ export type CodexProviderInvocationDeps = CodexStructuredInvocationDeps & {
 /** The chat's pinned launch directory when it still exists, else the hidden probe directory. */
 export async function codexProviderProbeCwd(
   record: AgentSessionRecord,
-  deps: CodexProviderInvocationDeps
+  deps: CodexProviderInvocationDeps,
+  signal?: AbortSignal
 ): Promise<string> {
+  signal?.throwIfAborted()
   const cwd = resolve(
     agentSessionPinnedLaunchDirectory(record) ??
-      (await deps.resolveWorkspacePath(record.location.workspaceId))
+      (await waitForPromiseWithSignal(
+        deps.resolveWorkspacePath(record.location.workspaceId),
+        signal
+      ))
   )
+  signal?.throwIfAborted()
   try {
-    if ((await stat(cwd)).isDirectory()) {
+    if ((await waitForPromiseWithSignal(stat(cwd), signal)).isDirectory()) {
       return cwd
     }
   } catch (error) {
+    signal?.throwIfAborted()
     if (!isDefinitiveAbsence(error)) {
       throw error
     }
   }
+  signal?.throwIfAborted()
   return resolveHiddenProbeCwd()
 }
 
@@ -118,32 +134,51 @@ export async function renameCodexProviderSession(input: {
 export async function runCodexProviderAppServer<T>(
   record: AgentSessionRecord,
   invocation: CodexProviderInvocationDeps,
-  options: { timeoutMs: number; signal?: AbortSignal; experimentalApi?: boolean },
-  body: (rpc: CodexAppServerRpc, cwd: string) => Promise<T>
+  options: CodexShortLivedOperationOptions,
+  body: (rpc: CodexAppServerRpc, cwd: string, identity: CodexPoolIdentity | null) => Promise<T>,
+  owner?: CodexShortLivedOperations
 ): Promise<T> {
-  const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
-  const cwd = await codexProviderProbeCwd(record, invocation)
-  const { command, prefixArgs, environment } = await resolveCodexStructuredInvocation({
-    ...invocation,
-    ...(options.signal ? { signal: options.signal } : {}),
-    resolveWorkingDirectory: () => cwd
-  })
-  const args = codexStructuredLaunchArgs(await invocation.resolveLaunchArgs())
-  const env = Object.fromEntries(
-    Object.entries(environment ?? {}).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined
+  if (!owner && (process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined || record.poolAccount)) {
+    throw new DashboardAllocationError()
+  }
+  const prepare = async (signal?: AbortSignal): Promise<CodexPreparedShortLivedInvocation> => {
+    signal?.throwIfAborted()
+    const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
+    const cwd = await codexProviderProbeCwd(record, invocation, signal)
+    const { command, prefixArgs, environment } = await waitForPromiseWithSignal(
+      resolveCodexStructuredInvocation({
+        ...invocation,
+        ...(signal ? { signal } : {}),
+        resolveWorkingDirectory: () => cwd
+      }),
+      signal
     )
-  )
-  return runCodexAppServerSession(
-    {
-      command,
-      args: [...prefixArgs, ...args, ...CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS],
+    const args = codexStructuredLaunchArgs(
+      await waitForPromiseWithSignal(Promise.resolve(invocation.resolveLaunchArgs()), signal)
+    )
+    signal?.throwIfAborted()
+    const env = Object.fromEntries(
+      Object.entries(environment ?? {}).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined
+      )
+    )
+    return {
       cwd,
-      cliPath: command,
-      env: { ...env, CODEX_HOME: codexHome },
-      envToDelete: [NATIVE_CHAT_SCRATCH_DIR_ENV, LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV],
-      ...options
-    },
-    (rpc) => body(rpc, cwd)
-  )
+      invocation: {
+        command,
+        args: [...prefixArgs, ...args, ...CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS],
+        cwd,
+        cliPath: command,
+        env: { ...env, CODEX_HOME: codexHome },
+        envToDelete: [NATIVE_CHAT_SCRATCH_DIR_ENV, LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV],
+        ...options,
+        ...(signal ? { signal } : {})
+      }
+    }
+  }
+  if (owner) {
+    return owner.run(record, options, prepare, body)
+  }
+  const prepared = await prepare(options.signal)
+  return runCodexAppServerSession(prepared.invocation, (rpc) => body(rpc, prepared.cwd, null))
 }

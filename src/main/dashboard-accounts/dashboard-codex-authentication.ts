@@ -18,6 +18,10 @@ import {
   type DashboardCodexAllocation
 } from './dashboard-allocation-protocol'
 
+export type DashboardCodexAuthenticationOptions = DashboardCodexLifecycleOptions & {
+  onRefreshFailure?: () => void
+}
+
 const externalMode = 'chatgptAuthTokens'
 const timeoutMs = 20000
 const authEnvironment = ['OPENAI_API_KEY', 'CODEX_API_KEY', 'OPENAI_BASE_URL'] as const
@@ -37,7 +41,7 @@ const AccountReadSchema = z.object({
 export async function prepareDashboardCodexAuthentication(
   current: () => boolean,
   mailbox: DashboardCodexRefreshMailbox,
-  options: DashboardCodexLifecycleOptions = {},
+  options: DashboardCodexAuthenticationOptions = {},
   expectedIdentity?: CodexPoolIdentity
 ): Promise<DashboardCodexAuthentication | null> {
   if (process.env.ORCA_DASHBOARD_INSTANCE_ID === undefined) {
@@ -113,7 +117,7 @@ export class DashboardCodexAuthentication {
     allocation: DashboardCodexAllocation,
     private readonly current: () => boolean,
     mailbox: DashboardCodexRefreshMailbox,
-    private readonly options: DashboardCodexLifecycleOptions = {},
+    private readonly options: DashboardCodexAuthenticationOptions = {},
     identity?: CodexPoolIdentity
   ) {
     this.poolIdentity = identity ? { ...identity } : null
@@ -191,6 +195,8 @@ export class DashboardCodexAuthentication {
   private reject(): void {
     if (!this.authenticated) {
       this.dispose()
+    } else {
+      this.options.onRefreshFailure?.()
     }
   }
 

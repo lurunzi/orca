@@ -77,6 +77,7 @@ export type CodexStructuredSessionEvent =
   | { type: 'ended'; sessionId: string; reason: string; observedAt?: number }
 
 export type CodexStructuredSessionAdapterDeps = {
+  hostId?: string
   providerInvocation?: CodexProviderInvocationDeps
   resolveAccountKind?: (home: string) => AgentSessionAccountKind | undefined
   atRestCommands?: StructuredAgentSessionAtRestCommands

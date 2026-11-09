@@ -57,16 +57,21 @@ import * as turnEnd from '../turns/codex-structured-turn-end-settlement'
 import { codexAcquireFailure } from '../../app-server/codex-startup-outcome'
 import { openCodexStart, recoverCodexRewindAtStart } from './codex-structured-start-verdict'
 import { codexLiveProviderProcessHold } from './codex-structured-live-provider-process'
+import { CodexShortLivedOperations } from './codex-short-lived-operations'
 
 export class CodexStructuredSessionAdapter implements SessionAdapter {
   private readonly sessions = new Map<string, CodexSession>()
   private readonly acquisitions = new CodexAcquisitionRegistry()
   private readonly mailbox = new DashboardCodexRefreshMailbox()
+  private readonly shortLived: CodexShortLivedOperations
   private readonly notificationRetries: ReturnType<typeof createCodexStructuredNotificationRetry>
   private readonly teardown: CodexStructuredSessionTeardown
 
   constructor(private readonly deps: CodexStructuredSessionAdapterDeps) {
     this.atRestCommands = deps.atRestCommands
+    this.shortLived = new CodexShortLivedOperations({ mailbox: this.mailbox, ...deps })
+    const invocation = () => deps.providerInvocation
+    this.readAccountUsage = readCodexSessionAccountUsage(this.sessions, invocation, this.shortLived)
     this.notificationRetries = createCodexStructuredNotificationRetry({
       sessionFor: (sessionId) => this.sessions.get(sessionId),
       translate: (sessionId, session, method, params, observedAt, dispatchSequenceAtReceipt) =>
@@ -91,7 +96,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
 
   copyConversation: NonNullable<SessionAdapter['copyConversation']> = (input) =>
     copyCodexConversation(input, this.deps.providerInvocation)
-  readAccountUsage = readCodexSessionAccountUsage(this.sessions, () => this.deps.providerInvocation)
+  readAccountUsage: NonNullable<SessionAdapter['readAccountUsage']>
 
   supportsLocation = supportsCodexStructuredLocation
 
@@ -323,7 +328,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
     this.teardown.close(...args)
   forceCloseSession = (sessionId: string): Promise<boolean> => this.teardown.forceClose(sessionId)
   disposeSession: NonNullable<SessionAdapter['disposeSession']> = this.closeSession
-  closeAll = (): Promise<void> => this.teardown.closeAll()
+  closeAll = (): Promise<void> => this.teardown.closeAll(this.shortLived)
   releaseAcquisition = (input: { sessionId: string }): Promise<boolean> =>
     this.teardown.close(input.sessionId)
   hasOwnedAcquisition = (sessionId: string): boolean =>

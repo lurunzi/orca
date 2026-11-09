@@ -15,6 +15,8 @@ import {
   type CodexProviderInvocationDeps
 } from './codex-provider-session-rename'
 import type { CodexSession } from './codex-structured-session-state'
+import { DashboardCodexRefreshOperation } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
+import type { CodexShortLivedOperations } from './codex-short-lived-operations'
 import type { StructuredAgentSessionAdapter } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 
 const USAGE_RPC_TIMEOUT_MS = 10_000
@@ -38,7 +40,8 @@ async function readUsage(
  *  short-lived app-server launched exactly as the chat is, without resuming the thread. */
 export function readCodexSessionAccountUsage(
   sessions: Map<string, CodexSession>,
-  readInvocation: () => CodexProviderInvocationDeps | undefined
+  readInvocation: () => CodexProviderInvocationDeps | undefined,
+  owner?: CodexShortLivedOperations
 ): NonNullable<StructuredAgentSessionAdapter['readAccountUsage']> {
   return async (record, signal) => {
     const connection = sessions.get(record.sessionId)?.connection
@@ -52,15 +55,25 @@ export function readCodexSessionAccountUsage(
     if (!invocation) {
       throw new Error('Codex usage invocation is not configured')
     }
-    const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
-    return withCodexHomeProcessLock(resolveCodexHomeProcessLockKey(codexHome), async () => {
+    const read = () => {
       signal.throwIfAborted()
       return runCodexProviderAppServer(
         record,
         invocation,
-        { timeoutMs: COLD_USAGE_TIMEOUT_MS, signal },
-        (rpc) => readUsage(rpc.request)
+        {
+          timeoutMs: COLD_USAGE_TIMEOUT_MS,
+          signal,
+          operation: DashboardCodexRefreshOperation.ReadAccountUsage,
+          serializeHome: true
+        },
+        (rpc) => readUsage(rpc.request),
+        owner
       )
-    })
+    }
+    if (owner) {
+      return read()
+    }
+    const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
+    return withCodexHomeProcessLock(resolveCodexHomeProcessLockKey(codexHome), read)
   }
 }

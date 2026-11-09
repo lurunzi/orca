@@ -33,7 +33,7 @@ export function codexSpawnedProcessIdentity(
 
 export async function codexProcessIdentity(
   input: {
-    identity: AgentSessionJournalIdentity
+    identity: Pick<AgentSessionJournalIdentity, 'hostId'>
     spawnToken: string
     pid: number | undefined
   },
