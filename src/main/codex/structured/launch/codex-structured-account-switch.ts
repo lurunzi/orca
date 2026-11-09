@@ -109,7 +109,9 @@ export async function resolveCodexStructuredLaunchHome(input: {
       workspacePath: await input.launchDirectory(),
       launchEnv: input.launchEnv,
       codexHome: target,
-      settings: accountSwitch.workspaceTrustSettings()
+      settings: accountSwitch.workspaceTrustSettings(),
+      // Removed with this fork path when chats move to upstream's launch-account resolution.
+      repoDecision: undefined
     })
     return target
   } catch (error) {

@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises'
 import { removeAntigravitySignInSessionFiles } from '../antigravity/antigravity-sign-in-session-files'
-import type { AcpLaunchSpec } from './acp-launch-specs'
+import type { AcpLaunchSpec } from './launch/acp-launch-contract'
 
 export async function removeAcpTextTaskFiles(
   spec: Pick<AcpLaunchSpec, 'agent' | 'managedRuntime'>,

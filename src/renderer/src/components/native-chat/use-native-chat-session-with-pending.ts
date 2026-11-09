@@ -11,8 +11,8 @@ import {
 import {
   commandMarkersAsMessages,
   type NativeChatCommandMarker
-} from './native-chat-command-marker'
-import type { NativeChatLiveSession } from './use-native-chat-live-session'
+} from './session/terminal/delivery/native-chat-command-marker'
+import type { NativeChatLiveSession } from './session/terminal/read/native-chat-live-session-contract'
 
 /** The session a terminal chat draws: its transcript plus command markers, the hook's streaming reply and pending echoes. */
 export function useNativeChatSessionWithPending<T extends NativeChatLiveSession>(args: {

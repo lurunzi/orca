@@ -4,14 +4,11 @@ import {
   checkAgentCliVersion,
   type AgentCliVersionInput
 } from '../agent-launch/preflight/agent-cli-version-probe'
-import {
-  ANTIGRAVITY_HOST_LAUNCH_SPEC,
-  ANTIGRAVITY_LAUNCH_SPEC,
-  acpLaunchSpecFor
-} from '../acp/acp-launch-specs'
-import { acpStructuredAgentDefinition } from '../acp/acp-structured-agent-definitions'
-import { resolveAcpLaunchInvocation } from '../acp/acp-structured-launch-resolution'
-import { supportsAcpStructuredLocation } from '../acp/acp-structured-location-support'
+import { ANTIGRAVITY_HOST_LAUNCH_SPEC, acpLaunchSpecFor } from '../acp/launch/acp-launch-registry'
+import { ANTIGRAVITY_LAUNCH_SPEC } from './antigravity-acp-launch-spec'
+import { acpStructuredAgentDefinition } from '../acp/session/acp-structured-agent-definitions'
+import { resolveAcpLaunchInvocation } from '../acp/launch/acp-structured-launch-resolution'
+import { supportsAcpStructuredLocation } from '../acp/session/acp-structured-location-support'
 import { ANTIGRAVITY_ACP_RUNTIME } from './antigravity-acp-runtime'
 import {
   antigravityCliLaunchSpec,

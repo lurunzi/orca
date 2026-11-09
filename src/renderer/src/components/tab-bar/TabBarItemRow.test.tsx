@@ -4,7 +4,6 @@ import { act, startTransition, Suspense, use } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearClientHostedBrowserRowSelection } from '@/lib/pane-manager/client-hosted-browser-row-state'
-import { useAppStore } from '@/store'
 import { getTabDragLabel, type TabBarItem } from './tab-bar-item-model'
 import type { WorkspaceVisibleTabType } from '../../../../shared/tab-types'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
@@ -284,7 +283,7 @@ describe('tab strip rows', () => {
     renderStrip(inputs)
     expect(lastRender('session-1').tab?.title).toBe('My label')
     const chat = buildItems(inputs).find((item) => item.type === 'agent-session')!
-    expect(getTabDragLabel(chat, false, useAppStore.getState())).toBe('My label')
+    expect(getTabDragLabel(chat, false, null)).toBe('My label')
     renderStrip({ chatTitle: 'Renamed conversation' })
     expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
   })

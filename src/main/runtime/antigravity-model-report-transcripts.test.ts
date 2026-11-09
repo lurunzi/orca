@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { finalReplayFrame, readRuntimeFixture } from './agent-transcript-replay-test-harness'
+import {
+  finalReplayFrame,
+  readRuntimeFixture
+} from './terminal/wait/agent-transcript-replay-test-harness'
 import { HeadlessEmulator } from '../daemon/emulation/headless-emulator'
 import { readAntigravityTerminalSessionOptions } from '../../shared/antigravity-terminal-session-options'
 

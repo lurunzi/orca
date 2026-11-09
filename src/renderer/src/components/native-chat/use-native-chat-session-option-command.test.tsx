@@ -23,7 +23,7 @@ vi.mock('@/components/native-chat/telemetry/native-chat-telemetry', () => ({
   emitNativeChatMessageSent: vi.fn()
 }))
 
-import { useNativeChatSessionOptionCommand } from './use-native-chat-session-option-command'
+import { useNativeChatSessionOptionCommand } from './session/options/terminal/use-native-chat-session-option-command'
 
 describe('useNativeChatSessionOptionCommand', () => {
   beforeEach(() => {

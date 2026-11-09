@@ -2,11 +2,11 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
 import type { ExecutionHostId } from '../../../shared/execution-host'
 import { parseWorkspaceSession } from '../../../shared/workspace-session/workspace-session-schema'
-import { createTestStore } from '@/store/slices/store-test-helpers'
-import { createTabsSliceMockApi } from '@/store/slices/tabs-slice-test-harness'
+import { createTestStore } from '@/store/testing/app-store-test-fixture'
+import { createTabsSliceMockApi } from '@/store/slices/tabs/tabs-slice-test-harness'
 import type * as WorktreeOwnerModule from './workspace/ownership/worktree-runtime-owner'
-import type * as RetirementModule from '@/runtime/structured-agent-session-tab-retirement'
-import type * as RpcModule from '@/runtime/runtime-rpc-client'
+import type * as RetirementModule from '@/runtime/native-chat/tab-retirement/structured-agent-session-tab-retirement'
+import type * as RpcModule from '@/runtime/rpc/calls/runtime-rpc-call'
 
 const mocks = vi.hoisted(() => {
   const owner: { host: ExecutionHostId } = { host: 'local' }
@@ -18,11 +18,14 @@ vi.mock('./workspace/ownership/worktree-runtime-owner', async (original) => ({
   ...(await original<typeof WorktreeOwnerModule>()),
   getKnownExecutionHostIdForWorktree: () => mocks.host
 }))
-vi.mock('@/runtime/structured-agent-session-tab-retirement', async (original) => ({
-  ...(await original<typeof RetirementModule>()),
-  beginStructuredAgentSessionTabClose: mocks.retire
-}))
-vi.mock('@/runtime/runtime-rpc-client', async (original) => ({
+vi.mock(
+  '@/runtime/native-chat/tab-retirement/structured-agent-session-tab-retirement',
+  async (original) => ({
+    ...(await original<typeof RetirementModule>()),
+    beginStructuredAgentSessionTabClose: mocks.retire
+  })
+)
+vi.mock('@/runtime/rpc/calls/runtime-rpc-call', async (original) => ({
   ...(await original<typeof RpcModule>()),
   callRuntimeRpc: mocks.rpc
 }))
@@ -35,12 +38,12 @@ import { activateStructuredAgentSessionTab } from './agent-session/structured-ag
 import {
   addNativeChatPendingAttachment,
   clearNativeChatPendingAttachmentsForTests
-} from '@/components/native-chat/native-chat-pending-attachment-cache'
+} from '@/components/native-chat/attachments/chips/native-chat-pending-attachment-cache'
+import { clearNativeChatComposerDraftsForTests as clearNativeChatDraftCacheForTests } from '@/components/native-chat/drafts/native-chat-draft-reset'
 import {
-  clearNativeChatDraftCacheForTests,
   readNativeChatDraftCache,
   writeNativeChatDraftCache
-} from '@/components/native-chat/native-chat-draft-cache'
+} from '@/components/native-chat/drafts/native-chat-draft-views'
 
 const api = createTabsSliceMockApi()
 const WT = 'folder:worker'

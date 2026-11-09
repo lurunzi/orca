@@ -1,11 +1,11 @@
 import type { RefObject } from 'react'
 import { agentSessionPromptQuestions } from '../../../../shared/agent-session/agent-session-question-answer'
 import { chatApprovalFromJournal } from '../../../../shared/native-chat/input/native-chat-interactive-prompt'
-import { NativeChatApprovalCard } from './NativeChatApprovalCard'
-import { NativeChatStructuredQuestionCard } from './NativeChatStructuredQuestionCard'
-import { cancelStructuredPrompt } from './native-chat-structured-stop-controls'
-import type { useStructuredPromptResponseHold } from './use-structured-prompt-response-hold'
-import type { useStructuredAgentSession } from './use-structured-agent-session'
+import { NativeChatApprovalCard } from './prompts/NativeChatApprovalCard'
+import { NativeChatStructuredQuestionCard } from './prompts/NativeChatStructuredQuestionCard'
+import { cancelStructuredPrompt } from './session/structured/writes/native-chat-structured-stop-controls'
+import type { useStructuredPromptResponseHold } from './prompts/use-structured-prompt-response-hold'
+import type { useStructuredAgentSession } from './session/structured/use-structured-agent-session'
 
 type PromptController = Parameters<typeof cancelStructuredPrompt>[0] &
   Pick<ReturnType<typeof useStructuredAgentSession>, 'prompts'>

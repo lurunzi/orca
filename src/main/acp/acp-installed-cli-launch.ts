@@ -1,7 +1,7 @@
 import type { AgentCliVersionReader } from '../agent-launch/preflight/agent-cli-version-probe'
 import { ANTIGRAVITY_ACP_RUNTIME } from '../antigravity/antigravity-acp-runtime'
 import { antigravityCliLaunchSpec } from '../antigravity/antigravity-cli-acp-launch-spec'
-import type { AcpLaunchSpec } from './acp-launch-specs'
+import type { AcpLaunchSpec } from './launch/acp-launch-contract'
 
 /** Launch fields for agents whose own installed CLI serves ACP (Cursor, agy). */
 export type AcpCliLaunchFields = {

@@ -10,7 +10,7 @@ import {
   createStructuredAgentSessionOptionState
 } from '../../../../shared/agent-session/options/structured-agent-session-options'
 import { structuredAgentSessionOptionSnapshot } from '../../../../shared/agent-session/options/structured-agent-session-option-snapshot'
-import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
+import { NativeChatSessionOptionPickers } from './session/options/controls/NativeChatSessionOptionPickers'
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string, values?: Record<string, string | number>) =>
@@ -82,9 +82,9 @@ it.each([
   expect(pill().textContent).toContain('High')
   await user.click(pill())
   expect(refresh).toHaveBeenCalledOnce()
-  const blocked = await screen.findByRole('switch', { name: 'Fast mode' })
+  const blocked = await screen.findByRole('button', { name: 'Fast' })
   expect(blocked).toHaveProperty('disabled', true)
-  expect(blocked.getAttribute('aria-checked')).toBe('false')
+  expect(blocked.getAttribute('aria-pressed')).toBe('false')
   expect(screen.getByText(scenario.explanation)).toBeDefined()
   await user.click(blocked)
   expect(setOption).not.toHaveBeenCalled()
@@ -100,9 +100,9 @@ it.each([
   expect(pill().textContent).toContain('High')
   await user.click(pill())
   expect(refresh).toHaveBeenCalledTimes(2)
-  const recovered = await screen.findByRole('switch', { name: 'Fast mode' })
+  const recovered = await screen.findByRole('button', { name: 'Fast' })
   expect(recovered).toHaveProperty('disabled', false)
-  expect(recovered.getAttribute('aria-checked')).toBe('true')
+  expect(recovered.getAttribute('aria-pressed')).toBe('true')
   await user.click(recovered)
   expect(setOption).toHaveBeenCalledWith('fastMode', false)
 })

@@ -1,6 +1,6 @@
 import { join } from 'node:path'
-import type { AcpLaunchSpec } from '../acp/acp-launch-specs'
-import { directoryAccountBinding } from '../acp/acp-account-binding'
+import type { AcpLaunchSpec } from '../acp/launch/acp-launch-contract'
+import { directoryAccountBinding } from '../acp/launch/acp-account-binding'
 import { CURSOR_ACP_DIALECT } from '../acp/acp-dialects/cursor-dialect'
 import { readCursorModelCatalog } from '../acp/acp-dialects/cursor-model-catalog'
 import { agentSessionSignInFor } from '../../shared/agent-session/lifecycle/agent-session-sign-in'

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import './native-chat-picker-menu-test-fixture'
-import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
+import { NativeChatSessionOptionPickers } from './session/options/controls/NativeChatSessionOptionPickers'
 import { useAppStore } from '@/store'
 import type { SessionOptionDescriptor } from '../../../../shared/native-chat/input/native-chat-session-options'
 

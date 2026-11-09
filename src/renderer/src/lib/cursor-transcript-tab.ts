@@ -6,8 +6,8 @@ import { translate } from '@/i18n/i18n'
 import { getKnownExecutionHostIdForWorktree } from './workspace/ownership/worktree-runtime-owner'
 import { resolveAiVaultTargetWorkspacePath } from '@/components/right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target'
 import { findCursorTranscriptTerminal } from './cursor-transcript-terminal'
-import { nativeChatComposerHasUserContent } from '@/components/native-chat/native-chat-pending-attachment-cache'
-import { readNativeChatComposerDraft } from '@/components/native-chat/native-chat-composer-draft-store'
+import { nativeChatComposerHasUserContent } from '@/components/native-chat/attachments/chips/native-chat-pending-attachment-cache'
+import { readNativeChatComposerDraft } from '@/components/native-chat/drafts/native-chat-composer-draft-store'
 
 function cursorTerminalTab(worktreeId: string, sessionId: string) {
   const state = useAppStore.getState()

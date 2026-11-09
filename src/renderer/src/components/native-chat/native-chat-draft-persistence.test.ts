@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
 import { migrateNativeChatComposerStorage } from './native-chat-composer-storage'
-import { createMemoryNativeChatComposerDraftStorage } from './native-chat-composer-draft-storage'
+import { createMemoryNativeChatComposerDraftStorage } from './drafts/native-chat-composer-draft-storage'
 
 afterEach(() => localStorage.clear())
 

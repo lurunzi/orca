@@ -9,12 +9,12 @@ import {
   collectAiVaultTitleRequests,
   structuredAgentSessionTitleTabs
 } from './ai-vault-tab-title-requests'
-import { worktreeOwnerRowsTokenOf } from '../../../worktree-owner-rows-token'
+import { worktreeOwnerRowsTokenOf } from '../../../workspace/ownership/worktree-owner-rows-token'
 import {
   selectDetectedWorktreesByRepo,
   selectFolderWorkspaces,
   selectWorktreesByRepo
-} from '@/store/workspace-record-selectors'
+} from '@/store/workspaces/catalog/workspace-record-fields'
 
 function providerSessionEqual(
   left: AgentProviderSessionMetadata | undefined,

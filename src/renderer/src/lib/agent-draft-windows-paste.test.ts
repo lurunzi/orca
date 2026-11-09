@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildAgentSessionContinuationPrompt } from './agent-session-continuation'
+import { buildAgentSessionContinuationPrompt } from './agent-session/context/agent-session-continuation'
 import {
   AGENT_DRAFT_PASTE_CHUNK_MAX_BYTES,
   AGENT_DRAFT_PASTE_DIRECT_MAX_BYTES,
   AGENT_DRAFT_PASTE_MAX_BYTES,
   iterateAgentDraftPasteContentChunks,
   sendAgentDraftPasteContentNow
-} from './agent-draft-paste-content'
+} from './agent-session/messaging/paste/agent-draft-paste-content'
 import {
   launchPromptAsMessage,
   shouldPruneLaunchPrompt
-} from '@/components/native-chat/native-chat-pending'
+} from '@/components/native-chat/session/terminal/delivery/native-chat-pending'
 import type { NativeChatMessage } from '../../../shared/native-chat/native-chat-types'
 
-vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
   sendRuntimePtyInputVerified: vi.fn()
 }))
 

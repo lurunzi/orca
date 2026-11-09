@@ -3,10 +3,8 @@ import { claudeProviderHandle } from '../../../../shared/agent-session/lifecycle
 import type { ClaudeEnvDeps } from '../../../claude/structured/launch/claude-structured-child-env'
 import { ClaudeStructuredSessionAdapter } from '../../../claude/structured/claude-structured-session-adapter'
 import { readClaudeFastModeAccountAvailability } from '../../../claude/claude-fast-mode-account-availability'
-import type {
-  ClaudeStructuredSessionAdapterDeps,
-  ClaudeStructuredSessionEvent
-} from '../../../claude/structured/claude-structured-session-state'
+import type { ClaudeStructuredSessionAdapterDeps } from '../../../claude/structured/claude-structured-session-state'
+import type { ClaudeStructuredSessionEvent } from '../../../claude/structured/claude-structured-session-event'
 import { claudeProviderHandleLink } from '../../../claude/structured/claude-structured-owner-identity'
 import type { StructuredAgentSessionLifecycleEvent } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 

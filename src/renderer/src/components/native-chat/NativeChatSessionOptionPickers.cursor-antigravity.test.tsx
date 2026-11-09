@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
+import { NativeChatSessionOptionPickers } from './session/options/controls/NativeChatSessionOptionPickers'
 import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat/input/native-chat-pty-session-options'
 
 vi.mock('@/i18n/i18n', () => ({
@@ -82,7 +82,7 @@ it('sends the exact Cursor Fast variant through the separate Speed row', async (
   )
   await user.click(screen.getByRole('button', { name: /Model Grok 4.7/ }))
   expect(screen.getAllByRole('option')).toHaveLength(1)
-  await user.click(screen.getByRole('radio', { name: 'Fast' }))
+  await user.click(screen.getByRole('button', { name: 'Fast' }))
   await waitFor(() =>
     expect(dispatch).toHaveBeenCalledWith('/model grok-4.7-low-fast', {
       detectAgentInteraction: 'cursor-model-picker',

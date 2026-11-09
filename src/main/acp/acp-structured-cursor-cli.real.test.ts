@@ -10,10 +10,10 @@ import {
   closeProviderTimelineRigs,
   SESSION
 } from '../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
-import { createAcpAgentConnection } from './acp-agent-connection'
-import { acpLaunchSpecFor } from './acp-launch-specs'
-import { openAcpAdapterRig, sendHello } from './acp-structured-adapter.test-support'
-import { resolveAcpLaunchInvocation } from './acp-structured-launch-resolution'
+import { createAcpAgentConnection } from './process/acp-agent-connection'
+import { acpLaunchSpecFor } from './launch/acp-launch-registry'
+import { openAcpAdapterRig, sendHello } from './session/testing/acp-structured-adapter.test-support'
+import { resolveAcpLaunchInvocation } from './launch/acp-structured-launch-resolution'
 
 const CURSOR = acpLaunchSpecFor('cursor')!
 afterEach(closeProviderTimelineRigs)

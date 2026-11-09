@@ -9,7 +9,7 @@ import type {
   NativeChatBlock,
   NativeChatMessage
 } from '../../../../shared/native-chat/native-chat-types'
-import type { NativeChatInteractiveSend } from './use-native-chat-interactive-send'
+import type { NativeChatInteractiveSend } from './session/terminal/send/use-native-chat-interactive-send'
 
 const storeState = {
   agentStatusByPaneKey: {
@@ -21,8 +21,8 @@ vi.mock('../../store', () => ({
   useAppStore: (selector: (state: typeof storeState) => unknown) => selector(storeState)
 }))
 
-import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
-import { useNativeChatInteractivePromptCard } from './use-native-chat-interactive-prompt-card'
+import { NativeChatInteractiveCard } from './prompts/NativeChatInteractiveCard'
+import { useNativeChatInteractivePromptCard } from './prompts/use-native-chat-interactive-prompt-card'
 
 const send = {
   sendAnswer: vi.fn<NativeChatInteractiveSend['sendAnswer']>(),

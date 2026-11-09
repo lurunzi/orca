@@ -1,10 +1,10 @@
 // Enter for native chat sends, optionally re-checked until the composer lets go
 // of the draft. Split from native-chat-runtime-send.ts to keep that file bounded.
 
-import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
+import { sendRuntimePtyInput } from '@/runtime/hosted-terminals/input/runtime-terminal-input-send'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
 import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/native-chat-paste-bytes'
-import type { NativeChatSendOptions } from './native-chat-runtime-send'
+import type { NativeChatSendOptions } from './session/terminal/send/native-chat-runtime-send'
 
 export type NativeChatSubmitConfirmation = {
   /** Body-to-Enter gap; replaces NATIVE_CHAT_SUBMIT_DELAY_MS. */

@@ -3,13 +3,13 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
-import { clearNativeChatModelEnrichmentForTests } from './native-chat-session-option-enrichment'
+import { clearNativeChatModelEnrichmentForTests } from './session/options/catalog/native-chat-session-option-enrichment'
 import { clearNativeChatSessionOptionCacheForTests } from '../../../../shared/native-chat/input/native-chat-session-option-cache'
-import { useNativeChatSessionOptions } from './use-native-chat-session-options'
+import { useNativeChatSessionOptions } from './session/options/terminal/use-native-chat-session-options'
 
 const discoverModels = vi.fn<() => Promise<readonly CatalogModel[] | null>>()
 
-vi.mock('./native-chat-session-option-discovery', () => ({
+vi.mock('./session/options/catalog/native-chat-session-option-discovery', () => ({
   resolveNativeChatModelDiscoveryContext: () => ({ hostKey: 'host', runtime: null }),
   discoverNativeChatCatalogModels: () => discoverModels()
 }))
@@ -19,7 +19,7 @@ vi.mock('../../store', () => ({
     selector({ agentStatusByPaneKey: {} })
 }))
 
-vi.mock('./native-chat-session-option-settings-write', () => ({
+vi.mock('./session/options/native-chat-session-option-settings-write', () => ({
   enqueueSessionOptionSettingsWrite: vi.fn(async () => {})
 }))
 

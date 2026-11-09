@@ -7,14 +7,14 @@ import {
   SESSION
 } from '../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
 import { antigravityCliLaunchSpec } from '../antigravity/antigravity-cli-acp-launch-spec'
-import { ANTIGRAVITY_LAUNCH_SPEC } from './acp-launch-specs'
-import type { AcpScriptedAgent } from './acp-scripted-agent.test-support'
+import { ANTIGRAVITY_LAUNCH_SPEC } from '../antigravity/antigravity-acp-launch-spec'
+import type { AcpScriptedAgent } from './process/testing/acp-scripted-agent.test-support'
 import {
   openAcpAdapterRig,
   PROVIDER_SESSION,
   sendHello,
   waitFor
-} from './acp-structured-adapter.test-support'
+} from './session/testing/acp-structured-adapter.test-support'
 
 const CLI = antigravityCliLaunchSpec(ANTIGRAVITY_LAUNCH_SPEC)
 const optionSchema = z.looseObject({

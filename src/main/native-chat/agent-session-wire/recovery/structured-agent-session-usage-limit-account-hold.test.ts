@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NativeChatUsageLimitCut } from '../../../../shared/native-chat/native-chat-usage-limit-cut'
+import type { HostUsageLimitCut } from './structured-agent-session-usage-limit-chain'
 import type { UsageLimitAccountReading } from '../../../rate-limits/usage-limit-account-reading'
 import { StructuredAgentSessionUsageLimitContinue } from './structured-agent-session-usage-limit-continue'
 import { hostTestRestingOptionsRecord } from '../host/testing/structured-agent-session-host-test-data'
@@ -16,8 +16,11 @@ function createRig(ids: string[]) {
     resetsAt: RESET,
     usedUpResets: []
   }
-  const cuts = new Map<string, NativeChatUsageLimitCut | null>(
-    ids.map((id) => [id, { turnItemId: `turn-${id}`, resetsAt: RESET, turnEndedAt: ENDED }])
+  const cuts = new Map<string, HostUsageLimitCut | null>(
+    ids.map((id) => [
+      id,
+      { turnItemId: `turn-${id}`, resetsAt: RESET, turnEndedAt: ENDED, chain: 0 }
+    ])
   )
   const sent: string[] = []
   let refreshes = 0
@@ -125,7 +128,8 @@ describe('usage-limit automatic continue gated by account usage', () => {
         rig.cuts.set('chat', {
           turnItemId: `refail-${round}`,
           resetsAt: now + 5_000 + MINUTE,
-          turnEndedAt: now + 5_000
+          turnEndedAt: now + 5_000,
+          chain: 0
         })
       }
       now += 6 * 60 * MINUTE

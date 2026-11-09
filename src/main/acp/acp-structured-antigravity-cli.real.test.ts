@@ -11,13 +11,11 @@ import {
   SESSION
 } from '../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
 import { antigravityCliLaunchSpec } from '../antigravity/antigravity-cli-acp-launch-spec'
-import { createAcpAgentConnection } from './acp-agent-connection'
-import { ANTIGRAVITY_LAUNCH_SPEC } from './acp-launch-specs'
-import { openAcpAdapterRig, sendHello } from './acp-structured-adapter.test-support'
-import {
-  checkAcpLaunchVersion,
-  resolveAcpLaunchInvocation
-} from './acp-structured-launch-resolution'
+import { createAcpAgentConnection } from './process/acp-agent-connection'
+import { ANTIGRAVITY_LAUNCH_SPEC } from '../antigravity/antigravity-acp-launch-spec'
+import { openAcpAdapterRig, sendHello } from './session/testing/acp-structured-adapter.test-support'
+import { resolveAcpLaunchInvocation } from './launch/acp-structured-launch-resolution'
+import { checkAcpLaunchVersion } from './launch/acp-launch-version'
 
 const CLI = antigravityCliLaunchSpec(ANTIGRAVITY_LAUNCH_SPEC)
 afterEach(closeProviderTimelineRigs)

@@ -13,11 +13,11 @@ import {
   finalReplayFrame,
   readRuntimeFixture,
   replayTranscript
-} from './agent-transcript-replay-test-harness'
+} from './terminal/wait/agent-transcript-replay-test-harness'
 import {
   describeScreenRuledAgentTranscripts,
   readsIdleComposer
-} from './screen-ruled-agent-transcript-suite'
+} from './terminal/wait/screen-ruled-agent-transcript-suite'
 import {
   isKnownReadyPromptBody,
   isKnownReadyPromptPreview,

@@ -3,9 +3,9 @@ import { ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 import { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
-import { NativeChatPromptEditor } from './NativeChatPromptEditor'
-import type { NativeChatComposerInput } from './native-chat-composer-input'
-import { useNativeChatDraft } from './use-native-chat-draft'
+import { NativeChatPromptEditor } from './composer/editor/NativeChatPromptEditor'
+import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
+import { useNativeChatDraft } from './drafts/use-native-chat-draft'
 
 export function CursorTranscriptComposer({
   scopeKey,

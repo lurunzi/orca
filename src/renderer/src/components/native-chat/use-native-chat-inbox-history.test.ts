@@ -7,7 +7,7 @@ import type { RuntimeClientTarget } from '../../../../shared/runtime-client-targ
 import { useNativeChatInboxHistory } from './use-native-chat-inbox-history'
 
 const mocks = vi.hoisted(() => ({ read: vi.fn() }))
-vi.mock('@/runtime/structured-agent-session-client', () => ({
+vi.mock('@/runtime/native-chat/requests/structured-agent-session-call', () => ({
   callStructuredAgentSession: mocks.read
 }))
 

@@ -9,8 +9,8 @@ import {
   type AgentCliVersionInput,
   type AgentCliVersionReader
 } from '../agent-launch/preflight/agent-cli-version-probe'
-import { directoryAccountBinding, type AcpAccountBinding } from '../acp/acp-account-binding'
-import type { AcpLaunchSpec } from '../acp/acp-launch-specs'
+import { directoryAccountBinding, type AcpAccountBinding } from '../acp/launch/acp-account-binding'
+import type { AcpLaunchSpec } from '../acp/launch/acp-launch-contract'
 
 // 1.5.2 is the first release verified with Orca chats; it also leaves the chat's folder untouched.
 const AGY_ACP_MINIMUM_VERSIONS = ['1.5.2'] as const

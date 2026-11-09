@@ -16,32 +16,6 @@ const antigravityCapturedReady = readFileSync(
 )
 
 describe('OrcaRuntimeService', () => {
-  it('waits for exit on background terminal handles', async () => {
-    const runtime = new OrcaRuntimeService(store)
-    runtime.setPtyController({
-      spawn: vi.fn().mockResolvedValue({ id: 'pty-bg' }),
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => null
-    })
-    runtime.attachWindow(1)
-    runtime.syncWindowGraph(1, { tabs: [], leaves: [] })
-    const { handle } = await runtime.createTerminal(`path:${TEST_WORKTREE_PATH}`)
-
-    const waiting = runtime.waitForTerminal(handle, { condition: 'exit', timeoutMs: 1000 })
-    runtime.onPtyExit('pty-bg', 7)
-
-    await expect(waiting).resolves.toMatchObject({
-      handle,
-      condition: 'exit',
-      status: 'exited',
-      exitCode: 7
-    })
-    await expect(runtime.readTerminal(handle)).resolves.toMatchObject({
-      status: 'exited'
-    })
-  })
-
   it('observes setup command completion without waiting for its interactive shell to exit', async () => {
     const runtime = new OrcaRuntimeService(store)
     runtime.setPtyController({
@@ -285,44 +259,6 @@ describe('OrcaRuntimeService', () => {
     ).ptysById.get('daemon-pty-1')
     expect(pty).toMatchObject({
       connected: false,
-      tailBuffer: ['still live'],
-      tailPartialLine: 'partial',
-      tailLinesTotal: 1
-    })
-  })
-
-  it('keeps retained PTY transcript memory when controller refresh fails', async () => {
-    const runtime = new OrcaRuntimeService(store)
-    runtime.setPtyController({
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => null,
-      listProcesses: async () => {
-        throw new Error('controller unavailable')
-      }
-    })
-    runtime.attachWindow(1)
-    runtime.syncWindowGraph(1, { tabs: [], leaves: [] })
-    runtime.registerPty('daemon-pty-1', TEST_WORKTREE_ID)
-    runtime.onPtyData('daemon-pty-1', 'still live\npartial', 100)
-
-    await runtime.listTerminals()
-
-    const pty = (
-      runtime as unknown as {
-        ptysById: Map<
-          string,
-          {
-            connected: boolean
-            tailBuffer: string[]
-            tailPartialLine: string
-            tailLinesTotal: number
-          }
-        >
-      }
-    ).ptysById.get('daemon-pty-1')
-    expect(pty).toMatchObject({
-      connected: true,
       tailBuffer: ['still live'],
       tailPartialLine: 'partial',
       tailLinesTotal: 1

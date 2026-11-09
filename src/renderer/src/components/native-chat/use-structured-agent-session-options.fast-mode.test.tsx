@@ -10,12 +10,12 @@ import {
   descriptor,
   setOptionCalls,
   tick
-} from './use-structured-agent-session-options.test-fixture'
+} from './session/options/structured/use-structured-agent-session-options.test-fixture'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { forgetStructuredSessionSelection } from '@/lib/agent-session/options/structured-agent-session-selection-controller'
-import { replaceRuntimeEnvironmentRevisions } from '@/runtime/runtime-environment-revision'
-import { resetHostModelCatalogSnapshotsForTests } from '@/runtime/host-model-catalog-snapshots'
+import { replaceRuntimeEnvironmentRevisions } from '@/runtime/rpc/environment-revisions/runtime-environment-revision'
+import { resetHostModelCatalogSnapshotsForTests } from '@/runtime/native-chat/model-catalogs/host-model-catalog-snapshots'
 
 describe('useStructuredAgentSessionOptions Fast mode', () => {
   beforeEach(() => {

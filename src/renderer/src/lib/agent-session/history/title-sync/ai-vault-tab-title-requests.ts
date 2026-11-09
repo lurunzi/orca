@@ -13,12 +13,13 @@ import { structuredAgentSessionPaneKey } from '../../../../../../shared/agent-se
 import type { Tab } from '../../../../../../shared/tab-types'
 import type { TerminalTab } from '../../../../../../shared/workspace-layout/terminal-tab-types'
 import { getExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
-import { structuredAgentSessionOwnerForTab } from '@/runtime/structured-agent-session-owner'
+import { structuredAgentSessionOwnerForTab } from '@/runtime/native-chat/session-ownership/structured-agent-session-owner'
 import type { AppState } from '@/store/types'
-import type { AgentPaneConversationIdentity } from '@/store/slices/agent-pane-conversation'
-import { collectLeafIdsInOrder } from '@/components/terminal-pane/terminal-layout-leaf-ids'
-import { getIndexedRepoMap, getIndexedWorktreeMap } from '@/store/worktree-repo-index'
-import { selectWorktreesByRepo } from '@/store/workspace-record-selectors'
+import type { AgentPaneConversationIdentity } from '@/store/slices/agent-status/agent-pane-conversation'
+import { collectLeafIdsInOrder } from '../../../../components/terminal-pane/layout/terminal-layout-leaf-traversal'
+import { getIndexedRepoMap } from '@/store/repos/repository-catalog-index'
+import { getIndexedWorktreeMap } from '@/store/slices/worktrees/listing/worktree-catalog-index'
+import { selectWorktreesByRepo } from '@/store/workspaces/catalog/workspace-record-fields'
 
 export type AgentPaneConversation<Agent extends AgentType> = {
   agent: Agent
