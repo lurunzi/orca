@@ -8,6 +8,10 @@ import { resolveAiVaultTargetWorkspacePath } from '@/components/right-sidebar/ai
 import { findCursorTranscriptTerminal } from './cursor-transcript-terminal'
 import { nativeChatComposerHasUserContent } from '@/components/native-chat/native-chat-pending-attachment-cache'
 import { readNativeChatComposerDraft } from '@/components/native-chat/native-chat-composer-draft-store'
+import { isStructuredTab } from '../../../shared/agent-session/view/structured-agent-session-tab'
+import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
+import type { Tab } from '../../../shared/tab-types'
+import { activateStructuredAgentSessionTab } from './agent-session/structured-agent-session-tab-activation'
 
 function cursorTerminalTab(worktreeId: string, sessionId: string) {
   const state = useAppStore.getState()
@@ -39,6 +43,37 @@ function activateCursorTerminal(
   state.activateTab(owner.tab.id, { worktreeId, recordFocus: false })
 }
 
+/** Orchestration workers run Cursor over ACP in structured tabs, not terminals. */
+function cursorStructuredTab(worktreeId: string, sessionId: string): Tab | null {
+  const state = useAppStore.getState()
+  return (
+    (state.unifiedTabsByWorktree[worktreeId] ?? []).find(
+      (tab) =>
+        isStructuredTab(tab) &&
+        !tab.agentTranscript &&
+        tab.agentSessionAgent === 'cursor' &&
+        state.agentStatusByPaneKey[structuredAgentSessionPaneKey(tab.id, tab.entityId)]
+          ?.providerSession?.id === sessionId
+    ) ?? null
+  )
+}
+
+function cursorSessionOwner(
+  worktreeId: string,
+  sessionId: string
+): { activate: () => void } | null {
+  const terminal = cursorTerminalTab(worktreeId, sessionId)
+  if (terminal) {
+    return { activate: () => activateCursorTerminal(worktreeId, terminal) }
+  }
+  const structured = cursorStructuredTab(worktreeId, sessionId)
+  return structured
+    ? {
+        activate: () => void activateStructuredAgentSessionTab({ worktreeId, tabId: structured.id })
+      }
+    : null
+}
+
 /** Late hook identity may arrive after discovery opened a transcript reader. */
 export function reconcileCursorTranscriptTabs(worktreeId: string): void {
   const state = useAppStore.getState()
@@ -53,12 +88,12 @@ export function reconcileCursorTranscriptTabs(worktreeId: string): void {
     ) {
       continue
     }
-    const owner = cursorTerminalTab(worktreeId, source.sessionId)
+    const owner = cursorSessionOwner(worktreeId, source.sessionId)
     if (!owner) {
       continue
     }
     if (state.activeWorktreeId === worktreeId && state.getActiveTab(worktreeId)?.id === tab.id) {
-      activateCursorTerminal(worktreeId, owner)
+      owner.activate()
     }
     useAppStore
       .getState()
@@ -102,10 +137,10 @@ export function openCursorTranscriptTab(
   const existing = (state.unifiedTabsByWorktree[worktreeId] ?? []).find(
     (tab) => tab.agentTranscript && tab.entityId === entityId
   )
-  const owner = cursorTerminalTab(worktreeId, session.sessionId)
+  const owner = cursorSessionOwner(worktreeId, session.sessionId)
   if (owner && (!existing || !nativeChatComposerHasUserContent(existing.id))) {
     if (activate) {
-      activateCursorTerminal(worktreeId, owner)
+      owner.activate()
     }
     reconcileCursorTranscriptTabs(worktreeId)
     return true
