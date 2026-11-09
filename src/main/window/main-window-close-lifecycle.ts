@@ -26,6 +26,7 @@ export function installMainWindowCloseLifecycle(args: {
   }
   // Reject duplicate ownership before installing listeners on the new window.
   ipcMain.handle(isMaximizedChannel, onIsMaximized)
+  let isMaximizedOwned = true
   // Renderer confirms save/process guards through window:confirm-close.
   let windowCloseConfirmed = false
   const confirmCloseChannel = 'window:confirm-close'
@@ -95,7 +96,7 @@ export function installMainWindowCloseLifecycle(args: {
     return true
   }
 
-  mainWindow.on('close', (e) => {
+  const onClose = (e: Electron.Event): void => {
     const userQuitClose = consumeUserQuitWindowClose(mainWindow)
     // Alt+F4/programmatic closes need the same tray guard as the custom X.
     if (!windowCloseConfirmed && !userQuitClose && hideToTrayIfEnabled()) {
@@ -130,14 +131,14 @@ export function installMainWindowCloseLifecycle(args: {
       isQuitting,
       requestId
     })
-  })
-  mainWindow.webContents.on('will-prevent-unload', () => {
+  }
+  const onWillPreventUnload = (): void => {
     // A veto cancels quit; resume bounds persistence for subsequent user resizing.
     state.resumeBoundsPersistence()
     clearQuitRendererAckTimer()
     opts?.onQuitAborted?.()
     mainWindow.webContents.send('window:unload-prevented')
-  })
+  }
 
   const onConfirmClose = (): void => {
     clearQuitRendererAckTimer()
@@ -150,7 +151,6 @@ export function installMainWindowCloseLifecycle(args: {
   const onSyncTrafficLights = (_event: Electron.IpcMainEvent, zoomFactor: number): void => {
     syncTrafficLightPosition(mainWindow, zoomFactor)
   }
-  ipcMain.on(trafficLightChannel, onSyncTrafficLights)
 
   // Custom Windows/Linux controls replace hidden native titlebar buttons.
   const minimizeChannel = 'window:minimize'
@@ -187,13 +187,6 @@ export function installMainWindowCloseLifecycle(args: {
   const onPopupMenu = (): void => {
     Menu.getApplicationMenu()?.popup({ window: mainWindow })
   }
-  ipcMain.on(minimizeChannel, onMinimize)
-  ipcMain.on(maximizeChannel, onMaximize)
-  ipcMain.on(requestCloseChannel, onRequestClose)
-  ipcMain.on(popupMenuChannel, onPopupMenu)
-
-  ipcMain.on(confirmCloseChannel, onConfirmClose)
-  ipcMain.on(closeRequestReceivedChannel, onCloseRequestReceived)
 
   const dispose = (): void => {
     clearQuitRendererAckTimer()
@@ -202,9 +195,30 @@ export function installMainWindowCloseLifecycle(args: {
     ipcMain.removeListener(maximizeChannel, onMaximize)
     ipcMain.removeListener(requestCloseChannel, onRequestClose)
     ipcMain.removeListener(popupMenuChannel, onPopupMenu)
-    ipcMain.removeHandler(isMaximizedChannel)
+    if (isMaximizedOwned) {
+      ipcMain.removeHandler(isMaximizedChannel)
+      isMaximizedOwned = false
+    }
     ipcMain.removeListener(confirmCloseChannel, onConfirmClose)
     ipcMain.removeListener(closeRequestReceivedChannel, onCloseRequestReceived)
+  }
+
+  // Roll back partial registration so a failed window cannot keep owning shared IPC channels.
+  try {
+    mainWindow.on('close', onClose)
+    mainWindow.webContents.on('will-prevent-unload', onWillPreventUnload)
+    ipcMain.on(trafficLightChannel, onSyncTrafficLights)
+    ipcMain.on(minimizeChannel, onMinimize)
+    ipcMain.on(maximizeChannel, onMaximize)
+    ipcMain.on(requestCloseChannel, onRequestClose)
+    ipcMain.on(popupMenuChannel, onPopupMenu)
+    ipcMain.on(confirmCloseChannel, onConfirmClose)
+    ipcMain.on(closeRequestReceivedChannel, onCloseRequestReceived)
+  } catch (error) {
+    mainWindow.removeListener('close', onClose)
+    mainWindow.webContents.removeListener('will-prevent-unload', onWillPreventUnload)
+    dispose()
+    throw error
   }
   return { dispose }
 }
