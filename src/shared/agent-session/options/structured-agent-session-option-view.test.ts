@@ -393,7 +393,7 @@ describe("a chat's model and effort, apart from the defaults filling them in", (
     ])
     expect(
       structuredAgentSessionShownSnapshot(state).find(({ id }) => id === 'fastMode')
-    ).toMatchObject({ settable: false, disabledReason: 'fast-mode-availability-unconfirmed' })
+    ).toMatchObject({ settable: false })
   })
 })
 

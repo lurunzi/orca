@@ -27,21 +27,6 @@ import {
 } from './use-mobile-structured-agent-options.test-fixture'
 
 describe('useMobileStructuredAgentOptions fast mode', () => {
-  it('keeps a disabled Fast row when the session reports an account restriction', async () => {
-    const client = optionsClient(
-      queuedReads({ ...FAST_OPTIONS, fastModeSupport: { supported: false, reason: 'account' } })
-    )
-    const { mutate } = recordingMutate(async () => ({ status: 'rejected' }))
-    const harness = await mountOptions({ ...BASE, client: client.client, mutate })
-
-    expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toMatchObject({
-      settable: false,
-      kind: { currentValue: false },
-      disabledReason: 'fast-mode-unavailable'
-    })
-    await harness.unmount()
-  })
-
   it('never enables Claude Fast when the model capability is unknown', async () => {
     const client = optionsClient(
       queuedReads({
@@ -55,21 +40,12 @@ describe('useMobileStructuredAgentOptions fast mode', () => {
 
     expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toMatchObject({
       settable: false,
-      kind: { currentValue: false },
-      disabledReason: 'fast-mode-availability-unconfirmed'
+      kind: { currentValue: false }
     })
     await act(async () => {
       expect(await harness.current().setStructuredOption('fastMode', true)).toBe(false)
     })
     expect(calls).toEqual([])
-    await harness.unmount()
-  })
-
-  it('offers no Codex Fast row when the model capability is unknown', async () => {
-    const client = optionsClient(queuedReads({ ...FAST_OPTIONS, models: OPTIONS.models }))
-    const { mutate } = recordingMutate(async () => ({ status: 'rejected' }))
-    const harness = await mountOptions({ ...BASE, client: client.client, mutate })
-    expect(descriptorFor(harness.current().optionSnapshot, 'fastMode')).toBeUndefined()
     await harness.unmount()
   })
 })

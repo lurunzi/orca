@@ -20204,9 +20204,6 @@
         },
         "imageUnavailable": "Preview unavailable",
         "appliesNextTurn": "Applies after this turn",
-        "fastModeExtraUsageRequired": "Fast mode requires paid usage credits.",
-        "fastModeUnavailable": "Fast mode is currently unavailable for this session.",
-        "fastModeAvailabilityUnconfirmed": "Fast mode availability has not been confirmed for this session.",
         "acceptPromptSuggestion": "Use suggested prompt"
       },
       "tool": {

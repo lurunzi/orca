@@ -3067,9 +3067,6 @@
       "toggleOption": "Toggle {{value0}}",
       "chooseInAgentPicker": "Choose in agent picker…",
       "setWhenSessionStarts": "Set when the session starts.",
-      "fastModeExtraUsageRequired": "Fast mode requires paid usage credits.",
-      "fastModeUnavailable": "Fast mode is currently unavailable for this session.",
-      "fastModeAvailabilityUnconfirmed": "Fast mode availability has not been confirmed for this session.",
       "availableAfterSessionStarts": "Available after the session starts.",
       "sessionOptions": "Session options"
     },

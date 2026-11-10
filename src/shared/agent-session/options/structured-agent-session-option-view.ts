@@ -184,19 +184,13 @@ export function structuredAgentSessionMessageSelection(
     ) {
       continue
     }
-    // An unconfirmed account only hides Fast; the host still gates the accepted choice it sends.
-    const unconfirmedFast =
-      id === 'fastMode' &&
-      view.acceptedInputSources !== undefined &&
-      descriptor?.disabledReason === 'fast-mode-availability-unconfirmed'
     const raw =
       (id === 'effort' && view.acceptedInputSources !== undefined) ||
-      (view.record.agent === 'pi' && (id === 'model' || id === 'effort')) ||
-      unconfirmedFast
+      (view.record.agent === 'pi' && (id === 'model' || id === 'effort'))
         ? view.record.values[id]?.value
         : undefined
     const value =
-      (id === 'effort' && view.acceptedInputSources !== undefined) || unconfirmedFast
+      id === 'effort' && view.acceptedInputSources !== undefined
         ? raw
         : (raw ??
           descriptor?.kind.currentValue ??

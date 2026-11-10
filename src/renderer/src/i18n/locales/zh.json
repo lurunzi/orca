@@ -18814,9 +18814,6 @@
         "sessionAttachmentsFailed": "{{agent}} 聊天无法打开。在聊天中使用“重试”，然后再次附加文件。",
         "sessionAttachmentsStarting": "正在打开 {{agent}} 聊天。请等待聊天打开后再重新附加文件。",
         "appliesNextTurn": "本轮结束后生效",
-        "fastModeExtraUsageRequired": "Fast mode 需要启用额外付费额度。",
-        "fastModeUnavailable": "此会话目前无法使用 Fast mode。",
-        "fastModeAvailabilityUnconfirmed": "尚未确认此会话能否使用 Fast mode。",
         "acceptPromptSuggestion": "使用建议的提示词",
         "moreControls": "更多聊天控件",
         "exitPlanMode": "退出计划模式"

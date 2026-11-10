@@ -1,23 +1,18 @@
 // Fork: Claude Fast is offered only after a running session verified the account, so a chat at
 // rest neither advertises it nor saves an enable it cannot prove.
 
-import type { AgentSessionModelCatalogResult } from '../../../shared/agent-session/agent-session-wire'
-import type { AgentSessionOptionsResult } from '../../../shared/agent-session/options/agent-session-options-result'
+import type { AgentSessionFastModeSupport } from '../../../shared/agent-session/agent-session-wire'
 import {
   refuse,
   type AgentSessionWireRefusal
 } from '../../../shared/agent-session/failures/agent-session-wire-refusals'
 
-export function restingFastModeSupport(
-  provider: string,
-  catalog: AgentSessionModelCatalogResult
-): Pick<AgentSessionOptionsResult, 'fastModeSupport'> {
-  if (provider === 'claude') {
-    return { fastModeSupport: { supported: false, reason: 'availability-unconfirmed' } }
-  }
-  return catalog.origin !== 'unknown' && catalog.fastModeSupport
-    ? { fastModeSupport: catalog.fastModeSupport }
-    : {}
+export function restingClaudeFastRestriction(
+  provider: string
+): AgentSessionFastModeSupport | undefined {
+  return provider === 'claude'
+    ? { supported: false, reason: 'availability-unconfirmed' }
+    : undefined
 }
 
 export function restingClaudeFastRefusal(
@@ -34,17 +29,4 @@ export function restingClaudeFastRefusal(
         )
       }
     : null
-}
-
-/** Only a live answer carries Claude's account verification; a catalog-derived view never does. */
-export function withLiveVerifiedFastMode(
-  view: Pick<AgentSessionOptionsResult, 'fastModeSupport'>,
-  live: Pick<AgentSessionOptionsResult, 'fastModeSupport'> | null
-): Pick<AgentSessionOptionsResult, 'fastModeSupport'> {
-  const verified = live?.fastModeSupport
-  return verified?.supported === true &&
-    verified.accountVerified === true &&
-    view.fastModeSupport?.reason !== 'model-not-supported'
-    ? { fastModeSupport: verified }
-    : view
 }

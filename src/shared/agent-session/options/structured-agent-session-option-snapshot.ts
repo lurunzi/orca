@@ -24,7 +24,10 @@ import {
   type StructuredAgentSessionOptionRecord
 } from './structured-agent-session-option-state'
 import { withUnlistedEffort } from './structured-agent-session-unlisted-effort'
-import { applyStructuredAgentFastModeAvailability } from './structured-agent-fast-mode-snapshot'
+import {
+  claudeFastModeUnconfirmed,
+  withClaudeUnconfirmedFastMode
+} from './structured-agent-fast-mode-snapshot'
 import { listedModelDescribing } from './structured-agent-session-listed-model'
 import { structuredAgentSessionPermissionDescriptor } from './structured-agent-session-permission-option'
 import { structuredAgentSessionInteractionDescriptor } from './agent-session-interaction-mode'
@@ -227,19 +230,17 @@ function modelOptionSnapshot(state: StructuredAgentSessionOptionState): SessionO
           modelIsCliDefault: isCliDefault
         })
   return snapshot.length > 0 || state.catalogSource === 'live'
-    ? applyStructuredAgentFastModeAvailability({
-        snapshot: withUnlistedEffort(
+    ? withClaudeUnconfirmedFastMode(
+        state,
+        withUnlistedEffort(
           catalog,
           controlsModelId,
           values.effort,
           state.verifiedModelIds,
           snapshot,
           state.record.agent
-        ),
-        agent: state.record.agent,
-        modelSupport: state.fastModeModelSupport,
-        support: state.fastModeSupport
-      })
+        )
+      )
     : [PROVIDER_DEFAULT_MODEL_PLACEHOLDER]
 }
 
@@ -270,12 +271,6 @@ export function lockedStructuredAgentSessionOptionSnapshot(
   )
 }
 
-/** Account or model availability, not inventory, refuses Fast. */
-function fastModeAvailabilityDenied(snapshot: readonly SessionOptionDescriptor[]): boolean {
-  const fast = snapshot.find((entry) => entry.id === 'fastMode')
-  return fast?.settable === false && fast.disabledReason?.startsWith('fast-mode-') === true
-}
-
 export function canSetStructuredAgentSessionOption(
   state: StructuredAgentSessionOptionState,
   id: string,
@@ -287,7 +282,7 @@ export function canSetStructuredAgentSessionOption(
   if (
     !interactionReady ||
     pending ||
-    (id === 'fastMode' && (state.fastModeRestricted || fastModeAvailabilityDenied(snapshot)))
+    (id === 'fastMode' && (state.fastModeRestricted || claudeFastModeUnconfirmed(state, snapshot)))
   ) {
     return false
   }

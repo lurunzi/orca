@@ -15,7 +15,7 @@ import {
 import { structuredAgentSessionThreadGoalReport } from '../operations/structured-agent-session-thread-goal'
 // Saved choices, catalog defaults and actual execution reports remain separate facts.
 
-import { restingFastModeSupport, withLiveVerifiedFastMode } from '../claude-resting-fast-gate'
+import { restingClaudeFastRestriction } from '../claude-resting-fast-gate'
 import type {
   AgentSessionOptionsResult,
   AgentSessionAcceptedInputSources
@@ -129,9 +129,6 @@ export async function readStructuredAgentSessionOptions(
   // Earlier reads may have closed/reopened the handle.
   const session = await context.conversation(sessionId)
   const agent = session.params.provider
-  if (!live && rested) {
-    options = { ...options, ...restingFastModeSupport(agent, rested.inventory) }
-  }
   const capabilities = agents.capabilities(agent)
   const floor = session.journal.context.floor()
   const contextFloor = floor ? { contextFloor: floor } : {}
@@ -220,15 +217,13 @@ export async function readStructuredAgentSessionOptions(
       live?.fastModeSupport?.supported === false &&
         live.fastModeSupport.reason !== 'model-not-supported'
         ? live.fastModeSupport
-        : undefined
+        : live
+          ? undefined
+          : restingClaudeFastRestriction(agent)
     )
-    const fast = live
-      ? withLiveVerifiedFastMode(view, live)
-      : restingFastModeSupport(agent, inventory)
     options = {
       ...options,
       ...view,
-      ...fast,
       ...(inventory.origin === 'unknown' ? { modelsKnown: false } : {}),
       listedModelIds,
       current

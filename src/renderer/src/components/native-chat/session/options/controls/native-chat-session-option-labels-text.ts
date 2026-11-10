@@ -36,21 +36,6 @@ const PIECES: Record<NativeChatSessionOptionCopyId, (values?: { value0: string }
       'components.native-chat.composer.setWhenSessionStarts',
       'Set when the session starts.'
     ),
-  fastModeExtraUsageRequired: () =>
-    translate(
-      'components.native-chat.composer.fastModeExtraUsageRequired',
-      'Fast mode requires paid usage credits.'
-    ),
-  fastModeUnavailable: () =>
-    translate(
-      'components.native-chat.composer.fastModeUnavailable',
-      'Fast mode is currently unavailable for this session.'
-    ),
-  fastModeAvailabilityUnconfirmed: () =>
-    translate(
-      'components.native-chat.composer.fastModeAvailabilityUnconfirmed',
-      'Fast mode availability has not been confirmed for this session.'
-    ),
   availableAfterSessionStarts: () =>
     translate(
       'components.native-chat.composer.availableAfterSessionStarts',
