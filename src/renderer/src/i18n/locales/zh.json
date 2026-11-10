@@ -21518,6 +21518,12 @@
         "google": "谷歌",
         "accounts": "账户"
       },
+      "fullAccessApprovals": "完全访问的审批",
+      "fullAccessApprovalsOrca": "Orca",
+      "fullAccessApprovalsAgent": "智能体（agy）",
+      "fullAccessApprovalsOrcaDescription": "由 Orca 批准工具调用。计划审批、提问和安全警告仍交给你。",
+      "fullAccessApprovalsAgentDescription": "由 agy 自行批准工具调用。计划审批和提问仍交给你。",
+      "fullAccessApprovalsFailed": "Orca 无法读取或保存此设置。请重试。",
       "authMethod": "登录方式",
       "personal": "Google 账户",
       "gcpProject": "Google Cloud 项目",

@@ -8,6 +8,7 @@ import {
   AntigravityChatSignInFlowParams
 } from '../../../../../shared/rpc-contract/antigravity-accounts-params'
 import { AntigravityChatAuthConfigSchema } from '../../../../../shared/antigravity-chat-auth-config'
+import { AntigravityChatFullAccessApprovalsParams } from '../../../../../shared/antigravity-chat-full-access-approvals'
 import { getAntigravityAccountService } from '../../../../antigravity/native-account-host'
 import {
   cancelAntigravityChatSignIn,
@@ -24,6 +25,10 @@ import {
   readAntigravityChatAuthConfig,
   applyAntigravityChatAuthConfig
 } from '../../../../antigravity/antigravity-chat-auth-settings'
+import {
+  applyAntigravityChatFullAccessApprovals,
+  readAntigravityChatFullAccessApprovals
+} from '../../../../antigravity/antigravity-chat-full-access-approvals-settings'
 
 const chatSignInHost = (runtime: OrcaRuntimeService) => ({
   launchSources: (signal: AbortSignal) =>
@@ -120,5 +125,18 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
         config,
         chatSignInHost(ctx.runtime).stopLiveChats
       )
+  }),
+  defineMethod({
+    name: 'accounts.antigravityChatFullAccessApprovalsGet',
+    permission: 'accounts-admin',
+    params: null,
+    handler: (_, ctx) => readAntigravityChatFullAccessApprovals(ctx.runtime.requireStore())
+  }),
+  defineMethod({
+    name: 'accounts.antigravityChatFullAccessApprovalsApply',
+    permission: 'accounts-admin',
+    params: AntigravityChatFullAccessApprovalsParams,
+    handler: ({ approvals }, ctx) =>
+      applyAntigravityChatFullAccessApprovals(ctx.runtime.requireStore(), approvals)
   })
 ] as const

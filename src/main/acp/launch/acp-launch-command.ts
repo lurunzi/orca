@@ -15,7 +15,7 @@ import {
   resolveInstalledRuntimeRelease
 } from '../../node-runtime/managed-runtime-release'
 import { STRUCTURED_CHILD_ENV_TO_DELETE } from '../../runtime/agent-session/environment/structured-session-child-env'
-import type { AcpHostBackendSettings, AcpLaunchSpec } from './acp-launch-contract'
+import type { AcpHostBackend, AcpHostBackendSettings, AcpLaunchSpec } from './acp-launch-contract'
 
 /** Prefer explicit commands, then managed releases, then complete pinned copies on PATH. */
 export function resolveAcpLaunchCommand(
@@ -61,9 +61,18 @@ export function resolveAcpLaunchCommand(
 /** Chats whose account home a host backend pins launch with its spec. */
 export function acpLaunchSpecForAccount(
   spec: AcpLaunchSpec,
-  home: AgentSessionAccountHome
+  home: AgentSessionAccountHome,
+  settings: AcpHostBackendSettings = {}
 ): AcpLaunchSpec {
-  return spec.hostBackend?.pins(home) ? spec.hostBackend.spec : spec
+  const backend = spec.hostBackend
+  return backend?.pins(home) ? acpHostBackendSpec(backend, settings) : spec
+}
+
+export function acpHostBackendSpec(
+  backend: AcpHostBackend,
+  settings: AcpHostBackendSettings
+): AcpLaunchSpec {
+  return backend.specFor?.(settings) ?? backend.spec
 }
 
 /** The account home pinning a new chat to the compatible host program `env` finds, or null. */

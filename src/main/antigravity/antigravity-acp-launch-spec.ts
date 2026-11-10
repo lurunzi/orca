@@ -10,6 +10,7 @@ import {
   resolveAntigravityChatAuthConfig
 } from '../../shared/antigravity-chat-auth-config'
 import { agentSessionSignInFor } from '../../shared/agent-session/lifecycle/agent-session-sign-in'
+import { resolveAntigravityChatFullAccessApprovals } from '../../shared/antigravity-chat-full-access-approvals'
 import { ANTIGRAVITY_ACP_COMMAND, ANTIGRAVITY_ACP_RUNTIME } from './antigravity-acp-runtime'
 import { ANTIGRAVITY_ACP_ENV, scrubAntigravityAcpEnvironment } from './antigravity-acp-environment'
 import {
@@ -109,7 +110,14 @@ const ANTIGRAVITY_HOST_LAUNCH_SPEC: AcpLaunchSpec = {
     }
   },
   minimumVersions: [ANTIGRAVITY_HOST_ACP_MINIMUM_VERSION],
-  installDirectories: ({ homePath }) => [join(homePath, '.local', 'bin')],
+  // The Windows installer's folder and the POSIX one, for Orca started before agy joined PATH.
+  installDirectories: ({ env, homePath }) => {
+    const localAppData = env.LOCALAPPDATA ?? process.env.LOCALAPPDATA
+    return [
+      ...(localAppData ? [join(localAppData, 'agy', 'bin')] : []),
+      join(homePath, '.local', 'bin')
+    ]
+  },
   managedRuntime: undefined,
   // agy has no full-access mode, so its launch flag grants it; plan approvals still reach the chat.
   permissionModeConfig: {
@@ -117,6 +125,14 @@ const ANTIGRAVITY_HOST_LAUNCH_SPEC: AcpLaunchSpec = {
     fullAccessAtLaunch: true
   },
   keepsEverySession: true
+}
+
+// The default Full access approvals: agy asks and Orca answers, except plans, questions and warned
+// reviews, which reach the person.
+const ANTIGRAVITY_HOST_ORCA_APPROVALS_LAUNCH_SPEC: AcpLaunchSpec = {
+  ...ANTIGRAVITY_HOST_LAUNCH_SPEC,
+  args: () => ['acp'],
+  permissionModeConfig: { values: { ask: 'default', 'accept-edits': 'accept-edits' } }
 }
 
 // The host's agy ignores Orca's account type, so any other saved choice, a malformed one, or one
@@ -137,6 +153,10 @@ export const ANTIGRAVITY_LAUNCH_SPEC = {
   ...ANTIGRAVITY_MANAGED_LAUNCH_SPEC,
   hostBackend: {
     spec: ANTIGRAVITY_HOST_LAUNCH_SPEC,
+    specFor: ({ antigravityChatFullAccessApprovals }) =>
+      resolveAntigravityChatFullAccessApprovals(antigravityChatFullAccessApprovals) === 'agent'
+        ? ANTIGRAVITY_HOST_LAUNCH_SPEC
+        : ANTIGRAVITY_HOST_ORCA_APPROVALS_LAUNCH_SPEC,
     pins: isAntigravityHostAccountHome,
     // Someone signed in to Orca's own Chat keeps it; the host's agy needs a sign-in that serves
     // sessions, not an API-key provider whose key the host launch drops.

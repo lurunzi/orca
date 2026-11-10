@@ -68,7 +68,7 @@ export type AcpStructuredLaunchPartDeps = {
 } & Pick<AcpLaunchVisualsDeps, 'logger'>
 
 export type AcpLaunchSettings = StructuredAgentCommandSettings &
-  Partial<Pick<GlobalSettings, 'antigravityChatAuth'>>
+  Partial<Pick<GlobalSettings, 'antigravityChatAuth' | 'antigravityChatFullAccessApprovals'>>
 
 export type AcpLaunchInvocationDeps = {
   operation?: StructuredAgentResolutionOperation
@@ -113,7 +113,8 @@ async function readAcpLaunchInvocation(
   accountHome: AgentSessionAccountHome,
   deps: AcpLaunchInvocationDeps
 ): Promise<AcpLaunchInvocation> {
-  const spec = acpLaunchSpecForAccount(agentSpec, accountHome)
+  const commandSettings = deps.resolveCommandSettings?.()
+  const spec = acpLaunchSpecForAccount(agentSpec, accountHome, commandSettings)
   assertStructuredAgentResolutionCurrent(deps.operation)
   const base = await deps.resolveEnvironment()
   assertStructuredAgentResolutionCurrent(deps.operation)
@@ -123,7 +124,6 @@ async function readAcpLaunchInvocation(
   )
   const envToDelete = spec.scrubEnvironment?.(env, deps.inheritedEnv ?? process.env) ?? []
   Object.assign(env, spec.env)
-  const commandSettings = deps.resolveCommandSettings?.()
   // Orca's account-type setting selects only the managed server's sign-in.
   const usesChatAuth = spec.agent === 'antigravity' && spec.authMethod !== undefined
   if (usesChatAuth) {

@@ -1,4 +1,5 @@
 import type { AntigravityChatAuthConfig } from '../../../../../shared/antigravity-chat-auth-config'
+import type { AntigravityChatFullAccessApprovals } from '../../../../../shared/antigravity-chat-full-access-approvals'
 import type {
   AntigravityAccountState,
   AntigravityAccountTarget
@@ -6,6 +7,7 @@ import type {
 import {
   ANTIGRAVITY_ACCOUNTS_RUNTIME_CAPABILITY,
   ANTIGRAVITY_CHAT_AUTH_CONFIG_RUNTIME_CAPABILITY,
+  ANTIGRAVITY_CHAT_FULL_ACCESS_APPROVALS_RUNTIME_CAPABILITY,
   ANTIGRAVITY_CHAT_SIGN_IN_RUNTIME_CAPABILITY
 } from '../../../../../shared/account-runtime-capabilities'
 import type { RuntimeClientTarget } from '../../../../../shared/runtime-client-target'
@@ -84,4 +86,28 @@ export async function callAntigravityChatAuthConfig(
     config,
     { timeoutMs: 20_000 }
   )
+}
+
+/** Reads the host's Full access approvals setting, or saves `approvals` there. */
+export async function callAntigravityChatFullAccessApprovals(
+  owner: RuntimeClientTarget,
+  approvals?: AntigravityChatFullAccessApprovals
+): Promise<AntigravityChatFullAccessApprovals> {
+  if (owner.kind === 'environment') {
+    await assertRuntimeEnvironmentCapability(
+      owner.environmentId,
+      ANTIGRAVITY_CHAT_FULL_ACCESS_APPROVALS_RUNTIME_CAPABILITY,
+      'Update Orca on this host to choose who answers Antigravity Full access approvals.'
+    )
+  }
+  return approvals
+    ? callRuntimeRpc(
+        owner,
+        'accounts.antigravityChatFullAccessApprovalsApply',
+        { approvals },
+        { timeoutMs: 20_000 }
+      )
+    : callRuntimeRpc(owner, 'accounts.antigravityChatFullAccessApprovalsGet', null, {
+        timeoutMs: 20_000
+      })
 }

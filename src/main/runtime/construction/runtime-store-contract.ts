@@ -158,6 +158,7 @@ export type RuntimeStore = {
     agentDefaultSurface?: GlobalSettings['agentDefaultSurface']
     nativeChatProviders?: GlobalSettings['nativeChatProviders']
     antigravityChatAuth?: GlobalSettings['antigravityChatAuth']
+    antigravityChatFullAccessApprovals?: GlobalSettings['antigravityChatFullAccessApprovals']
     defaultTaskSource?: GlobalSettings['defaultTaskSource']
     defaultTaskViewPreset?: GlobalSettings['defaultTaskViewPreset']
     visibleTaskProviders?: GlobalSettings['visibleTaskProviders']

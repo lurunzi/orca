@@ -9,6 +9,7 @@ import {
   AiVaultSetSearchEnabledParamsSchema
 } from '../ai-vault/search/ai-vault-search-contract'
 import { AntigravityChatAuthConfigSchema } from '../antigravity-chat-auth-config'
+import { AntigravityChatFullAccessApprovalsParams } from '../antigravity-chat-full-access-approvals'
 import {
   BrowserClientFileChannelAbortParams,
   BrowserClientFileChannelReadParams,
@@ -782,6 +783,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'accounts.antigravityAddCurrent': AntigravityAccountTargetParams,
   'accounts.antigravityChatAuthApply': AntigravityChatAuthConfigSchema,
   'accounts.antigravityChatAuthGet': null,
+  'accounts.antigravityChatFullAccessApprovalsApply': AntigravityChatFullAccessApprovalsParams,
+  'accounts.antigravityChatFullAccessApprovalsGet': null,
   'accounts.antigravityChatSignInCancel': AntigravityChatSignInFlowParams,
   'accounts.antigravityChatSignInComplete': AntigravityChatSignInCompleteParams,
   'accounts.antigravityChatSignInStart': null,

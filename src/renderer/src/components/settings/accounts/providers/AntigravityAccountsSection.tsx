@@ -18,6 +18,7 @@ import { Badge } from '../../../ui/badge'
 import { ManagedRuntimeInstallRow } from '../../../managed-runtime/ManagedRuntimeInstallRow'
 import { antigravityChatSignInRunning } from '@/runtime/provider-accounts/sign-in/antigravity-chat-sign-in-status'
 import { AntigravityChatSignInRow } from '../../../provider-accounts/AntigravityChatSignInRow'
+import { AntigravityChatFullAccessApprovalsSetting } from '../../../provider-accounts/AntigravityChatFullAccessApprovalsSetting'
 import { antigravityChatSignInBlocked } from '../../../provider-accounts/antigravity-chat-runtime-sign-in-policy'
 import { useAntigravityChatSignIn } from '../../../provider-accounts/use-antigravity-chat-sign-in'
 import { openAppHttpLinkFromAnchor } from '@/lib/browser/navigation/app-http-link-open'
@@ -369,6 +370,7 @@ export function AntigravityAccountsSection({
           ) : chats && structuredChatUnavailableOnPlatform('antigravity', ownerPlatform) ? (
             <ChatUnavailableOnWindowsNote label={t('accounts.antigravity.title', 'Antigravity')} />
           ) : null}
+          {chats && <AntigravityChatFullAccessApprovalsSetting owner={owner} />}
         </div>
       </SettingsGroup>
     </div>

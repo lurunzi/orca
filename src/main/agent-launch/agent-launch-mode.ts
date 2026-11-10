@@ -56,10 +56,11 @@ export type AgentLaunchModePlacement = {
   callerRendersStructured?: boolean
 }
 
-// Fork: an agent whose managed program has no build for this host (Antigravity on Windows) launches
-// as a terminal from the start, so its early tab and transcript chat view still apply.
+// Fork: an agent whose managed program has no build for this host and no host program to run
+// instead launches as a terminal from the start, so its early tab and transcript chat view apply.
 const REGISTERED_STRUCTURED_AGENTS: readonly string[] = STRUCTURED_AGENT_RUNTIME_METADATA.filter(
-  ({ definition }) => definition.managedRuntime?.() !== false
+  ({ definition }) =>
+    definition.managedRuntime?.() !== false || definition.runsHostProgram !== undefined
 ).map(({ definition }) => definition.agent)
 
 const DOWNGRADE_DETAIL: Record<AgentLaunchDowngradeReason, string> = {

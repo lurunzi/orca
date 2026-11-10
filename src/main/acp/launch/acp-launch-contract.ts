@@ -80,7 +80,10 @@ export type AcpLaunchSpec = AcpCliLaunchFields & {
 }
 
 export type AcpHostBackend = {
+  /** Finds and probes the host program; launches use `specFor` when present. */
   spec: AcpLaunchSpec
+  /** The spec a launch runs under this host's saved settings. */
+  specFor?(settings: AcpHostBackendSettings): AcpLaunchSpec
   pins(home: AgentSessionAccountHome): boolean
   /** The account home pinning a new chat to `spec`, or null when the host should not run it. */
   select(input: {
@@ -95,4 +98,6 @@ export type AcpHostBackend = {
   }): Promise<AgentSessionAccountHome | null>
 }
 
-export type AcpHostBackendSettings = Partial<Pick<GlobalSettings, 'antigravityChatAuth'>>
+export type AcpHostBackendSettings = Partial<
+  Pick<GlobalSettings, 'antigravityChatAuth' | 'antigravityChatFullAccessApprovals'>
+>

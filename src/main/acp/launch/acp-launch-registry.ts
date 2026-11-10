@@ -28,7 +28,6 @@ import { OMP_SESSION_HISTORY } from '../../omp/omp-session-history'
 import { OMP_TRANSCRIPT_IMPORT } from '../../omp/omp-transcript-import'
 import { ANTIGRAVITY_LAUNCH_SPEC } from '../../antigravity/antigravity-acp-launch-spec'
 import type { AcpLaunchSpec } from './acp-launch-contract'
-import { antigravityHostLaunchSpec } from '../acp-installed-cli-launch'
 import { CURSOR_LAUNCH_SPEC } from '../../cursor/cursor-acp-launch-spec'
 
 const GROK_LAUNCH_SPEC: AcpLaunchSpec = {
@@ -151,14 +150,12 @@ const OMP_LAUNCH_SPEC: AcpLaunchSpec = {
   sessionHistory: OMP_SESSION_HISTORY
 }
 
-export const ANTIGRAVITY_HOST_LAUNCH_SPEC = antigravityHostLaunchSpec(ANTIGRAVITY_LAUNCH_SPEC)
-
 export const ACP_LAUNCH_SPECS: readonly AcpLaunchSpec[] = [
   GROK_LAUNCH_SPEC,
   OPENCODE_LAUNCH_SPEC,
   OPENCODE2_LAUNCH_SPEC,
   OMP_LAUNCH_SPEC,
-  ANTIGRAVITY_HOST_LAUNCH_SPEC,
+  ANTIGRAVITY_LAUNCH_SPEC,
   CURSOR_LAUNCH_SPEC
 ]
 

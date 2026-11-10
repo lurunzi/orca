@@ -9,6 +9,7 @@ export function supportsAcpStructuredLocation(
 ): boolean {
   return (
     supportsSupervisedProviderChildLocation(location, hasWindowsProcessStartTimeProof) &&
-    (!spec.managedRuntime || spec.managedRuntime.pin() !== null)
+    // A host backend can serve chats where the managed program has no build.
+    (!spec.managedRuntime || spec.managedRuntime.pin() !== null || spec.hostBackend !== undefined)
   )
 }

@@ -120,7 +120,8 @@ export async function acquireAcpStructuredSession(input: {
         }
         // Do not auto-approve questions or permissions enforced by the agent's own mode.
         const claimed = spec.dialect.request?.('session/request_permission', request)
-        if (orcaApproves && !claimed) {
+        // A mode change, such as leaving plan mode, is the person's to approve.
+        if (orcaApproves && !claimed && request.toolCall.kind !== 'switch_mode') {
           const allow = request.options.find((option) => option.kind === 'allow_once')
           if (allow) {
             return { outcome: { outcome: 'selected', optionId: allow.optionId } }

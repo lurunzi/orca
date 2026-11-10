@@ -7,9 +7,11 @@ import { ACP_LAUNCH_SPECS } from '../../../acp/launch/acp-launch-registry'
 import type { AcpLaunchSpec } from '../../../acp/launch/acp-launch-contract'
 import { acpStructuredAgentDefinition } from '../../../acp/session/acp-structured-agent-definitions'
 import {
+  acpHostBackendSpec,
   resolveAcpLaunchCommand,
   selectAcpHostAccountHome
 } from '../../../acp/launch/acp-launch-command'
+import { acpLaunchRunsPermissionMode } from '../../../acp/launch/acp-launch-permission-modes'
 import { CODEX_STRUCTURED_AGENT } from '../../../codex/structured/launch/codex-structured-agent-definition'
 import { CLAUDE_STRUCTURED_AGENT } from '../../../claude/structured/claude-structured-agent-definition'
 import { CLAUDE_CLI_CONVERSATIONS } from '../../../claude/claude-cli-conversations'
@@ -111,7 +113,10 @@ function acpMetadata(spec: AcpLaunchSpec): StructuredAgentRuntimeMetadata {
         purpose === 'launch' &&
         (permissionMode === undefined ||
           permissionMode === 'own' ||
-          spec.hostBackend.spec.permissionModeConfig?.values[permissionMode] !== undefined)
+          acpLaunchRunsPermissionMode(
+            acpHostBackendSpec(spec.hostBackend, hostSettings()),
+            permissionMode
+          ))
           ? await hostLaunchEnvironment(spec.agent)
               .then((env) => selectAcpHostAccountHome(spec, env, stateDirectory, hostSettings()))
               .catch(() => null)
