@@ -5,7 +5,7 @@ import { agentJournalItemKey } from '../../../../shared/agent-session/journal/ag
 import type { StructuredAgentSessionConversationCopyInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-conversation-copy-input'
 import { readCodexLocalHistory } from '../../../native-chat/codex-local-history'
 import type * as LocalHistory from '../../../native-chat/codex-local-history'
-import { codexProviderProbeCwd } from './codex-provider-session-rename'
+import { codexPoolProviderProbeCwd } from './codex-pool-provider-invocation'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
@@ -36,7 +36,7 @@ import {
   runCodexAppServerSession,
   type CodexAppServerRpc
 } from '../../app-server/codex-app-server-session'
-import { readCodexSessionAccountUsage } from './codex-session-account-usage'
+import { readCodexSessionAccountUsageForAccount } from './codex-pool-session-account-usage'
 import { CodexStructuredSessionAdapter } from './codex-structured-session-adapter'
 import {
   resolveCodexHomeProcessLockKey,
@@ -551,7 +551,7 @@ it('cancels cold rename while its allocation snapshot is waiting', async () => {
 
 it('reads cold quota through the invocation preparation and owned authentication path', async () => {
   const f = fixture()
-  const read = readCodexSessionAccountUsage(
+  const read = readCodexSessionAccountUsageForAccount(
     new Map(),
     () => ({
       resolveCommand: () => ({ command: process.execPath, prefixArgs: ['-e', SERVER, '--'] }),
@@ -592,7 +592,7 @@ it('cancels directory preparation before a late resolver can create a fallback d
   const cancel = new AbortController()
   const workspace = deferred<string>()
   const error = new Error('cancelled-directory-preparation')
-  const probing = codexProviderProbeCwd(
+  const probing = codexPoolProviderProbeCwd(
     record(),
     {
       resolveLaunchArgs: () => [],

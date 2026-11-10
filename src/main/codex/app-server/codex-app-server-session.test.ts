@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { runCodexAppServerSession, type CodexAppServerSessionRpc } from './codex-app-server-session'
+import { runCodexAppServerSession } from './codex-app-server-session'
+import type { CodexAppServerSessionRpc } from './codex-app-server-session-hooks'
 import {
   spawnCodexAppServerProcess,
   type CodexAppServerSpawn
