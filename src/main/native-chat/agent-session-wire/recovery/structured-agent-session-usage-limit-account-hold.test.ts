@@ -63,7 +63,6 @@ function createRig(ids: string[]) {
   return {
     scheduler,
     sent,
-    cuts,
     refreshes: () => refreshes,
     setNow: (at: number) => {
       now = at
@@ -113,28 +112,5 @@ describe('usage-limit automatic continue gated by account usage', () => {
       state: 'scheduled',
       continueAt: weeklyReset
     })
-  })
-
-  it('stops after continuations keep hitting the limit at once instead of filling the chat with errors', async () => {
-    const rig = createRig(['chat'])
-    // No usable reading: the agent's own reset time is all Orca has.
-    rig.setReading(null)
-    let now = RESET + 20_000
-    for (let round = 0; round < 6; round += 1) {
-      rig.setNow(now)
-      await rig.scheduler.tick()
-      if (rig.cuts.get('chat') === null) {
-        // The continuation fails at once, and the agent again claims a reset a minute away.
-        rig.cuts.set('chat', {
-          turnItemId: `refail-${round}`,
-          resetsAt: now + 5_000 + MINUTE,
-          turnEndedAt: now + 5_000,
-          chain: 0
-        })
-      }
-      now += 6 * 60 * MINUTE
-    }
-    expect(rig.sent).toHaveLength(3)
-    expect(rig.scheduler.readState('chat')?.state).toBe('failed')
   })
 })

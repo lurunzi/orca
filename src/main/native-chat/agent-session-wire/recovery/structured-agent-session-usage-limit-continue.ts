@@ -1,22 +1,23 @@
 import { AgentSessionPreDispatchError } from '../operations/structured-agent-session-operation-settlement'
-import { isNativeChatUsageLimitCutSchedulable } from '../../../../shared/native-chat/native-chat-usage-limit-cut'
+import { randomUUID } from 'node:crypto'
+import {
+  isNativeChatUsageLimitCutSchedulable,
+  NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE
+} from '../../../../shared/native-chat/native-chat-usage-limit-cut'
 import {
   USAGE_LIMIT_CONTINUE_CHAIN_LIMIT,
   usageLimitContinueIdentity as identity,
+  usageLimitContinueMessageId,
+  usageLimitContinueTag,
   type HostUsageLimitCut
 } from './structured-agent-session-usage-limit-chain'
+import { structuredAgentSessionMessageSendMutation } from '../../../../shared/agent-session/requests/structured-agent-session-send-mutation'
 import type { AgentSessionStatusSummary } from '../../../../shared/agent-session/agent-session-wire'
 import type { StructuredAgentSessionHostDeps } from '../host/structured-agent-session-host-types'
 import type { AgentSessionRecordStore } from '../../../runtime/agent-session/records/agent-session-record-store'
 import type { sendStructuredAgentSessionTurn } from '../operations/structured-agent-session-host-mutations'
 import { RestartContinuationSupersededError } from './structured-agent-session-restart-continuation'
-import {
-  USAGE_LIMIT_MAX_QUICK_REFAILS,
-  USAGE_LIMIT_RESET_GRACE_MS,
-  UsageLimitAccountGate,
-  UsageLimitQuickRefails
-} from './structured-agent-session-usage-limit-account-hold'
-import { usageLimitContinueMutation } from './structured-agent-session-usage-limit-continue-message'
+import { UsageLimitAccountGate } from './structured-agent-session-usage-limit-account-hold'
 import { usageLimitContinueSummary } from './structured-agent-session-usage-limit-continue-summary'
 
 type Cut = HostUsageLimitCut & { resetsAt: number; turnEndedAt: number }
@@ -54,11 +55,7 @@ export class StructuredAgentSessionUsageLimitContinue {
   /** Pass of each chat's last failed history read; failed reads wait behind unread chats. */
   private readonly coldFailures = new Map<string, number>()
   private readonly attempts = new Map<string, Attempt>()
-  private readonly refails = new UsageLimitQuickRefails()
-  private readonly gate = new UsageLimitAccountGate(
-    () => this.deps.host.usageLimitAutoContinue,
-    () => this.deps.now()
-  )
+  private readonly gate = new UsageLimitAccountGate(() => this.deps)
   private passes = 0
 
   constructor(private readonly deps: Deps) {}
@@ -116,7 +113,6 @@ export class StructuredAgentSessionUsageLimitContinue {
     this.coldCuts.clear()
     this.coldFailures.clear()
     this.attempts.clear()
-    this.refails.clear()
   }
 
   forget = (id: string): void => {
@@ -142,10 +138,12 @@ export class StructuredAgentSessionUsageLimitContinue {
       return undefined
     }
     const cancel = this.deps.host.store.getRecord(id)?.usageLimitContinueCancel
+    const attempt = this.attempts.get(id)
     const state =
       cancel?.turnItemId === cut.turnItemId && cancel.resetsAt === cut.resetsAt
         ? 'cancelled'
-        : this.failed(id, cut)
+        : cut.chain >= USAGE_LIMIT_CONTINUE_CHAIN_LIMIT ||
+            (attempt?.identity === identity(cut) && (attempt.count >= 5 || attempt.unconfirmed))
           ? 'failed'
           : this.eligible(id, cut)
             ? 'scheduled'
@@ -156,17 +154,6 @@ export class StructuredAgentSessionUsageLimitContinue {
 
   private accountHold = (id: string, cut: Cut, mayRefresh: boolean) =>
     this.gate.hold(this.deps.host.store.getRecord(id)?.provider, cut, mayRefresh)
-
-  /** Orca stopped trying: sends kept failing, or continuations kept hitting the limit at once. */
-  private failed(id: string, cut: HostUsageLimitCut & { turnEndedAt: number }): boolean {
-    const attempt = this.attempts.get(id)
-    return (
-      cut.chain >= USAGE_LIMIT_CONTINUE_CHAIN_LIMIT ||
-      (attempt?.identity === identity(cut) &&
-        (attempt.count >= 5 || attempt.unconfirmed === true)) ||
-      this.refails.count(id, cut) >= USAGE_LIMIT_MAX_QUICK_REFAILS
-    )
-  }
 
   private eligible(id: string, cut: HostUsageLimitCut): cut is Cut {
     const record = this.deps.host.store.getRecord(id)
@@ -215,7 +202,6 @@ export class StructuredAgentSessionUsageLimitContinue {
           }
         }
       }
-      this.refails.retain(shown)
       // Visibility and workspace sleep can change without a journal or settings commit.
       this.publishScheduled()
       this.readColdCuts(visible)
@@ -231,16 +217,14 @@ export class StructuredAgentSessionUsageLimitContinue {
           this.attempts.delete(id)
         }
         const attempt = this.attempts.get(id)
-        if (!cut || !this.eligible(id, cut) || this.failed(id, cut)) {
+        if (!cut || !this.eligible(id, cut) || attempt?.unconfirmed || (attempt?.count ?? 0) >= 5) {
           continue
         }
         const retryAt = attempt ? attempt.at + 60_000 * 2 ** Math.max(0, attempt.count - 1) : 0
-        const notBefore = Math.max(
-          cut.resetsAt + USAGE_LIMIT_RESET_GRACE_MS,
-          retryAt,
-          this.refails.notBefore(id, cut)
-        )
-        if (this.deps.now() >= notBefore && this.accountHold(id, cut, true).kind === 'none') {
+        if (
+          this.deps.now() >= Math.max(cut.resetsAt + 15_000, retryAt) &&
+          this.accountHold(id, cut, true).kind === 'none'
+        ) {
           due.push({ id, cut, at: attempt?.at ?? 0 })
         }
       }
@@ -284,23 +268,37 @@ export class StructuredAgentSessionUsageLimitContinue {
       count: (this.attempts.get(id)?.count ?? 0) + 1,
       at
     }
+    const tag = usageLimitContinueTag(cut)
     try {
       const result = await this.deps.send({
-        ...usageLimitContinueMutation(id, cut, identity(cut), record.lease.runtimeFence, at),
+        ...structuredAgentSessionMessageSendMutation({
+          sessionId: id,
+          clientOperationId: usageLimitContinueMessageId(
+            at,
+            tag,
+            randomUUID().replaceAll('-', '').slice(0, 16)
+          ),
+          expectedRuntimeFence: record.lease.runtimeFence,
+          body: {
+            kind: 'message',
+            role: 'user',
+            blocks: [{ type: 'text', text: NATIVE_CHAT_USAGE_LIMIT_CONTINUE_MESSAGE }]
+          },
+          usageLimitContinuationOfTurnItemId: cut.turnItemId
+        }),
         beforeRun: () => {
           const current = this.readCut(id)
           if (
             !current ||
             identity(current) !== identity(cut) ||
             !this.eligible(id, current) ||
-            this.deps.now() < cut.resetsAt + USAGE_LIMIT_RESET_GRACE_MS
+            this.deps.now() < cut.resetsAt + 15_000
           ) {
             throw new RestartContinuationSupersededError()
           }
         }
       })
       if (result.ok) {
-        this.refails.continued(id, cut, at)
         return
       }
       if (result.refusal.details?.reason === 'continuationSuperseded') {
