@@ -29,10 +29,7 @@ import type { StructuredAgentLaunchPartResolver } from '../../../runtime/agent-s
 import type { CodexStructuredLaunch } from '../session-lifecycle/codex-structured-session-state'
 import { codexStructuredPermissionPolicy } from '../../../../shared/codex-permission-policy'
 import { codexStructuredLaunchArgs } from './codex-structured-launch-args'
-import {
-  codexStructuredLaunchFollowsSelection,
-  resolveCodexStructuredLaunchHome
-} from './codex-structured-account-switch'
+import { CODEX_ACCOUNT_SWITCH_FAILED } from './codex-structured-account-switch'
 import {
   LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV,
   NATIVE_CHAT_SCRATCH_DIR_ENV,
@@ -145,11 +142,7 @@ export function codexStructuredLaunchPart(
     const model = record.options?.model
     const visuals = await basis.visuals()
     const launchDirectory = await basis.launchDirectory()
-    // With history sharing on, the selected home gets the rollout by hardlink instead of a move.
-    const followsSelection = codexStructuredLaunchFollowsSelection()
-    const selectedHome = followsSelection
-      ? null
-      : await deps.prepareLaunchAccountHome?.(record, launchDirectory)
+    const selectedHome = await deps.prepareLaunchAccountHome?.(record, launchDirectory)
     const accountHome = selectedHome
       ? requireLegacyAgentSessionAccountHome(selectedHome)
       : recordHome
@@ -158,26 +151,24 @@ export function codexStructuredLaunchPart(
       selectedHome &&
       !agentSessionAccountHomesEqual(selectedHome, record.accountHome)
     ) {
-      await moveCodexThreadIntoAccountHome({
-        threadId: resumeThreadId,
-        fromHome: recordHome.path,
-        toHome: accountHome.path
-      })
-    }
-    const codexHome = followsSelection
-      ? await resolveCodexStructuredLaunchHome({
-          recordHome: recordHome.path,
+      try {
+        await moveCodexThreadIntoAccountHome({
           threadId: resumeThreadId,
-          launchEnv: basis.launchEnv(),
-          launchDirectory: basis.launchDirectory
+          fromHome: recordHome.path,
+          toHome: accountHome.path
         })
-      : accountHome.path
+      } catch (error) {
+        console.warn('[codex-structured-launch] could not move the thread to the selection', error)
+        // No cause: launch-preparation Details show the deepest message, and this one names the fix.
+        throw new Error(CODEX_ACCOUNT_SWITCH_FAILED)
+      }
+    }
     return {
       launch: {
         command,
         prefixArgs,
         args: [...prefixArgs, ...args, 'app-server'],
-        codexHome,
+        codexHome: accountHome.path,
         resumeThreadId,
         // Only created threads may be unsaved; resumed, forked and adopted threads were persisted.
         ...(resumeThreadId && head?.origin === 'created' ? { supersedeIfUnsaved: true } : {}),
@@ -189,7 +180,7 @@ export function codexStructuredLaunchPart(
         ...(visuals ? { visuals } : {})
       },
       env: withNativeChatVisualsEnv(
-        { ...environment, ...(codexHome ? { CODEX_HOME: codexHome } : {}) },
+        { ...environment, ...(accountHome.path ? { CODEX_HOME: accountHome.path } : {}) },
         visuals
       ),
       // Clear inherited scratch paths that may belong to another chat.

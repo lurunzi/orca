@@ -22,10 +22,7 @@ import { supportsAcpStructuredLocation } from '../../../acp/session/acp-structur
 import { PI_RPC_RUNTIME_METADATA } from '../../../pi/rpc-runtime-metadata'
 import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
 import { claudeChatAccountSwitchable } from '../../../claude/structured/launch/claude-structured-account-switch'
-import {
-  codexChatAccountSwitchable,
-  codexStructuredLaunchFollowsSelection
-} from '../../../codex/structured/launch/codex-structured-account-switch'
+import { codexChatAccountSwitchable } from '../../../codex/structured/launch/codex-structured-account-switch'
 import {
   resolveStructuredClaudeAccountHomePath,
   resolveStructuredCodexAccountHomePath
@@ -41,8 +38,10 @@ import type {
   StructuredAgentAccountHomeRequest,
   StructuredAgentChatProgram,
   StructuredAgentAccountHomeServices,
+  StructuredAgentAccountSwitchSettings,
   StructuredAgentRuntimeMetadata
 } from './structured-agent-runtime-registration-types'
+import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 
 export type StructuredAgentRuntimeCatalogEntry =
   | { kind: 'pi' | 'codex' | 'claude'; metadata: StructuredAgentRuntimeMetadata }
@@ -151,6 +150,14 @@ async function resolveCodexAccountHomePath(
   return codexHome
 }
 
+async function codexRecordAccountSwitchable(
+  record: AgentSessionRecord,
+  settings: StructuredAgentAccountSwitchSettings
+): Promise<boolean> {
+  const home = agentSessionAccountHomePath(record.accountHome)
+  return home !== null && codexChatAccountSwitchable(home, settings)
+}
+
 // One roster supplies both metadata readers and the host's synchronous adapter factories.
 export const STRUCTURED_AGENT_RUNTIME_CATALOG: readonly StructuredAgentRuntimeCatalogEntry[] = [
   { kind: 'pi', metadata: PI_RPC_RUNTIME_METADATA },
@@ -162,12 +169,9 @@ export const STRUCTURED_AGENT_RUNTIME_CATALOG: readonly StructuredAgentRuntimeCa
       modelCatalog: codexModelCatalogDiscovery,
       ...CODEX_CLI_CONVERSATIONS,
       supportsLocation: (location) => supportsCodexStructuredLocation(location),
-      // Without the desktop's account switch a launch keeps the record's home.
-      launchFollowsSelection: codexStructuredLaunchFollowsSelection,
-      accountSwitchable: async ({ record }) => {
-        const home = agentSessionAccountHomePath(record.accountHome)
-        return home !== null && codexChatAccountSwitchable(home)
-      },
+      launchFollowsSelection: () => true,
+      launchAccountSwitchable: codexRecordAccountSwitchable,
+      accountSwitchable: ({ record, settings }) => codexRecordAccountSwitchable(record, settings),
       resolveAccountHome: async (request, services) =>
         agentSessionAccountHome(
           CODEX_STRUCTURED_AGENT,

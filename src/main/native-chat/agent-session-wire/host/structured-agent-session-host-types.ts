@@ -1,3 +1,4 @@
+import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type {
   AgentModelCatalogSource,
   AgentModelCatalogService
@@ -239,6 +240,9 @@ export type StructuredAgentSessionHostDeps = {
     record: AgentSessionRecord,
     purpose?: 'read' | 'identity'
   ) => Promise<AgentSessionAccountHome | null>
+  /** Settings that decide whether a chat's history may follow it to another account; absent reads
+   *  as their defaults. */
+  accountSwitchSettings?: () => Pick<GlobalSettings, 'codexShareHistoryAcrossAccounts'>
   conversationNaming?: StructuredAgentSessionConversationNaming
   /** Carries the user's chat name into the agent's own conversation; never delays the caller. */
   nameProviderConversation?: (record: AgentSessionRecord) => void

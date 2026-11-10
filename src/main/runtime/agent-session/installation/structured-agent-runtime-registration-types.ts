@@ -3,6 +3,7 @@ import type {
   AgentSessionRecord
 } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import type { AgentCliVersionReader } from '../../../agent-launch/preflight/agent-cli-version-probe'
 import type { StructuredAgentCliConversations } from '../../../native-chat/structured-agent-cli-conversations'
@@ -153,8 +154,20 @@ export type StructuredAgentRuntimeMetadata = StructuredAgentCliConversations & {
     record: AgentSessionRecord
     store: string
     launchEnv: NodeJS.ProcessEnv
+    settings: StructuredAgentAccountSwitchSettings
   }) => Promise<boolean>
+  /** Whether a start of `record` may move it to the selected account; false keeps the record's,
+   *  so its history is never forked. Absent always may. */
+  launchAccountSwitchable?: (
+    record: AgentSessionRecord,
+    settings: StructuredAgentAccountSwitchSettings
+  ) => Promise<boolean>
 }
+
+export type StructuredAgentAccountSwitchSettings = Pick<
+  GlobalSettings,
+  'codexShareHistoryAcrossAccounts'
+>
 
 export type StructuredAgentRuntimeRegistration = StructuredAgentRuntimeMetadata & {
   createAdapter: (context: StructuredAgentAdapterContext) => StructuredAgentRuntimeAdapter

@@ -4,7 +4,10 @@ import { getProfileUserDataPath } from '../../orca-profiles/profile-storage-path
 import { resolveHostStructuredAgentLaunchEnvironment } from '../agent-session/launch/structured-agent-launch-support'
 import { agentWorkspaceTrustDecisionForWorkspace } from '../../agent-launch/trust/agent-workspace-trust-spawn'
 import { OrcaRuntimeWithStructuredSessionCliWriterHost } from './structured-session-cli-writer-host'
-import type { AgentSessionAccountHome } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
+import {
+  agentSessionAccountHomesEqual,
+  type AgentSessionAccountHome
+} from '../../../shared/agent-session/lifecycle/agent-session-account-home'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
 
 export abstract class OrcaRuntimeWithStructuredSessionAccountHome extends OrcaRuntimeWithStructuredSessionCliWriterHost {
@@ -67,7 +70,7 @@ export abstract class OrcaRuntimeWithStructuredSessionAccountHome extends OrcaRu
     }
     const read = this.structuredAgentAccountHomeResolver(provider, '', purpose)
     const launchEnv = this.structuredAgentLaunchEnv(provider, this.requireStore().getSettings())
-    return (await read?.({ launchEnv, location })) ?? null
+    return this.switchableLaunchAccountHome(record, (await read?.({ launchEnv, location })) ?? null)
   }
 
   /** The same account, prepared for a start in `launchDirectory` as a create prepares it. */
@@ -82,6 +85,22 @@ export abstract class OrcaRuntimeWithStructuredSessionAccountHome extends OrcaRu
     const prepare = this.structuredAgentAccountHomeResolver(provider, '', 'launch', launchDirectory)
     await this.accounts.prepareHostAgentLaunch(provider)
     const launchEnv = this.structuredAgentLaunchEnv(provider, this.requireStore().getSettings())
-    return (await prepare?.({ launchEnv, location })) ?? null
+    return this.switchableLaunchAccountHome(
+      record,
+      (await prepare?.({ launchEnv, location })) ?? null
+    )
+  }
+
+  /** Null keeps the record's account when its saved history cannot follow it to `home`. */
+  private async switchableLaunchAccountHome(
+    record: AgentSessionRecord,
+    home: AgentSessionAccountHome | null
+  ): Promise<AgentSessionAccountHome | null> {
+    const switchable = structuredAgentRuntimeMetadata(record.provider)?.launchAccountSwitchable
+    if (!home || !switchable || agentSessionAccountHomesEqual(home, record.accountHome)) {
+      return home
+    }
+    const settings = this.requireStore().getSettings()
+    return (await switchable(record, settings).catch(() => false)) ? home : null
   }
 }

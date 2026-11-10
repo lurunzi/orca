@@ -27,13 +27,15 @@ export async function moveCodexThreadIntoAccountHome(args: {
     // Never saved; Codex's own resume refusal decides what happens next.
     return
   }
-  // A bridged symlink names its source; the file itself is what gets linked or copied.
+  // A bridged symlink names its source; the file itself is what gets linked.
   const transcriptPath = await realpath(found)
   await prepareCodexAccountRestartResume({
     // <home>/sessions/<yyyy>/<mm>/<dd>/rollout-*.jsonl
     sourceHome: resolve(transcriptPath, '../../../../..'),
     transcriptPath,
     targetHome: args.toHome,
-    systemCodexHomePath: getSystemCodexHomePath()
+    systemCodexHomePath: getSystemCodexHomePath(),
+    // A copy would fork the history the other account keeps writing.
+    hardlinkOnly: true
   })
 }

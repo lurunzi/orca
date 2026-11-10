@@ -87,6 +87,8 @@ export type StructuredAgentSessionRuntimeDeps = StructuredAgentSessionTransportO
   resolveAgentAccountHome?: RuntimeAgentAccountHomeResolver
   /** See `StructuredAgentSessionHostDeps.launchAccountHome`. */
   launchAccountHome?: StructuredAgentSessionHostDeps['launchAccountHome']
+  /** See `StructuredAgentSessionHostDeps.accountSwitchSettings`. */
+  accountSwitchSettings?: StructuredAgentSessionHostDeps['accountSwitchSettings']
   /** That account home, prepared for a start of `record` in `launchDirectory`. */
   prepareLaunchAccountHome?: (
     record: AgentSessionRecord,
