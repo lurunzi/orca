@@ -184,13 +184,16 @@ export function structuredAgentSessionMessageSelection(
     ) {
       continue
     }
+    // A Fast control drawn disabled sends only a choice the user made, never its default.
+    const lockedFast = id === 'fastMode' && descriptor?.settable === false
     const raw =
       (id === 'effort' && view.acceptedInputSources !== undefined) ||
-      (view.record.agent === 'pi' && (id === 'model' || id === 'effort'))
+      (view.record.agent === 'pi' && (id === 'model' || id === 'effort')) ||
+      lockedFast
         ? view.record.values[id]?.value
         : undefined
     const value =
-      id === 'effort' && view.acceptedInputSources !== undefined
+      (id === 'effort' && view.acceptedInputSources !== undefined) || lockedFast
         ? raw
         : (raw ??
           descriptor?.kind.currentValue ??
