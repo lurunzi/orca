@@ -4,6 +4,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { StructuredAgentSessionCommandRefusalCause } from '../../../../../../shared/agent-session/view/structured-agent-session-composer'
 import { NativeChatStructuredSession } from '../../NativeChatStructuredSession'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const { mocks, moduleFactories, resetStructuredSessionMocks } = await vi.hoisted(async () =>
   (await import('./NativeChatStructuredSession.test-harness')).createStructuredSessionMocks()
@@ -41,15 +42,18 @@ afterEach(() => {
     'Background tasks are still running. Wait for the background tasks to finish. Run /clear again.'
 
   function renderPane() {
+    // The fork's chat header uses tooltips, which need the app-root provider.
     const pane = () => (
-      <NativeChatStructuredSession
-        isVisible
-        isFocusedGroup
-        tabId="refusal-line-tab"
-        sessionId="refusal-line-session"
-        target={{ kind: 'local' }}
-        agent="claude"
-      />
+      <TooltipProvider>
+        <NativeChatStructuredSession
+          isVisible
+          isFocusedGroup
+          tabId="refusal-line-tab"
+          sessionId="refusal-line-session"
+          target={{ kind: 'local' }}
+          agent="claude"
+        />
+      </TooltipProvider>
     )
     const view = render(pane())
     // A fresh element: the mocked controller reads the chat's state only when the pane renders.
