@@ -266,7 +266,10 @@ export function collectAgentPaneConversations<Agent extends AgentType>(
     .filter((candidate) => !options.pane || candidate.paneKey === options.pane.paneKey)
     .filter((candidate) => {
       const tab = tabsById.get(candidate.tabId)
-      return !options.skipHostNamedTabs || !(tab && 'sessionTitleFromHost' in tab)
+      return (
+        !options.skipHostNamedTabs ||
+        !(tab && 'sessionTitleFromHost' in tab && tab.sessionTitleFromHost)
+      )
     })
     .map(({ priority: _priority, ...request }) => request)
 }

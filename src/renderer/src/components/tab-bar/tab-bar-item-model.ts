@@ -10,7 +10,7 @@ import { resolveTerminalTabTitle } from '../../../../shared/tab-title-resolution
 import type { OpenFile } from '../../store/slices/editor/types/open-file'
 import { normalizeRelativePath } from '../../../../shared/cross-platform-path'
 import { isVirtualEditorFile } from '@/store/slices/editor/tabs/editor-tab-content-type'
-import { resolvedTabItemLabel } from './tab-bar-resolved-item-label'
+import { tabItemLabel } from './tab-bar-item-label'
 import type { DropIndicator } from './drop-indicator'
 import { reconcileTabOrder } from './reconcile-order'
 import { resolveTabIndicatorEdges } from '../tab-group/tab-insertion'
@@ -80,10 +80,10 @@ export function getTabDragLabel(
   conversationName: string | null,
   t?: Translate
 ): string {
-  return resolvedTabItemLabel(
+  return tabItemLabel(
     item,
     generatedTitlesEnabled,
-    (data) => data.customLabel?.trim() || conversationName,
+    item.type === 'agent-session' ? item.data.customLabel?.trim() || conversationName : null,
     t
   )
 }
@@ -103,10 +103,12 @@ export function getTabLayoutSignature(
   },
   t?: Translate
 ): string {
-  const label = resolvedTabItemLabel(
+  const label = tabItemLabel(
     item,
     generatedTitlesEnabled,
-    (data) => projectedStructuredChatTabSavedName(data, chatNames),
+    item.type === 'agent-session'
+      ? projectedStructuredChatTabSavedName(item.data, chatNames)
+      : null,
     t
   )
   if (item.type === 'terminal') {

@@ -1,8 +1,5 @@
 import type { TabBarItem } from './tab-bar-item-model'
-import {
-  resolveTerminalTabTitle,
-  resolveUnifiedTabLabel
-} from '../../../../shared/tab-title-resolution'
+import { resolveTerminalTabTitle } from '../../../../shared/tab-title-resolution'
 import { getEditorDisplayLabel } from '@/components/editor/editor-labels'
 import { getBrowserTabLabel } from './BrowserTab'
 import { formatSimulatorTabLabel } from '@/lib/simulator/tabs/simulator-tab-label'
@@ -21,7 +18,7 @@ export function tabItemLabel(
     return getBrowserTabLabel(item.data, t)
   }
   if (item.type === 'agent-session') {
-    return savedName ?? item.data.label
+    return savedName ?? agentSessionFallbackLabel(item.data)
   }
   if (item.type === 'simulator') {
     return formatSimulatorTabLabel(item.data.label, t)
@@ -29,10 +26,9 @@ export function tabItemLabel(
   return getEditorDisplayLabel(item.data, undefined, t)
 }
 
-export function agentSessionTabLabel(
-  item: Extract<TabBarItem, { type: 'agent-session' }>,
-  generatedTitlesEnabled: boolean,
-  savedName: string | null
+/** Fork: an unnamed chat shows its session-history title before the generic label. */
+export function agentSessionFallbackLabel(
+  data: Extract<TabBarItem, { type: 'agent-session' }>['data']
 ): string {
-  return savedName ?? resolveUnifiedTabLabel(item.data, generatedTitlesEnabled, item.data.label)
+  return data.aiVaultTitle?.title.trim() || data.label
 }

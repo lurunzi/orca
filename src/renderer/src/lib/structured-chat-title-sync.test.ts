@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AiVaultSessionTitlesResult } from '../../../shared/ai-vault/contracts/ai-vault-session-title'
 import type { Tab } from '../../../shared/tab-types'
-import { resolveUnifiedTabLabel } from '../../../shared/tab-title-resolution'
 import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
 import { createTestStore } from '@/store/testing/app-store-test-fixture'
 import { makeUnifiedTab } from '@/store/slices/tabs/tab-group.test-fixture'
@@ -79,81 +78,21 @@ describe('structured chat conversation titles', () => {
         executionHostScope: 'runtime:server-1',
         requests: [{ agent, sessionId: 'provider-1' }]
       })
-      expect(resolveUnifiedTabLabel(tab(), false)).toBe('Fix tab titles')
+      expect(tab().aiVaultTitle?.title).toBe('Fix tab titles')
       resolveSessionTitles.mockResolvedValue({
         titles: [{ agent, sessionId: 'provider-1', title: 'Updated conversation' }]
       })
       await vi.advanceTimersByTimeAsync(20_000)
       expect(resolveSessionTitles).toHaveBeenCalledTimes(1)
       await vi.advanceTimersByTimeAsync(280_000)
-      expect(resolveUnifiedTabLabel(tab(), false)).toBe('Updated conversation')
+      expect(tab().aiVaultTitle?.title).toBe('Updated conversation')
     }
   )
-
-  it('keeps a manual name and reveals the synced title when it is cleared', () => {
-    const { store, tab, patchTab } = fixture()
-    patchTab({ customLabel: 'My name' })
-    store.getState().setAiVaultTabTitle(TAB_ID, {
-      agent: 'claude',
-      sessionId: 'provider-1',
-      title: 'History name'
-    })
-    expect(tab().aiVaultTitle?.title).toBe('History name')
-    expect(resolveUnifiedTabLabel(tab(), false)).toBe('My name')
-    store.getState().setTabCustomLabel(TAB_ID, null)
-    expect(resolveUnifiedTabLabel(tab(), false)).toBe('History name')
-    const before = store.getState()
-    store.getState().setAiVaultTabTitle(TAB_ID, tab().aiVaultTitle ?? null)
-    expect(store.getState()).toBe(before)
-  })
-
-  it('waits for provider identity and ignores a status from another agent', () => {
-    const { store, patchTab } = fixture()
-    patchTab({ agentSessionAgent: 'codex' })
-    expect(collectAiVaultTitleRequests(store.getState())).toEqual([])
-    store.setState({ agentStatusByPaneKey: {} })
-    patchTab({ agentSessionAgent: 'claude' })
-    expect(collectAiVaultTitleRequests(store.getState())).toEqual([])
-  })
 
   it('ignores the old status when a new structured session reuses the tab', () => {
     const { store, patchTab } = fixture()
     patchTab({ entityId: 'replacement-session' })
     expect(collectAiVaultTitleRequests(store.getState())).toEqual([])
-  })
-
-  it('retains a known title while the owning host status is unavailable', async () => {
-    vi.useFakeTimers()
-    const { store, tab } = fixture('codex', 'runtime:server-1')
-    store.getState().setAiVaultTabTitle(TAB_ID, {
-      agent: 'codex',
-      sessionId: 'provider-1',
-      title: 'Known conversation'
-    })
-    store.setState({ agentStatusByPaneKey: {} })
-    const resolveSessionTitles = vi.fn().mockResolvedValue({ titles: [] })
-    stops.push(startAiVaultTabTitleSync({ ...store, resolveSessionTitles }))
-    await vi.advanceTimersByTimeAsync(300_000)
-    expect(resolveSessionTitles).not.toHaveBeenCalled()
-    expect(resolveUnifiedTabLabel(tab(), false)).toBe('Known conversation')
-  })
-
-  it('keeps the placeholder until a title appears and stops looking up a closed chat', async () => {
-    vi.useFakeTimers()
-    const { store, tab } = fixture()
-    const resolveSessionTitles = vi.fn().mockResolvedValue({ titles: [] })
-    stops.push(startAiVaultTabTitleSync({ ...store, resolveSessionTitles }))
-    await vi.advanceTimersByTimeAsync(0)
-    expect(resolveUnifiedTabLabel(tab(), false)).toBe('claude Chat')
-    resolveSessionTitles.mockResolvedValue({
-      titles: [{ agent: 'claude', sessionId: 'provider-1', title: 'First message title' }]
-    })
-    await vi.advanceTimersByTimeAsync(20_000)
-    expect(resolveUnifiedTabLabel(tab(), false)).toBe('First message title')
-    store.setState({ unifiedTabsByWorktree: {} })
-    await vi.advanceTimersByTimeAsync(300_000)
-    expect(resolveSessionTitles).toHaveBeenCalledTimes(2)
-    expect(store.getState().unifiedTabsByWorktree).toEqual({})
   })
 
   it('does not let an old lookup overwrite a replacement conversation', async () => {

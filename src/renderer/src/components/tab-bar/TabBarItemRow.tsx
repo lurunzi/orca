@@ -11,13 +11,13 @@ import type { DropIndicator } from './drop-indicator'
 import type { TabDragItemData } from '../tab-group/useTabDragSplit'
 import { getTabDragLabel, resolveTerminalItemTab, type TabBarItem } from './tab-bar-item-model'
 import type { TabBarItemActions } from './use-tab-bar-item-actions'
+import { agentSessionFallbackLabel } from './tab-bar-item-label'
 import {
   useStructuredChatTabConversationName,
   useStructuredChatTabNamingFailure
 } from '@/runtime/native-chat/naming/structured-conversation-name'
 import { agentTypeToIconAgent } from '../../../../shared/agent-status/presentation/agent-type-icon-agent'
 import { formatSimulatorTabLabel } from '@/lib/simulator/tabs/simulator-tab-label'
-import { resolveUnifiedTabLabel } from '../../../../shared/tab-title-resolution'
 import { useTranslate } from '@/i18n/use-translate'
 
 // Why only values and `actions`: anything a tab draws must be a compared prop, or a skipped render shows it stale.
@@ -129,9 +129,7 @@ function TabBarItemRow({
         tab={{
           id: item.id,
           worktreeId,
-          title:
-            conversationName ??
-            resolveUnifiedTabLabel(item.data, generatedTabTitlesEnabled, item.data.label),
+          title: conversationName ?? agentSessionFallbackLabel(item.data),
           customTitle: item.data.customLabel,
           color: item.data.color
         }}

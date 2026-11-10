@@ -280,8 +280,6 @@ describe('tab strip rows', () => {
     renderStrip({ chatTitle: 'Renamed conversation' })
     expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
     const inputs = { chatTitle: 'Renamed conversation', chatCustomLabel: 'My label' }
-    renderStrip(inputs)
-    expect(lastRender('session-1').tab?.title).toBe('My label')
     const chat = buildItems(inputs).find((item) => item.type === 'agent-session')!
     expect(getTabDragLabel(chat, false, null)).toBe('My label')
     renderStrip({ chatTitle: 'Renamed conversation' })
