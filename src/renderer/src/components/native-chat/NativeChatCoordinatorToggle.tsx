@@ -6,7 +6,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { StructuredSessionOrchestrationIdentityStatus } from '../../../../shared/structured-session-orchestration-identity'
 import { useQueuedSessionOptions } from './native-chat-queued-session-options'
-import type { NativeChatStructuredComposerTransport } from './native-chat-composer-types'
+import type { NativeChatStructuredComposerTransport } from './composer/submit/native-chat-structured-composer-transport'
 
 const COORDINATOR_KEY = 'coordinator'
 

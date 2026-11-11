@@ -63,6 +63,8 @@ export type CatalogModel = {
   contextWindowTokens?: number
   /** The listing says the model runs Approve for me; absent is unknown, which offers it nowhere. */
   supportsAutoMode?: boolean
+  /** The listing's Fast capability; absent is unknown. */
+  supportsFastMode?: boolean
   options: CatalogOption[]
 }
 

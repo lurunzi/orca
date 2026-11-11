@@ -1,9 +1,9 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
-import type { NativeChatComposerInput } from './native-chat-composer-input'
-import type { NativeChatStructuredComposerTransport } from './native-chat-composer-types'
+import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
+import type { NativeChatStructuredComposerTransport } from './composer/submit/native-chat-structured-composer-transport'
 import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'
-import { useNativeChatTypedInsertion } from './use-native-chat-typed-insertion'
+import { useNativeChatTypedInsertion } from './composer/editor/use-native-chat-typed-insertion'
 
 /** The composer's ghost-text next prompt: Claude from the host or its terminal, Codex from the host. */
 export function useNativeChatComposerPromptSuggestion(args: {

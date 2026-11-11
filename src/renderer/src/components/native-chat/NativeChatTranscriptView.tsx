@@ -5,23 +5,23 @@ import { useAppStore } from '@/store'
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { NativeChatResolvedView } from './NativeChatResolvedView'
-import { NativeChatFileLinkExistenceProvider } from './use-native-chat-file-link-existence'
+import { NativeChatFileLinkExistenceProvider } from './links/actions/use-native-chat-file-link-existence'
 import { CursorTranscriptComposer } from './CursorTranscriptComposer'
 import { useCursorTranscriptResume } from './use-cursor-transcript-resume'
-import { useNativeChatRetainedSession } from './use-native-chat-retained-session'
-import { useNativeChatFontSize } from './use-native-chat-font-size'
-import { NATIVE_CHAT_APPEARANCE_ROOT_CLASS } from './native-chat-appearance-style'
-import { useNativeChatStoreAppearanceStyle } from './use-native-chat-store-appearance-style'
-import { cn } from '@/lib/utils'
-import { useNativeChatImageRuntimeContext } from './native-chat-image-runtime-context'
-import { selectNativeChatViewState } from './native-chat-view-state'
+import { useNativeChatRetainedSession } from './session/terminal/read/use-native-chat-retained-session'
+import { useNativeChatFontSize } from './appearance/use-native-chat-font-size'
+import { NATIVE_CHAT_APPEARANCE_ROOT_CLASS } from './appearance/native-chat-appearance-style'
+import { useNativeChatStoreAppearanceStyle } from './appearance/use-native-chat-store-appearance-style'
+import { cn } from '@/lib/class-names'
+import { useNativeChatImageRuntimeContext } from './media/images/native-chat-image-runtime-context'
+import { selectNativeChatViewState } from './session/status/native-chat-view-state'
 import { NativeChatMessageList } from './NativeChatMessageList'
-import { NativeChatEmptyState } from './NativeChatEmptyState'
+import { NativeChatEmptyState } from './host-access/NativeChatEmptyState'
 import { reconcileCursorTranscriptTabs } from '@/lib/cursor-transcript-tab'
 import {
   readNativeChatComposerDraft,
   subscribeToNativeChatComposerDraft
-} from './native-chat-composer-draft-store'
+} from './drafts/native-chat-composer-draft-store'
 
 export function NativeChatTranscriptView({
   tabId,

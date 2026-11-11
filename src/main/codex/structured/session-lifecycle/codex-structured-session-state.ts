@@ -30,8 +30,7 @@ import type { StructuredLaunchRequest } from '../../../runtime/agent-session/lau
 import type { AgentModelCatalogStore } from '../../../native-chat/agent-model-catalog/agent-model-catalog-store'
 import type { AgentModelCatalogSessionAccess } from '../../../native-chat/agent-model-catalog/agent-model-catalog-lister'
 import type { StructuredAgentSessionProviderOpen } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
-import type { AgentChatPermissionChoice } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
-import type { CodexSandboxPolicy } from '../launch/codex-structured-sandbox-policy'
+import type { CodexSessionPermissions } from './codex-structured-session-permissions'
 import type { StructuredAgentSessionEventSink } from '../../../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
 
 export type CodexSessionCatalogAccess = AgentModelCatalogSessionAccess & {
@@ -122,6 +121,8 @@ export type CodexSession = {
   promptSuggestion?: CodexPromptSuggestion
   events?: StructuredAgentSessionEventSink
   account?: AgentSessionAccountKind
+  /** CODEX_HOME this app-server launched under. */
+  codexHome?: string | null
   connection: CodexAppServerConnection
   ended: boolean
   /** First observed child exit survives rejected settlement admission. */
@@ -132,17 +133,7 @@ export type CodexSession = {
   acquisitionGeneration: string
   threadId: string
   historyMode?: 'legacy' | 'paginated'
-  /** Provider facts from this acquisition, not another copy of the chat's selected mode. */
-  permissions?: {
-    acquiredMode: AgentChatPermissionChoice
-    appliedMode?: AgentChatPermissionChoice
-    acquiredSandbox?: CodexSandboxPolicy
-    launchSandboxIntact: boolean
-    cwd: string
-    visualsFolder?: string
-    preparedMode?: AgentChatPermissionChoice
-    preparedAuto?: CodexSandboxPolicy
-  }
+  permissions?: CodexSessionPermissions
   /** Wire-observed open primary turns; rewind and untargeted Stop use these before journal admission. */
   activeTurnIds?: Set<string>
   /** Interrupt-acknowledged turns cannot accept steers while awaiting turn/completed. */

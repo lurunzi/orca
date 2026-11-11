@@ -5,7 +5,7 @@ vi.mock('../pty/environment/windows-environment-path', () => ({
   mergePersistedWindowsPathAsync: mergePath
 }))
 
-import { detectLocalManagedAgentCliPresence } from './local-agent-cli-presence'
+import { detectLocalManagedAgentCliPresence } from './installation/local-agent-cli-presence'
 
 const targets = [
   { agent: 'antigravity', tuiAgent: 'antigravity', executableCandidates: ['agy'] }

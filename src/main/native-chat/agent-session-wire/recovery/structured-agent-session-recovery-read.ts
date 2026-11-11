@@ -14,7 +14,7 @@ type RecoverySession = {
 }
 type RecoveryDeps = Pick<
   StructuredAgentSessionHostDeps,
-  'resolveLaunchEnv' | 'resolveWorkspacePath'
+  'resolveLaunchEnv' | 'resolveWorkspacePath' | 'accountSwitchSettings'
 > & {
   store: Pick<StructuredAgentSessionHostDeps['store'], 'getRecord'>
 }
@@ -68,7 +68,8 @@ export async function readStructuredSessionRecovery(
     }
     const result = await structuredSessionRecoveryOptions(record, launchEnv, {
       cache,
-      resolveWorkspacePath: deps.resolveWorkspacePath
+      resolveWorkspacePath: deps.resolveWorkspacePath,
+      settings: deps.accountSwitchSettings?.() ?? {}
     })
     const current = await context.conversation(sessionId)
     return current === session && key === recoveryIdentity(session, deps, sessionId)

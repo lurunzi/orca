@@ -1,9 +1,6 @@
-import type { AgentSessionOptionCatalog } from './agent-session-option-catalog-types'
-import {
-  discoveredModel,
-  structuredAgentSessionOptionCatalog
-} from './structured-agent-session-discovered-model'
-export { structuredAgentSessionOptionCatalog } from './structured-agent-session-discovered-model'
+import type { AgentSessionOptionCatalog, CatalogModel } from './agent-session-option-catalog-types'
+import { discoveredModel } from './structured-agent-session-discovered-model'
+import { catalogOffersFastMode } from './structured-agent-fast-mode-snapshot'
 import {
   createStructuredAgentSessionOptionRecord,
   replaceStructuredAgentSessionAnsweredValues,
@@ -14,7 +11,6 @@ import {
   STRUCTURED_LAUNCH_SEED_OPTION_IDS
 } from '../../native-chat/input/native-chat-session-option-defaults'
 import { AGENT_CHAT_PERMISSION_MODE_OPTION_ID } from '../../agent-launch/permissions/agent-chat-permission-mode'
-import { catalogFastModeState, liveFastModeState } from './structured-agent-fast-mode-snapshot'
 import {
   usesInstalledAgentModelCatalog,
   usesModelSpecificAcpEfforts
@@ -29,12 +25,32 @@ import type {
   AgentSessionAcceptedInputSources,
   AgentSessionOptionsResult
 } from './agent-session-options-result'
+import { labelFromModelId } from '../../model-id-label'
 import type { AgentSessionModelCatalogResult } from '../agent-session-wire'
 import { listingVerifiedModelIds } from './structured-agent-session-listing-verified-ids'
 import {
   decodeStructuredAgentSessionOptionValue,
   encodeStructuredAgentSessionOptionValue
 } from './structured-agent-session-option-codec'
+
+export function structuredAgentSessionOptionCatalog(
+  seed: AgentSessionOptionCatalog,
+  result: AgentSessionOptionsResult,
+  agent: StructuredAgentSessionOptionRecord['agent']
+): AgentSessionOptionCatalog {
+  const models: CatalogModel[] = result.models.map((model) =>
+    discoveredModel(model, result.fastModeSupport?.supported === true, agent)
+  )
+  if (result.current.model && !models.some((model) => model.id === result.current.model)) {
+    models.push({
+      id: result.current.model,
+      label: labelFromModelId(result.current.model),
+      description: result.current.model,
+      options: seed.unknownModelOptions ?? []
+    })
+  }
+  return { ...seed, models, defaultModelIsCliDefault: true }
+}
 
 export type StructuredAgentSessionOptionState = {
   catalog: AgentSessionOptionCatalog | null
@@ -65,8 +81,6 @@ export type StructuredAgentSessionOptionState = {
   /** The host is still listing models; it only keeps a seed from settling to built-in, since controls follow their data. */
   listingInProgress?: boolean
   fastModeRestricted?: boolean
-  fastModeSupport?: AgentSessionOptionsResult['fastModeSupport']
-  fastModeModelSupport?: ReadonlyMap<string, boolean | undefined>
 }
 
 /** Seed definitions supply geometry; only accepted input or host inventory can name a model. */
@@ -120,11 +134,12 @@ export function applyStructuredAgentSessionModelCatalog(
   const models =
     catalog.origin === 'unknown'
       ? []
-      : catalog.models.map((model) => discoveredModel(model, true, state.record.agent))
+      : catalog.models.map((model) =>
+          discoveredModel(model, catalogOffersFastMode(catalog), state.record.agent)
+        )
   if (catalog.origin === 'unknown' || (!installed && models.length === 0)) {
     return settleStructuredAgentSessionBuiltinCatalog(state)
   }
-  const fastMode = catalogFastModeState(state.record.agent, catalog)
   // Only new launches may name the listing default; use host evidence, or agent knowledge for old hosts. Reopened chats may retain another model.
   const namesDefault =
     options.newLaunch &&
@@ -140,10 +155,6 @@ export function applyStructuredAgentSessionModelCatalog(
     },
     ...(installed ? { verifiedModelIds } : {}),
     catalogSource: state.catalogSource === 'live' ? 'live' : 'host',
-    // A live answer's Fast verdict outlasts a stored list, which never confirms the account.
-    ...(state.catalogSource === 'live'
-      ? { fastModeModelSupport: fastMode.fastModeModelSupport }
-      : fastMode),
     acceptedInputSources: state.optionsAnswerPresent
       ? state.acceptedInputSources
       : {
@@ -173,7 +184,6 @@ export function applyStructuredAgentSessionOptions(
   }
   const installed = usesInstalledAgentModelCatalog(state.record.agent, launch.coherentCatalog)
   const keepCatalog = installed || result.modelsKnown === false
-  const liveFastMode = liveFastModeState(state.record.agent, result)
   let answeredCatalog = structuredAgentSessionOptionCatalog(seed, result, state.record.agent)
   if (usesModelSpecificAcpEfforts(state.record.agent)) {
     answeredCatalog = {
@@ -230,11 +240,7 @@ export function applyStructuredAgentSessionOptions(
         ? result.listedModelIds
         : undefined,
     permissionMode: result.current.permissionMode ?? null,
-    reportedPermissionMode: result.current.reportedPermissionMode,
-    ...(keepCatalog
-      ? // The kept list, not this answer, names the rows the picker draws.
-        { fastModeSupport: liveFastMode.fastModeSupport }
-      : liveFastMode)
+    reportedPermissionMode: result.current.reportedPermissionMode
   }
 }
 

@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
-import type TerminalPaneHeaderOverlay from './TerminalPaneHeaderOverlay'
-import type { TerminalPaneController } from './use-terminal-pane-controller'
+import type TerminalPaneHeaderOverlay from './titles/TerminalPaneHeaderOverlay'
+import type { TerminalPaneController } from './controller/use-terminal-pane-controller'
 
 type HeaderChatToggleProps = Pick<
   ComponentProps<typeof TerminalPaneHeaderOverlay>,

@@ -27,6 +27,8 @@ require('node:readline').createInterface({ input: process.stdin }).on('line', (l
   if (message.method === 'account/read') reply({ account: { type: 'chatgpt', email: evidence() } })
   if (message.method === 'account/rateLimits/read') reply({})
   if (message.method === 'thread/name/set') reply({})
+  if (message.method === 'thread/read') reply({ thread: { id: '${SOURCE}', historyMode: 'paginated' } })
+  if (message.method === 'thread/turns/list') reply({ data: [{ id: 'turn-1', status: 'completed' }], nextCursor: null })
   if (message.method === 'thread/fork') reply({ thread: { id: '${CHILD}' } })
 })
 `
@@ -115,5 +117,5 @@ it('runs personal cold usage, rename and copy on the plain app-server session', 
         })
       }
     })
-  ).resolves.toEqual({ sessionId: CHILD })
+  ).resolves.toEqual({ sessionId: CHILD, coverage: { unit: 'codex-turn', ids: ['turn-1'] } })
 })

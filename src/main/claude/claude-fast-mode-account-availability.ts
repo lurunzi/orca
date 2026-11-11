@@ -8,7 +8,7 @@ import { record, text } from './structured/launch/claude-structured-model-catalo
 import {
   parseClaudeOAuthCredentialsJson,
   readClaudeCredentialsFromStrictKeychain
-} from '../rate-limits/claude-oauth-credentials'
+} from '../rate-limits/providers/claude/claude-oauth-credentials'
 import { ensureElectronProxyFromEnvironment } from '../network/proxy-settings'
 
 const AVAILABILITY_URL = 'https://api.anthropic.com/api/claude_code_penguin_mode'

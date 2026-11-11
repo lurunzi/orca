@@ -4,7 +4,7 @@ import type {
   RuntimeLeafRecord,
   RuntimePtyTitleTrackerEntry
 } from '../records/runtime-terminal-state-records'
-import type { RuntimeSyncedLeaf } from '../../../../shared/runtime-types'
+import type { RuntimeSyncedLeaf } from '../../../../shared/runtime-session-contracts'
 import { OrcaRuntimeWithAntigravityScreenPermissionSchedule } from './antigravity-screen-permission-schedule'
 import { advertisedUrlWatcher } from '../../../ports/advertised-url-watcher'
 import { appendNormalizedToTailBuffer } from './tail/terminal-tail-buffer'

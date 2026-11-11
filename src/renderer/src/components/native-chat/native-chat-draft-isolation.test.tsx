@@ -2,13 +2,13 @@
 import { createRef } from 'react'
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NativeChatPromptEditor } from './NativeChatPromptEditor'
-import type { NativeChatComposerInput } from './native-chat-composer-input'
+import { NativeChatPromptEditor } from './composer/editor/NativeChatPromptEditor'
+import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
+import { clearNativeChatComposerDraftsForTests as clearNativeChatDraftCacheForTests } from './drafts/native-chat-draft-reset'
 import {
-  clearNativeChatDraftCacheForTests,
   readNativeChatDraftCache,
   writeNativeChatDraftCache
-} from './native-chat-draft-cache'
+} from './drafts/native-chat-draft-views'
 
 beforeEach(() => clearNativeChatDraftCacheForTests())
 afterEach(cleanup)

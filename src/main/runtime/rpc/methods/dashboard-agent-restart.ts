@@ -42,7 +42,7 @@ export const DASHBOARD_AGENT_RESTART_METHOD = defineMethod({
         throw new DashboardAgentRestartError(Code.Unavailable)
       }
       DASHBOARD_AGENT_RESTART_SOURCES[params.target.provider].require(host, params.target)
-      const result = await host.restartAgentForCredentials(params.target)
+      const result = await host.mutations.restartAgentForCredentials(params.target)
       return DashboardAgentRestartResponseSchema.parse({
         schema_version: 1,
         instance_id: instanceId,

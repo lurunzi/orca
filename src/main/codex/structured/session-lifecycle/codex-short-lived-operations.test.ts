@@ -168,6 +168,12 @@ require('node:readline').createInterface({ input: process.stdin }).on('line', (l
       secondary: { usedPercent: 50, windowDurationMins: 10080 }
     } } })
   }
+  if (message.method === 'thread/read') {
+    send({ id: message.id, result: { thread: { id: message.params.threadId, historyMode: 'paginated' } } })
+  }
+  if (message.method === 'thread/turns/list') {
+    send({ id: message.id, result: { data: [{ id: 'copy-turn', status: 'completed' }], nextCursor: null } })
+  }
   if (message.method === 'thread/fork') {
     if (process.env.ORCA_TEST_PERSONAL_COPY_ERROR === '1') {
       send({ id: message.id, error: { code: -32000, message: 'active turn is running' } })
@@ -474,8 +480,7 @@ it('preserves the personal active-turn refusal through owned adapter cleanup', a
   delete input.record!.poolAccount
   const adapter = coldAdapter()
   await expect(adapter.copyConversation(input)).rejects.toMatchObject({
-    message:
-      'Codex could not copy this chat while a response was running. Wait for it to finish, then try again.'
+    message: 'Codex could not verify the copied chat.'
   })
 })
 
@@ -487,7 +492,10 @@ it('registers copy before history preparation so shutdown cancels a stalled file
     started.resolve()
     return reading.promise
   })
-  const result = adapter.copyConversation(await poolCopyInput())
+  const input = await poolCopyInput()
+  // Without a turn the copy reads the saved history before it starts the app-server.
+  delete input.checkpoint!.turnId
+  const result = adapter.copyConversation(input)
   const rejected = expect(result).rejects.toMatchObject({
     message: 'dashboard_allocation_unavailable'
   })

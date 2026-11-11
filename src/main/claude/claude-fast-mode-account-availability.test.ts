@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import path from 'node:path'
-import type * as ClaudeCredentials from '../rate-limits/claude-oauth-credentials'
+import type * as ClaudeCredentials from '../rate-limits/providers/claude/claude-oauth-credentials'
 import { readClaudeFastModeAccountAvailability } from './claude-fast-mode-account-availability'
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ vi.mock('../network/http-client', () => ({
 }))
 vi.mock('node:fs/promises', () => ({ readFile: mocks.read }))
 vi.mock('../network/proxy-settings', () => ({ ensureElectronProxyFromEnvironment: mocks.proxy }))
-vi.mock('../rate-limits/claude-oauth-credentials', async (original) => ({
+vi.mock('../rate-limits/providers/claude/claude-oauth-credentials', async (original) => ({
   ...(await original<typeof ClaudeCredentials>()),
   readClaudeCredentialsFromStrictKeychain: mocks.keychain
 }))

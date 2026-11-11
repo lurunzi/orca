@@ -3,8 +3,8 @@ import '@testing-library/jest-dom/vitest'
 import { act, cleanup, fireEvent, render as renderComponent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
-import type { NativeChatSessionTransport } from './native-chat-session-transport'
-import { installNativeChatMessageListTestViewport } from './native-chat-message-list-test-viewport'
+import type { NativeChatSessionTransport } from './session/terminal/read/native-chat-session-transport'
+import { installNativeChatMessageListTestViewport } from './viewport/virtualization/native-chat-message-list-test-viewport'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 const render = (ui: React.ReactElement) => renderComponent(ui, { wrapper: TooltipProvider })
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => {
     resume: { resumable: false, resume: vi.fn() }
   }
 })
-vi.mock('./native-chat-session-transport', () => ({
+vi.mock('./session/terminal/read/native-chat-session-transport', () => ({
   getNativeChatSessionTransport: (owner: string | null) => {
     mocks.transport(owner)
     return {
@@ -45,15 +45,15 @@ vi.mock('@/lib/workspace/ownership/worktree-runtime-owner', () => ({
 vi.mock('./NativeChatResolvedView', () => ({
   NativeChatResolvedView: () => <div>Managed chat</div>
 }))
-vi.mock('./native-chat-image-runtime-context', () => ({
+vi.mock('./media/images/native-chat-image-runtime-context', () => ({
   useNativeChatImageRuntimeContext: () => null
 }))
 import { NativeChatTranscriptView } from './NativeChatTranscriptView'
 import {
-  clearNativeChatComposerDraftsForTests,
   readNativeChatComposerDraft,
   updateNativeChatComposerDraft
-} from './native-chat-composer-draft-store'
+} from './drafts/native-chat-composer-draft-store'
+import { clearNativeChatComposerDraftsForTests } from './drafts/native-chat-draft-reset'
 const source = {
   agent: 'cursor' as const,
   sessionId: 'worker',

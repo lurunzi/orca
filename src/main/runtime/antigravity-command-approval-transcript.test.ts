@@ -1,4 +1,4 @@
-import { makeAgentStatusStoreWiring } from './agent-status-store-wiring.test-fixture'
+import { makeAgentStatusStoreWiring } from './terminal/identity/agent-status-store-wiring.test-fixture'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'

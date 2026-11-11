@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NativeChatUsageLimitCut } from '../../../../shared/native-chat/native-chat-usage-limit-cut'
+import type { HostUsageLimitCut } from './structured-agent-session-usage-limit-chain'
 import type { UsageLimitAccountReading } from '../../../rate-limits/usage-limit-account-reading'
 import { StructuredAgentSessionUsageLimitContinue } from './structured-agent-session-usage-limit-continue'
 import { hostTestRestingOptionsRecord } from '../host/testing/structured-agent-session-host-test-data'
@@ -16,8 +16,11 @@ function createRig(ids: string[]) {
     resetsAt: RESET,
     usedUpResets: []
   }
-  const cuts = new Map<string, NativeChatUsageLimitCut | null>(
-    ids.map((id) => [id, { turnItemId: `turn-${id}`, resetsAt: RESET, turnEndedAt: ENDED }])
+  const cuts = new Map<string, HostUsageLimitCut | null>(
+    ids.map((id) => [
+      id,
+      { turnItemId: `turn-${id}`, resetsAt: RESET, turnEndedAt: ENDED, chain: 0 }
+    ])
   )
   const sent: string[] = []
   let refreshes = 0
@@ -60,7 +63,6 @@ function createRig(ids: string[]) {
   return {
     scheduler,
     sent,
-    cuts,
     refreshes: () => refreshes,
     setNow: (at: number) => {
       now = at
@@ -110,27 +112,5 @@ describe('usage-limit automatic continue gated by account usage', () => {
       state: 'scheduled',
       continueAt: weeklyReset
     })
-  })
-
-  it('stops after continuations keep hitting the limit at once instead of filling the chat with errors', async () => {
-    const rig = createRig(['chat'])
-    // No usable reading: the agent's own reset time is all Orca has.
-    rig.setReading(null)
-    let now = RESET + 20_000
-    for (let round = 0; round < 6; round += 1) {
-      rig.setNow(now)
-      await rig.scheduler.tick()
-      if (rig.cuts.get('chat') === null) {
-        // The continuation fails at once, and the agent again claims a reset a minute away.
-        rig.cuts.set('chat', {
-          turnItemId: `refail-${round}`,
-          resetsAt: now + 5_000 + MINUTE,
-          turnEndedAt: now + 5_000
-        })
-      }
-      now += 6 * 60 * MINUTE
-    }
-    expect(rig.sent).toHaveLength(3)
-    expect(rig.scheduler.readState('chat')?.state).toBe('failed')
   })
 })

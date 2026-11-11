@@ -4,10 +4,10 @@ import { Terminal } from '@xterm/headless'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sendRuntimePtyInput = vi.fn()
-vi.mock('@/runtime/runtime-terminal-inspection', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-input-send', () => ({
   sendRuntimePtyInput: (...args: unknown[]) => sendRuntimePtyInput(...args)
 }))
-vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
   sendRuntimePtyInputVerified: vi.fn()
 }))
 
@@ -15,17 +15,15 @@ import {
   antigravityComposerHoldsDraft,
   withAntigravitySubmitConfirmation
 } from './antigravity-submit-confirmation'
-import { NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT } from './native-chat-input-clear'
-import {
-  NATIVE_CHAT_SUBMIT_DELAY_MS,
-  resetNativeChatPtySendQueuesForTests,
-  sendNativeChatMessage
-} from './native-chat-runtime-send'
+import { NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT } from './session/terminal/send/native-chat-input-clear'
+import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
+import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
+import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_RETRY_MAX
 } from './native-chat-submit-confirmation'
-import { sendNativeChatMessageWithImageAttachments } from './native-chat-runtime-image-send'
+import { sendNativeChatMessageWithImageAttachments } from './session/terminal/send/native-chat-runtime-image-send'
 import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/native-chat-paste-bytes'
 
 const RULE = '─'.repeat(120)

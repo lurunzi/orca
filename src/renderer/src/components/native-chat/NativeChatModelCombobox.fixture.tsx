@@ -1,5 +1,5 @@
 import { defineFixture } from '../../component-fixtures/component-fixture'
-import { NativeChatModelCombobox } from './NativeChatModelCombobox'
+import { NativeChatModelCombobox } from './session/options/controls/NativeChatModelCombobox'
 
 const CURSOR_CHOICES = [
   { value: 'auto', label: 'Auto' },

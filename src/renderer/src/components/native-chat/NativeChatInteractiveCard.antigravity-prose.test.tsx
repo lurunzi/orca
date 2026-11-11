@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
-import type { NativeChatInteractiveSend } from './use-native-chat-interactive-send'
+import type { NativeChatInteractiveSend } from './session/terminal/send/use-native-chat-interactive-send'
 
 const state = vi.hoisted(
   (): {
@@ -20,10 +20,10 @@ vi.mock('../../store', () => ({
   useAppStore: (selector: (store: typeof state) => unknown) => selector(state)
 }))
 
-import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
-import { useNativeChatInteractivePromptCard } from './use-native-chat-interactive-prompt-card'
-import { useNativeChatPromptCardPresentation } from './use-native-chat-prompt-card-presentation'
-import { nativeChatPromptDismissals } from './native-chat-prompt-dismissals'
+import { NativeChatInteractiveCard } from './prompts/NativeChatInteractiveCard'
+import { useNativeChatInteractivePromptCard } from './prompts/use-native-chat-interactive-prompt-card'
+import { useNativeChatPromptCardPresentation } from './prompts/use-native-chat-prompt-card-presentation'
+import { nativeChatPromptDismissals } from './prompts/native-chat-prompt-dismissals'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 const QUESTION = '请告诉我脚本放在哪个仓库。'

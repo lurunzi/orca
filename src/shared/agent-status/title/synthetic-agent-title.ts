@@ -35,7 +35,7 @@ export const SYNTHETIC_AGENT_TITLE_PROFILES: Record<string, SyntheticAgentTitleP
     workingLabel: 'Cursor Agent',
     permissionLabel: 'Cursor - action required',
     idleLabel: 'Cursor ready',
-    // Cursor re-emits its session title on redraw; synthetic frames fight that title.
+    // cursor-agent paints its own chat-name title through a turn; reasserting ours makes the tab flicker.
     synthesizeWorkingTitle: false
   },
   opencode: {

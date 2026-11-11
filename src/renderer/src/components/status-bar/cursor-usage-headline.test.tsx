@@ -4,14 +4,14 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
 import { ProviderSegment } from './StatusBarProviderSegment'
 
-vi.mock('@/i18n/i18n', () => ({
+vi.mock('@/i18n/i18n', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   translate: (_key: string, fallback: string, values: Record<string, string> = {}) =>
     Object.entries(values).reduce(
       (text, [key, value]) => text.replace(`{{${key}}}`, value),
       fallback
     )
 }))
-vi.mock('@/lib/agent-catalog', () => ({ AgentIcon: () => null }))
 vi.mock('@/hooks/useResetCountdownClock', () => ({ useResetCountdownClock: () => 0 }))
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenuItem: ({ children }: React.PropsWithChildren) => <div>{children}</div>

@@ -66,7 +66,7 @@ describe('credential restart of an observed Host child', () => {
       return closing.promise
     })
     host.deps.adapter.closeSession = close
-    const restarted = host.restartAgentForCredentials(input)
+    const restarted = host.mutations.restartAgentForCredentials(input)
     await entered.promise
     expect(acquire).toHaveBeenCalledTimes(1)
     closing.resolve(true)
@@ -120,7 +120,7 @@ describe('credential restart of an observed Host child', () => {
     const { host, acquire } = hostTestState()
     const close = vi.fn(async () => true)
     host.deps.adapter.closeSession = close
-    await expect(host.restartAgentForCredentials(change(input))).rejects.toMatchObject({
+    await expect(host.mutations.restartAgentForCredentials(change(input))).rejects.toMatchObject({
       code: Code.TargetChanged
     })
     expect(close).not.toHaveBeenCalled()
@@ -133,10 +133,10 @@ describe('credential restart of an observed Host child', () => {
     const close = vi.fn(async () => true)
     host.deps.adapter.closeSession = close
     await expect(
-      host.restartAgentForCredentials({ ...input, confirm_interrupt: false })
+      host.mutations.restartAgentForCredentials({ ...input, confirm_interrupt: false })
     ).rejects.toMatchObject({ code: Code.InvalidRequest })
     await expect(
-      host.restartAgentForCredentials({ ...input, credential: 'never accepted' })
+      host.mutations.restartAgentForCredentials({ ...input, credential: 'never accepted' })
     ).rejects.toMatchObject({ code: Code.InvalidRequest })
     expect(close).not.toHaveBeenCalled()
     expect(acquire).toHaveBeenCalledTimes(1)
@@ -148,7 +148,7 @@ describe('credential restart of an observed Host child', () => {
     const close = vi.fn(async () => true)
     host.deps.adapter.closeSession = close
     const closed = host.close(SESSION, 'user-close')
-    const restart = expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+    const restart = expect(host.mutations.restartAgentForCredentials(input)).rejects.toMatchObject({
       code: Code.TargetChanged
     })
     await closed
@@ -162,7 +162,7 @@ describe('credential restart of an observed Host child', () => {
     const { host, acquire } = hostTestState()
     const close = vi.fn(async () => false)
     host.deps.adapter.closeSession = close
-    await expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+    await expect(host.mutations.restartAgentForCredentials(input)).rejects.toMatchObject({
       code: Code.ExitUnconfirmed,
       message: Code.ExitUnconfirmed
     })
@@ -184,7 +184,7 @@ describe('credential restart of an observed Host child', () => {
         )
       )
     host.deps.adapter.closeSession = close
-    await expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+    await expect(host.mutations.restartAgentForCredentials(input)).rejects.toMatchObject({
       code: Code.ExitUnconfirmed,
       message: Code.ExitUnconfirmed
     })
@@ -229,7 +229,7 @@ describe('credential restart of an observed Host child', () => {
     const { host, acquire, dispatch, store } = hostTestState()
     host.deps.adapter.closeSession = vi.fn(async () => true)
     acquire.mockRejectedValueOnce(new Error('private provider failure'))
-    await expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+    await expect(host.mutations.restartAgentForCredentials(input)).rejects.toMatchObject({
       code: Code.Failed,
       message: Code.Failed
     })
@@ -245,7 +245,7 @@ describe('credential restart of an observed Host child', () => {
     const sending = send('ordinary waiting')
     try {
       await held.held
-      const restarting = host.restartAgentForCredentials(input)
+      const restarting = host.mutations.restartAgentForCredentials(input)
       held.release()
       await restarting
     } finally {
@@ -285,17 +285,16 @@ describe('credential restart of an observed Host child', () => {
       }
       const { clientMessageId } = sent.value
       const signal = await preparing.promise
-      const settlement = host.waitForSendSettlement(SESSION, clientMessageId, { until: 'answered' })
-      await expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+      await expect(host.mutations.restartAgentForCredentials(input)).rejects.toMatchObject({
         code: Code.ExitUnconfirmed
       })
       expect(signal.aborted).toBe(true)
-      expect(await settlement).toMatchObject({
-        value: {
-          clientMessageId,
-          submission: { dispatchState: 'rejected', keptAsQueuedMessageId: clientMessageId }
-        }
-      })
+      // A kept card stays the queue's to hand over, so its row is the proof, not a send answer.
+      await vi.waitFor(async () =>
+        expect((await host.journalSnapshot(SESSION)).submissions).toMatchObject([
+          { clientMessageId, dispatchState: 'rejected', keptAsQueuedMessageId: clientMessageId }
+        ])
+      )
       expect(store.requireWritableRecord(SESSION).lease).toMatchObject({
         runtimeFence: input.fence,
         claimStatus: 'live',
@@ -330,7 +329,7 @@ describe('credential restart of an observed Host child', () => {
     const journal = host.collaboratorsForTests().sessions.get(SESSION)?.journal
     const originalDrafts = journal?.queuedMessages.list()
     const dispatched = dispatch.mock.calls.length
-    await host.restartAgentForCredentials(input)
+    await host.mutations.restartAgentForCredentials(input)
     await host.flushStreamedEvents(SESSION)
     await host.collaboratorsForTests().serialize(SESSION, async () => {})
     expect(dispatch).toHaveBeenCalledTimes(dispatched)

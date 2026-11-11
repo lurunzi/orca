@@ -26,6 +26,7 @@ import type { CatalogOwner } from '../model-catalog/structured-agent-model-catal
 import type { StructuredAgentSessionRuntimeDeps } from './structured-agent-session-runtime-contract'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { ClaudePromptSuggestionStore } from '../../../claude/claude-prompt-suggestion-store'
+import { observePRWatchCommittedRows } from '../pr-watch-runtime'
 
 export async function installOnJournal(
   deps: StructuredAgentSessionRuntimeDeps,
@@ -85,6 +86,7 @@ export async function installOnJournal(
     resolveWorkspacePath: deps.resolveWorkspacePath,
     logger: deps.logger,
     ...(deps.onRequestFailure ? { onRequestFailure: deps.onRequestFailure } : {}),
+    observeCommittedRows: observePRWatchCommittedRows,
     ...(deps.onSessionStatusChanged ? { onSessionStatusChanged: deps.onSessionStatusChanged } : {}),
     ...(deps.statusSink ? { statusSink: deps.statusSink } : {}),
     ...(deps.conversationNaming
@@ -95,6 +97,7 @@ export async function installOnJournal(
     ...(deps.startupLimits ? { startupLimits: deps.startupLimits } : {}),
     ...(deps.onSessionTabHidden ? { onSessionTabHidden: deps.onSessionTabHidden } : {}),
     ...(deps.launchAccountHome ? { launchAccountHome: deps.launchAccountHome } : {}),
+    ...(deps.accountSwitchSettings ? { accountSwitchSettings: deps.accountSwitchSettings } : {}),
     ...(deps.assertNoTerminalWriter ? { assertNoTerminalWriter: deps.assertNoTerminalWriter } : {}),
     ...(catalogOwner.modelCatalog ? { modelCatalog: catalogOwner.modelCatalog } : {})
   })

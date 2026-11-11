@@ -4,7 +4,7 @@ import {
   AGENT_SESSION_ATTACHMENT_MAX_BYTES,
   base64DecodedByteLength
 } from '../../shared/agent-session/agent-session-attachments'
-import { IMAGE_FILE_MIME_TYPES } from '../../shared/image-file-extensions'
+import { IMAGE_FILE_MIME_TYPES } from '../../shared/file-preview/image-mime-types'
 import { nativeChatToolImageReadPath } from '../../shared/native-chat/tools/native-chat-tool-viewed-images'
 import { getAgentSessionAttachmentStore } from '../native-chat/agent-session-attachments/agent-session-attachment-store-registry'
 import type {

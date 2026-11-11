@@ -31,6 +31,7 @@ export function installMainWindowCloseLifecycle(args: {
   let windowCloseConfirmed = false
   const confirmCloseChannel = 'window:confirm-close'
   const closeRequestReceivedChannel = 'window:close-request-received'
+  const closeCancelledChannel = 'window:close-cancelled'
   let closeRequestSequence = 0
   let quitRendererAckRequestId: number | null = null
   let quitRendererAckTimer: ReturnType<typeof setTimeout> | null = null
@@ -59,8 +60,15 @@ export function installMainWindowCloseLifecycle(args: {
     }, WINDOW_QUIT_RENDERER_ACK_TIMEOUT_MS)
     quitRendererAckTimer.unref?.()
   }
-  const onCloseRequestReceived = (event: Electron.IpcMainEvent, requestId: number): void => {
-    if (event.sender.id === rendererWebContentsId && requestId === quitRendererAckRequestId) {
+  let lastAcknowledgedRequestId = 0
+  const onCloseRequestReceived = (event: Electron.IpcMainEvent, requestId: unknown): void => {
+    if (event.sender.id !== rendererWebContentsId) {
+      return
+    }
+    if (typeof requestId === 'number' && requestId > lastAcknowledgedRequestId) {
+      lastAcknowledgedRequestId = requestId
+    }
+    if (requestId === quitRendererAckRequestId) {
       clearQuitRendererAckTimer()
     }
   }
@@ -132,12 +140,25 @@ export function installMainWindowCloseLifecycle(args: {
       requestId
     })
   }
-  const onWillPreventUnload = (): void => {
-    // A veto cancels quit; resume bounds persistence for subsequent user resizing.
+  // A veto cancels quit; resume bounds persistence for subsequent user resizing.
+  const abortQuit = (): void => {
     state.resumeBoundsPersistence()
     clearQuitRendererAckTimer()
     opts?.onQuitAborted?.()
+  }
+  const onWillPreventUnload = (): void => {
+    abortQuit()
     mainWindow.webContents.send('window:unload-prevented')
+  }
+  // Renderer prompts never reach will-prevent-unload. IPC is ordered, so a cancel before the newest ack is stale.
+  const onCloseCancelled = (event: Electron.IpcMainEvent): void => {
+    if (
+      event.sender.id === rendererWebContentsId &&
+      lastAcknowledgedRequestId === closeRequestSequence &&
+      opts?.getIsQuitting?.() === true
+    ) {
+      abortQuit()
+    }
   }
 
   const onConfirmClose = (): void => {
@@ -201,6 +222,7 @@ export function installMainWindowCloseLifecycle(args: {
     }
     ipcMain.removeListener(confirmCloseChannel, onConfirmClose)
     ipcMain.removeListener(closeRequestReceivedChannel, onCloseRequestReceived)
+    ipcMain.removeListener(closeCancelledChannel, onCloseCancelled)
   }
 
   // Roll back partial registration so a failed window cannot keep owning shared IPC channels.
@@ -214,6 +236,7 @@ export function installMainWindowCloseLifecycle(args: {
     ipcMain.on(popupMenuChannel, onPopupMenu)
     ipcMain.on(confirmCloseChannel, onConfirmClose)
     ipcMain.on(closeRequestReceivedChannel, onCloseRequestReceived)
+    ipcMain.on(closeCancelledChannel, onCloseCancelled)
   } catch (error) {
     mainWindow.removeListener('close', onClose)
     mainWindow.webContents.removeListener('will-prevent-unload', onWillPreventUnload)

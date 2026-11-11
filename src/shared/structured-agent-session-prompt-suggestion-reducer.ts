@@ -20,13 +20,25 @@ function nextPromptSuggestion(
     : state.promptSuggestion
 }
 
-/** Fork: the upstream reducer plus Claude's prompt suggestion, which a frame omits when unchanged. */
+/** Fork: carries Claude's prompt suggestion, which a frame omits when unchanged, onto a reduced state. */
+export function withPromptSuggestion(
+  previous: StructuredAgentSessionState,
+  next: StructuredAgentSessionState,
+  action: StructuredAgentSessionAction
+): StructuredAgentSessionState {
+  const promptSuggestion = nextPromptSuggestion(previous, action)
+  return next.promptSuggestion === promptSuggestion ? next : { ...next, promptSuggestion }
+}
+
+/** Fork: the upstream reducer plus Claude's prompt suggestion. */
 export function reduceWithPromptSuggestion(
   state: StructuredAgentSessionState,
   action: StructuredAgentSessionAction,
   receivedAt?: number
 ): StructuredAgentSessionState {
-  const next = reduceStructuredAgentSession(state, action, receivedAt)
-  const promptSuggestion = nextPromptSuggestion(state, action)
-  return next.promptSuggestion === promptSuggestion ? next : { ...next, promptSuggestion }
+  return withPromptSuggestion(
+    state,
+    reduceStructuredAgentSession(state, action, receivedAt),
+    action
+  )
 }

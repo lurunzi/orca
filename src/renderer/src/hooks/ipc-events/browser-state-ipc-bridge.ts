@@ -5,7 +5,7 @@ import { openUrlInTabBesideBrowserPage } from '@/lib/browser/palette/browser-pag
 import { redactKagiSessionToken } from '../../../../shared/browser-url'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 import { useAppStore } from '../../store'
-import { findPage } from '../../store/slices/browser-page-records'
+import { findPage } from '../../store/slices/browser/pages/browser-page-records'
 import {
   acquireBrowserAutomationVisibility,
   releaseBrowserAutomationVisibility
@@ -164,8 +164,14 @@ export function registerBrowserStateIpcBridge(
   // Why: the bootstrap lease is fixed at creation; an agent's page in a hidden worktree must keep drawing while it drives it.
   const agentActivityPaintHolds = createMainOwnedPaintHolds()
   const unsubscribeAgentActivity = window.api.browser.onAgentActivity?.(
-    ({ browserPageId, worktreeId, active, controllerHostLabel }) => {
-      setBrowserAgentPageActive(browserPageId, active, worktreeId, controllerHostLabel)
+    ({ browserPageId, worktreeId, active, controllerHostLabel, agentSessionId }) => {
+      setBrowserAgentPageActive(
+        browserPageId,
+        active,
+        worktreeId,
+        controllerHostLabel,
+        agentSessionId
+      )
       agentActivityPaintHolds.set(browserPageId, active)
     }
   )

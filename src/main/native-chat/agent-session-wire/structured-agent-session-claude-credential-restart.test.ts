@@ -27,7 +27,7 @@ it('releases a strict credential close after the original Claude connection repo
   const connection = claude.connections[0]!
   connection.exitVerdict = { root: 'unverifiable', tree: 'unverifiable', killDelivered: true }
   const close = vi.spyOn(connection, 'close').mockResolvedValue(false)
-  await expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+  await expect(host.mutations.restartAgentForCredentials(input)).rejects.toMatchObject({
     code: DashboardAgentRestartCode.ExitUnconfirmed
   })
   await expect(host.close(SESSION, 'user-close')).rejects.toThrow()
