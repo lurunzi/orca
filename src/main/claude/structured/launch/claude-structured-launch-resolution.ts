@@ -1,11 +1,7 @@
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import { prepareClaudeLaunchAccount } from '../../claude-launch-account'
-import { readDashboardClaudeAllocation } from '../../../dashboard-accounts/dashboard-allocation-reader'
 import type { DashboardClaudeLaunchBinding } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
-import {
-  dashboardClaudeEnvironment,
-  DASHBOARD_CLAUDE_ENV_TO_DELETE
-} from '../../../dashboard-accounts/dashboard-claude-environment'
+import { prepareDashboardClaudeLaunch } from '../../../dashboard-accounts/dashboard-claude-environment'
 import { assertStructuredAgentResolutionCurrent } from '../../../native-chat/structured-agent-command-resolution'
 import { activeProviderContext } from '../../../../shared/agent-session/agent-session-provider-context'
 import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
@@ -290,22 +286,14 @@ export function claudeStructuredLaunchPart(
         hasTranscript: deps.hasTranscript
       })
     }
-    const allocation = await readDashboardClaudeAllocation()
+    const dashboard = await prepareDashboardClaudeLaunch(env)
     return {
       launch: {
         pathToClaudeCodeExecutable: command,
         prefixArgs,
         account: accountRecipe.route === 'managed' ? 'managed' : 'system',
         accountRecipe,
-        ...(allocation
-          ? {
-              dashboardBinding: {
-                account_id: allocation.account_id,
-                binding_revision: allocation.binding_revision,
-                credential_version: allocation.credential_version
-              }
-            }
-          : {}),
+        ...dashboard.launch,
         options: {
           ...CLAUDE_STRUCTURED_BASE_OPTIONS,
           ...permission,
@@ -333,8 +321,8 @@ export function claudeStructuredLaunchPart(
           ? { forkedFromKey: agentSessionProviderHandleKey(head) }
           : {})
       },
-      env: allocation ? dashboardClaudeEnvironment(env, allocation) : env,
-      inheritedEnvToDelete: allocation ? DASHBOARD_CLAUDE_ENV_TO_DELETE : [],
+      env: dashboard.env,
+      inheritedEnvToDelete: dashboard.inheritedEnvToDelete,
       // The agent runtime follows Orca's CLI directory on PATH so another orca cannot shadow it.
       cliRuntimeCommand: command
     }
