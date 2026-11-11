@@ -228,7 +228,7 @@ export class DashboardCodexAuthentication {
     try {
       this.connection = connection
       this.assertCurrent()
-      if (!allocation || version !== '0.166.0') {
+      if (!allocation || !version) {
         throw new DashboardAllocationError()
       }
       this.refresh.activate(connection, scope)

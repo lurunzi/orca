@@ -185,19 +185,22 @@ describe('Dashboard Codex external authentication', () => {
     )
   })
 
-  it('refuses an unpinned or unknown server version before injecting credentials', async () => {
-    for (const version of ['0.166.1', null]) {
-      const auth = new DashboardCodexAuthentication(
-        allocation,
-        () => true,
-        new DashboardCodexRefreshMailbox()
-      )
-      const connection = connected(auth)
-      await expect(auth.authenticate(connection, version, scope)).rejects.toMatchObject({
-        message: 'dashboard_allocation_unavailable'
-      })
-      expect(connection.request).not.toHaveBeenCalled()
-    }
+  it('authenticates a newer version through the same external login and workspace checks', async () => {
+    const auth = authentication()
+    await expect(auth.authenticate(connected(auth), '0.166.1', scope)).resolves.toEqual({
+      account_id: 'pool-fixture',
+      binding_revision: 3,
+      credential_version: 4
+    })
+  })
+
+  it('refuses an unknown server version before injecting credentials', async () => {
+    const auth = authentication()
+    const connection = connected(auth)
+    await expect(auth.authenticate(connection, null, scope)).rejects.toMatchObject({
+      message: 'dashboard_allocation_unavailable'
+    })
+    expect(connection.request).not.toHaveBeenCalled()
   })
 
   it('rejects a login completion failure even when the login RPC succeeds', async () => {
@@ -262,7 +265,7 @@ describe('Dashboard Codex external authentication', () => {
     const auth = authentication()
     const connection = connected(auth)
     vi.mocked(connection.request).mockResolvedValueOnce({ type: 'chatgptAuthTokens' })
-    const failed = auth.authenticate(connection, '0.166.0', scope)
+    const failed = auth.authenticate(connection, '0.166.1', scope)
     auth.handleNotification('account/login/completed', {
       loginId: null,
       success: true,
