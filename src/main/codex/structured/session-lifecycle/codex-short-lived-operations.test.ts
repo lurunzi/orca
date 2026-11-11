@@ -448,6 +448,7 @@ it('copies after authentication and returns only the same-operation pool identit
   const adapter = coldAdapter()
   await expect(adapter.copyConversation(await poolCopyInput())).resolves.toEqual({
     sessionId: CHILD_THREAD,
+    coverage: { unit: 'codex-turn', ids: ['copy-turn'] },
     poolCopy: {
       provider: 'codex',
       sourceSessionId: 'session-fixture',

@@ -30,7 +30,7 @@ export async function copyCodexConversationForAccount(
   }
   return owner.track(input.signal, async (signal) => {
     const pool: { identity: CodexPoolIdentity | null } = { identity: null }
-    const { sessionId } = await copyCodexConversation(
+    const copy = await copyCodexConversation(
       { ...input, signal },
       invocation,
       (source, launch, options, body) =>
@@ -48,15 +48,16 @@ export async function copyCodexConversationForAccount(
     )
     const { identity } = pool
     if (!identity) {
-      return { sessionId }
+      return copy
     }
     const poolCopy = CodexPoolCopyReceiptSchema.parse({
       provider: DashboardToolProvider.Codex,
       sourceSessionId: record.sessionId,
       sourceProviderSessionId: input.providerSessionId,
-      targetProviderSessionId: sessionId,
+      targetProviderSessionId: copy.sessionId,
       identity
     })
-    return { sessionId, poolCopy }
+    // The copy's turn coverage stays with it so a pool fork records the same history origin.
+    return { ...copy, poolCopy }
   })
 }
