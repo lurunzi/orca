@@ -15,17 +15,14 @@ import {
   type CodexProviderInvocationDeps
 } from './codex-provider-session-rename'
 import type { CodexSession } from './codex-structured-session-state'
-import { DashboardCodexRefreshOperation } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
-import type { CodexShortLivedOperations } from './codex-short-lived-operations'
 import type { StructuredAgentSessionAdapter } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
-import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 
 const USAGE_RPC_TIMEOUT_MS = 10_000
 const COLD_USAGE_TIMEOUT_MS = 30_000
 
-async function readUsage(
+export async function readUsage(
   request: CodexAppServerRpc['request']
-): Promise<Omit<CodexAccountUsageRead, 'live' | 'pool'>> {
+): Promise<Omit<CodexAccountUsageRead, 'live'>> {
   const accountReply = await request('account/read', {}, { timeoutMs: USAGE_RPC_TIMEOUT_MS })
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Codex's account/read response owns the account envelope.
   const { account } = (accountReply ?? {}) as Pick<CodexAccountUsageRead, 'account'>
@@ -41,58 +38,29 @@ async function readUsage(
  *  short-lived app-server launched exactly as the chat is, without resuming the thread. */
 export function readCodexSessionAccountUsage(
   sessions: Map<string, CodexSession>,
-  readInvocation: () => CodexProviderInvocationDeps | undefined,
-  owner?: CodexShortLivedOperations
+  readInvocation: () => CodexProviderInvocationDeps | undefined
 ): NonNullable<StructuredAgentSessionAdapter['readAccountUsage']> {
   return async (record, signal) => {
-    const session = sessions.get(record.sessionId)
-    const connection = session?.connection
-    if (session && connection && !connection.closed) {
-      const pool = session.dashboardAdoption !== undefined
-      if ((process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined || record.poolAccount) && !pool) {
-        throw new DashboardAllocationError()
-      }
-      const assertPoolCurrent = () => {
-        if (
-          pool &&
-          (session.ended || connection.closed || sessions.get(record.sessionId) !== session)
-        ) {
-          throw new DashboardAllocationError()
-        }
-      }
-      assertPoolCurrent()
+    const connection = sessions.get(record.sessionId)?.connection
+    if (connection && !connection.closed) {
       const usage = await readUsage((method, params, options) =>
         connection.request(method, params, options)
       )
-      assertPoolCurrent()
-      return { ...usage, live: true, ...(pool ? { pool: true as const } : {}) }
+      return { ...usage, live: true }
     }
     const invocation = readInvocation()
     if (!invocation) {
       throw new Error('Codex usage invocation is not configured')
     }
-    const read = () => {
+    const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
+    return withCodexHomeProcessLock(resolveCodexHomeProcessLockKey(codexHome), async () => {
       signal.throwIfAborted()
       return runCodexProviderAppServer(
         record,
         invocation,
-        {
-          timeoutMs: COLD_USAGE_TIMEOUT_MS,
-          signal,
-          operation: DashboardCodexRefreshOperation.ReadAccountUsage,
-          serializeHome: true
-        },
-        async (rpc, _cwd, identity) => ({
-          ...(await readUsage(rpc.request)),
-          ...(identity ? { pool: true as const } : {})
-        }),
-        owner
+        { timeoutMs: COLD_USAGE_TIMEOUT_MS, signal },
+        (rpc) => readUsage(rpc.request)
       )
-    }
-    if (owner) {
-      return read()
-    }
-    const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
-    return withCodexHomeProcessLock(resolveCodexHomeProcessLockKey(codexHome), read)
+    })
   }
 }

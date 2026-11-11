@@ -12,24 +12,8 @@ import {
   spawnCodexAppServerProcess,
   type CodexAppServerSpawn
 } from './codex-app-server-process-tree-kill'
-import {
-  CodexAppServerUnsupportedError,
-  CodexAppServerTimeoutError,
-  createCodexAppServerSessionRpc,
-  type CodexAppServerRpc,
-  type CodexAppServerSessionHooks
-} from './codex-app-server-session-rpc'
-export {
-  CodexAppServerUnsupportedError,
-  CodexAppServerTimeoutError,
-  isCodexAppServerUnsupportedError,
-  isCodexMethodNotFoundError
-} from './codex-app-server-session-rpc'
-export type {
-  CodexAppServerRpc,
-  CodexAppServerSessionRpc,
-  CodexAppServerSessionHooks
-} from './codex-app-server-session-rpc'
+import { createProviderRecordReader } from '../../provider-process/provider-record-reader'
+import * as sessionHooks from './codex-app-server-session-hooks'
 
 export type CodexAppServerInvocation = {
   command: string
@@ -48,15 +32,64 @@ export type CodexAppServerInvocation = {
   treeKillOnFinish?: boolean
 }
 
+/** Missing app-server subcommand or RPC method; only this class marks capability caches unsupported. */
+export class CodexAppServerUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CodexAppServerUnsupportedError'
+  }
+}
+
+export class CodexAppServerTimeoutError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CodexAppServerTimeoutError'
+  }
+}
+
+export function isCodexAppServerUnsupportedError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'CodexAppServerUnsupportedError'
+}
+
+type JsonRpcResponse = {
+  id?: number
+  result?: unknown
+  error?: { code?: number; message?: string }
+}
+
+export type CodexAppServerRpc = {
+  signal?: AbortSignal
+  /** Per-call deadline within the session deadline; absent/null uses only the session deadline. */
+  request: (
+    method: string,
+    params?: Record<string, unknown>,
+    options?: { timeoutMs?: number | null }
+  ) => Promise<unknown>
+  notify: (method: string, params?: Record<string, unknown>) => void
+}
+
+const JSON_RPC_METHOD_NOT_FOUND = -32601
 const STDERR_DETAIL_MAX_CHARS = 400
 const CODEX_APP_SERVER_KILL_SITE = 'codex-app-server-session'
+
+// Only method-not-found responses prove absence rather than a transient failure.
+export function isCodexMethodNotFoundError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+  const { code, message } = error as { code?: unknown; message?: unknown }
+  return (
+    code === JSON_RPC_METHOD_NOT_FOUND ||
+    /method not found/i.test(typeof message === 'string' ? message : '')
+  )
+}
 
 /** Runs a bounded JSONL session; the POSIX supervisor also stops its group if Orca dies. */
 export async function runCodexAppServerSession<T>(
   invocation: CodexAppServerInvocation,
   body: (rpc: CodexAppServerRpc) => Promise<T>,
   spawnImpl: CodexAppServerSpawn = spawnCodexAppServerProcess,
-  hooks: CodexAppServerSessionHooks = {}
+  hooks?: sessionHooks.CodexAppServerSessionHooks
 ): Promise<T> {
   invocation.signal?.throwIfAborted()
   // Strip CODEX_HOME after the overlay so default-home grants target the real ~/.codex.
@@ -86,64 +119,156 @@ export async function runCodexAppServerSession<T>(
   const lifetime = new AbortController()
   let exited = false
   let exitCode: number | null = null
-  let forceStop = false
-  let rejectSession: (error: Error) => void = () => {}
-  const ended = new Promise<never>((_resolve, reject) => {
-    rejectSession = reject
-  })
-  function endSession(error: Error): void {
-    if (lifetime.signal.aborted) {
-      return
-    }
-    lifetime.abort(error)
-    rejectSession(error)
-  }
-  const rpc = createCodexAppServerSessionRpc({
-    child,
-    signal: lifetime.signal,
-    hooks,
-    fail: endSession
-  })
+  let nextRequestId = 1
+  let timedOut = false
+  const pending = new Map<
+    number,
+    { resolve: (r: JsonRpcResponse) => void; reject: (e: Error) => void }
+  >()
 
   managed.onExit((exit) => {
     exited = true
     exitCode = exit.code
-    endSession(buildEarlyExitError())
   })
-  // Spawn failures emit error without exit; reject hooks as well as pending requests.
+  // Spawn failures emit error without exit; reject requests that would otherwise hang.
+  let spawnError: Error | null = null
   child.on('error', (error) => {
+    spawnError = error
     exited = true
-    endSession(error)
+    failPending(error)
   })
-  child.on('close', () => endSession(buildEarlyExitError()))
-  // Exit can race stdin.write(); EPIPE must also release a hook awaiting unrelated work.
-  child.stdin.on('error', endSession)
+  // close guarantees complete stderr for classifying missing-subcommand versus transient failure.
+  child.on('close', () => {
+    failPending(buildEarlyExitError())
+  })
+  // Exit can race stdin.write(); reject RPCs on EPIPE instead of leaving an unhandled stream error.
+  child.stdin.on('error', (error) => {
+    failPending(error)
+  })
 
-  function stopSession(error: Error): void {
-    if (lifetime.signal.aborted) {
-      return
+  const hooked = sessionHooks.attach(hooks, child, lifetime, requestRpc, buildEarlyExitError)
+  createProviderRecordReader({
+    stdout: child.stdout,
+    onRecord: (parsed) => {
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return
+      }
+      const message = parsed as JsonRpcResponse
+      if (hooked?.dispatch(message) || typeof message.id !== 'number') {
+        return
+      }
+      const waiter = pending.get(message.id)
+      if (waiter) {
+        pending.delete(message.id)
+        waiter.resolve(message)
+      }
+    },
+    onRejected: () => undefined,
+    onFatal: failPending
+  })
+
+  function failPending(error: Error): void {
+    for (const waiter of pending.values()) {
+      waiter.reject(error)
     }
-    endSession(error)
-    forceStop = true
+    pending.clear()
+  }
+
+  let rejectDeadline: (error: Error) => void = () => {}
+  const deadlinePromise = new Promise<never>((_resolve, reject) => {
+    rejectDeadline = reject
+  })
+  function endSession(error: Error): void {
+    lifetime.abort(error)
+    timedOut = true
     // A supervised child is stopped by the finally below, which this rejection runs at once.
-    if (!managed.supervised && !exited) {
+    if (!managed.supervised) {
       killCodexAppServerProcessTree(child)
     }
+    failPending(error)
+    rejectDeadline(error)
   }
   const deadline = setTimeout(
     () =>
-      stopSession(
+      endSession(
         new CodexAppServerTimeoutError(
           `codex app-server session exceeded ${invocation.timeoutMs}ms (${invocation.command})`
         )
       ),
     invocation.timeoutMs
   )
-  const onAbort = (): void => stopSession(new Error('codex app-server session stopped'))
+  const onAbort = (): void => endSession(new Error('codex app-server session stopped'))
   if (invocation.signal?.aborted) {
     onAbort()
   } else {
     invocation.signal?.addEventListener('abort', onAbort, { once: true })
+  }
+
+  function sendLine(payload: Record<string, unknown>): void {
+    child.stdin.write(`${JSON.stringify(payload)}\n`)
+  }
+
+  function notify(method: string, params?: Record<string, unknown>): void {
+    const payload: Record<string, unknown> = { method }
+    if (params !== undefined) {
+      payload.params = params
+    }
+    try {
+      sendLine(payload)
+    } catch {
+      // Notifications are fire-and-forget; a dead child fails the next request.
+    }
+  }
+
+  async function requestRpc(
+    method: string,
+    params?: Record<string, unknown>,
+    options: { timeoutMs?: number | null } = {}
+  ): Promise<unknown> {
+    if (spawnError) {
+      throw spawnError
+    }
+    if (timedOut) {
+      throw new CodexAppServerTimeoutError('codex app-server session already timed out')
+    }
+    if (exited) {
+      throw buildEarlyExitError()
+    }
+    const id = nextRequestId++
+    let requestTimer: ReturnType<typeof setTimeout> | undefined
+    const response = await new Promise<JsonRpcResponse>((resolve, reject) => {
+      pending.set(id, { resolve, reject })
+      const { timeoutMs } = options
+      if (typeof timeoutMs === 'number') {
+        requestTimer = setTimeout(() => {
+          pending.delete(id)
+          reject(
+            new CodexAppServerTimeoutError(`codex app-server ${method} exceeded ${timeoutMs}ms`)
+          )
+        }, timeoutMs)
+      }
+      const payload: Record<string, unknown> = { method, id }
+      if (params !== undefined) {
+        payload.params = params
+      }
+      try {
+        sendLine(payload)
+      } catch (error) {
+        pending.delete(id)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      }
+    }).finally(() => clearTimeout(requestTimer))
+    if (response.error) {
+      if (isCodexMethodNotFoundError(response.error)) {
+        throw new CodexAppServerUnsupportedError(
+          `codex app-server does not support ${method}: ${response.error.message ?? 'method not found'}`
+        )
+      }
+      throw new Error(
+        `codex app-server ${method} failed: ${response.error.message ?? 'unknown error'}`
+      )
+    }
+    return response.result
   }
 
   // The supervisor's spawn-failure report reads as Node's own spawn error line.
@@ -170,41 +295,18 @@ export async function runCodexAppServerSession<T>(
   }
 
   try {
-    try {
-      const session = async (): Promise<T> => {
-        const result = await rpc.request('initialize', {
-          clientInfo: { name: 'orca_desktop', title: 'Orca', version: '0.0.0' },
-          ...(invocation.experimentalApi ? { capabilities: { experimentalApi: true } } : {})
-        })
-        rpc.notify('initialized')
-        lifetime.signal.throwIfAborted()
-        await hooks.onInitialized?.(rpc, result)
-        lifetime.signal.throwIfAborted()
-        return body({ request: rpc.request, notify: rpc.notify, signal: lifetime.signal })
-      }
-      // Killing the child cannot settle a callback awaiting unrelated work; race the whole callback.
-      return await Promise.race([session(), ended])
-    } finally {
-      lifetime.abort()
-      clearTimeout(deadline)
-      invocation.signal?.removeEventListener('abort', onAbort)
-      // A session past its deadline is wedged; its stdin end would only add a grace.
-      if (forceStop && managed.supervised && !exited) {
-        try {
-          child.stdin.end()
-        } catch {
-          // A destroyed stdin still leaves the SIGTERM and the close below.
-        }
-        child.kill('SIGTERM')
-      }
-      if (invocation.treeKillOnFinish && !managed.supervised && !exited) {
-        await managed.terminateTree()
-      }
-      // Ends stdin, gives a supervisor its full stop time (a direct child 1.5 s), then the tree.
-      await managed.close()
+    const session = async (): Promise<T> => {
+      const initialized = await requestRpc('initialize', {
+        clientInfo: { name: 'orca_desktop', title: 'Orca', version: '0.0.0' },
+        ...(invocation.experimentalApi ? { capabilities: { experimentalApi: true } } : {})
+      })
+      notify('initialized')
+      await hooked?.initialized(initialized)
+      return body({ request: requestRpc, notify, signal: lifetime.signal })
     }
+    // Killing the child cannot settle a callback awaiting unrelated work; race the whole callback.
+    return await Promise.race([session(), deadlinePromise, ...(hooked ? [hooked.ended] : [])])
   } catch (error) {
-    // Root exit precedes stream close; classify capability only after stderr drains.
     if (
       error instanceof Error &&
       !(error instanceof CodexAppServerUnsupportedError) &&
@@ -216,5 +318,23 @@ export async function runCodexAppServerSession<T>(
       )
     }
     throw error
+  } finally {
+    lifetime.abort()
+    // A session past its deadline is wedged; its stdin end would only add a grace.
+    if (timedOut && managed.supervised && !exited) {
+      try {
+        child.stdin.end()
+      } catch {
+        // A destroyed stdin still leaves the SIGTERM and the close below.
+      }
+      child.kill('SIGTERM')
+    }
+    if (invocation.treeKillOnFinish && !managed.supervised && !exited) {
+      await managed.terminateTree()
+    }
+    // Ends stdin, gives a supervisor its full stop time (a direct child 1.5 s), then the tree.
+    await managed.close()
+    clearTimeout(deadline)
+    invocation.signal?.removeEventListener('abort', onAbort)
   }
 }
