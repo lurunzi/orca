@@ -71,8 +71,11 @@ describe('Codex pool reset-credit rejection', () => {
     const { DashboardAllocationError } =
       await import('../dashboard-accounts/dashboard-allocation-protocol')
     const service = new CodexAccountService(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the constructor uses this settings/ledger fixture; pool reset refusal precedes further store access.
       store as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: pool reset refusal precedes rate-limit reads and mutations, asserted below.
       rateLimits as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: pool reset refusal precedes runtime-home preparation, asserted below.
       runtimeHome as never
     )
     store.getSettings.mockClear()

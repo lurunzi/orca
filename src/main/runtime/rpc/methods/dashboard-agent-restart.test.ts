@@ -41,6 +41,11 @@ function context(
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this method reads only transport identity and the Runtime id.
   return { ...identity, runtime: { getRuntimeId: () => 'r1' } } as RpcContext
 }
+type UnvalidatedReports = {
+  readDashboardCodexProcesses?: () => unknown
+  readDashboardClaudeLaunches?: () => unknown
+}
+
 function installed(provider = Tool.Codex) {
   const params = request(provider)
   const process = {
@@ -53,8 +58,8 @@ function installed(provider = Tool.Codex) {
     ...(provider === Tool.ClaudeCode ? { initialized: true } : {})
   }
   const { confirm_interrupt: _confirm, provider: _tool, ...launch } = process
-  const read = vi.fn(() => ({ pending_acquisitions: 0, processes: [launch] }))
-  const registration = vi.fn(() => ({
+  const read = vi.fn((): unknown => ({ pending_acquisitions: 0, processes: [launch] }))
+  const registration = vi.fn((): { adapter: UnvalidatedReports } => ({
     adapter: { readDashboardCodexProcesses: read, readDashboardClaudeLaunches: read }
   }))
   const result = {
@@ -151,7 +156,7 @@ describe.skipIf(process.platform !== 'linux')('local confirmed pool Agent restar
       code: Code.Unavailable
     })
     const fixture = installed()
-    fixture.registration.mockReturnValueOnce({ adapter: {} } as never)
+    fixture.registration.mockReturnValueOnce({ adapter: {} })
     await expect(method.handler(request(), context())).rejects.toMatchObject({
       code: Code.Unavailable
     })
@@ -220,16 +225,14 @@ describe.skipIf(process.platform !== 'linux')('local confirmed pool Agent restar
     fixture.read.mockReturnValueOnce({
       pending_acquisitions: 0,
       processes: [{ ...fixture.launch, access_token: 'private' }]
-    } as never)
+    })
     await expect(method.handler(fixture.params, context())).rejects.toMatchObject({
       code: Code.Failed,
       message: Code.Failed
     })
     expect(fixture.restart).not.toHaveBeenCalled()
-    fixture.restart.mockResolvedValueOnce({
-      ...fixture.restartResult,
-      access_token: 'private'
-    } as never)
+    const invalidResult = { ...fixture.restartResult, access_token: 'private' }
+    fixture.restart.mockResolvedValueOnce(invalidResult)
     await expect(method.handler(fixture.params, context())).rejects.toMatchObject({
       code: Code.Failed,
       message: Code.Failed
