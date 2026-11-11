@@ -15,10 +15,6 @@ import { throwIfAiVaultScanCancelled } from '../../ai-vault-scan-cancellation'
 import { WslTranscriptFsError } from '../../../native-chat/wsl-transcript-fs-error'
 import { parseJsonObject, timestampMs } from '../../session-scanner-values'
 import { antigravityHistoryPromptHash } from './antigravity-history-prompt'
-import {
-  antigravityConversationSummariesPath,
-  readAntigravityConversationWorkspaces
-} from '../../antigravity-conversation-summaries'
 import { antigravitySessionOrigin } from '../../../../shared/antigravity-session-origin'
 import { antigravityAcpSessionMetadataPath } from './session-scanner-antigravity-paths'
 import {
