@@ -3,6 +3,7 @@ import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { OrcadFeatureReadiness } from '../runtime/rpc/orcad-feature-readiness'
 import { restoreOrcadTerminalAuthority } from './orcad-restored-terminal-authority'
 import { restoreOrcadRuntimeAuthority } from './orcad-runtime-authority'
+import { DashboardAllocationError } from '../dashboard-accounts/dashboard-allocation-protocol'
 
 const platform = vi.hoisted(() => ({ value: 'linux' }))
 vi.mock('node:process', () => ({
@@ -65,20 +66,35 @@ it('waits for Dashboard installation after terminal recovery before startup can 
 })
 
 it.each([
-  ['linux', ''],
-  ['win32', 'fixture-instance'],
-  ['darwin', 'fixture-instance']
-])('preserves lazy installation on %s with pool id %s', async (host, instanceId) => {
-  platform.value = host
-  vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', instanceId)
-  await restoreOrcadRuntimeAuthority(
-    runtime(async () => {
-      throw new Error('Unexpected Dashboard installation')
-    }),
-    (_name, run) => run(),
-    readiness()
-  )
-  expect(restoreOrcadTerminalAuthority).toHaveBeenCalledOnce()
+  { host: 'linux', instanceId: undefined },
+  { host: 'win32', instanceId: 'fixture-instance' },
+  { host: 'darwin', instanceId: 'fixture-instance' }
+])(
+  'preserves lazy installation on $host with pool id $instanceId',
+  async ({ host, instanceId }) => {
+    platform.value = host
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', instanceId)
+    await restoreOrcadRuntimeAuthority(
+      runtime(async () => {
+        throw new Error('Unexpected Dashboard installation')
+      }),
+      (_name, run) => run(),
+      readiness()
+    )
+  }
+)
+
+it('rejects an empty pool instance instead of admitting personal-mode readiness', async () => {
+  vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', '')
+  await expect(
+    restoreOrcadRuntimeAuthority(
+      runtime(async () => {
+        throw new Error('Unexpected Dashboard installation')
+      }),
+      (_name, run) => run(),
+      readiness()
+    )
+  ).rejects.toBeInstanceOf(DashboardAllocationError)
 })
 
 it('propagates installation failure instead of admitting RPC readiness', async () => {

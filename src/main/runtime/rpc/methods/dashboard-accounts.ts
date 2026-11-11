@@ -8,14 +8,15 @@ import { DashboardCodexProcessesResponseSchema } from '../../../dashboard-accoun
 import { DashboardCodexRefreshesResponseSchema } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import { DashboardClaudeLaunchesResponseSchema } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import { readDashboardAllocationStatus } from '../../../dashboard-accounts/dashboard-allocation-status'
+import { readDashboardInstanceId } from '../../../dashboard-accounts/dashboard-instance-id'
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 
 import { requireLocalDashboardCaller } from './dashboard-account-local-caller'
 import { DASHBOARD_AGENT_RESTART_METHOD } from './dashboard-agent-restart'
 
 function reportContext(context: RpcContext, agent: string) {
-  const instanceId = process.env.ORCA_DASHBOARD_INSTANCE_ID
-  if (process.platform !== 'linux' || !instanceId) {
+  const instanceId = readDashboardInstanceId()
+  if (process.platform !== 'linux' || instanceId === undefined) {
     throw new DashboardAllocationError()
   }
   return {

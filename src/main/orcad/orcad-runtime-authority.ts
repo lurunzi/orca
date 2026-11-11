@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { readDashboardInstanceId } from '../dashboard-accounts/dashboard-instance-id'
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import type { OrcadFeatureReadiness } from '../runtime/rpc/orcad-feature-readiness'
 import type { createOrcadStartupTiming } from './orcad-startup-timing'
@@ -10,7 +11,7 @@ export async function restoreOrcadRuntimeAuthority(
   readiness: OrcadFeatureReadiness
 ): Promise<void> {
   await restoreOrcadTerminalAuthority(runtime, timed, readiness)
-  if (process.platform === 'linux' && process.env.ORCA_DASHBOARD_INSTANCE_ID) {
+  if (process.platform === 'linux' && readDashboardInstanceId() !== undefined) {
     await timed('dashboard-accounts', () => runtime.ensureStructuredAgentSessionHost())
   }
 }

@@ -11,6 +11,8 @@ import {
   type DashboardClaudeAllocation
 } from './dashboard-allocation-protocol'
 
+import { readDashboardInstanceId } from './dashboard-instance-id'
+
 const directory = '/run/orca-dashboard'
 const file = join(directory, 'desired-accounts.json')
 function requireOwnership(stat: Stats, mode: number): void {
@@ -19,11 +21,11 @@ function requireOwnership(stat: Stats, mode: number): void {
   }
 }
 export async function readDashboardAllocation(): Promise<DashboardAllocationSnapshot | null> {
-  const instanceId = process.env.ORCA_DASHBOARD_INSTANCE_ID
+  const instanceId = readDashboardInstanceId()
   if (instanceId === undefined) {
     return null
   }
-  if (process.platform !== 'linux' || !instanceId || instanceId.length > 128) {
+  if (process.platform !== 'linux') {
     throw new DashboardAllocationError()
   }
   try {
