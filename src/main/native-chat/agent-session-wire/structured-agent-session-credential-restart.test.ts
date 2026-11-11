@@ -263,6 +263,49 @@ describe('credential restart of an observed Host child', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('settles an unwritten handover as a kept card even when stopping cannot confirm exit', async () => {
+    const input = await target()
+    const { host, dispatch, store } = hostTestState()
+    const preparing = Promise.withResolvers<AbortSignal>()
+    dispatch.mockImplementationOnce(({ signal }) => {
+      if (!signal) {
+        throw new Error('expected preparation cancellation signal')
+      }
+      preparing.resolve(signal)
+      return new Promise<never>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+      })
+    })
+    const close = vi.fn(async () => false)
+    host.deps.adapter.closeSession = close
+    try {
+      const sent = await send('preparing before provider write')
+      if (!sent.ok) {
+        throw new Error('expected admitted send')
+      }
+      const { clientMessageId } = sent.value
+      const signal = await preparing.promise
+      const settlement = host.waitForSendSettlement(SESSION, clientMessageId, { until: 'answered' })
+      await expect(host.restartAgentForCredentials(input)).rejects.toMatchObject({
+        code: Code.ExitUnconfirmed
+      })
+      expect(signal.aborted).toBe(true)
+      expect(await settlement).toMatchObject({
+        value: {
+          clientMessageId,
+          submission: { dispatchState: 'rejected', keptAsQueuedMessageId: clientMessageId }
+        }
+      })
+      expect(store.requireWritableRecord(SESSION).lease).toMatchObject({
+        runtimeFence: input.fence,
+        claimStatus: 'live',
+        ownerProcess: input.process
+      })
+    } finally {
+      close.mockResolvedValue(true)
+    }
+  })
+
   it('preserves queued messages and does not replay interrupted work', async () => {
     const input = await target()
     const { host, dispatch, acquire } = hostTestState()

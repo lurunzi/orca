@@ -13,6 +13,7 @@ import { stopStructuredAgentSessionAgentUnderSerialize } from './termination/str
 import { claimOperationStart } from './startup/structured-agent-session-agent-start'
 import { sameProviderChild } from './host/structured-agent-session-provider-child'
 import { holdUnsentSends } from '../agent-session-journal/queued-messages/journal-unsent-send-hold'
+import { closeStructuredAgentSessionHandovers } from './delivery/structured-agent-session-handing-over'
 
 const nativeAgents: Readonly<Record<DashboardToolProvider, string>> = {
   [DashboardToolProvider.Codex]: 'codex',
@@ -80,6 +81,8 @@ async function restart(
       await holdUnsentSends(session.journal, { fence: target.fence, hold: { cause: 'chatClosed' } })
       await session.journal.markQueueReopen(target.fence)
       requireTarget(attach, target)
+      void closeStructuredAgentSessionHandovers(session.journal)
+      attach.runtimeState.acquireAborts.abort(target.session_id, 'credential restart')
       try {
         await stopStructuredAgentSessionAgentUnderSerialize(attach, target.session_id, {
           cause: 'evict',
