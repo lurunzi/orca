@@ -4,7 +4,7 @@ import type { TuiAgent } from '../../../../../../shared/agent-launch/catalog/tui
 import { useAppStore } from '@/store'
 import { inspectRuntimeTerminalProcess } from '@/runtime/hosted-terminals/inspection/runtime-terminal-process-inspection'
 import { waitForAgentDraftInputReady } from './agent-draft-readiness'
-import { isExpectedAgentProcess } from '../../../../../../shared/agent-status/process/agent-process-recognition'
+import { isAgentForegroundProcess } from '../../../../../../shared/agent-status/process/agent-process-recognition'
 
 export function waitForAgentDraftInputReadyOnTab(args: {
   tabId: string
@@ -73,9 +73,9 @@ export function waitForAgentDraftInputReadyOnTab(args: {
   })
 }
 
-export async function waitForExpectedAgentOnPty(
+export async function waitForAgentOnPty(
   ptyId: string,
-  expectedProcess: string,
+  agent: TuiAgent,
   timeoutMs: number
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
@@ -89,7 +89,7 @@ export async function waitForExpectedAgentOnPty(
         return false
       }
       const foreground = process.foregroundProcess?.toLowerCase() ?? ''
-      if (isExpectedAgentProcess(foreground, expectedProcess)) {
+      if (isAgentForegroundProcess(foreground, agent)) {
         return true
       }
     } catch {

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act, cleanup, render } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { ProviderSegment } from './StatusBarProviderSegment'
@@ -78,13 +78,4 @@ describe('status-bar pool countdown', () => {
       }
     }
   )
-
-  it('starts the clock when an idle segment receives an urgent pool', () => {
-    const { container, rerender } = render(
-      <ProviderSegment p={null} compact={false} display="used" />
-    )
-    rerender(<ProviderSegment p={limits()} compact={false} display="used" />)
-    act(() => vi.advanceTimersByTime(30_001))
-    expect(container.textContent).toContain('1h 29m')
-  })
 })

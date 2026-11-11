@@ -112,12 +112,12 @@ export function agentPickerModels(
     return entry.catalog.models
   }
   return (getAgentSessionOptionLaunchCatalog(entry.agent)?.models ?? []).map(
-    agentPickerCatalogModel
+    agentPickerModelFromCatalogModel
   )
 }
 
 /** A catalog model as a picker row; a model whose listing names no efforts keeps its agent's effort choice. */
-export function agentPickerCatalogModel(model: CatalogModel): AgentPickerModel {
+export function agentPickerModelFromCatalogModel(model: CatalogModel): AgentPickerModel {
   const effort = model.options.find((option) => option.id === 'effort')
   return {
     id: model.id,

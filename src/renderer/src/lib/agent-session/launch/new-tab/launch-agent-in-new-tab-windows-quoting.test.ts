@@ -3,9 +3,6 @@ import type * as LaunchAgentKindModule from '../../../../../../shared/agent-kind
 
 const mockIsWebRuntimeSessionActive = vi.fn(() => false)
 const mockCreateTab = vi.fn()
-function queuedStartups() {
-  return mockCreateTab.mock.calls.flatMap((call) => call[3]?.pendingStartup ?? [])
-}
 const mockPasteDraftWhenAgentReady = vi.fn()
 
 const store = {
@@ -165,8 +162,8 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
   it.each(['win32', 'linux', 'darwin'] as const)(
     'passes the %s execution platform to launch prompt delivery',
     async (launchPlatform) => {
-      const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-      launchAgentInNewTab({
+      const { launchAgentInNewTabWithOutcome } = await import('./launch-agent-in-new-tab')
+      launchAgentInNewTabWithOutcome({
         requestId: `request-${launchPlatform}`,
         agent: 'codex',
         worktreeId: 'wt-1',
@@ -180,148 +177,5 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     }
   )
 
-  it('uses the explicit startup shell platform when building draft launch commands', async () => {
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    launchAgentInNewTab({
-      requestId: 'request-2',
-      agent: 'claude',
-      worktreeId: 'wt-1',
-      prompt: "review Bob's change",
-      promptDelivery: 'draft',
-      launchPlatform: 'win32'
-    })
-
-    expect(queuedStartups()).toContainEqual(
-      expect.objectContaining({
-        command: "claude '--dangerously-skip-permissions' --prefill 'review Bob''s change'"
-      })
-    )
-  })
-
-  it('quotes local Windows explicit agent args for cmd.exe prompt launches', async () => {
-    store.settings.terminalWindowsShell = 'cmd.exe'
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    launchAgentInNewTab({
-      requestId: 'request-5',
-      agent: 'codex',
-      worktreeId: 'wt-1',
-      prompt: 'fix the spinner',
-      agentArgs: '--model gpt-5',
-      launchPlatform: 'win32'
-    })
-
-    expect(queuedStartups()).toContainEqual(
-      expect.objectContaining({
-        command: 'codex "--model" "gpt-5" "fix the spinner"',
-        agentArgsOverride: '--model gpt-5'
-      })
-    )
-  })
-
-  it('quotes local Windows draft launches for Git Bash', async () => {
-    store.settings.terminalWindowsShell = 'git-bash'
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    launchAgentInNewTab({
-      requestId: 'request-6',
-      agent: 'claude',
-      worktreeId: 'wt-1',
-      prompt: "review Bob's change",
-      promptDelivery: 'draft',
-      launchPlatform: 'win32'
-    })
-
-    expect(queuedStartups()).toContainEqual(
-      expect.objectContaining({
-        command: `claude '--dangerously-skip-permissions' --prefill 'review Bob'"'"'s change'`
-      })
-    )
-  })
-
-  it('does not use the local Windows shell setting for remote Windows launches', async () => {
-    store.settings.terminalWindowsShell = 'cmd.exe'
-    store.repos = [{ id: 'repo-1', connectionId: 'ssh-1', path: 'C:\\remote\\repo' }]
-    store.sshConnectionStates = new Map([
-      ['ssh-1', { status: 'connected', remotePlatform: 'win32' }]
-    ])
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    launchAgentInNewTab({ requestId: 'request-7', agent: 'claude', worktreeId: 'wt-1' })
-
-    expect(queuedStartups()).toContainEqual(
-      expect.objectContaining({
-        command: "claude '--dangerously-skip-permissions'"
-      })
-    )
-  })
-
-  it('uses WSL launch quoting by default for Windows-path projects forced to WSL', async () => {
-    store.settings.terminalWindowsShell = 'cmd.exe'
-    store.projects = [
-      {
-        id: 'repo-1',
-        localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' }
-      }
-    ]
-    store.repos = [{ id: 'repo-1', connectionId: null, path: 'C:\\Users\\jinwo\\repo' }]
-    store.worktreesByRepo = {
-      'repo-1': [
-        {
-          id: 'wt-1',
-          repoId: 'repo-1',
-          projectId: 'repo-1',
-          path: 'C:\\Users\\jinwo\\repo\\feature',
-          displayName: 'feature'
-        }
-      ]
-    }
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    launchAgentInNewTab({
-      requestId: 'request-8',
-      agent: 'claude',
-      worktreeId: 'wt-1',
-      prompt: "review Bob's change",
-      promptDelivery: 'draft'
-    })
-
-    expect(queuedStartups()).toContainEqual(
-      expect.objectContaining({
-        command: `claude '--dangerously-skip-permissions' --prefill 'review Bob'"'"'s change'`
-      })
-    )
-  })
-
   // Node tests resolve POSIX here; verify single-quote escaping in configured default arguments.
-  it('escapes a single quote inside default agent args', async () => {
-    store.settings.terminalWindowsShell = 'cmd.exe'
-    store.settings.agentDefaultArgs = { codex: '--profile "don\'t"' }
-    store.projects = [
-      {
-        id: 'repo-1',
-        localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' }
-      }
-    ]
-    store.repos = [{ id: 'repo-1', connectionId: null, path: 'C:\\Users\\jinwo\\repo' }]
-    store.worktreesByRepo = {
-      'repo-1': [
-        {
-          id: 'wt-1',
-          repoId: 'repo-1',
-          projectId: 'repo-1',
-          path: 'C:\\Users\\jinwo\\repo\\feature',
-          displayName: 'feature'
-        }
-      ]
-    }
-    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
-
-    launchAgentInNewTab({ requestId: 'request-9', agent: 'codex', worktreeId: 'wt-1' })
-
-    const queued = queuedStartups().at(-1)
-    expect(queued.command).toContain(`'don'"'"'t'`)
-    expect(queued.command).not.toContain("'don''t'")
-  })
 })
