@@ -148,17 +148,26 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
   thinkingModelValues?: Record<string, string>
 } {
   const model = snapshot.find((option) => option.category === 'model')
+  // A read-only effort is a level saved for another model, shown until a tiered model names its own.
+  const staleEffort = snapshot.find((option) => option.id === 'effort' && option.settable === false)
   if (
     !model ||
     model.kind.type !== 'select' ||
     model.action ||
-    snapshot.some((option) => ['effort', 'serviceTier', 'fastMode', 'thinking'].includes(option.id))
+    snapshot.some(
+      (option) =>
+        option !== staleEffort &&
+        ['effort', 'serviceTier', 'fastMode', 'thinking'].includes(option.id)
+    )
   ) {
     return { snapshot, tierModelId: null }
   }
   const rows = buildModelPickerRows(model.kind.choices)
   const current = model.kind.currentValue
   const active = findTieredRow(rows, current)
+  if (staleEffort && !active) {
+    return { snapshot, tierModelId: null }
+  }
   const selected = active?.tiers.find((choice) => choice.value === current)
   const tier = selected?.tier
   const speed = selected?.speed ?? 'default'
@@ -183,13 +192,12 @@ export function projectModelTierOptions(snapshot: SessionOptionDescriptor[]): {
       row.tiers[0]
     return { ...choice, label: row.baseLabel }
   })
-  const projected = snapshot.map((option) =>
-    option === model
-      ? {
-          ...model,
-          kind: { type: 'select' as const, currentValue: current, choices }
-        }
-      : option
+  const projected = snapshot.flatMap((option) =>
+    option === staleEffort
+      ? []
+      : option === model
+        ? [{ ...model, kind: { type: 'select' as const, currentValue: current, choices } }]
+        : [option]
   )
   const efforts =
     active?.tiers.filter(

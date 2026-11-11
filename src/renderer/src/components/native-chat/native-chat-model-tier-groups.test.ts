@@ -176,6 +176,71 @@ describe('model effort and speed projection', () => {
     ])
   }
 
+  it('splits effort before the first message when only a stale saved level is shown', () => {
+    // An effort saved for another model surfaces as a read-only placeholder; it is not the model's effort.
+    const stale: SessionOptionDescriptor = {
+      id: 'effort',
+      label: 'Reasoning effort',
+      category: 'thought_level',
+      valueSource: 'applied',
+      transport: 'agent-session',
+      settable: false,
+      kind: { type: 'select', currentValue: 'xhigh', choices: [{ value: 'xhigh', label: 'xhigh' }] }
+    }
+    const model = project('grok-4.7-high').snapshot[0]
+    const result = projectModelTierOptions([
+      {
+        ...model,
+        kind: {
+          type: 'select',
+          currentValue: 'grok-4.7-high',
+          choices: [
+            { value: 'grok-4.7-low', label: 'Grok 4.7 Low' },
+            { value: 'grok-4.7-high', label: 'Grok 4.7 High' }
+          ]
+        }
+      },
+      stale
+    ])
+    const efforts = result.snapshot.filter((option) => option.id === 'effort')
+    expect(efforts).toHaveLength(1)
+    expect(efforts[0]).toMatchObject({
+      settable: true,
+      kind: {
+        currentValue: 'grok-4.7-high',
+        choices: [
+          { value: 'grok-4.7-low', label: 'Low' },
+          { value: 'grok-4.7-high', label: 'High' }
+        ]
+      }
+    })
+    expect(result.tierModelId).toBe('model')
+  })
+
+  it('keeps a stale saved level for a model without effort tiers', () => {
+    const stale: SessionOptionDescriptor = {
+      id: 'effort',
+      label: 'Reasoning effort',
+      category: 'thought_level',
+      valueSource: 'applied',
+      transport: 'agent-session',
+      settable: false,
+      kind: { type: 'select', currentValue: 'xhigh', choices: [{ value: 'xhigh', label: 'xhigh' }] }
+    }
+    const snapshot = [
+      {
+        ...project('auto').snapshot[0],
+        kind: {
+          type: 'select' as const,
+          currentValue: 'auto',
+          choices: [{ value: 'auto', label: 'Auto' }]
+        }
+      },
+      stale
+    ]
+    expect(projectModelTierOptions(snapshot)).toEqual({ snapshot, tierModelId: null })
+  })
+
   it('keeps Fast selected and changes effort within the same speed', () => {
     const result = project('grok-4.7-high-fast')
     expect(result.snapshot[0].kind).toMatchObject({
