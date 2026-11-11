@@ -21,6 +21,10 @@ import {
 } from '../../antigravity-conversation-summaries'
 import { antigravitySessionOrigin } from '../../../../shared/antigravity-session-origin'
 import { antigravityAcpSessionMetadataPath } from './session-scanner-antigravity-paths'
+import {
+  antigravityConversationSummariesPath,
+  readAntigravityConversationWorkspaces
+} from './antigravity-conversation-summaries'
 
 const HISTORY_MATCH_WINDOW_MS = 2_000
 
