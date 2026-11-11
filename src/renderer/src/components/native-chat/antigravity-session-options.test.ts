@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session/options/agent-session-option-catalog'
-import { clearNativeChatSessionOptionCacheForTests } from '../../../../shared/native-chat/input/native-chat-session-option-cache'
 import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat/input/native-chat-pty-session-options'
 
 const AGY_MODELS_STDOUT = [
@@ -13,8 +12,6 @@ const discoveredModels =
   getAgentSessionOptionCatalog('antigravity')!.listModels!.parse(AGY_MODELS_STDOUT)
 
 describe('Antigravity model picker', () => {
-  beforeEach(() => clearNativeChatSessionOptionCacheForTests())
-
   it('parses `agy models` into catalog choices', () => {
     expect(discoveredModels).toEqual([
       { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] },

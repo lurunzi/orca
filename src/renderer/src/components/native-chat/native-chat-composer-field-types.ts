@@ -1,5 +1,5 @@
 import type { ClipboardEventHandler, KeyboardEventHandler, ReactNode, RefObject } from 'react'
-import type { useImeEnterGestureOwnership } from '@/lib/ime-composition-keyboard-event'
+import type { useImeEnterGestureOwnership } from '@/lib/text-input/ime/ime-composition-keyboard-event'
 import type { ComposerAutocomplete } from '../../../../shared/native-chat/input/native-chat-composer-autocomplete'
 import type { NativeChatPickerItem } from '../../../../shared/native-chat/input/native-chat-picker-items'
 import type {

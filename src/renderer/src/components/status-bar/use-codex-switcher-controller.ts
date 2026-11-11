@@ -18,7 +18,7 @@ import {
 import {
   getWindowsTerminalCapabilityOwnerKey,
   useWindowsTerminalCapabilities
-} from '@/lib/windows-terminal-capabilities'
+} from '@/runtime/hosts/capabilities/windows-terminal-capabilities'
 import { getCodexAccountSyncKey } from './codex-switcher-projection'
 import { useCodexResetCreditController } from './use-codex-reset-credit-controller'
 import type { ChatAccountAction } from './ProviderAccountChatButton'

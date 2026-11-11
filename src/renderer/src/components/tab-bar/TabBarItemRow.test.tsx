@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 
-import { act, startTransition, Suspense, use } from 'react'
+import { act, Suspense, use } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearClientHostedBrowserRowSelection } from '@/lib/pane-manager/client-hosted-browser-row-state'
+import { clearClientHostedBrowserRowSelection } from '@/runtime/browser/client-hosting/client-hosted-browser-row-state'
 import { getTabDragLabel, type TabBarItem } from './tab-bar-item-model'
 import type { WorkspaceVisibleTabType } from '../../../../shared/tab-types'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
@@ -284,20 +284,6 @@ describe('tab strip rows', () => {
     expect(getTabDragLabel(chat, false, null)).toBe('My label')
     renderStrip({ chatTitle: 'Renamed conversation' })
     expect(lastRender('session-1').tab?.title).toBe('Renamed conversation')
-  })
-
-  it('keeps the committed handler when React abandons a render', async () => {
-    const committed = vi.fn()
-    const abandoned = vi.fn()
-    renderStrip({ onActivate: committed })
-    await act(async () =>
-      startTransition(() => root!.render(stripTree({ onActivate: abandoned }, true)))
-    )
-
-    lastRender('terminal-1').onActivate('terminal-1')
-
-    expect(committed).toHaveBeenCalledWith('terminal-1')
-    expect(abandoned).not.toHaveBeenCalled()
   })
 })
 

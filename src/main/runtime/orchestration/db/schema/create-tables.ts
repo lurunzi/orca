@@ -4,10 +4,11 @@ import { createGraphTablesSql } from './create-graph-tables-sql'
 import { DERIVED_DELIVERY_SCHEMA_SQL } from './migrate-v41'
 import { REMOVED_WORK_SCHEMA_SQL } from '../reset/removed-orchestration-work-store'
 import { STRUCTURED_SESSION_IDENTITIES_SQL } from '../structured-session-identity/structured-session-identity-store'
+import { PEER_RUN_SCHEMA_SQL } from '../peer-runs/peer-run-queue-sql'
 
 export function createTables(this: OrchestrationDb): void {
   this.db.exec(
-    `${createCoreTablesSql()}\n${createGraphTablesSql()}\n${REMOVED_WORK_SCHEMA_SQL}\n${STRUCTURED_SESSION_IDENTITIES_SQL}`
+    `${createCoreTablesSql()}\n${createGraphTablesSql()}\n${REMOVED_WORK_SCHEMA_SQL}\n${PEER_RUN_SCHEMA_SQL}\n${STRUCTURED_SESSION_IDENTITIES_SQL}`
   )
   // Unreleased builds saved each send's fence as NOT NULL; nothing reads it, and new rows carry none.
   if (this.hasColumn('structured_mail_sends', 'fence')) {

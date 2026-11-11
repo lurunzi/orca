@@ -4,7 +4,6 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
 import { clearNativeChatModelEnrichmentForTests } from './session/options/catalog/native-chat-session-option-enrichment'
-import { clearNativeChatSessionOptionCacheForTests } from '../../../../shared/native-chat/input/native-chat-session-option-cache'
 import { useNativeChatSessionOptions } from './session/options/terminal/use-native-chat-session-options'
 
 const discoverModels = vi.fn<() => Promise<readonly CatalogModel[] | null>>()
@@ -53,7 +52,6 @@ describe.each(providers)('$agent startup model reports', (provider) => {
   let resolveDiscovery: (models: readonly CatalogModel[]) => void
 
   beforeEach(() => {
-    clearNativeChatSessionOptionCacheForTests()
     clearNativeChatModelEnrichmentForTests()
     discoverModels.mockReset()
     discoverModels.mockReturnValue(new Promise((resolve) => (resolveDiscovery = resolve)))
@@ -73,7 +71,7 @@ describe.each(providers)('$agent startup model reports', (provider) => {
     const { result } = renderHook(() =>
       useNativeChatSessionOptions({
         agent: provider.agent,
-        terminalTabId: 'tab-discovery',
+        terminalTabId: `tab-discovery-${provider.agent}`,
         targetPtyId: 'pty-discovery',
         dispatchCommand,
         readTerminalScreen
@@ -106,7 +104,7 @@ describe.each(providers)('$agent startup model reports', (provider) => {
     const { result } = renderHook(() =>
       useNativeChatSessionOptions({
         agent: provider.agent,
-        terminalTabId: 'tab-snapshot',
+        terminalTabId: `tab-snapshot-${provider.agent}`,
         targetPtyId: 'pty-snapshot',
         dispatchCommand,
         readTerminalScreen
@@ -130,7 +128,7 @@ describe.each(providers)('$agent startup model reports', (provider) => {
     const useReopenedOptions = () =>
       useNativeChatSessionOptions({
         agent: provider.agent,
-        terminalTabId: 'tab-reopen',
+        terminalTabId: `tab-reopen-${provider.agent}`,
         targetPtyId: 'pty-reopen',
         dispatchCommand,
         readTerminalScreen
@@ -161,7 +159,7 @@ describe.each(providers)('$agent startup model reports', (provider) => {
     const { result } = renderHook(() => {
       const options = useNativeChatSessionOptions({
         agent: provider.agent,
-        terminalTabId: 'tab-mounted',
+        terminalTabId: `tab-mounted-${provider.agent}`,
         targetPtyId: 'pty-mounted',
         dispatchCommand,
         readTerminalScreen
@@ -191,7 +189,7 @@ describe.each(providers)('$agent startup model reports', (provider) => {
     const { result } = renderHook(() =>
       useNativeChatSessionOptions({
         agent: provider.agent,
-        terminalTabId: 'tab-delayed-frame',
+        terminalTabId: `tab-delayed-frame-${provider.agent}`,
         targetPtyId: 'pty-delayed-frame',
         dispatchCommand,
         readTerminalScreen

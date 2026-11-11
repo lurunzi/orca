@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { buildAiVaultResumeStartupForWorktree } from './agent-session/resume/history/ai-vault-resume-command'
 
-vi.mock('@/lib/new-workspace', () => ({
+vi.mock('@/lib/workspace/creation/new-workspace', () => ({
   CLIENT_PLATFORM: 'darwin'
 }))
 

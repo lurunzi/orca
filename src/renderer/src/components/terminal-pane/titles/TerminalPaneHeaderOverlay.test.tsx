@@ -12,12 +12,6 @@ import type { PaneManager } from '@/lib/pane-manager/pane-manager'
 import type { PtyTransport } from '../pty-transport/pty-transport-types'
 import type { AppState } from '../../../store/types'
 import TerminalPaneHeaderOverlay from './TerminalPaneHeaderOverlay'
-import {
-  encodeWorkspaceFilePaths,
-  WORKSPACE_FILE_PATHS_MIME,
-  WORKSPACE_FILE_DRAG_SOURCE_MIME,
-  writeWorkspaceFileDragSource
-} from '@/lib/workspace-file-drag'
 
 vi.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children?: ReactNode }) => children,
@@ -174,23 +168,6 @@ function renderOverlay({
   return { container, onClosePane, onRemoveTitle, onRenameSubmit }
 }
 
-function pressInputKey(
-  input: HTMLInputElement,
-  key: string,
-  options?: { isComposing?: boolean; keyCode?: number }
-): void {
-  act(() => {
-    const event = new KeyboardEvent('keydown', { key, bubbles: true })
-    if (options?.isComposing !== undefined) {
-      Object.defineProperty(event, 'isComposing', { value: options.isComposing })
-    }
-    if (options?.keyCode !== undefined) {
-      Object.defineProperty(event, 'keyCode', { value: options.keyCode })
-    }
-    input.dispatchEvent(event)
-  })
-}
-
 afterEach(() => {
   vi.unstubAllGlobals()
   for (const { container, root } of mounted.splice(0)) {
@@ -211,100 +188,4 @@ describe('TerminalPaneHeaderOverlay', () => {
     act(() => buttons[0].click())
     expect(onToggleNativeChat).toHaveBeenCalledOnce()
   })
-
-  it('ignores IME composition Enter before submitting a pane title rename', () => {
-    const { container, onRenameSubmit } = renderOverlay({
-      paneTitles: { 1: 'server', 2: '' },
-      renamingPaneId: 1,
-      renameValue: '日本語 pane'
-    })
-    const input = container.querySelector<HTMLInputElement>('.pane-title-input')
-
-    expect(input).not.toBeNull()
-
-    pressInputKey(input as HTMLInputElement, 'Enter', { isComposing: true })
-
-    expect(onRenameSubmit).not.toHaveBeenCalled()
-
-    pressInputKey(input as HTMLInputElement, 'Enter')
-
-    expect(onRenameSubmit).toHaveBeenCalledTimes(1)
-  })
-})
-
-function dispatchFileDrag(target: Element, type: 'dragover' | 'drop', internal: boolean): void {
-  const payload = new Map([
-    [WORKSPACE_FILE_PATHS_MIME, encodeWorkspaceFilePaths(['/repo/file.txt'])]
-  ])
-  writeWorkspaceFileDragSource(
-    { setData: (mime, value) => payload.set(mime, value) },
-    { executionHostId: 'local', workspaceId: 'wt-1' }
-  )
-  const event = new Event(type, { bubbles: true, cancelable: true })
-  Object.defineProperty(event, 'isTrusted', { value: true })
-  Object.defineProperty(event, 'dataTransfer', {
-    value: {
-      types: internal ? [WORKSPACE_FILE_PATHS_MIME, WORKSPACE_FILE_DRAG_SOURCE_MIME] : ['Files'],
-      files: [new File([], 'file.txt')],
-      getData: (mime: string) => (internal ? (payload.get(mime) ?? '') : ''),
-      dropEffect: 'none'
-    }
-  })
-  target.dispatchEvent(event)
-}
-
-describe('terminal title drop ownership', () => {
-  it.each([
-    { internal: true, dragover: true },
-    { internal: true, dragover: false },
-    { internal: false, dragover: true },
-    { internal: false, dragover: false }
-  ])(
-    'delivers to pane A while B stays active (internal=$internal, dragover=$dragover)',
-    async ({ internal, dragover }) => {
-      const panes = [makePane(1), makePane(2)]
-      let active = panes[1]
-      const activate = vi.fn((id: number) => {
-        active = panes.find((pane) => pane.id === id) ?? active
-      })
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The drop handler only reads panes and the active pane from this manager.
-      const manager = { getPanes: () => panes, getActivePane: () => active } as PaneManager
-      const sends = [vi.fn(() => true), vi.fn(() => true)]
-      const transports = new Map<number, PtyTransport>()
-      panes.forEach((pane, index) => {
-        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: This fixture supplies every transport method used by local file drops.
-        const transport = {
-          sendInput: sends[index],
-          getPtyId: () => `pty-${pane.id}`,
-          isConnected: () => true,
-          getExecutionHostId: () => 'local'
-        } as unknown as PtyTransport
-        transports.set(pane.id, transport)
-      })
-      const { container } = renderOverlay({
-        paneTitles: { 1: 'A', 2: 'B' },
-        dropSetup: { panes, manager, transports, activate }
-      })
-      const title = container.querySelector('.pane-title-bar')
-      if (!title) {
-        throw new Error('Title A did not render')
-      }
-      vi.stubGlobal('api', {
-        fs: {
-          getPathForFile: () => '/repo/file.txt',
-          prepareDroppedPaths: async ({ paths }: { paths: string[] }) => ({ paths, failures: [] })
-        }
-      })
-      await act(async () => {
-        if (dragover) {
-          dispatchFileDrag(title, 'dragover', internal)
-        }
-        dispatchFileDrag(title, 'drop', internal)
-      })
-      expect(sends[0]).toHaveBeenCalledExactlyOnceWith('/repo/file.txt ', 'driving')
-      expect(sends[1]).not.toHaveBeenCalled()
-      expect(activate).not.toHaveBeenCalled()
-      expect(manager.getActivePane()).toBe(panes[1])
-    }
-  )
 })

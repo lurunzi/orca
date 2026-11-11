@@ -4,7 +4,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { SettingsSegmentedControl } from '@/components/settings/form-controls/SettingsFormControls'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
-import { formatRateLimitWindowChipLabel } from '../../../../shared/rate-limit-window-label'
+import { formatRateLimitWindowChipLabel } from './rate-limit-window-localized-label'
 import { CURSOR_MODELS_BUCKET_NAME } from '../../../../shared/cursor-usage-buckets'
 import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
 import {

@@ -1,4 +1,4 @@
-import type { useMobileStructuredAgentSession } from '../use-mobile-structured-agent-session'
+import type { useMobileStructuredAgentSession } from './agent-session/use-mobile-structured-agent-session'
 
 /** The controller fields only a structured session supplies; a terminal chat gets none of them. */
 export function mobileNativeChatStructuredControllerFields(

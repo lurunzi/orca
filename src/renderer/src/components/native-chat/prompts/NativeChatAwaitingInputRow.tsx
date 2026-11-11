@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NativeChatQuestionText } from './NativeChatQuestionText'
 import { ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { useTranslate } from '@/i18n/use-translate'
 import {
   NATIVE_CHAT_ASK_ROW_COPY,

@@ -11,11 +11,11 @@ vi.mock('./cursor-model-switch', () => ({
   switchCursorModel: (...args: unknown[]) => switchCursorModel(...args)
 }))
 
-vi.mock('./native-chat-runtime-send', () => ({
+vi.mock('./session/terminal/send/native-chat-runtime-send', () => ({
   sendNativeChatMessageVerified: (...args: unknown[]) => sendNativeChatMessageVerified(...args),
   typeNativeChatCommand: (...args: unknown[]) => typeNativeChatCommand(...args)
 }))
-vi.mock('./native-chat-pty-send-queue', () => ({
+vi.mock('./session/terminal/send/native-chat-pty-send-queue', () => ({
   cancelNativeChatPtySends: vi.fn(),
   waitForNativeChatPtyIdle: vi.fn()
 }))

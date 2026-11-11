@@ -45,7 +45,7 @@ vi.mock('@/lib/workspace/ownership/worktree-runtime-owner', () => ({
 vi.mock('./NativeChatResolvedView', () => ({
   NativeChatResolvedView: () => <div>Managed chat</div>
 }))
-vi.mock('./native-chat-image-runtime-context', () => ({
+vi.mock('./media/images/native-chat-image-runtime-context', () => ({
   useNativeChatImageRuntimeContext: () => null
 }))
 import { NativeChatTranscriptView } from './NativeChatTranscriptView'

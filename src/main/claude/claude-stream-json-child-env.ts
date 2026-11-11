@@ -17,8 +17,7 @@ export function claudeStreamJsonChildEnv(launch: {
   return withoutRejectedClaudeApiKey(
     withoutKeys(
       buildClaudeChildProcessEnv(launch.env, {
-        inheritedEnv: withoutInheritedClaudeConfigDir(process.env),
-        scrubConfiguredChildSessionStamps: true
+        inheritedEnv: withoutInheritedClaudeConfigDir(process.env)
       }),
       launch.envToDelete ?? []
     )

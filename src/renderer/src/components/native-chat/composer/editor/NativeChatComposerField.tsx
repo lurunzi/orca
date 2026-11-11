@@ -4,7 +4,7 @@ import { notifyNativeChatComposerState } from '../focus/native-chat-composer-mou
 import type { NativeChatComposerInput } from './native-chat-composer-input'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { NativeChatMentionMenu, NativeChatPickerMenu } from '../pickers/NativeChatAutocompleteMenus'
 import { NativeChatComposerActions } from '../controls/NativeChatComposerActions'
 import { NativeChatComposerNotices } from '../controls/NativeChatComposerNotices'

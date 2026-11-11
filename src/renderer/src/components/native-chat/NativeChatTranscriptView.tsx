@@ -12,7 +12,7 @@ import { useNativeChatRetainedSession } from './session/terminal/read/use-native
 import { useNativeChatFontSize } from './appearance/use-native-chat-font-size'
 import { NATIVE_CHAT_APPEARANCE_ROOT_CLASS } from './appearance/native-chat-appearance-style'
 import { useNativeChatStoreAppearanceStyle } from './appearance/use-native-chat-store-appearance-style'
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/class-names'
 import { useNativeChatImageRuntimeContext } from './media/images/native-chat-image-runtime-context'
 import { selectNativeChatViewState } from './session/status/native-chat-view-state'
 import { NativeChatMessageList } from './NativeChatMessageList'

@@ -229,7 +229,7 @@ export function NativeChatMessageList({
     subagentChoices,
     forkOffer,
     line: {
-      draws: tailRow === 'activity',
+      tailRow,
       thinking: turnStatuses.active?.thinking === true,
       stopping,
       activityText: turnActivity?.text
