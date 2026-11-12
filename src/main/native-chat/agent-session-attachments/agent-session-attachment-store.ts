@@ -175,7 +175,7 @@ export class AgentSessionAttachmentStore {
   }
 
   /** Content-addressed so repeated reads and transcript replays share one copy. Synchronous so the
-   *  journal row naming the file is never written before it exists. */
+   *  journal row naming the file is never written before it exists (main-sync-fs baseline). */
   storeSnapshotSync(name: string, bytes: Buffer): string {
     const digest = createHash('sha256').update(bytes).digest('hex')
     // Upload directories must be UUID-shaped for claims and store-path parsing.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 
 export function useNativeChatPromptSuggestion({
   scopeKey,
@@ -32,9 +33,7 @@ export function useNativeChatPromptSuggestion({
           : { scope: scopeKey, text }
       )
     }
-    read()
-    const timer = setInterval(read, 500)
-    return () => clearInterval(timer)
+    return installWindowVisibilityInterval({ run: read, intervalMs: 500 })
   }, [enabled, readTerminalSuggestion, scopeKey])
   const candidate = suggestion ?? (terminal?.scope === scopeKey ? terminal.text : null)
   // Only Escape or acceptance retires a suggestion; typing just hides it until the draft is empty again.

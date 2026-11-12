@@ -41,6 +41,7 @@ import {
   removeInstalledConfig
 } from './hooks-json-bundle'
 
+// Sync by design (main-sync-fs baseline): getStatus is synchronous across hook services and stats only a few managed scripts.
 function isManagedScriptFile(scriptPath: string): boolean {
   try {
     return statSync(scriptPath).isFile()

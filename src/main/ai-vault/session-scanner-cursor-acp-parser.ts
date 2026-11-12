@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import type { AiVaultSession } from '../../shared/ai-vault/contracts/ai-vault-types'
 import { wslGatedStat } from '../native-chat/wsl-transcript-fs-access'
@@ -53,7 +52,11 @@ export async function parseCursorAcpSessionFile(
   }
   const dbPath = join(dirname(file.path), CURSOR_ACP_STORE_FILE)
   // A chat created but never sent has no store yet; SQLite failures otherwise surface as scan issues.
-  const store = existsSync(dbPath) ? readCursorAcpStore(dbPath) : null
+  const hasStore = await wslGatedStat(dbPath, 'scan').then(
+    () => true,
+    () => false
+  )
+  const store = hasStore ? readCursorAcpStore(dbPath) : null
   const accumulator = createAccumulator({
     agent: 'cursor',
     file,

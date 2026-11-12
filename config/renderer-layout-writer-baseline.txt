@@ -113,7 +113,7 @@
 6 src/renderer/src/store/terminals/terminal-tab-close.ts
 10 src/renderer/src/store/terminals/terminal-tab-creation.ts
 7 src/renderer/src/store/terminals/terminal-tab-navigation.ts
-3 src/renderer/src/store/terminals/terminal-tab-presentation.ts
+4 src/renderer/src/store/terminals/terminal-tab-presentation.ts
 2 src/renderer/src/store/terminals/terminal-tab-title-batch.ts
 5 src/renderer/src/store/terminals/workspace-terminal-hydration-patch.ts
 2 src/renderer/src/store/terminals/workspace-terminal-hydration.ts

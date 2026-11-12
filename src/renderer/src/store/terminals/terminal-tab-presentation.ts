@@ -55,7 +55,8 @@ export function createTerminalTabPresentationActions(
       set((s) => {
         const ownerWorktreeId = getTerminalTabOwnerWorktreeId(s.tabsByWorktree, tabId)
         if (!ownerWorktreeId) {
-          // Fork: a structured chat keeps its session-history title on its unified tab.
+          // Fork: a structured chat keeps its session-history title on its unified tab (title metadata, not
+          // layout; counted in renderer-layout-writer-baseline).
           const unifiedTabsByWorktree = applyAgentSessionAiVaultTitle(
             s.unifiedTabsByWorktree,
             tabId,

@@ -79,6 +79,7 @@ await import('../orca-runtime-tests/mobile-session-tabs-windowless-sleep-resume.
 await import('../orca-runtime-tests/mobile-session-tabs-targeted-agent-resume.spec')
 await import('../orca-runtime-tests/mobile-session-tabs-headless-wake-report.spec')
 await import('../orca-runtime-tests/exit-retirement-activation.spec')
+await import('../orca-runtime-tests/terminal-agent-exit-evidence.spec')
 await import('../orca-runtime-tests/mobile-creation-and-orchestration.spec')
 await import('../orca-runtime-tests/mobile-creation-and-orchestration-part-02.spec')
 await import('../orca-runtime-tests/mobile-creation-and-orchestration-part-03.spec')

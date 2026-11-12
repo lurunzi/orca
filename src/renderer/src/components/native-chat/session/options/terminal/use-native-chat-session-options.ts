@@ -22,6 +22,7 @@ import {
 import { readAgentTerminalSessionOptions } from '../../../agent-terminal-session-options'
 
 import { enqueueSessionOptionSettingsWrite } from '../native-chat-session-option-settings-write'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 
 const EMPTY_SNAPSHOT: SessionOptionDescriptor[] = []
 const subscribeEmpty = (): (() => void) => () => {}
@@ -192,17 +193,21 @@ export function useNativeChatSessionOptions(args: {
       }
       reading = false
     }
-    void reportCurrentValues()
-    const retry = window.setInterval(() => {
-      if (found || ++attempts >= 60) {
-        window.clearInterval(retry)
-      } else {
+    // Retries stop once a screen answers or after 60 reads; a hidden window pauses them.
+    let stopRetry = (): void => {}
+    stopRetry = installWindowVisibilityInterval({
+      run: () => {
+        if (found || attempts++ >= 60) {
+          stopRetry()
+          return
+        }
         void reportCurrentValues()
-      }
-    }, 1_000)
+      },
+      intervalMs: 1_000
+    })
     return () => {
       cancelled = true
-      window.clearInterval(retry)
+      stopRetry()
     }
   }, [agent, discoveryContext, readTerminalScreen, surface, targetPtyId])
 

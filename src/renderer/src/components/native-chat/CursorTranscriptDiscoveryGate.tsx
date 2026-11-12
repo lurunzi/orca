@@ -17,6 +17,7 @@ import {
   recordCursorTranscriptOffer,
   wasCursorTranscriptOffered
 } from '@/lib/cursor-transcript-discovery-offers'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 
 /** Discover external workers through the shared history scanner, without fabricating hook status. */
 export function CursorTranscriptDiscoveryGate(): null {
@@ -113,17 +114,14 @@ export function CursorTranscriptDiscoveryGate(): null {
         inFlight = false
       }
     }
-    void discover()
-    const timer = setInterval(() => void discover(), 60_000)
-    const onVisible = (): void => {
-      void discover()
-    }
-    document.addEventListener('visibilitychange', onVisible)
+    const stopPolling = installWindowVisibilityInterval({
+      run: () => void discover(),
+      intervalMs: 60_000
+    })
     return () => {
       disposed = true
       unsubscribe()
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
+      stopPolling()
     }
   }, [hostId, path, ready, worktreeId])
   return null

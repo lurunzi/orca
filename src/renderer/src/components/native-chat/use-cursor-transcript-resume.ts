@@ -17,6 +17,7 @@ import { pasteAgentLaunchPromptOnceReady } from '@/lib/agent-session/launch/prom
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'
 import { translate } from '@/i18n/i18n'
 import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 
 const RECHECK_MS = 60_000
 
@@ -67,11 +68,13 @@ export function useCursorTranscriptResume({
         }
       }
     }
-    void check()
-    const timer = setInterval(() => void check(), RECHECK_MS)
+    const stopPolling = installWindowVisibilityInterval({
+      run: () => void check(),
+      intervalMs: RECHECK_MS
+    })
     return () => {
       disposed = true
-      clearInterval(timer)
+      stopPolling()
     }
   }, [enabled, hostId, path, sessionId])
 
