@@ -1,12 +1,7 @@
-import type {
-  AgentSessionOptionCatalog,
-  CatalogModel,
-  CatalogOption
-} from './agent-session-option-catalog-types'
+import type { CatalogModel, CatalogOption } from './agent-session-option-catalog-types'
 import type { AgentSessionOptionChoice } from '../agent-session-wire'
 import type { AgentSessionOptionsResult } from './agent-session-options-result'
 import type { AgentType } from '../../agent-status/contracts/agent-status-types'
-import { labelFromModelId } from '../../model-id-label'
 import { usesModelSpecificAcpEfforts } from './agent-model-catalog-ownership'
 
 export function structuredModelEfforts(
@@ -47,6 +42,13 @@ function fastModeOption(): CatalogOption {
   }
 }
 
+/** The tier Codex names Fast, by label or id; the only one the single Fast toggle stands for. */
+export function isFastServiceTier(
+  tier: Pick<AgentSessionOptionChoice, 'label' | 'value'>
+): boolean {
+  return tier.label.toLowerCase() === 'fast' || tier.value.toLowerCase() === 'fast'
+}
+
 /** Standard plus the tiers the model lists, valued by tier id; one choice in place of Fast. */
 export function serviceTierOption(tiers: readonly AgentSessionOptionChoice[]): CatalogOption {
   return {
@@ -82,6 +84,7 @@ export function discoveredModel(
     ...(model.description ? { description: model.description } : {}),
     ...(model.isDefault ? { isDefault: true } : {}),
     ...(model.supportsAutoMode !== undefined ? { supportsAutoMode: model.supportsAutoMode } : {}),
+    ...(model.supportsFastMode !== undefined ? { supportsFastMode: model.supportsFastMode } : {}),
     options: [
       ...(effort ? [effort] : []),
       ...(serviceTier
@@ -91,22 +94,4 @@ export function discoveredModel(
           : [])
     ]
   }
-}
-
-export function structuredAgentSessionOptionCatalog(
-  seed: AgentSessionOptionCatalog,
-  result: AgentSessionOptionsResult,
-  agent: AgentType
-): AgentSessionOptionCatalog {
-  // Fork: offer Fast per model; session availability is applied at snapshot time.
-  const models: CatalogModel[] = result.models.map((model) => discoveredModel(model, true, agent))
-  if (result.current.model && !models.some((model) => model.id === result.current.model)) {
-    models.push({
-      id: result.current.model,
-      label: labelFromModelId(result.current.model),
-      description: result.current.model,
-      options: seed.unknownModelOptions ?? []
-    })
-  }
-  return { ...seed, models, defaultModelIsCliDefault: true }
 }

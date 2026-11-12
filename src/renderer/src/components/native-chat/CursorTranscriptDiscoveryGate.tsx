@@ -78,7 +78,11 @@ export function CursorTranscriptDiscoveryGate(): null {
           return
         }
         const session = result.sessions
-          .filter((entry) => cursorSessionMatchesWorkspace(entry, path, host.id))
+          // Structured chats (e.g. orchestration workers) already have their own tab.
+          .filter(
+            (entry) =>
+              !entry.structuredSession && cursorSessionMatchesWorkspace(entry, path, host.id)
+          )
           .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))[0]
         // Older conversations remain available in History.
         if (!session || !isCursorTranscriptRecent(session)) {

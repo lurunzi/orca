@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   agentComposerPainted,
   resolveNativeChatLaunchDraftSend
-} from './native-chat-launch-draft-send'
+} from './drafts/native-chat-launch-draft-send'
 
 const SEEDED = 'Linked Linear issue: ABC-123\nhttps://linear.app/x/issue/ABC-123'
 

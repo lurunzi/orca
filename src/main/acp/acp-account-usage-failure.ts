@@ -1,6 +1,6 @@
 import type { AgentSessionUsageLimit } from '../../shared/agent-session/failures/agent-session-usage-limit'
-import { acpPromptTurnId } from './acp-prompt-turns'
-import type { AcpStructuredLane } from './acp-structured-lane'
+import { acpPromptTurnId } from './timeline/acp-prompt-turns'
+import type { AcpStructuredLane } from './journal/acp-structured-lane'
 
 export type AcpAccountUsageFailureDeps = {
   lane: AcpStructuredLane

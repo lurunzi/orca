@@ -5,6 +5,7 @@ import { agentSessionProviderHandleChainHead } from '../../../../shared/agent-se
 import { isNativeLocalLocation } from '../../../../shared/execution-host'
 import { agentSessionPinnedLaunchDirectory } from '../records/agent-session-record-launch-directory'
 import { structuredAgentRuntimeMetadata } from '../installation/structured-agent-runtime-metadata'
+import type { StructuredAgentAccountSwitchSettings } from '../installation/structured-agent-runtime-registration-types'
 import type { StructuredAgentTranscriptImport } from '../../../native-chat/structured-agent-cli-conversations'
 
 export type RecoveryContextCache = {
@@ -58,6 +59,7 @@ export async function structuredSessionRecoveryOptions(
   input: {
     cache: RecoveryContextCache
     resolveWorkspacePath?: (workspaceId: string) => Promise<string>
+    settings?: StructuredAgentAccountSwitchSettings
   }
 ): Promise<{ canSwitchAccount: boolean; transcriptPath?: string }> {
   const metadata = record && structuredAgentRuntimeMetadata(record.provider)
@@ -96,7 +98,9 @@ export async function structuredSessionRecoveryOptions(
       isNativeLocalLocation(record.location) &&
       metadata.launchFollowsSelection?.() === true &&
       switchable !== undefined &&
-      (await switchable({ record, store, launchEnv }).catch(() => false))
+      (await switchable({ record, store, launchEnv, settings: input.settings ?? {} }).catch(
+        () => false
+      ))
     return { canSwitchAccount, transcriptPath }
   } catch (error) {
     console.warn('Could not read chat recovery options', error)

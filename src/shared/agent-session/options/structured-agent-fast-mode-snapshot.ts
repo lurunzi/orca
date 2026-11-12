@@ -1,93 +1,64 @@
-import type { AgentSessionModelCatalogResult, AgentSessionModelOption } from '../agent-session-wire'
-import type { AgentSessionOptionsResult } from './agent-session-options-result'
-import type { SessionOptionDescriptor } from '../../native-chat/input/native-chat-session-options'
+// Fork: Claude Fast is offered only after the host verified the account; until then it stays visible but disabled.
 
-export function applyStructuredAgentFastModeAvailability(args: {
+import type { AgentSessionModelCatalogResult } from '../agent-session-wire'
+import type { SessionOptionDescriptor } from '../../native-chat/input/native-chat-session-options'
+import type { StructuredAgentSessionOptionState } from './structured-agent-session-options'
+
+/** An unconfirmed account still draws each model's Fast row, which stays disabled. */
+export function catalogOffersFastMode(catalog: AgentSessionModelCatalogResult): boolean {
+  const support = catalog.origin === 'unknown' ? undefined : catalog.fastModeSupport
+  return support?.supported === true || support?.reason === 'availability-unconfirmed'
+}
+
+/** Before an options answer, or for a model whose listing states no Fast capability, Claude Fast is disabled. */
+export function claudeFastModeUnconfirmed(
+  state: StructuredAgentSessionOptionState,
+  snapshot: readonly SessionOptionDescriptor[]
+): boolean {
+  if (
+    state.record.agent !== 'claude' ||
+    (state.catalogSource !== 'host' && state.catalogSource !== 'live')
+  ) {
+    return false
+  }
+  const model = snapshot.find((descriptor) => descriptor.id === 'model')
+  const modelId = model?.kind.type === 'select' ? model.kind.currentValue : undefined
+  const row = state.catalog?.models.find((entry) => entry.id === modelId)
+  return !state.optionsAnswerPresent || (Boolean(modelId) && row?.supportsFastMode === undefined)
+}
+
+/** Shows an unconfirmed Claude Fast disabled instead of hiding it. */
+export function withClaudeUnconfirmedFastMode(
+  state: StructuredAgentSessionOptionState,
   snapshot: SessionOptionDescriptor[]
-  agent: string
-  modelSupport?: ReadonlyMap<string, boolean | undefined>
-  support?: AgentSessionOptionsResult['fastModeSupport']
-}): SessionOptionDescriptor[] {
-  const { snapshot, agent, modelSupport, support } = args
+): SessionOptionDescriptor[] {
+  if (!claudeFastModeUnconfirmed(state, snapshot)) {
+    return snapshot
+  }
+  const fast = snapshot.find((descriptor) => descriptor.id === 'fastMode')
+  if (fast) {
+    return snapshot.map((descriptor) =>
+      descriptor === fast ? { ...descriptor, settable: false } : descriptor
+    )
+  }
+  // A model listed without Fast stays without it; only an unknown capability earns the disabled row.
   const model = snapshot.find((descriptor) => descriptor.id === 'model')
   const modelId = model?.kind.type === 'select' ? model.kind.currentValue : undefined
   if (
-    agent === 'claude' &&
-    modelId &&
-    modelSupport &&
-    modelSupport.get(modelId) === undefined &&
-    !snapshot.some((descriptor) => descriptor.id === 'fastMode')
+    state.catalog?.models.some((entry) => entry.id === modelId && entry.supportsFastMode === false)
   ) {
-    // Missing model capability explains an unavailable control; it never grants Fast access.
-    snapshot.push({
+    return snapshot
+  }
+  return [
+    ...snapshot,
+    {
       id: 'fastMode',
       label: 'Fast mode',
       category: 'mode',
       kind: { type: 'boolean', currentValue: false },
       valueSource: 'unknown',
       transport: 'agent-session',
-      settable: false,
-      disabledReason: 'fast-mode-availability-unconfirmed'
-    })
-    return snapshot
-  }
-  if (support?.supported !== false) {
-    return snapshot
-  }
-  return snapshot.map((descriptor) =>
-    descriptor.id === 'fastMode' && descriptor.kind.type === 'boolean'
-      ? {
-          ...descriptor,
-          kind: { ...descriptor.kind, currentValue: false },
-          settable: false,
-          disabledReason:
-            support.reason === 'availability-unconfirmed'
-              ? 'fast-mode-availability-unconfirmed'
-              : support.reason === 'extra_usage_disabled'
-                ? 'fast-mode-extra-usage-required'
-                : 'fast-mode-unavailable'
-        }
-      : descriptor
-  )
-}
-
-type StructuredAgentFastModeState = {
-  fastModeSupport?: AgentSessionOptionsResult['fastModeSupport']
-  fastModeModelSupport: ReadonlyMap<string, boolean | undefined>
-}
-
-function modelFastModeSupport(
-  models: readonly AgentSessionModelOption[]
-): ReadonlyMap<string, boolean | undefined> {
-  return new Map(models.map((model) => [model.id, model.supportsFastMode]))
-}
-
-/** A saved catalog never confirms Claude account permission for Fast. */
-export function catalogFastModeState(
-  agent: string,
-  catalog: Exclude<AgentSessionModelCatalogResult, { origin: 'unknown' }>
-): StructuredAgentFastModeState {
-  return {
-    fastModeModelSupport: modelFastModeSupport(catalog.models),
-    fastModeSupport:
-      agent === 'claude'
-        ? { supported: false, reason: 'availability-unconfirmed' }
-        : catalog.fastModeSupport
-  }
-}
-
-/** A live Claude answer offers Fast only once the host verified the account. */
-export function liveFastModeState(
-  agent: string,
-  result: AgentSessionOptionsResult
-): StructuredAgentFastModeState {
-  return {
-    fastModeModelSupport: modelFastModeSupport(result.models),
-    fastModeSupport:
-      agent === 'claude' &&
-      result.fastModeSupport?.supported !== false &&
-      result.fastModeSupport?.accountVerified !== true
-        ? { supported: false, reason: 'availability-unconfirmed' }
-        : result.fastModeSupport
-  }
+      settable: false
+    }
+  ]
 }

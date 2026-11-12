@@ -1,8 +1,9 @@
 import { translate } from '@/i18n/i18n'
+import type { Translate } from '@/i18n/use-translate'
 import {
   formatRateLimitWindowChipLabel,
   formatWindowLabel
-} from '../../../../shared/rate-limit-window-label'
+} from './rate-limit-window-localized-label'
 import type {
   ProviderRateLimits,
   RateLimitBucket,
@@ -50,7 +51,7 @@ export function formatPoolGroupLabel(group: string, buckets: readonly RateLimitB
   return collides ? group : short
 }
 
-function formatPoolWindowName(bucket: RateLimitBucket): string {
+function formatPoolWindowName(bucket: RateLimitBucket, t: Translate = translate): string {
   // An unmapped agy window has no length; formatWindowLabel(0) would invent "0m".
   if (!(bucket.windowMinutes > 0)) {
     return (
@@ -60,13 +61,17 @@ function formatPoolWindowName(bucket: RateLimitBucket): string {
       .trim()
   }
   if (bucket.windowMinutes === WEEKLY_WINDOW_MINUTES) {
-    return translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
+    return t('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
   }
   return formatWindowLabel(bucket.windowMinutes)
 }
 
-export function formatPoolWindowLabel(bucket: RateLimitBucket, now?: number): string {
-  const label = formatPoolWindowName(bucket)
+export function formatPoolWindowLabel(
+  bucket: RateLimitBucket,
+  now?: number,
+  t?: Translate
+): string {
+  const label = formatPoolWindowName(bucket, t)
   // Urgency follows consumption even when the user displays the percentage remaining.
   if (clampUsedPercent(bucket.usedPercent) >= USAGE_URGENT_PERCENT && bucket.resetsAt != null) {
     const countdown = formatRateLimitWindowChipLabel(bucket, now)
@@ -78,26 +83,28 @@ export function formatPoolWindowLabel(bucket: RateLimitBucket, now?: number): st
 export function formatPoolShortLabel(
   bucket: RateLimitBucket,
   buckets: readonly RateLimitBucket[],
-  now?: number
+  now?: number,
+  t?: Translate
 ): string {
   // Older hosts publish only the combined name; recognise their known groups too.
   const group = bucket.group ?? bucket.name.split(' · ')[0]
   if (!bucket.group && !/^(Gemini Models|Claude and GPT models)$/i.test(group)) {
     return bucket.name
   }
-  return `${formatPoolGroupLabel(group, buckets)} ${formatPoolWindowLabel(bucket, now)}`.trim()
+  return `${formatPoolGroupLabel(group, buckets)} ${formatPoolWindowLabel(bucket, now, t)}`.trim()
 }
 
 export function formatStatusBarSectionLabel(
   p: ProviderRateLimits,
   section: { label: string; window: RateLimitWindow },
-  now?: number
+  now?: number,
+  t?: Translate
 ): string {
   const bucket = p.provider === 'antigravity' && p.buckets?.find((b) => b === section.window)
   if (bucket) {
-    return formatPoolShortLabel(bucket, p.buckets ?? [], now)
+    return formatPoolShortLabel(bucket, p.buckets ?? [], now, t)
   }
   return isGroupedUsagePool(section.window)
-    ? formatPoolShortLabel(section.window, p.buckets ?? [], now)
+    ? formatPoolShortLabel(section.window, p.buckets ?? [], now, t)
     : section.label
 }

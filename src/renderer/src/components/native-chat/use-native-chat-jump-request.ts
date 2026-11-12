@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { NativeChatRailItem } from './native-chat-message-rail-items'
+import type { NativeChatRailItem } from './viewport/rail/native-chat-message-rail-items'
 
 /** A request, from outside the transcript, to bring one user message to the top. */
 export type NativeChatJumpRequest = { messageId: string; requestId: number }

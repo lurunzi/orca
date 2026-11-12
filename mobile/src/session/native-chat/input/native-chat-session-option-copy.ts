@@ -52,21 +52,6 @@ export const sayMobileNativeChatSessionOption: NativeChatSessionOptionSay = (id,
         'chat.sessionOptionCopy.setWhenSessionStarts',
         'Set when the session starts.'
       )
-    case 'fastModeExtraUsageRequired':
-      return translate(
-        'chat.sessionOptionCopy.fastModeExtraUsageRequired',
-        'Fast mode requires paid usage credits.'
-      )
-    case 'fastModeUnavailable':
-      return translate(
-        'chat.sessionOptionCopy.fastModeUnavailable',
-        'Fast mode is currently unavailable for this session.'
-      )
-    case 'fastModeAvailabilityUnconfirmed':
-      return translate(
-        'chat.sessionOptionCopy.fastModeAvailabilityUnconfirmed',
-        'Fast mode availability has not been confirmed for this session.'
-      )
     case 'availableAfterSessionStarts':
       return translate(
         'chat.sessionOptionCopy.availableAfterSessionStarts',

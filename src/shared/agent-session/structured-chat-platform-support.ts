@@ -1,7 +1,10 @@
-/** Google publishes no Windows Antigravity chat server Orca can run (#30817); relax this once one ships. */
+// Fork: Antigravity chats run on the host's agy where Google publishes no managed server (#30817).
+const CHAT_UNAVAILABLE_PLATFORMS: Readonly<Record<string, readonly string[]>> = {}
+
+/** The agent has no chat server Orca can run on this platform. */
 export function structuredChatUnavailableOnPlatform(
   agent: string,
   platform: string | null | undefined
 ): boolean {
-  return agent === 'antigravity' && platform === 'win32'
+  return !!platform && (CHAT_UNAVAILABLE_PLATFORMS[agent]?.includes(platform) ?? false)
 }

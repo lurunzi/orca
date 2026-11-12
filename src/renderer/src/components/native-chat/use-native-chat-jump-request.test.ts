@@ -2,7 +2,7 @@
 
 import { cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { NativeChatRailItem } from './native-chat-message-rail-items'
+import type { NativeChatRailItem } from './viewport/rail/native-chat-message-rail-items'
 import { useNativeChatJumpRequest } from './use-native-chat-jump-request'
 
 afterEach(cleanup)

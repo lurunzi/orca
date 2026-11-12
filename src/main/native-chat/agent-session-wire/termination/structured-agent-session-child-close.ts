@@ -113,7 +113,12 @@ function closeProviderRoot(
     async () => {
       const close = adapter.disposeSession ?? adapter.closeSession
       try {
-        return (await close?.call(adapter, sessionId, observeClose)) === true
+        // The clear's divider waits on this stop, so the old agent gets only a brief grace.
+        const closing =
+          child.close?.cause === 'context-clear'
+            ? close?.call(adapter, sessionId, observeClose, { grace: 'brief' })
+            : close?.call(adapter, sessionId, observeClose)
+        return (await closing) === true
       } catch (error) {
         if (
           child.close?.exitConfirmation &&

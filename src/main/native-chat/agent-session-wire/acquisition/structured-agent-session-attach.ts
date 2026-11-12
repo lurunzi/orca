@@ -1,3 +1,5 @@
+import type { JournalReplacementItem } from '../../agent-session-journal/context-epochs/journal-epoch-replacement'
+import type { NativeCopyOrigin } from '../../agent-session-journal/context-epochs/journal-history-origin'
 import { activeProviderContext } from '../../../../shared/agent-session/agent-session-provider-context'
 import {
   requireCodexPoolCopyReceipt,
@@ -59,6 +61,8 @@ export type AgentSessionAttachParams = {
     itemId: string
     poolCopy?: CodexPoolCopyReceipt
     revalidate: () => Promise<void>
+    prepared: JournalReplacementItem[]
+    historyOrigin?: NativeCopyOrigin
   }
   options?: Readonly<Record<string, string>>
   /** Exclude tab placement from conversation identity/fingerprints. */
@@ -77,17 +81,23 @@ export type AgentSessionAttachParams = {
   }
 }
 
+/** The fork preparation adds the journal fields once the copy is checked. */
+type AgentSessionForkAttachment = Omit<
+  NonNullable<AgentSessionAttachParams['fork']>,
+  'prepared' | 'historyOrigin'
+>
+
 export function agentSessionForkAttachment(input: {
   source: AgentSessionRecord
   itemId: string
   agent: StructuredAgentId
   copy: { sessionId: string; poolCopy?: CodexPoolCopyReceipt }
   providerSessionId: string
-  requireCurrent: () => Promise<void>
+  requireCurrent: () => Promise<unknown>
   readSource: () => AgentSessionRecord
   rowSessionId: (head: AgentSessionProviderHandleLink) => string
-}): NonNullable<AgentSessionAttachParams['fork']> {
-  const fork: NonNullable<AgentSessionAttachParams['fork']> = {
+}): AgentSessionForkAttachment {
+  const fork: AgentSessionForkAttachment = {
     sessionId: input.source.sessionId,
     itemId: input.itemId,
     poolCopy: input.copy.poolCopy,

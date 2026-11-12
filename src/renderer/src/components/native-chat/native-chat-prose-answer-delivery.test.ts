@@ -2,16 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sendRuntimePtyInput = vi.fn()
 const sendRuntimePtyInputVerified = vi.fn()
-vi.mock('@/runtime/runtime-terminal-inspection', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-input-send', () => ({
   sendRuntimePtyInput: (...args: unknown[]) => sendRuntimePtyInput(...args)
 }))
-vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
   sendRuntimePtyInputVerified: (...args: unknown[]) => sendRuntimePtyInputVerified(...args)
 }))
-import {
-  resetNativeChatPtySendQueuesForTests,
-  sendNativeChatMessage
-} from './native-chat-runtime-send'
+import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
+import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   buildNativeChatPasteBytes,
   NATIVE_CHAT_SUBMIT

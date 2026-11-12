@@ -4,7 +4,7 @@ import {
   pendingSendsAsMessages,
   prunePendingSends
 } from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
-import { launchPromptAsMessage } from '../../src/renderer/src/components/native-chat/native-chat-pending'
+import { launchPromptAsMessage } from '../../src/renderer/src/components/native-chat/session/terminal/delivery/native-chat-pending'
 
 function cursorMessage(role: 'user' | 'assistant', text: string, id: string) {
   const message = decodeCursorTranscriptLine(

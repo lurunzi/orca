@@ -21,9 +21,6 @@ export type NativeChatLiveOptionTransport = 'catalog' | 'agent-session'
 export type SessionOptionDisabledReason =
   | 'available-after-session-start'
   | 'set-when-session-starts'
-  | 'fast-mode-extra-usage-required'
-  | 'fast-mode-unavailable'
-  | 'fast-mode-availability-unconfirmed'
 
 export type SessionOptionDescriptor = {
   id: string

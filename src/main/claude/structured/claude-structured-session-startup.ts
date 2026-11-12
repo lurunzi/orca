@@ -8,7 +8,6 @@ import {
 
 import type { AgentSessionAccountKind } from '../../../shared/agent-session/agent-session-availability'
 import type { StructuredAgentSessionProviderOpenResult } from '../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
-import { withProviderRequestTimeout } from '../../provider-process/provider-request-timeout'
 import { assertDashboardClaudeAuthenticationSource } from '../../dashboard-accounts/dashboard-claude-authentication'
 import type { ClaudeStreamJsonConnection } from '../claude-stream-json-connection'
 import { ClaudeSlashCommandCatalog } from '../claude-slash-command-catalog'
@@ -62,8 +61,6 @@ export type ClaudeStartupFacts = ClaudeInitializeFacts & {
   prepared: ReturnType<typeof prepareClaudeStructuredSessionAcquisitionOptions>
 }
 
-export const CLAUDE_INITIALIZE_TIMEOUT_MS = 60_000
-
 export async function readClaudeStartupFacts(input: {
   connection: ClaudeStreamJsonConnection
   initProof: ClaudeInitProof
@@ -75,7 +72,6 @@ export async function readClaudeStartupFacts(input: {
   requestTimeoutMs: number | undefined
   emit: (event: ClaudeStructuredSessionEvent) => void
 }): Promise<ClaudeInitializeFacts> {
-  let timer: ReturnType<typeof setTimeout> | undefined
   const control = input.connection.initializationResult().then((result) => {
     if (input.dashboardPooled) {
       assertDashboardClaudeAuthenticationSource(result)
@@ -88,6 +84,7 @@ export async function readClaudeStartupFacts(input: {
   })
   const initialization = await Promise.race([
     control.catch(async (error: unknown) => {
+      const exit = await claudeExitForReport(input.connection, error)
       let proof: unknown
       try {
         input.initProof.seen()
@@ -99,8 +96,8 @@ export async function readClaudeStartupFacts(input: {
       throw claudeStartFailure([
         input.connection.startupFailure?.(),
         proof,
-        error,
-        await claudeExitForReport(input.connection, error)
+        (proof || providerExitObserved(exit)) && isClaudeQueryClosed(error) ? undefined : error,
+        exit
       ])
     }),
     Promise.race([
@@ -113,23 +110,8 @@ export async function readClaudeStartupFacts(input: {
         throw error
       }
       throw await claudeStartupAnswerAfterExit(input.connection, control, error)
-    }),
-    new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(
-        () =>
-          reject(
-            withProviderRequestTimeout(
-              new Error(
-                `claude did not answer initialize within ${CLAUDE_INITIALIZE_TIMEOUT_MS}ms`
-              ),
-              { method: 'initialize', timeoutMs: CLAUDE_INITIALIZE_TIMEOUT_MS }
-            )
-          ),
-        CLAUDE_INITIALIZE_TIMEOUT_MS
-      )
-      timer.unref?.()
     })
-  ]).finally(() => clearTimeout(timer))
+  ])
   if (input.connection.closed) {
     throw (
       input.connection.startupFailure?.() ??

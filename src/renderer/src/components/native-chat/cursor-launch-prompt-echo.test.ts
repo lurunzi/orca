@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { launchPromptAsMessage, shouldPruneLaunchPrompt } from './native-chat-pending'
+import {
+  launchPromptAsMessage,
+  shouldPruneLaunchPrompt
+} from './session/terminal/delivery/native-chat-pending'
 import { matchesCursorLaunchPromptEcho } from './cursor-launch-prompt-echo'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 

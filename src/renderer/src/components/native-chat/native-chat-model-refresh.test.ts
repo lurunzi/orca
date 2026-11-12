@@ -11,7 +11,7 @@ import {
   ensureNativeChatModelEnrichment,
   readNativeChatEnrichedModels,
   subscribeNativeChatEnrichedModels
-} from './native-chat-session-option-enrichment'
+} from './session/options/catalog/native-chat-session-option-enrichment'
 
 const initial: CatalogModel[] = [
   { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] }

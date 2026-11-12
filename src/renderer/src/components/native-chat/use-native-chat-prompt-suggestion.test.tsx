@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useRef, useState } from 'react'
 import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'
-import { useNativeChatComposerKeyDown } from './use-native-chat-composer-keydown'
+import { useNativeChatComposerKeyDown } from './composer/editor/use-native-chat-composer-keydown'
 
 afterEach(() => {
   cleanup()

@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
 import { createTerminalLayoutActions } from '@/store/terminals/terminal-layout-state'
 import type { AppState } from '@/store/types'
-import { useTerminalPaneLayoutBindings } from './use-terminal-pane-layout-bindings'
-import { useTerminalPaneProjection } from './use-terminal-pane-projection'
-import type { TerminalPaneMobileController } from './use-terminal-pane-mobile-actions'
+import { useTerminalPaneLayoutBindings } from './layout/ownership/use-terminal-pane-layout-bindings'
+import { useTerminalPaneProjection } from './controller/use-terminal-pane-projection'
+import type { TerminalPaneMobileController } from './controller/use-terminal-pane-mobile-actions'
 
 vi.mock('@/store', async () => {
   const { create } = await import('zustand')

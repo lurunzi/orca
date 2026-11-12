@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
+import type * as I18n from '@/i18n/i18n'
 import { act } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../../store/index'
-import { emptyCodexAccountsState } from '@/runtime/runtime-provider-accounts-client'
+import { emptyCodexAccountsState } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
 import {
   accountSettings,
   recordedSession,
@@ -11,10 +12,8 @@ import {
   installAccountFixture
 } from './ai-vault-account-test-fixture'
 
-import type * as I18nModule from '@/i18n/i18n'
-
 vi.mock('@/i18n/i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof I18nModule>()),
+  ...(await importOriginal<typeof I18n>()),
   translate: (_key: string, fallback: string) => fallback
 }))
 installAccountFixture()

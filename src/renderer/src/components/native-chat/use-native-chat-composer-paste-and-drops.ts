@@ -1,6 +1,6 @@
-import { useNativeChatComposerHandle } from './use-native-chat-composer-handle'
-import { useNativeChatFileDrops } from './use-native-chat-file-drops'
-import type { useNativeChatComposerAttachments } from './use-native-chat-composer-attachments'
+import { useNativeChatComposerHandle } from './composer/editor/use-native-chat-composer-handle'
+import { useNativeChatFileDrops } from './attachments/intake/use-native-chat-file-drops'
+import type { useNativeChatComposerAttachments } from './attachments/chips/use-native-chat-composer-attachments'
 
 type FileDropArgs = Parameters<typeof useNativeChatFileDrops>[0]
 type HandleArgs = Parameters<typeof useNativeChatComposerHandle>[1]

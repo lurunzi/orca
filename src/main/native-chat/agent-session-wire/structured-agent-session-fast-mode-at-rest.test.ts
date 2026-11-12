@@ -34,7 +34,7 @@ it.each([
     name: 'verified account',
     live: { supported: true, accountVerified: true },
     modelSupported: true,
-    expected: { supported: true, accountVerified: true }
+    expected: { supported: true }
   },
   {
     name: 'unverified account',

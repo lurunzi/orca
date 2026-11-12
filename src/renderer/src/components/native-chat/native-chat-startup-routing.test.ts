@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canToggleNativeChat } from '../../../../shared/native-chat/native-chat-availability'
-import { resolveNativeChatLeafRoute } from './native-chat-leaf-routing'
+import { resolveNativeChatLeafRoute } from './pane/routing/native-chat-leaf-routing'
 import { isNativeChatTranscriptLocalReadable } from '../../../../shared/native-chat/transcript/native-chat-transcript-readability'
 
 describe('native chat startup routing', () => {

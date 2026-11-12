@@ -31,10 +31,6 @@ export const NATIVE_CHAT_SESSION_OPTION_COPY = {
   toggleOption: 'Toggle {{value0}}',
   chooseInAgentPicker: 'Choose in agent picker…',
   setWhenSessionStarts: 'Set when the session starts.',
-  fastModeExtraUsageRequired: 'Fast mode requires paid usage credits.',
-  fastModeUnavailable: 'Fast mode is currently unavailable for this session.',
-  fastModeAvailabilityUnconfirmed:
-    'Fast mode availability has not been confirmed for this session.',
   availableAfterSessionStarts: 'Available after the session starts.',
   sessionOptions: 'Session options'
 } as const
@@ -155,12 +151,6 @@ export function nativeChatSessionOptionDisabledReason(
   say: NativeChatSessionOptionSay
 ): string | null {
   switch (reason) {
-    case 'fast-mode-extra-usage-required':
-      return say('fastModeExtraUsageRequired')
-    case 'fast-mode-unavailable':
-      return say('fastModeUnavailable')
-    case 'fast-mode-availability-unconfirmed':
-      return say('fastModeAvailabilityUnconfirmed')
     case 'set-when-session-starts':
       return say('setWhenSessionStarts')
     case 'available-after-session-start':

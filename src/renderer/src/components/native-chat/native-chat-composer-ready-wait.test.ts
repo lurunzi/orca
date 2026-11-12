@@ -1,23 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sendRuntimePtyInput = vi.fn()
-vi.mock('@/runtime/runtime-terminal-inspection', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-input-send', () => ({
   sendRuntimePtyInput: (...args: unknown[]) => sendRuntimePtyInput(...args)
 }))
-vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
   sendRuntimePtyInputVerified: vi.fn()
 }))
 
-import {
-  NATIVE_CHAT_SUBMIT_DELAY_MS,
-  resetNativeChatPtySendQueuesForTests,
-  sendNativeChatMessage
-} from './native-chat-runtime-send'
+import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
+import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
+import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   NATIVE_CHAT_COMPOSER_READY_POLL_MS,
   NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS
 } from './native-chat-composer-ready-wait'
-import { NATIVE_CHAT_CLEAR_CONFIRM_MS } from './native-chat-input-clear'
+import { NATIVE_CHAT_CLEAR_CONFIRM_MS } from './session/terminal/send/native-chat-input-clear'
 import {
   buildNativeChatPasteBytes,
   NATIVE_CHAT_SUBMIT

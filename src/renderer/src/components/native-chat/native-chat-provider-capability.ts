@@ -2,7 +2,7 @@ import type { NativeChatApi } from '../../../../preload/api-types'
 import {
   RUNTIME_NATIVE_CHAT_READ_ERROR,
   RUNTIME_NATIVE_CHAT_TOO_OLD
-} from './native-chat-runtime-contract'
+} from './session/terminal/read/native-chat-runtime-contract'
 
 type Transport = Pick<NativeChatApi, 'readSession' | 'subscribe'>
 

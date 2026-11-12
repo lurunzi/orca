@@ -17,6 +17,8 @@ import { assertPortNotShadowingListener } from './shadowed-port-probe'
 import { REMOTE_RUNTIME_MAX_INBOUND_FRAME_BYTES } from '../../../shared/remote-runtime/remote-runtime-memory-limits'
 import { classifyNetworkSource, type NetworkSourceClass } from './network-source-class'
 import { UnauthenticatedSourceCap } from './ws-unauthenticated-source-cap'
+import type { WebSocketSourceGuard } from './ws-network-source-guard'
+import { reserveBrowserTunnelOrcaListenerPort } from '../../browser/network/tunnels/browser-network-tunnel-destination-policy'
 
 export const WEBSOCKET_TRANSPORT_MAX_MESSAGE_BYTES = REMOTE_RUNTIME_MAX_INBOUND_FRAME_BYTES
 // Allow many remote-desktop streams so stale ones cannot starve control RPCs.
@@ -40,6 +42,8 @@ export type WebSocketTransportOptions = {
   preAuthTimeoutMs?: number
   // Serve browser assets from the pairing server to avoid another listener.
   staticRoot?: string
+  // Source-address policy checked at TCP accept; absent admits every source.
+  sourceGuard?: WebSocketSourceGuard
   // Retry persisted fallback first so previously paired endpoints remain reachable (STA-1511).
   fallbackPort?: number
   // Explicit serve pins precede stale fallbacks (#8535); defaults retain fallback-first for pairings.
@@ -56,6 +60,7 @@ export class WebSocketTransport implements RpcTransport {
   private readonly heartbeat: RemoteRuntimeServerHeartbeat
   private readonly preAuthTimeoutMs: number
   private readonly staticRoot: string | undefined
+  private readonly sourceGuard: WebSocketSourceGuard | undefined
   private readonly fallbackPort: number | undefined
   private readonly preferPinnedPort: boolean
   private readonly requirePinnedPort: boolean
@@ -63,6 +68,7 @@ export class WebSocketTransport implements RpcTransport {
   private persistedFallbackBindFailed = false
   private httpServer: HttpServer | null = null
   private wss: WebSocketServer | null = null
+  private releaseTunnelReservation = (): void => {}
   private messageHandler: WebSocketMessageHandler | null = null
   private connectionCloseHandler: WebSocketConnectionCloseHandler | null = null
   // Track authenticated device ids so close can attribute disconnects.
@@ -83,6 +89,7 @@ export class WebSocketTransport implements RpcTransport {
     heartbeatNow,
     preAuthTimeoutMs,
     staticRoot,
+    sourceGuard,
     fallbackPort,
     preferPinnedPort,
     requirePinnedPort,
@@ -97,6 +104,7 @@ export class WebSocketTransport implements RpcTransport {
     )
     this.preAuthTimeoutMs = preAuthTimeoutMs ?? PRE_AUTH_TIMEOUT_MS
     this.staticRoot = staticRoot
+    this.sourceGuard = sourceGuard
     this.fallbackPort = fallbackPort
     this.preferPinnedPort = preferPinnedPort === true
     this.requirePinnedPort = requirePinnedPort === true
@@ -226,7 +234,10 @@ export class WebSocketTransport implements RpcTransport {
     // Post-upgrade WS cap cannot bound raw TCP descriptors.
     httpServer.maxConnections = WEBSOCKET_TRANSPORT_MAX_TCP_CONNECTIONS
     httpServer.on('connection', (socket) => {
-      if (!this.sourceCap.admit(socket)) {
+      if (
+        this.sourceGuard?.admit(socket.remoteAddress) === false ||
+        !this.sourceCap.admit(socket)
+      ) {
         socket.destroy()
       }
     })
@@ -250,6 +261,7 @@ export class WebSocketTransport implements RpcTransport {
 
     this.httpServer = httpServer
     this.wss = wss
+    this.releaseTunnelReservation = reserveBrowserTunnelOrcaListenerPort(this.resolvedPort)
   }
 
   async stop(): Promise<void> {
@@ -257,12 +269,18 @@ export class WebSocketTransport implements RpcTransport {
     const httpServer = this.httpServer
     this.wss = null
     this.httpServer = null
-    await stopNodeWebSocketTransport({
-      wss,
-      httpServer,
-      heartbeat: this.heartbeat,
-      heartbeatConnections: this.heartbeatConnections
-    })
+    const releaseTunnelReservation = this.releaseTunnelReservation
+    this.releaseTunnelReservation = () => {}
+    try {
+      await stopNodeWebSocketTransport({
+        wss,
+        httpServer,
+        heartbeat: this.heartbeat,
+        heartbeatConnections: this.heartbeatConnections
+      })
+    } finally {
+      releaseTunnelReservation()
+    }
   }
 
   private handleConnection(ws: WebSocket): void {

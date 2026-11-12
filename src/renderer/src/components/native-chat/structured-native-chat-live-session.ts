@@ -1,6 +1,6 @@
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
-import type { NativeChatLiveSession } from './native-chat-live-session-contract'
-import type { useStructuredAgentSession } from './use-structured-agent-session'
+import type { NativeChatLiveSession } from './session/terminal/read/native-chat-live-session-contract'
+import type { useStructuredAgentSession } from './session/structured/use-structured-agent-session'
 
 type StructuredSessionController = Pick<
   ReturnType<typeof useStructuredAgentSession>,

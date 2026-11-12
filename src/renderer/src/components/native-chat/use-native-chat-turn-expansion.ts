@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useAppStore } from '../../store'
-import { toggleNativeChatExpandedKey } from './native-chat-expanded-keys'
+import { toggleNativeChatExpandedKey } from './messages/disclosure/native-chat-expanded-keys'
 
 type TurnToggles = {
   /** The default the toggles were made against; flipping the setting drops them. */

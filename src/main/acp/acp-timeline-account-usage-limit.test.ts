@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { closeProviderTimelineRigs } from '../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
-import { openAcpFixtureRig } from './acp-timeline-fixture.test-support'
-import { AcpAgentError } from './acp-errors'
-import { acpPromptTurnId } from './acp-prompt-turns'
+import { openAcpFixtureRig } from './timeline/testing/acp-timeline-fixture.test-support'
+import { AcpAgentError } from './transport/acp-errors'
+import { acpPromptTurnId } from './timeline/acp-prompt-turns'
 
 afterEach(closeProviderTimelineRigs)
 

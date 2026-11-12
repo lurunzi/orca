@@ -6,7 +6,7 @@ import {
 } from '../../../../shared/agent-session/agent-session-wire'
 import { sessionInboxHistoryItem } from '../../../../shared/session-inbox-journal-items'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
-import { callStructuredAgentSession } from '@/runtime/structured-agent-session-client'
+import { callStructuredAgentSession } from '@/runtime/native-chat/requests/structured-agent-session-call'
 import { nativeChatInboxScopeKey } from './native-chat-inbox-marks'
 
 /** Bound history reads so opening the panel cannot load an unbounded journal. */

@@ -10,7 +10,7 @@ import {
   createStructuredAgentSessionOptionState
 } from '../../../../shared/agent-session/options/structured-agent-session-options'
 import { structuredAgentSessionOptionSnapshot } from '../../../../shared/agent-session/options/structured-agent-session-option-snapshot'
-import { NativeChatSessionOptionPickers } from './NativeChatSessionOptionPickers'
+import { NativeChatSessionOptionPickers } from './session/options/controls/NativeChatSessionOptionPickers'
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string, values?: Record<string, string | number>) =>

@@ -1,4 +1,4 @@
-import type { PosixHookStdinReader } from './hook-stdin-contract'
+import type { PosixHookStdinReader } from './installation/scripts/hook-stdin-contract'
 
 export const POSIX_HOOK_EOF_TIMEOUT_SECONDS = 5
 

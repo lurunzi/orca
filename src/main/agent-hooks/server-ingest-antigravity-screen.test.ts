@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { AgentHookServer, _internals } from './server'
-import { PANE } from './server.test-fixtures'
+import { AgentHookServer, _internals } from './server/agent-hook-server'
+import { PANE } from './server/testing/server.test-fixtures'
 
 vi.mock('../telemetry/client', () => ({ track: vi.fn() }))
 vi.mock('../telemetry/cohort-classifier', () => ({ getCohortAtEmit: vi.fn(() => ({})) }))
