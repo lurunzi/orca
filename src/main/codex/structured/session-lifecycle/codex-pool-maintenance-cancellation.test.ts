@@ -1,4 +1,5 @@
-import { access, mkdir, mkdtemp, rm, stat } from 'node:fs/promises'
+import { mkdirSync } from 'node:fs'
+import { access, mkdtemp, rm, stat } from 'node:fs/promises'
 import type * as FileSystem from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -64,8 +65,8 @@ function record() {
 
 it('does not create a hidden probe directory when cancelled during the directory check', async () => {
   const hidden = join(home, 'hidden-probe')
-  vi.mocked(resolveHiddenProbeCwd).mockImplementation(async () => {
-    await mkdir(hidden)
+  vi.mocked(resolveHiddenProbeCwd).mockImplementation(() => {
+    mkdirSync(hidden)
     return hidden
   })
   const entered = Promise.withResolvers<void>()
