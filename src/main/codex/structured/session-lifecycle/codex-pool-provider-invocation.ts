@@ -1,4 +1,9 @@
+import { stat } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { waitForPromiseWithSignal } from '../../../../shared/abort-signal-reason'
+import { isDefinitiveAbsence } from '../../../../shared/definitive-filesystem-absence'
+import { resolveHiddenProbeCwd } from '../../../lib/hidden-probe-cwd'
+import { agentSessionPinnedLaunchDirectory } from '../../../runtime/agent-session/records/agent-session-record-launch-directory'
 import { requireLegacyAgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
 import type { CodexPoolIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-pool-account'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
@@ -10,10 +15,7 @@ import {
 import type { CodexAppServerRpc } from '../../app-server/codex-app-server-session'
 import { codexStructuredLaunchArgs } from '../launch/codex-structured-launch-args'
 import { resolveCodexStructuredInvocation } from '../launch/codex-structured-launch-resolution'
-import {
-  codexProviderProbeCwd,
-  type CodexProviderInvocationDeps
-} from './codex-provider-session-rename'
+import type { CodexProviderInvocationDeps } from './codex-provider-session-rename'
 import type {
   CodexPreparedShortLivedInvocation,
   CodexShortLivedOperationOptions,
@@ -31,14 +33,27 @@ export async function codexPoolProviderProbeCwd(
   signal?: AbortSignal
 ): Promise<string> {
   signal?.throwIfAborted()
-  // A cancelled lookup must not reach the hidden fallback, which creates its directory.
-  const cwd = await codexProviderProbeCwd(record, {
-    ...deps,
-    resolveWorkspacePath: (workspaceId) =>
-      waitForPromiseWithSignal(deps.resolveWorkspacePath(workspaceId), signal)
-  })
+  const cwd = resolve(
+    agentSessionPinnedLaunchDirectory(record) ??
+      (await waitForPromiseWithSignal(
+        deps.resolveWorkspacePath(record.location.workspaceId),
+        signal
+      ))
+  )
   signal?.throwIfAborted()
-  return cwd
+  try {
+    const info = await waitForPromiseWithSignal(stat(cwd), signal)
+    signal?.throwIfAborted()
+    if (info.isDirectory()) {
+      return cwd
+    }
+  } catch (error) {
+    if (!isDefinitiveAbsence(error)) {
+      throw error
+    }
+  }
+  signal?.throwIfAborted()
+  return resolveHiddenProbeCwd()
 }
 
 /** Mirrors runCodexProviderAppServer's launch so the owner can authenticate before spawning it. */

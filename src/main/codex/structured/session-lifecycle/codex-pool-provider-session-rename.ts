@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises'
 import { waitForPromiseWithSignal } from '../../../../shared/abort-signal-reason'
 import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host'
 import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
@@ -13,9 +14,44 @@ import {
 import type { CodexShortLivedOperations } from './codex-short-lived-operations'
 import type { CodexSession } from './codex-structured-session-state'
 
-const RENAME_TIMEOUT_MS = 30_000
+const RENAME_TIMEOUT_MS = 15_000
+const EMPTY_ROLLOUT = /\brollout at .+ is empty\b/i
+const RETRY_DELAYS_MS = [50, 200] as const
 
-/** Pool renames never retry or leak provider errors; a cold one runs only after authentication. */
+async function renameActivePoolSession(
+  session: CodexSession,
+  threadId: string,
+  name: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const request = async (): Promise<void> => {
+    signal?.throwIfAborted()
+    await waitForPromiseWithSignal(
+      session.connection.request(
+        'thread/name/set',
+        { threadId, name },
+        { timeoutMs: RENAME_TIMEOUT_MS }
+      ),
+      signal
+    )
+  }
+  for (const retryDelay of RETRY_DELAYS_MS) {
+    try {
+      await request()
+      return
+    } catch (error) {
+      signal?.throwIfAborted()
+      if (!(error instanceof Error) || !EMPTY_ROLLOUT.test(error.message)) {
+        throw error
+      }
+      await delay(retryDelay, undefined, { signal })
+      signal?.throwIfAborted()
+    }
+  }
+  await request()
+}
+
+/** Pool cold renames authenticate once; active renames cancel retries without closing the connection. */
 export async function renameCodexProviderSessionForAccount(
   input: StructuredAgentSessionProviderRenameInput & {
     session: CodexSession | undefined
@@ -31,11 +67,7 @@ export async function renameCodexProviderSessionForAccount(
     signal?.throwIfAborted()
     const live = session && !session.ended && !session.connection.closed ? session : null
     if (live?.threadId === providerSessionId) {
-      // Without an invocation a connection lost meanwhile fails instead of going cold unauthenticated.
-      await waitForPromiseWithSignal(
-        renameCodexProviderSession({ session: live, record, providerSessionId, name }),
-        signal
-      )
+      await renameActivePoolSession(live, providerSessionId, name, signal)
       return
     }
     if (
