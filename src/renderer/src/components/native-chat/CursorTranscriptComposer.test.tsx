@@ -3,9 +3,9 @@ import '@testing-library/jest-dom/vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { CursorTranscriptComposer } from './CursorTranscriptComposer'
-import { clearNativeChatComposerDraftsForTests } from './native-chat-composer-draft-store'
+import { clearNativeChatComposerDraftsForTests } from './drafts/native-chat-draft-reset'
 
-vi.mock('./NativeChatPromptEditor', () => ({
+vi.mock('./composer/editor/NativeChatPromptEditor', () => ({
   NativeChatPromptEditor: (props: {
     inputRef: { current: HTMLTextAreaElement | null }
     initialValue: string

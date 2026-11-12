@@ -31,19 +31,19 @@ vi.mock('../../store', () => ({
   }
 }))
 
-vi.mock('@/runtime/runtime-terminal-inspection', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-input-send', () => ({
   sendRuntimePtyInput: (...args: unknown[]) => mocks.sendRuntimePtyInput(...args)
 }))
-vi.mock('@/runtime/runtime-terminal-verified-input', () => ({
+vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
   sendRuntimePtyInputVerified: (...args: unknown[]) => mocks.sendRuntimePtyInputVerified(...args)
 }))
 
-vi.mock('./native-chat-runtime-send', () => ({
+vi.mock('./session/terminal/send/native-chat-runtime-send', () => ({
   sendNativeChatAskAnswer: (...args: unknown[]) => mocks.sendNativeChatAskAnswer(...args),
   sendNativeChatMessage: (...args: unknown[]) => mocks.sendNativeChatMessage(...args)
 }))
 
-import { useNativeChatInteractiveSend } from './use-native-chat-interactive-send'
+import { useNativeChatInteractiveSend } from './session/terminal/send/use-native-chat-interactive-send'
 import type { AskPrompt } from '../../../../shared/native-chat/input/native-chat-ask-types'
 
 const PROMPT: AskPrompt = {

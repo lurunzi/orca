@@ -1,12 +1,12 @@
 import { useCallback, useState, type RefObject } from 'react'
 import { structuredAgentLabel } from '@/lib/agent-session/launch/structured-agent-session-launch-label'
-import type { NativeChatComposerHandle } from './native-chat-composer-types'
+import type { NativeChatComposerHandle } from './composer/native-chat-composer-types'
 import type { NativeChatStructuredViewProps } from './native-chat-view-types'
 import { NativeChatInboxButton } from './NativeChatInboxButton'
 import { useNativeChatInbox } from './use-native-chat-inbox'
 import { nativeChatInboxScopeKey } from './native-chat-inbox-marks'
 import type { NativeChatJumpRequest } from './use-native-chat-jump-request'
-import type { useStructuredAgentSession } from './use-structured-agent-session'
+import type { useStructuredAgentSession } from './session/structured/use-structured-agent-session'
 
 /** A structured chat's inbox: its header button, and the jumps it asks the transcript to make. */
 export type StructuredNativeChatInboxController = Pick<

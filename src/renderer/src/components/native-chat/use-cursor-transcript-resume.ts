@@ -12,7 +12,7 @@ import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/wo
 import { cursorSessionMatchesWorkspace } from '@/lib/cursor-transcript-tab'
 import { prepareAiVaultSessionForTerminalResume } from '@/lib/agent-session/resume/history/ai-vault-session-resume-preparation'
 import { buildAiVaultResumeStartupForWorktree } from '@/lib/agent-session/resume/history/ai-vault-resume-command'
-import { launchAiVaultSessionInNewTab } from '@/lib/launch-ai-vault-session'
+import { launchAiVaultSessionInNewTab } from '@/lib/agent-session/resume/history/launch-ai-vault-session'
 import { pasteAgentLaunchPromptOnceReady } from '@/lib/agent-session/launch/prompt/launch-agent-tab-prompt-paste'
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'
 import { translate } from '@/i18n/i18n'

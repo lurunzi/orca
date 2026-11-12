@@ -2,7 +2,7 @@ import { z } from 'zod'
 import {
   parseStoredNativeChatComposerDraft,
   type NativeChatComposerDraftStorage
-} from './native-chat-composer-draft-storage'
+} from './drafts/native-chat-composer-draft-storage'
 
 const entrySchema = z.object({ savedAt: z.number(), value: z.unknown() })
 const textSchema = z.object({ text: z.string(), document: z.unknown().optional() })

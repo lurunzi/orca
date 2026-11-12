@@ -3,17 +3,17 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { readAttachmentTextChunk } from './agent-session-attachment-text-read'
-import type { AttachmentTextRequest } from '../../../shared/attachment-text-source'
+import type { AttachmentTextRequest } from '../../../shared/attachment-text/attachment-text-source'
 import { appendFile, mkdir, rm, writeFile } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import {
   sanitizeAgentSessionAttachmentName,
   type AgentSessionAttachmentUploadCommitResult
 } from '../../../shared/agent-session/agent-session-attachments'
-import type { RuntimeFilePreviewResult } from '../../../shared/runtime-types'
-import { readAuthorizedDocPreviewFile } from '../../../shared/doc-preview-file-access'
+import type { RuntimeFilePreviewResult } from '../../../shared/file-content/runtime-file-read'
+import { readAuthorizedDocPreviewFile } from '../../../shared/document-preview/doc-preview-file-access'
 import { renameFileWithWindowsRetryAsync } from '../../../shared/windows-retry-file-operations'
-import { IMAGE_FILE_MIME_TYPES } from '../../../shared/image-file-extensions'
+import { IMAGE_FILE_MIME_TYPES } from '../../../shared/file-preview/image-mime-types'
 import {
   LOCAL_PREVIEWABLE_BINARY_MAX_BYTES,
   assertPreviewWithinTransportBudget,

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { AgentSessionContinuationDialog } from '@/components/agent-session-continuation/AgentSessionContinuationDialog'
-import type { AgentSessionContinuationRequest } from '@/lib/agent-session-continuation'
+import type { AgentSessionContinuationRequest } from '@/lib/agent-session/context/agent-session-continuation'
 import { useAppStore } from '@/store'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import {
   prepareStructuredChatContinuation,
   hasStructuredChatTranscriptText
 } from './structured-chat-continuation-request'
-import type { NativeChatFileLinkContext } from './native-chat-file-link'
+import type { NativeChatFileLinkContext } from './links/actions/native-chat-file-link-context'
 
 /** Owns the "Continue in New Session…" request and dialog for a structured Chat. */
 export function useStructuredChatContinuation(args: {

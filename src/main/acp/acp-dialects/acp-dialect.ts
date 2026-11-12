@@ -8,7 +8,7 @@ import type {
   NativeChatSubagentState
 } from '../../../shared/native-chat/native-chat-types'
 import type { ProviderTimelineRequestBody } from '../../native-chat/agent-session-timeline/provider-timeline-event'
-import type { AcpAgentError } from '../acp-errors'
+import type { AcpAgentError } from '../transport/acp-errors'
 import type { AgentSessionOptionChoice } from '../../../shared/agent-session/agent-session-wire'
 import type { AgentSessionExecutionOptions } from '../../../shared/agent-session/options/agent-session-execution-options'
 import type {
@@ -16,6 +16,7 @@ import type {
   ClientCapabilities,
   InitializeResponse,
   ModelInfo,
+  SessionNotification,
   ToolCallUpdate
 } from '../generated/acp-protocol.generated'
 
@@ -50,6 +51,23 @@ export type AcpSubagentUpdate = {
   result?: string
   /** Ambiguous task reports apply only to known subagents. */
   knownOnly?: true
+  /** The provider started this subagent again; reopens it after an ending. */
+  restart?: true
+  /** The subagent that spawned this one; absent for the main agent's. */
+  ownerId?: string
+}
+
+/** A subagent's own report, relayed on its root session; it never opens or ends the root's turns. */
+export type AcpChildSessionReport = {
+  rootSessionId: string
+  agentId: string
+  /** Set for a child of another child. */
+  parentAgentId?: string
+  label?: string
+  state?: NativeChatSubagentState
+  /** The child began an execution. */
+  started?: true
+  update?: SessionNotification
 }
 
 export type AcpDialectNotification =
@@ -66,6 +84,7 @@ export type AcpDialectNotification =
       usage?: AgentSessionContextUsage
       backgroundTasks?: AcpBackgroundTaskUpdate[]
       subagents?: AcpSubagentUpdate[]
+      child?: AcpChildSessionReport
     }
 
 /** Hook denial completes the turn rather than recording a user Stop. */
@@ -104,6 +123,8 @@ export type AcpDialect = {
     request(sessionId: string, id: string): { method: string; params: unknown }
     response(value: unknown, id: string): { cancelled: boolean; state?: NativeChatSubagentState }
   }
+  /** Subagents are child sessions that `session/close` interrupts; a user's Stop also ends them. */
+  childSessionStop?: { supported(initialized: InitializeResponse): boolean }
   backgroundTaskStop?: {
     /** Probe without a target to establish support without killing a task. */
     probe: { method: string; params: unknown }
@@ -139,7 +160,7 @@ export type AcpDialect = {
   /** Native thinking choices remain valid across models; the agent clamps unsupported levels. */
   clampsUnlistedEffort?: true
   /** Opt-in because advertising forms changes agent behaviour; requests use the generic handlers. */
-  clientCapabilities?: Pick<ClientCapabilities, 'elicitation'>
+  clientCapabilities?: Pick<ClientCapabilities, 'elicitation' | '_meta'>
   /** Claimed permission requests are never auto-approved. */
   request?(method: string, params: unknown): AcpRequestPresentation | undefined
   settleRequest?(method: string, params: unknown): AcpRequestSettlement | undefined

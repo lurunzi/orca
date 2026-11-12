@@ -1,4 +1,4 @@
-import { stripScrollbackAnsi } from './native-chat-scrape-fallback'
+import { stripScrollbackAnsi } from './session/terminal/assembly/native-chat-scrape-fallback'
 
 export type CursorModelTarget = {
   label: string

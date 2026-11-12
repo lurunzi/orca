@@ -3,7 +3,7 @@ import { guardNativeChatAgentTransport } from './native-chat-provider-capability
 import {
   RUNTIME_NATIVE_CHAT_READ_ERROR,
   RUNTIME_NATIVE_CHAT_TOO_OLD
-} from './native-chat-runtime-contract'
+} from './session/terminal/read/native-chat-runtime-contract'
 
 describe.each(['antigravity', 'cursor'] as const)('%s chat host capability', (agent) => {
   const args = {

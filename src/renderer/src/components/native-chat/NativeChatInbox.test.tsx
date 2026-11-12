@@ -15,7 +15,7 @@ import { NativeChatInboxButton } from './NativeChatInboxButton'
 import { readNativeChatInboxMarks, resetNativeChatInboxMarksCache } from './native-chat-inbox-marks'
 import { useNativeChatInbox } from './use-native-chat-inbox'
 
-vi.mock('@/runtime/structured-agent-session-client', () => ({
+vi.mock('@/runtime/native-chat/requests/structured-agent-session-call', () => ({
   callStructuredAgentSession: vi.fn()
 }))
 

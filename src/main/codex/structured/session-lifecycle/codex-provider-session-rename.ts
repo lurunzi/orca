@@ -8,7 +8,7 @@ import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { isDefinitiveAbsence } from '../../../../shared/definitive-filesystem-absence'
 import { agentSessionPinnedLaunchDirectory } from '../../../runtime/agent-session/records/agent-session-record-launch-directory'
-import { resolveHiddenProbeCwd } from '../../../rate-limits/hidden-probe-cwd'
+import { resolveHiddenProbeCwd } from '../../../lib/hidden-probe-cwd'
 import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host'
 import { agentDrivesSession } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-provider-support'
 import { CODEX_STRUCTURED_AGENT } from '../launch/codex-structured-agent-definition'
@@ -23,16 +23,6 @@ import {
 } from '../../../native-chat/native-chat-visuals-delivery'
 import { CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS } from '../../../codex-cli/codex-read-only-app-server-args'
 import type { CodexSession } from './codex-structured-session-state'
-import type { StructuredAgentSessionProviderRenameInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-provider-rename-input'
-import { DashboardCodexRefreshOperation } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
-import type { CodexPoolIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-pool-account'
-import { waitForPromiseWithSignal } from '../../../../shared/abort-signal-reason'
-import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
-import type {
-  CodexShortLivedOperations,
-  CodexShortLivedOperationOptions,
-  CodexPreparedShortLivedInvocation
-} from './codex-short-lived-operations'
 
 export type CodexProviderInvocationDeps = CodexStructuredInvocationDeps & {
   resolveLaunchArgs: () => Promise<string[]> | string[]
@@ -42,29 +32,21 @@ export type CodexProviderInvocationDeps = CodexStructuredInvocationDeps & {
 /** The chat's pinned launch directory when it still exists, else the hidden probe directory. */
 export async function codexProviderProbeCwd(
   record: AgentSessionRecord,
-  deps: CodexProviderInvocationDeps,
-  signal?: AbortSignal
+  deps: CodexProviderInvocationDeps
 ): Promise<string> {
-  signal?.throwIfAborted()
   const cwd = resolve(
     agentSessionPinnedLaunchDirectory(record) ??
-      (await waitForPromiseWithSignal(
-        deps.resolveWorkspacePath(record.location.workspaceId),
-        signal
-      ))
+      (await deps.resolveWorkspacePath(record.location.workspaceId))
   )
-  signal?.throwIfAborted()
   try {
-    if ((await waitForPromiseWithSignal(stat(cwd), signal)).isDirectory()) {
+    if ((await stat(cwd)).isDirectory()) {
       return cwd
     }
   } catch (error) {
-    signal?.throwIfAborted()
     if (!isDefinitiveAbsence(error)) {
       throw error
     }
   }
-  signal?.throwIfAborted()
   return resolveHiddenProbeCwd()
 }
 
@@ -79,138 +61,56 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 async function setThreadName(
   request: CodexAppServerRpc['request'],
   threadId: string,
-  name: string,
-  signal?: AbortSignal
+  name: string
 ): Promise<void> {
   for (const delay of EMPTY_ROLLOUT_RETRY_DELAYS_MS) {
-    signal?.throwIfAborted()
     try {
-      await waitForPromiseWithSignal(
-        request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS }),
-        signal
-      )
+      await request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS })
       return
     } catch (error) {
-      signal?.throwIfAborted()
       if (!(error instanceof Error) || !EMPTY_ROLLOUT.test(error.message)) {
         throw error
       }
-      await waitForPromiseWithSignal(wait(delay), signal)
+      await wait(delay)
     }
   }
-  signal?.throwIfAborted()
-  await waitForPromiseWithSignal(
-    request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS }),
-    signal
-  )
+  await request('thread/name/set', { threadId, name }, { timeoutMs: RENAME_TIMEOUT_MS })
 }
 
 /** Codex's own /rename is `thread/name/set`. It names an unloaded thread straight in the
  *  account's thread store, so a chat at rest takes it from a short-lived app-server without
  *  resuming the thread. */
-export async function renameCodexProviderSession(
-  input: StructuredAgentSessionProviderRenameInput & {
-    session: CodexSession | undefined
-    invocation?: CodexProviderInvocationDeps
-    owner?: CodexShortLivedOperations
-  }
-): Promise<void> {
-  const { session, providerSessionId, name, signal } = input
-  const pool =
-    process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined ||
-    !!input.record.poolAccount ||
-    !!session?.dashboardAdoption
-  try {
-    signal?.throwIfAborted()
-    const live = session && !session.ended && !session.connection.closed ? session : null
-    if (live?.threadId === providerSessionId) {
-      await setThreadName(
-        (method, params, options) => live.connection.request(method, params, options),
-        providerSessionId,
-        name,
-        signal
-      )
-      return
-    }
-    const { record, invocation, owner } = input
-    if (
-      record.provider !== 'codex' ||
-      !supportsCodexStructuredLocation(record.location) ||
-      !agentDrivesSession({ definition: () => CODEX_STRUCTURED_AGENT }, record)
-    ) {
-      throw new Error('unsupported Codex rename location, account or handles')
-    }
-    if (!invocation) {
-      throw new Error('Codex rename invocation is not configured')
-    }
-    await runCodexProviderAppServer(
-      record,
-      invocation,
-      {
-        timeoutMs: RENAME_TIMEOUT_MS,
-        signal,
-        operation: DashboardCodexRefreshOperation.RenameSession
-      },
-      async (rpc, _cwd, identity) => {
-        if (identity) {
-          await rpc.request(
-            'thread/name/set',
-            { threadId: providerSessionId, name },
-            { timeoutMs: RENAME_TIMEOUT_MS }
-          )
-          return
-        }
-        await setThreadName(rpc.request, providerSessionId, name, signal)
-      },
-      owner
+export async function renameCodexProviderSession(input: {
+  session: CodexSession | undefined
+  record: AgentSessionRecord
+  providerSessionId: string
+  name: string
+  invocation?: CodexProviderInvocationDeps
+}): Promise<void> {
+  const { session, providerSessionId, name } = input
+  const live = session && !session.ended && !session.connection.closed ? session : null
+  if (live?.threadId === providerSessionId) {
+    await setThreadName(
+      (method, params, options) => live.connection.request(method, params, options),
+      providerSessionId,
+      name
     )
-  } catch (error) {
-    if (pool) {
-      throw new DashboardAllocationError()
-    }
-    throw error
+    return
   }
-}
-
-export async function prepareCodexProviderInvocation(
-  record: AgentSessionRecord,
-  invocation: CodexProviderInvocationDeps,
-  options: CodexShortLivedOperationOptions,
-  signal?: AbortSignal
-): Promise<CodexPreparedShortLivedInvocation> {
-  signal?.throwIfAborted()
-  const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
-  const cwd = await codexProviderProbeCwd(record, invocation, signal)
-  const { command, prefixArgs, environment } = await waitForPromiseWithSignal(
-    resolveCodexStructuredInvocation({
-      ...invocation,
-      ...(signal ? { signal } : {}),
-      resolveWorkingDirectory: () => cwd
-    }),
-    signal
-  )
-  const args = codexStructuredLaunchArgs(
-    await waitForPromiseWithSignal(Promise.resolve(invocation.resolveLaunchArgs()), signal)
-  )
-  signal?.throwIfAborted()
-  const env = Object.fromEntries(
-    Object.entries(environment ?? {}).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined
-    )
-  )
-  return {
-    cwd,
-    invocation: {
-      command,
-      args: [...prefixArgs, ...args, ...CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS],
-      cwd,
-      cliPath: command,
-      env: { ...env, CODEX_HOME: codexHome },
-      envToDelete: [NATIVE_CHAT_SCRATCH_DIR_ENV, LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV],
-      ...options,
-      ...(signal ? { signal } : {})
-    }
+  const { record, invocation } = input
+  if (
+    record.provider !== 'codex' ||
+    !supportsCodexStructuredLocation(record.location) ||
+    !agentDrivesSession({ definition: () => CODEX_STRUCTURED_AGENT }, record)
+  ) {
+    throw new Error('unsupported Codex rename location, account or handles')
   }
+  if (!invocation) {
+    throw new Error('Codex rename invocation is not configured')
+  }
+  await runCodexProviderAppServer(record, invocation, { timeoutMs: RENAME_TIMEOUT_MS }, (rpc) =>
+    setThreadName(rpc.request, providerSessionId, name)
+  )
 }
 
 /** Runs one short-lived app-server for a chat at rest, launched as the chat is (configured
@@ -218,18 +118,32 @@ export async function prepareCodexProviderInvocation(
 export async function runCodexProviderAppServer<T>(
   record: AgentSessionRecord,
   invocation: CodexProviderInvocationDeps,
-  options: CodexShortLivedOperationOptions,
-  body: (rpc: CodexAppServerRpc, cwd: string, identity: CodexPoolIdentity | null) => Promise<T>,
-  owner?: CodexShortLivedOperations
+  options: { timeoutMs: number; signal?: AbortSignal; experimentalApi?: boolean },
+  body: (rpc: CodexAppServerRpc, cwd: string) => Promise<T>
 ): Promise<T> {
-  if (!owner && (process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined || record.poolAccount)) {
-    throw new DashboardAllocationError()
-  }
-  const prepare = (signal?: AbortSignal) =>
-    prepareCodexProviderInvocation(record, invocation, options, signal)
-  if (owner) {
-    return owner.run(record, options, prepare, body)
-  }
-  const prepared = await prepare(options.signal)
-  return runCodexAppServerSession(prepared.invocation, (rpc) => body(rpc, prepared.cwd, null))
+  const codexHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
+  const cwd = await codexProviderProbeCwd(record, invocation)
+  const { command, prefixArgs, environment } = await resolveCodexStructuredInvocation({
+    ...invocation,
+    ...(options.signal ? { signal: options.signal } : {}),
+    resolveWorkingDirectory: () => cwd
+  })
+  const args = codexStructuredLaunchArgs(await invocation.resolveLaunchArgs())
+  const env = Object.fromEntries(
+    Object.entries(environment ?? {}).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined
+    )
+  )
+  return runCodexAppServerSession(
+    {
+      command,
+      args: [...prefixArgs, ...args, ...CODEX_SHORT_LIVED_PROBE_APP_SERVER_ARGS],
+      cwd,
+      cliPath: command,
+      env: { ...env, CODEX_HOME: codexHome },
+      envToDelete: [NATIVE_CHAT_SCRATCH_DIR_ENV, LEGACY_NATIVE_CHAT_VISUALS_DIR_ENV],
+      ...options
+    },
+    (rpc) => body(rpc, cwd)
+  )
 }

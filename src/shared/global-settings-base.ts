@@ -1,4 +1,5 @@
 import type { AntigravityChatAuthSettings } from './antigravity-chat-auth-config'
+import type { AntigravityChatFullAccessApprovalsSettings } from './antigravity-chat-full-access-approvals'
 import type { EmulatorOpeningSettings } from './emulator-opening-preferences'
 import type { BrowserExtensionGlobalSettings } from './browser/extensions/browser-extension-settings'
 import type { ClaudeAgentViewSettings } from './claude-agent-view'
@@ -19,11 +20,14 @@ import type { AgentPermissionGlobalSettings } from './agent-launch/permissions/t
 import type { TerminalColorOverrideGlobalSettings } from './terminal-themes/terminal-color-overrides'
 import type { WindowMaterialSettings } from './window-material'
 import type { EditorSaveSettings } from './editor-save-settings'
-import type { NestedWorkerDepthSettings } from './nested-worker-depth'
+import type { NestedWorkerDepthSettings } from './orchestration/workers/nested-worker-depth'
 import type { SshRemoteControlSettings } from './ssh-remote-control-settings'
+import type { AgentWorkspaceTrustSettings } from './agent-launch/permissions/agent-workspace-trust-decision'
+import type { KeybindingGlobalSettings } from './keybindings/global-settings'
 
 /** Settings groups owned by their feature modules and composed into GlobalSettings. */
 export type GlobalSettingsBase = AntigravityChatAuthSettings &
+  AntigravityChatFullAccessApprovalsSettings &
   EmulatorOpeningSettings &
   SshRemoteControlSettings &
   ClaudeAgentViewSettings &
@@ -45,4 +49,6 @@ export type GlobalSettingsBase = AntigravityChatAuthSettings &
   WindowMaterialSettings &
   EditorSaveSettings &
   BrowserPasswordsGlobalSettings &
-  NestedWorkerDepthSettings
+  NestedWorkerDepthSettings &
+  AgentWorkspaceTrustSettings &
+  KeybindingGlobalSettings

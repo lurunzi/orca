@@ -1,6 +1,6 @@
 import { readCodexDashboardAdoptions } from '../../codex-structured-session-process-state'
-import { copyCodexConversation } from '../../codex-conversation-copy'
-import { readCodexSessionAccountUsage } from './codex-session-account-usage'
+import { copyCodexConversationForAccount } from '../../codex-pool-conversation-copy'
+import { readCodexSessionAccountUsageForAccount } from './codex-pool-session-account-usage'
 import * as permission from '../turns/codex-structured-turn-permission'
 import * as Suggestion from '../../codex-prompt-suggestion-session'
 import { projectCodexSessionOptions } from '../catalog/codex-structured-service-tier'
@@ -50,7 +50,7 @@ import {
   answerCodexStructuredPrompt,
   cancelCodexStructuredTurn
 } from '../prompts/codex-structured-prompt-ownership'
-import { renameCodexProviderSession } from './codex-provider-session-rename'
+import { renameCodexProviderSessionForAccount } from './codex-pool-provider-session-rename'
 import { DashboardCodexRefreshMailbox } from '../../../dashboard-accounts/dashboard-codex-refresh-mailbox'
 import * as codexRewind from '../threads/codex-structured-rewind'
 import * as turnEnd from '../turns/codex-structured-turn-end-settlement'
@@ -70,8 +70,11 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   constructor(private readonly deps: CodexStructuredSessionAdapterDeps) {
     this.atRestCommands = deps.atRestCommands
     this.shortLived = new CodexShortLivedOperations({ mailbox: this.mailbox, ...deps })
-    const invocation = () => deps.providerInvocation
-    this.readAccountUsage = readCodexSessionAccountUsage(this.sessions, invocation, this.shortLived)
+    this.readAccountUsage = readCodexSessionAccountUsageForAccount(
+      this.sessions,
+      () => deps.providerInvocation,
+      this.shortLived
+    )
     this.notificationRetries = createCodexStructuredNotificationRetry({
       sessionFor: (sessionId) => this.sessions.get(sessionId),
       translate: (sessionId, session, method, params, observedAt, dispatchSequenceAtReceipt) =>
@@ -95,15 +98,14 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   }
 
   copyConversation: NonNullable<SessionAdapter['copyConversation']> = (input) =>
-    copyCodexConversation(input, this.deps.providerInvocation, this.shortLived)
+    copyCodexConversationForAccount(input, this.deps.providerInvocation, this.shortLived)
   readAccountUsage: NonNullable<SessionAdapter['readAccountUsage']>
 
   supportsLocation = supportsCodexStructuredLocation
 
   readDashboardCodexRefreshes = () => this.mailbox.read()
 
-  readDashboardCodexProcesses = () =>
-    readCodexDashboardAdoptions(this.sessions, this.acquisitions.size)
+  readDashboardCodexProcesses = () => readCodexDashboardAdoptions(this.sessions, this.acquisitions)
 
   readCommands: NonNullable<SessionAdapter['readCommands']> = (sessionId) =>
     this.sessions.get(sessionId)?.skillReport?.read()
@@ -111,7 +113,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   readonly atRestCommands: CodexStructuredSessionAdapterDeps['atRestCommands']
 
   renameProviderSession: NonNullable<SessionAdapter['renameProviderSession']> = (input) =>
-    renameCodexProviderSession({
+    renameCodexProviderSessionForAccount({
       ...input,
       session: this.sessions.get(input.record.sessionId),
       invocation: this.deps.providerInvocation,
@@ -274,6 +276,9 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
       ? { supported: false, reason: 'history-not-paginated' }
       : { supported: true }
 
+  prepareRewind: NonNullable<SessionAdapter['prepareRewind']> = (input) =>
+    codexRewind.prepareCodexRewind(this.session(input.sessionId), input, this.deps.requestTimeoutMs)
+
   rewind: NonNullable<SessionAdapter['rewind']> = (input) =>
     codexRewind.rewindCodexSession(this.fresh(input.sessionId), input, this.deps.requestTimeoutMs)
 
@@ -325,8 +330,8 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   projectOptions = (sessionId: string, options: Readonly<Record<string, string>>) =>
     projectCodexSessionOptions(this.sessions.get(sessionId), options)
 
-  closeSession: NonNullable<SessionAdapter['closeSession']> = (...args) =>
-    this.teardown.close(...args)
+  closeSession: NonNullable<SessionAdapter['closeSession']> = (sessionId, observeClose) =>
+    this.teardown.close(sessionId, observeClose)
   forceCloseSession = (sessionId: string): Promise<boolean> => this.teardown.forceClose(sessionId)
   disposeSession: NonNullable<SessionAdapter['disposeSession']> = this.closeSession
   closeAll = (): Promise<void> => this.teardown.closeAll(this.shortLived)

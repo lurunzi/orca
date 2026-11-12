@@ -1,99 +1,126 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type * as NodeFsPromises from 'node:fs/promises'
+import { agentSessionRecordFixture } from '../../../native-chat/agent-session-record-test-fixture'
+import { createCodexStructuredLaunchResolver } from '../../../runtime/agent-session/launch/structured-agent-launch-composition.test-support'
+import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
+import { codexProviderHandle } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import {
-  installCodexStructuredAccountSwitch,
-  resolveCodexStructuredLaunchHome
-} from './codex-structured-account-switch'
+  configureHostReadableTranscriptPathSources,
+  resetHostReadableTranscriptPathCacheForTests
+} from '../../../native-chat/host-readable-transcript-path'
+import { codexChatAccountSwitchable } from './codex-structured-account-switch'
 
-// Only the rollout itself fails to link, as across volumes; a staged copy would still publish.
-const linkFault = vi.hoisted(() => {
-  const fault: { source: string | null } = { source: null }
-  return fault
-})
+// Only the rollout fails to link, or one home sits on another volume, as across drives.
+const fault = vi.hoisted(() => ({
+  linkSource: null as string | null,
+  otherVolume: null as string | null,
+  systemHome: ''
+}))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof NodeFsPromises>()
   return {
     ...actual,
     link: async (...args: Parameters<typeof actual.link>) => {
-      if (args[0] === linkFault.source) {
+      if (args[0] === fault.linkSource) {
         const error: NodeJS.ErrnoException = new Error('EXDEV: cross-device link not permitted')
         error.code = 'EXDEV'
         throw error
       }
       return actual.link(...args)
+    },
+    stat: async (...args: Parameters<typeof actual.stat>) => {
+      const result = await actual.stat(...args)
+      return args[0] === fault.otherVolume ? { ...result, dev: Number(result.dev) + 1 } : result
     }
   }
 })
 
+vi.mock('../../configuration/homes/codex-home-paths', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getSystemCodexHomePath: () => fault.systemHome
+}))
+
+const SESSION_ID = 'session-1'
 const THREAD_ID = 'abcdef00-1234-4321-9999-cafecafecafe'
 const ROLLOUT = join('2026', '11', '08', `rollout-2026-11-08T10-00-00-${THREAD_ID}.jsonl`)
 
 let root: string
 let recordHome: string
 let selectedHome: string
-let pinned: string[]
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'orca-codex-account-switch-'))
   vi.stubEnv('ORCA_USER_DATA_PATH', join(root, 'user-data'))
   recordHome = join(root, 'account-a')
   selectedHome = join(root, 'account-b')
+  fault.systemHome = join(root, 'system')
   mkdirSync(join(recordHome, 'sessions', '2026', '11', '08'), { recursive: true })
-  mkdirSync(selectedHome, { recursive: true })
+  mkdirSync(join(selectedHome, 'sessions'), { recursive: true })
   writeFileSync(join(recordHome, 'sessions', ROLLOUT), '{"type":"session_meta"}\n')
-  pinned = []
-  installCodexStructuredAccountSwitch({
-    isEnabled: () => true,
-    prepareLaunchHome: async () => selectedHome,
-    selectableHomes: () => [recordHome, selectedHome],
-    systemHomePath: () => join(root, 'system'),
-    preparePinnedLaunchHome: async (home) => {
-      pinned.push(home)
-    },
-    workspaceTrustSettings: () => ({ agentWorkspaceTrustEnabled: false })
+  configureHostReadableTranscriptPathSources({
+    getAdditionalCodexHomePaths: () => [recordHome, selectedHome]
   })
 })
 
 afterEach(() => {
-  installCodexStructuredAccountSwitch(undefined)
-  linkFault.source = null
+  fault.linkSource = null
+  fault.otherVolume = null
+  resetHostReadableTranscriptPathCacheForTests()
   vi.unstubAllEnvs()
   rmSync(root, { recursive: true, force: true })
 })
 
 const launch = () =>
-  resolveCodexStructuredLaunchHome({
-    recordHome,
-    threadId: THREAD_ID,
-    launchEnv: {},
-    launchDirectory: async () => root
-  })
+  createCodexStructuredLaunchResolver({
+    store: {
+      getRecord: () =>
+        agentSessionRecordFixture({
+          sessionId: SESSION_ID,
+          provider: 'codex',
+          location: {
+            executionHostId: LOCAL_EXECUTION_HOST_ID,
+            wslDistro: null,
+            workspaceId: 'workspace-1',
+            workspaceKind: 'git-worktree'
+          },
+          accountHome: { variable: 'CODEX_HOME', path: recordHome },
+          providerHandleChain: [
+            {
+              linkId: 'link-1',
+              handle: codexProviderHandle(THREAD_ID),
+              origin: 'created',
+              mintedAtFence: 1,
+              observedAt: 1
+            }
+          ]
+        }),
+      pinLaunchDirectory: vi.fn()
+    },
+    resolveWorkspacePath: async (id) => `/repos/${id}`,
+    resolveCommand: () => ({ command: '/usr/local/bin/codex', prefixArgs: [] }),
+    resolveLaunchArgs: () => [],
+    prepareLaunchAccountHome: async () => ({ variable: 'CODEX_HOME', path: selectedHome })
+  })({ identity: { sessionId: SESSION_ID } as never })
 
-describe('resolveCodexStructuredLaunchHome', () => {
-  it('starts under the selected account with the rollout hardlinked into it', async () => {
-    await expect(launch()).resolves.toBe(selectedHome)
-    const source = statSync(join(recordHome, 'sessions', ROLLOUT))
-    const linked = statSync(join(selectedHome, 'sessions', ROLLOUT))
-    expect([linked.dev, linked.ino]).toEqual([source.dev, source.ino])
-    expect(pinned).toEqual([selectedHome])
-  })
-
+describe('Codex chat account switch', () => {
   it('refuses rather than copying the rollout when it cannot be hardlinked', async () => {
-    linkFault.source = join(recordHome, 'sessions', ROLLOUT)
+    fault.linkSource = join(recordHome, 'sessions', ROLLOUT)
     await expect(launch()).rejects.toThrow(
       "Orca couldn't move this chat's Codex history into the selected account."
     )
     expect(existsSync(join(selectedHome, 'sessions', ROLLOUT))).toBe(false)
-    expect(pinned).toEqual([])
   })
 
-  it("keeps the record's home without the desktop account switch", async () => {
-    installCodexStructuredAccountSwitch(undefined)
-    await expect(launch()).resolves.toBe(recordHome)
-    expect(existsSync(join(selectedHome, 'sessions'))).toBe(false)
+  it('lets a chat move only while history sharing is on and every home shares its volume', async () => {
+    await expect(codexChatAccountSwitchable(recordHome, {})).resolves.toBe(true)
+    await expect(
+      codexChatAccountSwitchable(recordHome, { codexShareHistoryAcrossAccounts: false })
+    ).resolves.toBe(false)
+    fault.otherVolume = join(selectedHome, 'sessions')
+    await expect(codexChatAccountSwitchable(recordHome, {})).resolves.toBe(false)
   })
 })

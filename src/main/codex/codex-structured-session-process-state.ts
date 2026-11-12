@@ -6,7 +6,7 @@ import type {
 
 export function readCodexDashboardAdoptions(
   sessions: ReadonlyMap<string, CodexSession>,
-  pendingAcquisitions: number
+  acquisitions: { readonly size: number }
 ): DashboardCodexAdoptionState {
   const processes: DashboardCodexAdoptionState['processes'] = []
   for (const [sessionId, session] of sessions) {
@@ -29,7 +29,7 @@ export function readCodexDashboardAdoptions(
       closing: Boolean(session.orcaClose)
     })
   }
-  return { pending_acquisitions: pendingAcquisitions, processes }
+  return { pending_acquisitions: acquisitions.size, processes }
 }
 
 export function holdsLiveCodexProviderProcess(

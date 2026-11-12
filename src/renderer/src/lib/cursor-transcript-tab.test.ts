@@ -2,11 +2,12 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
 import type { ExecutionHostId } from '../../../shared/execution-host'
 import { parseWorkspaceSession } from '../../../shared/workspace-session/workspace-session-schema'
-import { createTestStore } from '@/store/slices/store-test-helpers'
-import { createTabsSliceMockApi } from '@/store/slices/tabs-slice-test-harness'
+import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
+import { createTestStore } from '@/store/testing/app-store-test-fixture'
+import { createTabsSliceMockApi } from '@/store/slices/tabs/tabs-slice-test-harness'
 import type * as WorktreeOwnerModule from './workspace/ownership/worktree-runtime-owner'
-import type * as RetirementModule from '@/runtime/structured-agent-session-tab-retirement'
-import type * as RpcModule from '@/runtime/runtime-rpc-client'
+import type * as RetirementModule from '@/runtime/native-chat/tab-retirement/structured-agent-session-tab-retirement'
+import type * as RpcModule from '@/runtime/rpc/calls/runtime-rpc-call'
 
 const mocks = vi.hoisted(() => {
   const owner: { host: ExecutionHostId } = { host: 'local' }
@@ -18,11 +19,14 @@ vi.mock('./workspace/ownership/worktree-runtime-owner', async (original) => ({
   ...(await original<typeof WorktreeOwnerModule>()),
   getKnownExecutionHostIdForWorktree: () => mocks.host
 }))
-vi.mock('@/runtime/structured-agent-session-tab-retirement', async (original) => ({
-  ...(await original<typeof RetirementModule>()),
-  beginStructuredAgentSessionTabClose: mocks.retire
-}))
-vi.mock('@/runtime/runtime-rpc-client', async (original) => ({
+vi.mock(
+  '@/runtime/native-chat/tab-retirement/structured-agent-session-tab-retirement',
+  async (original) => ({
+    ...(await original<typeof RetirementModule>()),
+    beginStructuredAgentSessionTabClose: mocks.retire
+  })
+)
+vi.mock('@/runtime/rpc/calls/runtime-rpc-call', async (original) => ({
   ...(await original<typeof RpcModule>()),
   callRuntimeRpc: mocks.rpc
 }))
@@ -35,12 +39,12 @@ import { activateStructuredAgentSessionTab } from './agent-session/structured-ag
 import {
   addNativeChatPendingAttachment,
   clearNativeChatPendingAttachmentsForTests
-} from '@/components/native-chat/native-chat-pending-attachment-cache'
+} from '@/components/native-chat/attachments/chips/native-chat-pending-attachment-cache'
+import { clearNativeChatComposerDraftsForTests as clearNativeChatDraftCacheForTests } from '@/components/native-chat/drafts/native-chat-draft-reset'
 import {
-  clearNativeChatDraftCacheForTests,
   readNativeChatDraftCache,
   writeNativeChatDraftCache
-} from '@/components/native-chat/native-chat-draft-cache'
+} from '@/components/native-chat/drafts/native-chat-draft-views'
 
 const api = createTabsSliceMockApi()
 const WT = 'folder:worker'
@@ -228,6 +232,37 @@ it('does not converge a different session or a different execution host', () => 
   managedCursor()
   reconcileCursorTranscriptTabs(WT)
   expect(store.getState().unifiedTabsByWorktree[WT].some((tab) => tab.agentTranscript)).toBe(true)
+})
+
+it('converges a reader into the structured Cursor chat that owns its session', () => {
+  openCursorTranscriptTab(session, WT)
+  const reader = store.getState().unifiedTabsByWorktree[WT][0]
+  const worker = store.getState().createUnifiedTab(WT, 'agent-session', {
+    entityId: 'native-worker',
+    agentSessionAgent: 'cursor',
+    activate: false
+  })
+  const paneKey = structuredAgentSessionPaneKey(worker.id, 'native-worker')
+  store.setState({
+    agentStatusByPaneKey: {
+      [paneKey]: {
+        paneKey,
+        agentType: 'cursor',
+        providerSession: { key: 'session_id', id: 'one' },
+        state: 'done',
+        prompt: '',
+        updatedAt: 1,
+        stateStartedAt: 1,
+        stateHistory: []
+      }
+    }
+  })
+  store.getState().activateTab(reader.id, { worktreeId: WT })
+  reconcileCursorTranscriptTabs(WT)
+  expect(store.getState().unifiedTabsByWorktree[WT].map((tab) => tab.id)).toEqual([worker.id])
+  expect(store.getState().getActiveTab(WT)?.id).toBe(worker.id)
+  expect(openCursorTranscriptTab(session, WT)).toBe(true)
+  expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(1)
 })
 
 it('keeps a reader with an uploading attachment', () => {

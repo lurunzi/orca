@@ -4,14 +4,14 @@ import {
   closeProviderTimelineRigs,
   SESSION
 } from '../native-chat/agent-session-timeline/provider-timeline-assembler-test-support'
-import { acpLaunchSpecFor } from './acp-launch-specs'
+import { acpLaunchSpecFor } from './launch/acp-launch-registry'
 import {
   openAcpAdapterRig,
   PROVIDER_SESSION,
   sendHello,
   waitFor
-} from './acp-structured-adapter.test-support'
-import type { AcpScriptedAgent, FakeFrame } from './acp-scripted-agent.test-support'
+} from './session/testing/acp-structured-adapter.test-support'
+import type { AcpScriptedAgent, FakeFrame } from './process/testing/acp-scripted-agent.test-support'
 
 const CURSOR = acpLaunchSpecFor('cursor')!
 afterEach(closeProviderTimelineRigs)

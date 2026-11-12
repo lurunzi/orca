@@ -5,7 +5,7 @@ import { agentJournalItemKey } from '../../../../shared/agent-session/journal/ag
 import type { StructuredAgentSessionConversationCopyInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-conversation-copy-input'
 import { readCodexLocalHistory } from '../../../native-chat/codex-local-history'
 import type * as LocalHistory from '../../../native-chat/codex-local-history'
-import { codexProviderProbeCwd } from './codex-provider-session-rename'
+import { codexPoolProviderProbeCwd } from './codex-pool-provider-invocation'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
@@ -36,7 +36,7 @@ import {
   runCodexAppServerSession,
   type CodexAppServerRpc
 } from '../../app-server/codex-app-server-session'
-import { readCodexSessionAccountUsage } from './codex-session-account-usage'
+import { readCodexSessionAccountUsageForAccount } from './codex-pool-session-account-usage'
 import { CodexStructuredSessionAdapter } from './codex-structured-session-adapter'
 import {
   resolveCodexHomeProcessLockKey,
@@ -167,6 +167,12 @@ require('node:readline').createInterface({ input: process.stdin }).on('line', (l
       primary: { usedPercent: 25, windowDurationMins: 300 },
       secondary: { usedPercent: 50, windowDurationMins: 10080 }
     } } })
+  }
+  if (message.method === 'thread/read') {
+    send({ id: message.id, result: { thread: { id: message.params.threadId, historyMode: 'paginated' } } })
+  }
+  if (message.method === 'thread/turns/list') {
+    send({ id: message.id, result: { data: [{ id: 'copy-turn', status: 'completed' }], nextCursor: null } })
   }
   if (message.method === 'thread/fork') {
     if (process.env.ORCA_TEST_PERSONAL_COPY_ERROR === '1') {
@@ -442,6 +448,7 @@ it('copies after authentication and returns only the same-operation pool identit
   const adapter = coldAdapter()
   await expect(adapter.copyConversation(await poolCopyInput())).resolves.toEqual({
     sessionId: CHILD_THREAD,
+    coverage: { unit: 'codex-turn', ids: ['copy-turn'] },
     poolCopy: {
       provider: 'codex',
       sourceSessionId: 'session-fixture',
@@ -474,8 +481,7 @@ it('preserves the personal active-turn refusal through owned adapter cleanup', a
   delete input.record!.poolAccount
   const adapter = coldAdapter()
   await expect(adapter.copyConversation(input)).rejects.toMatchObject({
-    message:
-      'Codex could not copy this chat while a response was running. Wait for it to finish, then try again.'
+    message: 'Codex could not verify the copied chat.'
   })
 })
 
@@ -487,7 +493,10 @@ it('registers copy before history preparation so shutdown cancels a stalled file
     started.resolve()
     return reading.promise
   })
-  const result = adapter.copyConversation(await poolCopyInput())
+  const input = await poolCopyInput()
+  // Without a turn the copy reads the saved history before it starts the app-server.
+  delete input.checkpoint!.turnId
+  const result = adapter.copyConversation(input)
   const rejected = expect(result).rejects.toMatchObject({
     message: 'dashboard_allocation_unavailable'
   })
@@ -551,7 +560,7 @@ it('cancels cold rename while its allocation snapshot is waiting', async () => {
 
 it('reads cold quota through the invocation preparation and owned authentication path', async () => {
   const f = fixture()
-  const read = readCodexSessionAccountUsage(
+  const read = readCodexSessionAccountUsageForAccount(
     new Map(),
     () => ({
       resolveCommand: () => ({ command: process.execPath, prefixArgs: ['-e', SERVER, '--'] }),
@@ -592,7 +601,7 @@ it('cancels directory preparation before a late resolver can create a fallback d
   const cancel = new AbortController()
   const workspace = deferred<string>()
   const error = new Error('cancelled-directory-preparation')
-  const probing = codexProviderProbeCwd(
+  const probing = codexPoolProviderProbeCwd(
     record(),
     {
       resolveLaunchArgs: () => [],

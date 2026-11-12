@@ -3,7 +3,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runProcess } from '@orca/process-host'
-import { wrapPosixHookCommandForExec } from './posix-hook-command'
+import { wrapPosixHookCommandForExec } from './installation/commands/posix-hook-command'
 import { shlexSplit } from './posix-hook-exec-command.test-fixture'
 
 it('rejects incomplete command quoting', () => {

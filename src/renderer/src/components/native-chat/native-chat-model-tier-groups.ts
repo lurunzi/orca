@@ -2,7 +2,7 @@ import type {
   SessionOptionDescriptor,
   SessionOptionSelectChoice
 } from '../../../../shared/native-chat/input/native-chat-session-options'
-import { sayNativeChatSessionOptionTranslated } from './native-chat-session-option-labels-text'
+import { sayNativeChatSessionOptionTranslated } from './session/options/controls/native-chat-session-option-labels-text'
 
 // The picker groups CLI variants without changing the actual model ids sent to the host.
 const TIER_BY_LABEL: Record<string, string> = {

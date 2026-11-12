@@ -3,6 +3,7 @@ import type {
   AgentSessionRecord
 } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import type { AgentCliVersionReader } from '../../../agent-launch/preflight/agent-cli-version-probe'
 import type { StructuredAgentCliConversations } from '../../../native-chat/structured-agent-cli-conversations'
@@ -11,6 +12,7 @@ import type {
   StructuredAgentSessionLifecycleEvent
 } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import type { StructuredAgentCommandSettings } from '../../../native-chat/structured-agent-command-resolution'
+import type { AcpHostBackendSettings } from '../../../acp/launch/acp-launch-contract'
 import type { StructuredAgentDefinition } from '../../../native-chat/agent-session-wire/providers/structured-agent-definition'
 import type { StructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-host'
 import type { JournalHostDatabase } from '../../../native-chat/agent-session-journal/database/journal-host-database'
@@ -56,6 +58,8 @@ export type StructuredAgentAccountHomeRequest = {
   purpose: 'launch' | 'read' | 'identity'
   /** The launch's workspace directory on this host; a read has none. */
   workspacePath: (() => Promise<string>) | null
+  /** The permission mode a new chat starts in, when it names one. */
+  permissionMode?: string
 }
 
 /** What resolving an account may ask of the runtime around it. */
@@ -65,8 +69,16 @@ export type StructuredAgentAccountHomeServices = {
   prepareCodexLaunchHome: StructuredCodexAccountHomeDeps['resolveLaunchHome']
   readCodexLaunchHome: StructuredCodexAccountHomeDeps['resolveLaunchHome']
   workspaceTrustSettings: () => Parameters<typeof applyStructuredCodexWorkspaceTrust>[0]['settings']
+  /** The launching repo's pre-trust decision; undefined outside a repo or before one is made. */
+  workspaceTrustRepoDecision: (
+    location: AgentSessionExecutionLocation | null
+  ) => Parameters<typeof applyStructuredCodexWorkspaceTrust>[0]['repoDecision']
   /** Orca's data folder on this host, where an agent's chats may keep an account of their own. */
   stateDirectory: string
+  /** The environment a chat start of `agent` on this host would launch from. */
+  hostLaunchEnvironment: (agent: string) => Promise<Record<string, string>>
+  /** This host's saved settings, read per launch. */
+  hostSettings: () => AcpHostBackendSettings
 }
 
 /** What a catalog probe is built from: the same runtime resolvers its sessions launch through. */
@@ -109,6 +121,11 @@ export type StructuredAgentChatProgram = {
   resolve: StructuredAgentLaunchCheck['resolveLaunch']
   /** Whether Orca can download this program on this host when none is found. */
   installable?: () => boolean
+  /** Whether a new chat would run a compatible program the host already has instead. */
+  hostAlternative?: (
+    env: Record<string, string>,
+    settings: AcpHostBackendSettings
+  ) => Promise<boolean>
 }
 
 export type StructuredAgentRuntimeMetadata = StructuredAgentCliConversations & {
@@ -137,8 +154,20 @@ export type StructuredAgentRuntimeMetadata = StructuredAgentCliConversations & {
     record: AgentSessionRecord
     store: string
     launchEnv: NodeJS.ProcessEnv
+    settings: StructuredAgentAccountSwitchSettings
   }) => Promise<boolean>
+  /** Whether a start of `record` may move it to the selected account; false keeps the record's,
+   *  so its history is never forked. Absent always may. */
+  launchAccountSwitchable?: (
+    record: AgentSessionRecord,
+    settings: StructuredAgentAccountSwitchSettings
+  ) => Promise<boolean>
 }
+
+export type StructuredAgentAccountSwitchSettings = Pick<
+  GlobalSettings,
+  'codexShareHistoryAcrossAccounts'
+>
 
 export type StructuredAgentRuntimeRegistration = StructuredAgentRuntimeMetadata & {
   createAdapter: (context: StructuredAgentAdapterContext) => StructuredAgentRuntimeAdapter

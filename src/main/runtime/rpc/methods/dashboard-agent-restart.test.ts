@@ -73,7 +73,7 @@ function installed(provider = Tool.Codex) {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the handler uses only this registry lookup and restart delegate; report schemas validate the fixture.
   vi.mocked(getStructuredAgentSessionHost).mockReturnValue({
     deps: { agents: { registration } },
-    restartAgentForCredentials: restart
+    mutations: { restartAgentForCredentials: restart }
   } as never)
   return { params, read, registration, restart, restartResult, launch }
 }

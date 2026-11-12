@@ -287,7 +287,7 @@ export abstract class OrcaRuntimeWithVisibleSnapshotPreview extends OrcaRuntimeW
       if (!snapshot || snapshot.data.length === 0) {
         return { lines: [] }
       }
-      return this.parseVisibleSnapshot(snapshot)
+      return await this.parseVisibleSnapshot(snapshot)
     } catch {
       return { lines: [] }
     }

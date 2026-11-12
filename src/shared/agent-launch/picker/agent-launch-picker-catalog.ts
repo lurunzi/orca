@@ -27,7 +27,7 @@ export function agentPickerOptions(
 }
 
 export function agentPickerEntryOptions(
-  entry: AgentPickerEntry,
+  entry: Pick<AgentPickerEntry, 'agent' | 'catalog' | 'terminal' | 'textGeneration'>,
   model: string | undefined,
   surface: AgentPickerSurface
 ): CatalogOption[] {
@@ -105,17 +105,19 @@ export function agentPickerPermissions(agent: TuiAgent, surface: AgentPickerSurf
   )
 }
 
-export function agentPickerModels(entry: AgentPickerEntry): AgentPickerModel[] {
+export function agentPickerModels(
+  entry: Pick<AgentPickerEntry, 'agent' | 'catalog'>
+): AgentPickerModel[] {
   if (entry.catalog.origin !== 'unknown') {
     return entry.catalog.models
   }
   return (getAgentSessionOptionLaunchCatalog(entry.agent)?.models ?? []).map(
-    agentPickerCatalogModel
+    agentPickerModelFromCatalogModel
   )
 }
 
 /** A catalog model as a picker row; a model whose listing names no efforts keeps its agent's effort choice. */
-export function agentPickerCatalogModel(model: CatalogModel): AgentPickerModel {
+export function agentPickerModelFromCatalogModel(model: CatalogModel): AgentPickerModel {
   const effort = model.options.find((option) => option.id === 'effort')
   return {
     id: model.id,

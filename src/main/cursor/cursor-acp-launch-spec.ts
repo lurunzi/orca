@@ -1,9 +1,9 @@
 import { join } from 'node:path'
-import type { AcpLaunchSpec } from '../acp/acp-launch-specs'
-import { directoryAccountBinding } from '../acp/acp-account-binding'
+import type { AcpLaunchSpec } from '../acp/launch/acp-launch-contract'
+import { directoryAccountBinding } from '../acp/launch/acp-account-binding'
 import { CURSOR_ACP_DIALECT } from '../acp/acp-dialects/cursor-dialect'
 import { readCursorModelCatalog } from '../acp/acp-dialects/cursor-model-catalog'
-import { agentSessionSignInFor } from '../../shared/agent-session/lifecycle/agent-session-sign-in'
+import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/agent-session-setup-commands'
 import type { StructuredAgentSessionHistory } from '../native-chat/structured-agent-cli-conversations'
 
 // ACP chats live in <config>/acp-sessions; terminal `--resume` reads <config>/chats, so neither resumes the other.
@@ -35,7 +35,7 @@ export const CURSOR_LAUNCH_SPEC = {
   env: {},
   scrubEnvironment: scrubCursorAcpEnvironment,
   dialect: CURSOR_ACP_DIALECT,
-  loginCommand: agentSessionSignInFor('cursor')?.loginCommand ?? [],
+  loginCommand: agentSessionSetupFor('cursor')?.loginCommand ?? [],
   // Reuses the existing `cursor-agent login`; never starts an interactive sign-in.
   authMethod: ({ advertised }) =>
     advertised.includes('cursor_login') ? 'cursor_login' : undefined,

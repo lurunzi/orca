@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { runCodexAppServerSession, type CodexAppServerSessionRpc } from './codex-app-server-session'
+import { runCodexAppServerSession } from './codex-app-server-session'
+import type { CodexAppServerSessionRpc } from './codex-app-server-session-hooks'
 import {
   spawnCodexAppServerProcess,
   type CodexAppServerSpawn
@@ -176,13 +177,13 @@ describe('runCodexAppServerSession lifecycle', () => {
         },
         onNotification: (method, params, rpc) => {
           expect(method).toBe('test/notice')
-          rpc.notify('test/notice-ack', params as Record<string, unknown>)
+          rpc.notify('test/notice-ack', { notice: params })
         },
         onInitialized: async (rpc, initialized) => {
           expect(initialized).toEqual({
             numericReply: { accepted: true },
             stringError: { code: -32000, message: 'declined' },
-            noticeAck: { ready: true }
+            noticeAck: { notice: { ready: true } }
           })
           expect(await rpc.request('test/hook')).toEqual({ events: ['initialized', 'hook'] })
           rpc.notify('test/hook-complete')

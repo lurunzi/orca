@@ -26,9 +26,9 @@ import {
   CodexAppServerTimeoutError,
   runCodexAppServerSession,
   type CodexAppServerInvocation,
-  type CodexAppServerRpc,
-  type CodexAppServerSessionRpc
+  type CodexAppServerRpc
 } from '../../app-server/codex-app-server-session'
+import type { CodexAppServerSessionRpc } from '../../app-server/codex-app-server-session-hooks'
 import { codexProcessIdentity } from '../acquisition/codex-structured-owner-identity'
 
 export type CodexShortLivedOperationOptions = {
@@ -267,6 +267,31 @@ export class CodexShortLivedOperations {
       })
     this.operations.set(controller, work)
     return work
+  }
+
+  /** Registers pool work that runs before or around `run`, so closeAll also cancels it. */
+  track<T>(signal: AbortSignal | undefined, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (!this.accepting) {
+      return Promise.reject(new DashboardAllocationError())
+    }
+    const controller = new AbortController()
+    const onCancel = (): void => controller.abort(signal?.reason)
+    signal?.addEventListener('abort', onCancel, { once: true })
+    if (signal?.aborted) {
+      onCancel()
+    }
+    const tracked = Promise.resolve()
+      .then(() => waitForPromiseWithSignal(work(controller.signal), controller.signal))
+      .finally(() => {
+        controller.abort()
+        signal?.removeEventListener('abort', onCancel)
+        this.operations.delete(controller)
+      })
+      .catch(() => {
+        throw new DashboardAllocationError()
+      })
+    this.operations.set(controller, tracked)
+    return tracked
   }
 
   async closeAll(): Promise<void> {

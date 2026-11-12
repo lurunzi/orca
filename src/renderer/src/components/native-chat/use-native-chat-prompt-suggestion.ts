@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react'
-import type { NativeChatComposerInput } from './native-chat-composer-input'
+import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
 
 export function useNativeChatPromptSuggestion({
   scopeKey,

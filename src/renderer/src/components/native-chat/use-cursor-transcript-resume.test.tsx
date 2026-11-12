@@ -32,7 +32,9 @@ vi.mock('@/lib/agent-session/resume/history/ai-vault-session-resume-preparation'
 vi.mock('@/lib/agent-session/resume/history/ai-vault-resume-command', () => ({
   buildAiVaultResumeStartupForWorktree: mocks.build
 }))
-vi.mock('@/lib/launch-ai-vault-session', () => ({ launchAiVaultSessionInNewTab: mocks.launch }))
+vi.mock('@/lib/agent-session/resume/history/launch-ai-vault-session', () => ({
+  launchAiVaultSessionInNewTab: mocks.launch
+}))
 vi.mock('@/lib/agent-session/launch/prompt/launch-agent-tab-prompt-paste', () => ({
   pasteAgentLaunchPromptOnceReady: mocks.deliver
 }))

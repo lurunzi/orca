@@ -9,7 +9,7 @@ import type { AgentSessionSubscribeInput } from '../publication/subscribers/agen
 import { createStartupRecovery } from '../recovery/structured-agent-session-restart-reconcile'
 import { StructuredAgentSessionTaskQueue } from './structured-agent-session-task-queue'
 import { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
-import { structuredAgentSessionEntryDelegates } from '../acquisition/structured-agent-session-create'
+import { structuredAgentSessionEntryDelegates } from '../acquisition/structured-agent-session-entry-delegates'
 import type { StructuredAgentSessionLifetimeContext } from '../termination/structured-agent-session-host-lifetime'
 import * as agentStart from '../startup/structured-agent-session-agent-start'
 import * as mutationWiring from './structured-agent-session-host-mutation-wiring'
@@ -37,7 +37,8 @@ export class StructuredAgentSessionHost {
     delivery: () => this.conversationDelivery,
     opened: (id) => usageLimit.opened(this.usageLimitContinue, this.queued, id),
     logger: () => this.deps.logger,
-    now: () => this.now()
+    now: () => this.now(),
+    observeRows: () => this.deps.observeCommittedRows
   })
   private readonly queued = wireQueuedMessages(this.sessions, () => this.mutationContext())
   // Journal publication renews idle activity.
@@ -186,8 +187,10 @@ export class StructuredAgentSessionHost {
     openConversation: this.conversationDelivery.open
   })
   /** Release resources; user-close cancels cut turns, while eviction leaves their failure reportable. */
-  close: typeof this.lifetime.close = (sessionId, cause, admit) =>
-    this.lifetime.close(sessionId, cause, admit)
+  close: typeof this.lifetime.close = (...args) => this.lifetime.close(...args)
+
+  /** Stop an idle chat's agent so its next send starts on the current account and settings. */
+  restartAgent = (id: string, force: boolean) => this.lifetime.restartAgent(id, force)
 
   /** Stop hidden children too, using one bounded host snapshot. */
   sleepWorkspace = createStructuredAgentSessionWorkspaceSleeper(() => ({
@@ -281,11 +284,10 @@ export class StructuredAgentSessionHost {
 
   waitForSendSettlement = this.clientDelivery.waitForSendSettlement
 
-  private mutations = mutationWiring.structuredAgentSessionMutationDelegates(
+  mutations = mutationWiring.structuredAgentSessionMutationDelegates(
     () => this.mutationContext(),
     () => this.attachContext()
   )
-  restartAgentForCredentials = this.mutations.restartAgentForCredentials
   cancel = this.mutations.cancel
   respondToPrompt = this.mutations.respondToPrompt
   setOption = this.mutations.setOption
@@ -305,9 +307,9 @@ export class StructuredAgentSessionHost {
 
   readonly continuationContext: ReturnType<typeof contextReader>
 
-  observeConversationPublications: typeof this.sessions.observeConversationPublications = (
-    ...args
-  ) => this.sessions.observeConversationPublications(...args)
+  observeConversationPublications = this.sessions.observeConversationPublications
+  beginConversationTitleWait = (sessionId: string) =>
+    this.runtimeState.acquireAborts.begin(sessionId)
   journalSnapshot = (sessionId: string) => this.backgroundTasks.journalSnapshot(sessionId)
   journalCurrentRead = this.reads.journalCurrentRead
   queuedSendAnswer = this.reads.queuedSendAnswer

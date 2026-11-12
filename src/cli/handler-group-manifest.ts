@@ -3,6 +3,7 @@ import { BROWSER_HANDLER_GROUPS } from './browser/browser-handler-groups'
 import { JIRA_HANDLER_GROUP } from './jira-handler-group'
 import { LINEAR_HANDLER_GROUP } from './linear-handler-group'
 import { REFERENCE_HANDLER_GROUP } from './reference-handler-group'
+import { SERVE_PAIRING_HANDLER_GROUPS } from './serve-pairing-handler-groups'
 import { PLUGIN_HANDLER_GROUPS } from './plugin-handler-groups'
 import { DASHBOARD_ACCOUNT_HANDLER_GROUP } from './dashboard-account-handler-group'
 import { HOST_HANDLER_GROUPS } from './host-handler-groups'
@@ -25,10 +26,12 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['claude-teams', 'open', 'serve', 'status'],
     load: async () => (await import('./handlers/core.js')).CORE_HANDLERS
   },
+  ...SERVE_PAIRING_HANDLER_GROUPS,
   {
-    name: 'serve-restore',
-    keys: ['serve restore resume'],
-    load: async () => (await import('./handlers/serve-restore.js')).SERVE_RESTORE_HANDLERS
+    name: 'serve-reset-identity',
+    keys: ['serve reset-identity'],
+    load: async () =>
+      (await import('./handlers/serve-reset-identity.js')).SERVE_RESET_IDENTITY_HANDLERS
   },
   {
     name: 'serve-service',
@@ -134,6 +137,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
       'orchestration worker-show',
       'orchestration worker-read',
       'orchestration worker-stop',
+      'orchestration deny',
       'orchestration worker-abandon',
       'orchestration worker-release',
       'orchestration worker-keep-open',
@@ -206,7 +210,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
   },
   {
     name: 'chat',
-    keys: ['chat rename'],
+    keys: ['chat rename', 'chat list', 'chat read', 'chat send', 'chat wait'],
     load: async () => (await import('./handlers/chat.js')).CHAT_HANDLERS
   },
   {

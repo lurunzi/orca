@@ -1,7 +1,7 @@
 import { OrcaRuntimeWithVisibleSnapshotPreview } from './terminal-visible-state'
 import { TERMINAL_INTERACTIVE_WAIT_PROBE_TIMEOUT_MS } from '../wait/terminal-interactive-probe-budget'
 import { withTimeout } from '../../../../shared/promise-timeout-fallback'
-import { showsClaudeDialog } from '../../claude-open-dialog-hold'
+import { showsClaudeDialog } from '../wait/claude-open-dialog-hold'
 import { detectTerminalWaitBlockedReason } from '../wait/terminal-wait-detection'
 import { selectFreshExplicitAgentStatusRow } from '../../workspaces/process-listing/runtime-hook-agent-row-selection'
 
@@ -12,8 +12,15 @@ export abstract class OrcaRuntimeWithRestoredAgentDialogScreen extends OrcaRunti
    *  A provider-preferred grid may hold only the bytes since reattach, so there only the provider's frame counts. */
   private readCurrentDialogScreenWithoutRead(ptyId: string): readonly string[] | null {
     return this.providerSnapshotPreferredPtys.has(ptyId)
-      ? (this.readCurrentProviderVisibleState(ptyId)?.lines ?? null)
+      ? (this.readCurrentProviderFrame(ptyId)?.lines ?? null)
       : (this.readCaughtUpRuledScreen(ptyId)?.lines ?? null)
+  }
+
+  /** The provider's own current frame; the fork also caches headless-grid reads (tagged with their write
+   *  chain) for Antigravity readiness, and those hold only the bytes since reattach, not the provider's screen. */
+  private readCurrentProviderFrame(ptyId: string) {
+    const state = this.readCurrentProviderVisibleState(ptyId)
+    return state && !state.headlessWriteChain ? state : null
   }
 
   /** Only a caught-up screen painted without any dialog rules one out; a blank grid may be a seed in flight.
@@ -51,7 +58,7 @@ export abstract class OrcaRuntimeWithRestoredAgentDialogScreen extends OrcaRunti
       )
       return
     }
-    if (!this.readCurrentProviderVisibleState(ptyId)) {
+    if (!this.readCurrentProviderFrame(ptyId)) {
       await withTimeout(
         this.captureProviderVisibleState(ptyId),
         TERMINAL_INTERACTIVE_WAIT_PROBE_TIMEOUT_MS,

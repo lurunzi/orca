@@ -1,7 +1,7 @@
 import type { QueuePublication } from '../../delivery/structured-agent-session-queued-publication'
 import type { ForkMarker } from '../history/agent-session-fork-marker'
 import { ForkMarkerSubscriptions } from './agent-session-fork-marker-delivery'
-import * as ComposerMetadata from '../../structured-agent-session-composer-metadata'
+import { promptSuggestionChanged } from '../../structured-agent-session-composer-metadata'
 import type { AgentSessionSubscribeInput, Subscriber } from './agent-session-subscribe-input'
 
 import type {
@@ -278,8 +278,7 @@ export class AgentSessionSubscribers {
       subscriber,
       journal,
       hostNow,
-      emitCheckpoint:
-        emitCheckpoint || ComposerMetadata.promptSuggestionChanged(subscriber, this.hooks),
+      emitCheckpoint: emitCheckpoint || promptSuggestionChanged(subscriber, this.hooks),
       activity
     })
   }
@@ -309,8 +308,10 @@ export class AgentSessionSubscribers {
       if (options?.historyView !== undefined && this.isActive(subscriber)) {
         subscriber.historyView = options.historyView
       }
-    } catch {
+    } catch (error) {
+      // A dropped subscriber gets no more frames, so end its stream or the client never resubscribes.
       this.drop(subscriber)
+      subscriber.end?.(error)
     }
   }
 
