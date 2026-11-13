@@ -18,6 +18,7 @@ import type { ClaudePromptRegistry } from '../claude-prompt-registry'
 import { closeProcessRegistry } from '@orca/process-host/close-process-registry'
 import { retireClaudeDispatchWaiters } from './claude-structured-dispatch'
 import { claudeHeldSends } from '../claude-command-lifecycle'
+import { markClaudeCloseAwaitingRootExit } from './claude-structured-close-exit-observation'
 import { settledClaudeTurnEndLeaf } from './claude-structured-resume-point'
 import { settleClaudeTurnEndWaiters } from '../claude-request-end-wait'
 import type { StructuredAgentSessionLogger } from '../../native-chat/agent-session-wire/host/structured-agent-session-logger'
@@ -132,6 +133,7 @@ async function finalizeClaudePublishedSession(
   }
   if (rootExitVerdict) {
     input.settledExitErrors?.set(input.sessionId, rootExitVerdict)
+    markClaudeCloseAwaitingRootExit(session, rootExitVerdict)
   }
   // Retain held sends through close until the host receives the exit report.
   session.events?.observeExit?.(claudeHeldSends(session))

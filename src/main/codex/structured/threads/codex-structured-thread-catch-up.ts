@@ -24,7 +24,7 @@ import {
   sameCodexHistoryJournalView
 } from '../../history/journal-views/codex-history-journal-view'
 
-/** Catch-up failures do not fail open; abandoned invocations cannot write. */
+/** Report verified history; callers decide whether catch-up gates open. */
 export async function catchUpCodexThread(input: {
   connection: Pick<CodexAppServerConnection, 'request'>
   threadId: string
@@ -41,7 +41,7 @@ export async function catchUpCodexThread(input: {
     clientMessageId: string,
     providerIdentity: AgentJournalItemIdentity
   ) => void | Promise<void>
-}): Promise<void> {
+}): Promise<boolean> {
   let restoreHelpers: (() => void) | undefined
   let discardHelpers: (() => void) | undefined
   const outcome = await runHistoryCatchUp({
@@ -206,4 +206,5 @@ export async function catchUpCodexThread(input: {
   } finally {
     discardHelpers?.()
   }
+  return outcome === 'committed' || outcome === 'checked'
 }

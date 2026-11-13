@@ -1,6 +1,7 @@
 import type { AgentModelCatalogLiveListing } from '../../agent-model-catalog/agent-model-catalog-entry'
 import type { AgentSessionOptionsResult } from '../../../../shared/agent-session/options/agent-session-options-result'
 import type { AgentSessionProviderHandleLink } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
+import type { DashboardCodexPoolAuthentication } from '../../../dashboard-accounts/dashboard-codex-pool-authentication'
 
 export type StructuredAgentSessionProviderOpenInput = {
   sessionId: string
@@ -15,6 +16,7 @@ export type StructuredAgentSessionProviderOpenResult = {
   link?: AgentSessionProviderHandleLink
   reportedOptions: AgentSessionOptionsResult['current']
   catalogListing?: AgentModelCatalogLiveListing
+  poolAuthentication?: DashboardCodexPoolAuthentication
 }
 
 export type StructuredAgentSessionProviderOpen = (

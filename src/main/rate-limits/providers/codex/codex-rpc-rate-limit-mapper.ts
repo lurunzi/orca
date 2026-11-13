@@ -37,6 +37,7 @@ export type CodexAccountUsageRead = {
   account?: { type?: string; email?: string; planType?: string } | null
   rateLimits: ProviderRateLimits
   live?: boolean
+  pool?: true
 }
 
 /** The account signs in with an API key, which has no ChatGPT usage limits to read. */

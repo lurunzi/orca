@@ -12,17 +12,16 @@ import type {
   StructuredAgentSessionConversationLifetime
 } from './structured-agent-session-host-types'
 import { readStructuredAgentSessionOptions } from '../options/structured-agent-session-options-read'
-
 import type { StructuredAgentSessionOptionsReader } from '../options/structured-agent-session-resting-options'
 import { IN_PROCESS_OPTIONS_READER } from '../options/structured-agent-session-option-observation'
 import { settleStructuredAgentSessionLateDispatch } from '../operations/structured-agent-session-late-dispatch'
 import * as agentStart from '../startup/structured-agent-session-agent-start'
+import { restartStructuredAgentSessionForCredentials } from '../structured-agent-session-credential-restart'
 import { joinClosingStructuredAgentSessionChild } from '../termination/structured-agent-session-child-close'
 import type { StructuredAgentSessionAttachContext } from '../acquisition/structured-agent-session-attach-context'
 import type { AgentSessionRewindParams } from '../../../../shared/agent-session/lifecycle/agent-session-rewind'
 import { rewindStructuredAgentSession } from '../rewind/structured-agent-session-rewind'
 import type { StructuredAgentSessionClientDelivery } from '../publication/subscribers/structured-agent-session-client-delivery'
-
 import type { StructuredAgentSessionConversations } from './structured-agent-session-conversations'
 import type * as conversation from '../delivery/structured-agent-session-host-delivery'
 import type { StructuredAgentSessionHostRuntimeState } from './structured-agent-session-host-runtime-state'
@@ -92,6 +91,8 @@ export function structuredAgentSessionMutationDelegates(
   attachContext: () => StructuredAgentSessionAttachContext
 ) {
   return {
+    restartAgentForCredentials: (input: unknown) =>
+      restartStructuredAgentSessionForCredentials(attachContext(), input),
     cancel: (
       caller: StructuredAgentSessionCaller,
       params: Parameters<typeof cancelStructuredAgentSessionTurn>[2]

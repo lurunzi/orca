@@ -119,7 +119,7 @@ function settleReady(
       }
       local.started = true
       if (
-        !(await recordStartedHandle(context, event)) ||
+        !(await recordStartedHandle(context, event, signal)) ||
         !(await applyRewindAtStart(context, event.sessionId, current, rewind))
       ) {
         return refusedStart()

@@ -1,7 +1,15 @@
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import { agentSessionFailureFact } from '../../../../shared/agent-session/failures/agent-session-failure'
 import { recordAgentSessionProviderHandle } from '../../../runtime/agent-session/ownership/agent-session-provider-handle-transition'
-import type { StructuredAgentSessionHostSession } from '../host/structured-agent-session-host-types'
+import type {
+  StructuredAgentSessionHostDeps,
+  StructuredAgentSessionHostSession
+} from '../host/structured-agent-session-host-types'
+import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
+import {
+  recordStructuredAgentSessionPoolAuthentication,
+  type StructuredAgentSessionPoolAuthenticationContext
+} from './structured-agent-session-pool-authentication'
 import type { StructuredAgentSessionProviderOpenResult } from './structured-agent-session-provider-open-contract'
 import type { StructuredAgentSessionProviderStartedContext } from './structured-agent-session-provider-started'
 import { structuredAgentSessionConversationFence } from '../host/structured-agent-session-provider-child'
@@ -111,21 +119,44 @@ function rewindRecoveryFailed(
   }
 }
 
+type StartedHandleContext = StructuredAgentSessionPoolAuthenticationContext & {
+  deps: Pick<StructuredAgentSessionHostDeps, 'store' | 'logger' | 'nameProviderConversation'>
+}
+
 /** Persist the opened handle before delivery so future starts can resume; false if no handle is proven. */
 export async function recordStartedHandle(
-  context: StructuredAgentSessionProviderStartedContext,
-  event: OpenedProvider
+  context: StartedHandleContext,
+  event: OpenedProvider,
+  signal?: AbortSignal
 ): Promise<boolean> {
   const { store, logger } = context.deps
-  const { link } = event
-  if (!link) {
+  const { link, poolAuthentication } = event
+  if (!link && poolAuthentication === undefined) {
     // Only an already-proven handle permits open without a new link.
     return store.getRecord(event.sessionId)?.lease.provenHandleLinkId != null
   }
   try {
-    const committed = await store.transitionHandoff(event.sessionId, (record) =>
-      recordAgentSessionProviderHandle({ record, fence: event.fence, link, now: context.now() })
-    )
+    if (!link) {
+      throw new DashboardAllocationError()
+    }
+    const committed = await store.transitionHandoff(event.sessionId, (record) => {
+      const authenticated =
+        poolAuthentication === undefined
+          ? record
+          : recordStructuredAgentSessionPoolAuthentication(
+              context,
+              event,
+              record,
+              poolAuthentication,
+              signal
+            )
+      return recordAgentSessionProviderHandle({
+        record: authenticated,
+        fence: event.fence,
+        link,
+        now: context.now()
+      })
+    })
     // Inherit only a committed new context; a resumed CLI keeps its own later title.
     if (event.newConversation ?? (link.origin === 'created' || link.origin === 'forked')) {
       context.deps.nameProviderConversation?.(committed)
@@ -135,7 +166,7 @@ export async function recordStartedHandle(
     logger.warn('recording the handle a started provider answered with failed', {
       scope: 'provider-started-handle',
       sessionId: event.sessionId,
-      error
+      error: poolAuthentication === undefined ? error : new DashboardAllocationError()
     })
     return false
   }

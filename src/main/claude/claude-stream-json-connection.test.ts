@@ -12,6 +12,14 @@ import {
   type ClaudeStreamJsonLaunch
 } from './claude-stream-json-connection'
 import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './structured/launch/claude-structured-launch-resolution'
+import {
+  dashboardClaudeEnvironment,
+  DASHBOARD_CLAUDE_ENV_TO_DELETE
+} from '../dashboard-accounts/dashboard-claude-environment'
+import {
+  DashboardAllocationState,
+  DashboardToolProvider
+} from '../dashboard-accounts/dashboard-allocation-protocol'
 
 // Exercise the real SDK against a scripted child CLI.
 const FAKE_CLI = join(__dirname, '__fixtures__', 'claude-agent-sdk-scripted-cli.mjs')
@@ -128,6 +136,34 @@ function processState(pid: number): 'running' | 'exited' {
 }
 
 describe('Claude stream-json connection', () => {
+  it('passes only pool OAuth authentication through the real SDK to its scripted child', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', 'fixture-inherited-key')
+    vi.stubEnv('ANTHROPIC_BASE_URL', 'https://fixture.invalid')
+    vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1')
+    const env = dashboardClaudeEnvironment(
+      { ANTHROPIC_AUTH_TOKEN: 'fixture-conflict', HTTPS_PROXY: 'http://proxy.invalid' },
+      {
+        provider: DashboardToolProvider.ClaudeCode,
+        state: DashboardAllocationState.Available,
+        account_id: 'fixture-pool',
+        binding_revision: 1,
+        credential_version: 1,
+        access_token: 'fixture-pool-access',
+        expires_at: null
+      }
+    )
+    const scenario = scriptScenario([HOLD_OPEN])
+    await open({ ...launchFor(scenario, env), envToDelete: DASHBOARD_CLAUDE_ENV_TO_DELETE })
+    await until(() => readReportSafely(scenario), 'the pool child report')
+    const childEnv = spawned.at(-1)?.env
+    expect(childEnv?.CLAUDE_CODE_OAUTH_TOKEN).toBe('fixture-pool-access')
+    expect(childEnv?.ANTHROPIC_API_KEY).toBeUndefined()
+    expect(childEnv?.ANTHROPIC_AUTH_TOKEN).toBeUndefined()
+    expect(childEnv?.ANTHROPIC_BASE_URL).toBeUndefined()
+    expect(childEnv?.CLAUDE_CODE_USE_BEDROCK).toBeUndefined()
+    expect(childEnv?.HTTPS_PROXY).toBe('http://proxy.invalid')
+  })
+
   it('completes task Stop through the real SDK while semantic reading is paused', async () => {
     const scenario = scriptScenario([HOLD_OPEN])
     const connection = await open(launchFor(scenario))

@@ -55,6 +55,7 @@ async function openStartingClaudeSession(
         sessionId: request.sessionId,
         providerSessionId: session.providerSessionId,
         resumesTranscript,
+        dashboardPooled: session.dashboardLaunch !== undefined,
         account,
         requestTimeoutMs: deps.requestTimeoutMs,
         emit: (event) => emit(session, event)
@@ -117,5 +118,8 @@ async function openStartingClaudeSession(
     current()
   }
   startup.open()
+  if (session.dashboardLaunch) {
+    session.dashboardLaunch.initialized = true
+  }
   return { ...result, link: session.link, newConversation: !resumesTranscript }
 }

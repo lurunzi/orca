@@ -5,6 +5,7 @@ import {
 } from '../../../../shared/agent-session/failures/agent-session-wire-refusals'
 import { agentSessionOperationKey } from '../../../../shared/agent-session/lifecycle/agent-session-operation-ledger'
 import { foundAgentSessionRecord } from './agent-session-record-founding'
+import { inheritCodexPoolCopyAccount } from '../../../dashboard-accounts/dashboard-codex-pool-copy'
 import {
   assertAdoptedConversationUnowned,
   evaluateAgentSessionReserveOperation,
@@ -63,9 +64,16 @@ export function commitAgentSessionFounding(
   }
   assertReservedTabUnheld(state, request, legacyIds)
   const founded = foundAgentSessionRecord(request, request)
-  const record = request.adoptedHandleLink
+  const adopted = request.adoptedHandleLink
     ? { ...founded, providerHandleChain: [request.adoptedHandleLink] }
     : founded
+  const record = request.poolCopy
+    ? inheritCodexPoolCopyAccount(
+        state.records.get(request.poolCopy.sourceSessionId) ?? null,
+        adopted,
+        request.poolCopy
+      )
+    : adopted
   const operationRow = {
     ...decision.row,
     outcome: { status: 'succeeded' as const, sessionId: request.sessionId }

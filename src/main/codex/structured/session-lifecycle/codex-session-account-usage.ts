@@ -21,7 +21,7 @@ import type { StructuredAgentSessionAdapter } from '../../../native-chat/agent-s
 const USAGE_RPC_TIMEOUT_MS = 10_000
 const COLD_USAGE_TIMEOUT_MS = 30_000
 
-async function readUsage(
+export async function readUsage(
   request: CodexAppServerRpc['request']
 ): Promise<Omit<CodexAccountUsageRead, 'live'>> {
   const accountReply = await request('account/read', {}, { timeoutMs: USAGE_RPC_TIMEOUT_MS })

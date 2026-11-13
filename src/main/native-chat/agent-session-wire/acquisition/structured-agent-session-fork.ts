@@ -15,7 +15,10 @@ import { acpAgentName } from '../../../acp/session/acp-structured-agent-definiti
 import { AGENT_CHAT_PERMISSION_MODE_OPTION_ID } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import { isAgentSessionRefusalError } from '../../../../shared/agent-session/failures/agent-session-wire-refusals'
 import { requireUnownedStructuredAgentSessionAdoption } from '../../../runtime/agent-session/structured-agent-session-create-adoption'
-import type { AgentSessionAttachParams } from './structured-agent-session-attach'
+import {
+  agentSessionForkAttachment,
+  type AgentSessionAttachParams
+} from './structured-agent-session-attach'
 
 export async function prepareStructuredAgentSessionFork(
   input: StructuredAgentSessionForkInput
@@ -70,6 +73,17 @@ export async function prepareStructuredAgentSessionFork(
     )
   })
   const current = await requireCurrent()
+  const fork = agentSessionForkAttachment({
+    source: record,
+    itemId: throughItemId,
+    agent: input.agent,
+    copy,
+    providerSessionId,
+    requireCurrent,
+    readSource: () => host.deps.store.requireWritableRecord(record.sessionId),
+    rowSessionId: metadata.sessionHistory.rowSessionId
+  })
+  await fork.revalidate()
   if (!copy.sessionId.trim() || copy.sessionId === providerSessionId) {
     fail(`${name} did not save an independent chat copy. Try again.`)
   }
@@ -94,12 +108,8 @@ export async function prepareStructuredAgentSessionFork(
   })
   return {
     envelope: input.envelope,
-    fork: {
-      sessionId: record.sessionId,
-      itemId: throughItemId,
-      revalidate: async () => {
-        await requireCurrent()
-      },
+    // Same object the revalidation closure updates, so a refreshed pool receipt stays visible.
+    fork: Object.assign(fork, {
       prepared,
       ...(copy.coverage
         ? {
@@ -116,7 +126,7 @@ export async function prepareStructuredAgentSessionFork(
             }
           }
         : {})
-    },
+    }),
     location: input.location,
     provider: input.agent,
     agent: input.agent,

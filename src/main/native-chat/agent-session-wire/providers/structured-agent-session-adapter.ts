@@ -1,11 +1,14 @@
 import type { PrepareStructuredRewind } from './structured-agent-session-rewind-contract'
 import type { ProviderProcessCloseOptions } from '../../../provider-process/provider-process-close'
-import type { NativeCopyCoverage } from '../../agent-session-journal/context-epochs/journal-history-origin'
+import type { DashboardCodexAdoptionState } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
+import type { DashboardCodexRefreshState } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
+import type { DashboardClaudeLaunchState } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import type { StructuredAgentSessionConversationCopyInput } from './structured-agent-session-conversation-copy-input'
+import type { StructuredAgentSessionProviderRenameInput } from './structured-agent-session-provider-rename-input'
 import type { CodexAccountUsageRead } from '../../../rate-limits/providers/codex/codex-rpc-rate-limit-mapper'
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
 import type { StructuredAgentSessionAdmitFreshInput } from '../delivery/structured-agent-session-input-admission'
-import type { AiVaultConversationCopy } from '../../../../shared/ai-vault/resume/ai-vault-resume-preparation'
+import type { StructuredAgentSessionConversationCopyResult } from './structured-agent-session-conversation-copy-result'
 import type { AgentChatPermissionChoice } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import type {
   AgentSessionRewindFork,
@@ -174,6 +177,9 @@ export type StructuredAgentSessionSetOptionInput = {
 }
 
 export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & {
+  readDashboardCodexProcesses?(): DashboardCodexAdoptionState
+  readDashboardCodexRefreshes?(): DashboardCodexRefreshState
+  readDashboardClaudeLaunches?(): DashboardClaudeLaunchState
   readAccountUsage?(record: AgentSessionRecord, signal: AbortSignal): Promise<CodexAccountUsageRead>
   open: StructuredAgentSessionProviderOpen
   supportsCreate?(location: AgentSessionExecutionLocation, agent: string): boolean
@@ -334,14 +340,10 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
   /** Copy the provider conversation without changing the chat’s ID; omit for CLI-based forks. */
   copyConversation?(
     input: StructuredAgentSessionConversationCopyInput
-  ): Promise<AiVaultConversationCopy & { resumeCursor?: string; coverage?: NativeCopyCoverage }>
+  ): Promise<StructuredAgentSessionConversationCopyResult>
   /** Give the agent's own conversation the user's chat name, as the agent's own rename would:
    *  through the live child holding that conversation, otherwise at rest. Best effort. */
-  renameProviderSession?(input: {
-    record: AgentSessionRecord
-    providerSessionId: string
-    name: string
-  }): Promise<void>
+  renameProviderSession?(input: StructuredAgentSessionProviderRenameInput): Promise<void>
   /** Capture native invocation inputs at the committed explicit occurrence. */
   nameProviderConversation?(input: {
     record: AgentSessionRecord

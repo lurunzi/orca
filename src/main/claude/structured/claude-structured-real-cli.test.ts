@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import type { DashboardClaudeLaunchBinding } from '../../dashboard-accounts/dashboard-claude-launch-protocol'
+import { DashboardAllocationErrorCode } from '../../dashboard-accounts/dashboard-allocation-protocol'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { basename, join, relative } from 'node:path'
@@ -40,7 +42,8 @@ function realAdapter(
   cwd = process.cwd(),
   onDispatchSettledLate?: ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate'],
   env = realClaudeLaunchHome().env,
-  waitsForStartup = true
+  waitsForStartup = true,
+  dashboardBinding?: DashboardClaudeLaunchBinding
 ): ClaudeStructuredSessionAdapter {
   const adapter = new ClaudeStructuredSessionAdapter({
     resolveLaunch: async ({ permissionMode }) => {
@@ -60,7 +63,8 @@ function realAdapter(
         resumeLeafUuid: null,
         resumesTranscript: false,
         cliFlag: async () => 'supported' as const,
-        continuesChain: false
+        continuesChain: false,
+        ...(dashboardBinding ? { dashboardBinding } : {})
       }
     },
     onEvent: (event) => events.push(event),
@@ -580,6 +584,67 @@ describe.skipIf(!realClaudeAvailable)(suiteTitle, () => {
       }
     },
     150_000
+  )
+
+  it
+    .skipIf(process.platform !== 'linux')
+    .each<{ name: string; env: Record<string, string>; accepted: boolean }>([
+      {
+        name: 'OAuth environment',
+        env: { CLAUDE_CODE_OAUTH_TOKEN: 'fixture-claude-access-token-not-real' },
+        accepted: true
+      },
+      {
+        name: 'API key environment',
+        env: { ANTHROPIC_API_KEY: 'fixture-claude-api-key-not-real' },
+        accepted: false
+      }
+    ])(
+    'checks a pool $name using the real SDK without a model request',
+    async ({ env, accepted }) => {
+      const claudeConfigDir = await mkdtemp(join(tmpdir(), 'orca-claude-pool-source-'))
+      const cwd = await projectWithStartHook('orca-pool-source-')
+      const providerSessionId = randomUUID()
+      const adapter = realAdapter(
+        providerSessionId,
+        claudeConfigDir,
+        [],
+        cwd,
+        undefined,
+        env,
+        false,
+        { account_id: 'fixture-pool-account', binding_revision: 1, credential_version: 1 }
+      )
+      try {
+        const opening = adapter
+          .acquire({
+            identity: identity(providerSessionId),
+            fence: 1,
+            spawnToken: 'real-cli-pool-source'
+          })
+          .then(() => claudeStartupSettled(adapter, 'real-cli-handshake'))
+        if (accepted) {
+          await opening
+          expect(adapter.readDashboardClaudeLaunches().processes).toMatchObject([
+            { initialized: true }
+          ])
+        } else {
+          await expect(opening).rejects.toMatchObject({
+            message: DashboardAllocationErrorCode.Unavailable
+          })
+          expect(
+            adapter.readDashboardClaudeLaunches().processes.filter((process) => process.initialized)
+          ).toEqual([])
+        }
+      } finally {
+        await adapter.closeAll()
+        expect(relative(tmpdir(), claudeConfigDir)).toMatch(/^orca-claude-pool-source-[^\\/]+$/)
+        expect(relative(tmpdir(), cwd)).toMatch(/^orca-pool-source-[^\\/]+$/)
+        await rm(claudeConfigDir, { recursive: true, force: true })
+        await rm(cwd, { recursive: true, force: true })
+      }
+    },
+    30_000
   )
 
   it('turns a real silent unauthenticated startup into sign-in guidance', async () => {

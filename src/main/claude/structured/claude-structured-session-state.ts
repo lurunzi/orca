@@ -1,4 +1,5 @@
 import type * as ForkFields from './claude-session-account-suggestion-fields'
+import type { DashboardClaudeSessionLaunch } from '../../dashboard-accounts/dashboard-claude-launch-protocol'
 import type { StructuredAgentSessionChildWorkProducer } from '../../native-chat/agent-session-wire/observations/structured-agent-session-subagent-rows'
 import type { ClaudeStartupOutcome } from './claude-structured-startup-outcome'
 import type { ClaudeCliFlagCheck, ClaudeCliFlagFact } from '../claude-cli-flag-support'
@@ -104,6 +105,7 @@ export type ClaudeDispatchWaiter = {
 }
 
 export type ClaudeSession = ForkFields.ClaudeAccountSuggestionSessionFields & {
+  dashboardLaunch?: DashboardClaudeSessionLaunch
   connection: ClaudeStreamJsonConnection
   providerSessionId: string
   /** Latest main-chain message seen on the live stream, mid-turn included. */
@@ -174,6 +176,7 @@ export type ClaudeSession = ForkFields.ClaudeAccountSuggestionSessionFields & {
   closeFinalization?: Promise<boolean>
   /** Set only after the durable close write succeeds, before lifecycle emission. */
   closeFinalized?: boolean
+  closeAwaitingRootExit?: true
   /** Set once `ended` has been emitted, so a persistence retry cannot repeat it. */
   closeEnded?: boolean
   translator: ClaudeJournalTranslator | null

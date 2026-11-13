@@ -4,6 +4,7 @@ import {
   claudeAcquisitionCleanupError
 } from './claude-structured-session-close'
 import { AgentSessionAcquisitionExitUnprovenError } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-acquisition-errors'
+import { retainsClaudePoolRootExit } from './claude-structured-close-exit-observation'
 import type {
   ClaudeAcquisitionRegistry,
   ClaudeSession,
@@ -27,14 +28,21 @@ export async function releaseClaudeAcquisition(
     settledExitErrors?: Map<string, Error>
   }
 ): Promise<boolean> {
-  const exit = input.exits.get(input.sessionId)
+  let exit = input.exits.get(input.sessionId)
   if (!exit || input.sessions.has(input.sessionId) || input.acquisitions.get(input.sessionId)) {
-    return closeClaudeSession(input)
+    const closed = await closeClaudeSession(input)
+    exit = input.exits.get(input.sessionId)
+    if (!exit?.session.dashboardLaunch) {
+      return closed
+    }
   }
   const firstProof = exit.closePromise ? await exit.closePromise : false
   // Retry tree verification on the same connection after an unproven close.
   const retriedProof = firstProof || (await exit.connection.close())
   const report = claudeCloseReport(exit.connection, retriedProof, exit.error)
+  if (retainsClaudePoolRootExit(exit.session)) {
+    throw report ?? new AgentSessionAcquisitionExitUnprovenError(exit.error)
+  }
   if (retriedProof || (report && !(report instanceof AgentSessionAcquisitionExitUnprovenError))) {
     try {
       await input.onExitProven?.(input.sessionId, exit)

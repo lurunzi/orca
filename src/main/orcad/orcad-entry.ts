@@ -26,7 +26,7 @@ import { adoptWslHostLoginEnvironmentLogged } from './orcad-wsl-host-login-envir
 import { orcadWsPortOptions } from './orcad-ws-port-policy'
 import { createOrcadStartupTiming } from './orcad-startup-timing'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../shared/layout-owner-switch'
-import { restoreOrcadTerminalAuthority } from './orcad-restored-terminal-authority'
+import { restoreOrcadRuntimeAuthority } from './orcad-runtime-authority'
 import { installOrcadFeatureReadiness } from '../runtime/rpc/orcad-feature-readiness'
 import { ORCA_SERVE_SUPERVISED_ENV } from '../../shared/serve-supervised-terminal-durability'
 import { startOrcadEventLoopWatchdog } from './orcad-event-loop-watchdog'
@@ -282,7 +282,7 @@ async function startOrcadRuntime(
   // Recover browser/orchestration authority before clients attach to the runtime graph.
   runtime.rehydrateClientHostedBrowserPages()
 
-  await restoreOrcadTerminalAuthority(runtime, timed, featureReadiness)
+  await restoreOrcadRuntimeAuthority(runtime, timed, featureReadiness)
   runtime.agentTransitions.seedRestoredRows()
   void runtime.sidebarFacts?.reconcileSortStampTiers(getLocalPtyProvider())
 

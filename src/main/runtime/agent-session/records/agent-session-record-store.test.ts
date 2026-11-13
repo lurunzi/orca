@@ -2,6 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { DashboardToolProvider } from '../../../../shared/dashboard-account-provider'
+import { AgentSessionPoolAccountOrigin } from '../../../../shared/agent-session/lifecycle/agent-session-pool-account'
 import type { AgentSessionOwnerProbe } from '../../../../shared/agent-session/lifecycle/agent-session-lease-adjudication'
 import type {
   AgentSessionExecutionLocation,
@@ -130,6 +132,128 @@ beforeEach(async () => {
 afterEach(async () => {
   await closeTestJournalHostDatabases()
   await rm(directory, { recursive: true, force: true })
+})
+
+describe('pool account persistence', () => {
+  it('retains both pool origins after reopen while hiding them from conversations', async () => {
+    const store = await open()
+    await store.reserveOwner(reserveRequest({ sessionId: 'session-legacy' }))
+    const identity = {
+      instanceId: 'instance-1',
+      provider: DashboardToolProvider.Codex,
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7
+    } as const
+    const accounts = [
+      {
+        sessionId: 'session-authenticated',
+        poolAccount: {
+          version: 1,
+          ...identity,
+          origin: AgentSessionPoolAccountOrigin.Authenticated
+        }
+      },
+      {
+        sessionId: 'session-inherited',
+        poolAccount: {
+          version: 1,
+          ...identity,
+          origin: AgentSessionPoolAccountOrigin.InheritedCopy,
+          sourceSessionId: 'session-authenticated'
+        }
+      }
+    ] as const
+    for (const { sessionId, poolAccount } of accounts) {
+      await store.reserveOwner(
+        reserveRequest({
+          sessionId,
+          provider: DashboardToolProvider.Codex,
+          accountHome: { variable: 'CODEX_HOME', path: '/home/dev/.codex' }
+        })
+      )
+      await store.transitionHandoff(sessionId, (record) => ({ ...record, poolAccount }))
+    }
+
+    await closeTestJournalHostDatabases()
+    const reopened = await open()
+    expect(reopened.getRecord('session-authenticated')?.poolAccount).toEqual({
+      version: 1,
+      origin: 'authenticated',
+      instanceId: 'instance-1',
+      provider: 'codex',
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7
+    })
+    expect(reopened.getRecord('session-inherited')?.poolAccount).toEqual({
+      version: 1,
+      origin: 'inherited_copy',
+      instanceId: 'instance-1',
+      provider: 'codex',
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7,
+      sourceSessionId: 'session-authenticated'
+    })
+    expect(reopened.getRecord('session-legacy')).toMatchObject({
+      sessionId: 'session-legacy',
+      schemaVersion: 2,
+      provider: 'claude'
+    })
+    expect(reopened.getRecord('session-legacy')).not.toHaveProperty('poolAccount')
+    expect(reopened.getConversation('session-authenticated')).toMatchObject({
+      sessionId: 'session-authenticated'
+    })
+    expect(reopened.getConversation('session-authenticated')).not.toHaveProperty('poolAccount')
+    expect(reopened.getConversation('session-inherited')).not.toHaveProperty('poolAccount')
+    expect(reopened.listConversations().map((conversation) => conversation.sessionId)).toEqual([
+      'session-legacy',
+      'session-authenticated',
+      'session-inherited'
+    ])
+    for (const conversation of reopened.listConversations()) {
+      expect(conversation).not.toHaveProperty('poolAccount')
+    }
+  })
+
+  it('refuses stored records with invalid pool metadata or a non-Codex provider', async () => {
+    const store = await open()
+    const invalid = await store.reserveOwner(
+      reserveRequest({
+        sessionId: 'session-invalid',
+        provider: DashboardToolProvider.Codex,
+        accountHome: { variable: 'CODEX_HOME', path: '/home/dev/.codex' }
+      })
+    )
+    const claude = await store.reserveOwner(reserveRequest({ sessionId: 'session-claude' }))
+    const update = openTestJournalHostDatabase(directory).db.prepare(
+      'UPDATE agent_session_records SET record_json = ? WHERE session_id = ?'
+    )
+    update.run(JSON.stringify({ ...invalid.record, poolAccount: null }), 'session-invalid')
+    update.run(
+      JSON.stringify({
+        ...claude.record,
+        poolAccount: {
+          version: 1,
+          origin: AgentSessionPoolAccountOrigin.Authenticated,
+          instanceId: 'instance-1',
+          provider: DashboardToolProvider.Codex,
+          accountId: 'account-1',
+          bindingRevision: 3,
+          credentialVersion: 7
+        }
+      }),
+      'session-claude'
+    )
+
+    await closeTestJournalHostDatabases()
+    const reopened = await open()
+    expect(reopened.isSessionUnreadable('session-invalid')).toBe(true)
+    expect(reopened.isSessionUnreadable('session-claude')).toBe(true)
+    expect(reopened.getConversation('session-invalid')).toBeNull()
+    expect(reopened.getConversation('session-claude')).toBeNull()
+  })
 })
 
 describe('acquisition path', () => {

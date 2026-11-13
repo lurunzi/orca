@@ -1,5 +1,6 @@
 import { CodexAppliedSettings } from '../catalog/codex-structured-applied-settings'
 import type { CodexAppServerConnection } from '../../app-server/codex-app-server-connection-types'
+import type { CodexSession } from '../session-lifecycle/codex-structured-session-state'
 import '../prompts/codex-structured-prompt-replies'
 import { CodexPromptRegistry } from '../prompts/codex-prompt-registry'
 
@@ -47,5 +48,24 @@ export class CodexAcquisitionWindow {
     this.open = false
     this.retainedBytes = 0
     return this.buffered.splice(0)
+  }
+}
+
+/** Buffers pre-publication events and drops events from superseded children. */
+export function deliverCodexAcquisitionEvent(
+  sessions: Map<string, CodexSession>,
+  acquisition: CodexAcquisitionWindow,
+  sessionId: string,
+  event: () => unknown,
+  retainedBytes?: number
+): void {
+  if (acquisition.buffer(event, retainedBytes)) {
+    return
+  }
+  if (sessions.get(sessionId)?.connection === acquisition.connection) {
+    event()
+  } else if (acquisition.isOverflowed) {
+    // Overflow fails acquisition; close the child so callers can retry.
+    void acquisition.connection?.close()
   }
 }

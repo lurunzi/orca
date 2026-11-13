@@ -135,6 +135,7 @@ export async function stopStructuredAgentSessionAgentUnderSerialize(
       : Promise.resolve(null)
     child.close = {
       cause,
+      ...(ending.requireObservedExit ? { exitConfirmation: { awaitingObservation: false } } : {}),
       ...('quit' in ending && ending.quit ? { quit: true as const } : {}),
       reason: ('reason' in ending ? ending.reason : undefined) ?? null,
       ...('failure' in ending && ending.failure ? { failure: ending.failure } : {}),

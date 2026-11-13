@@ -2,6 +2,7 @@
 // root-exit proof reaches the single exit handler, including late adapter reports.
 
 import type { AgentSessionCloseObserver } from '../providers/structured-agent-session-adapter-stop'
+import { AgentSessionAcquisitionRootExitObservedError } from '../acquisition/structured-agent-session-acquisition-errors'
 import {
   refuse,
   type AgentSessionWireRefusal
@@ -100,20 +101,35 @@ function closeProviderRoot(
   observeClose?: AgentSessionCloseObserver
 ): Promise<boolean | 'kill-delivered'> {
   const { adapter, logger } = context.deps
+  if (child.close?.exitConfirmation?.awaitingObservation) {
+    return Promise.resolve(false)
+  }
   // Missing close means no owned process; implemented closes must prove exit.
   if (!adapter.disposeSession && !adapter.closeSession) {
-    return Promise.resolve(true)
+    return Promise.resolve(!child.close?.exitConfirmation)
   }
   context.deps.store.requireWritableRecord(sessionId)
   return stopAgentSessionProviderRoot(
     async () => {
       const close = adapter.disposeSession ?? adapter.closeSession
-      // The clear's divider waits on this stop, so the old agent gets only a brief grace.
-      const closing =
-        child.close?.cause === 'context-clear'
-          ? close?.call(adapter, sessionId, observeClose, { grace: 'brief' })
-          : close?.call(adapter, sessionId, observeClose)
-      return (await closing) === true
+      try {
+        // The clear's divider waits on this stop, so the old agent gets only a brief grace.
+        const closing =
+          child.close?.cause === 'context-clear'
+            ? close?.call(adapter, sessionId, observeClose, { grace: 'brief' })
+            : close?.call(adapter, sessionId, observeClose)
+        return (await closing) === true
+      } catch (error) {
+        if (
+          child.close?.exitConfirmation &&
+          error instanceof AgentSessionAcquisitionRootExitObservedError &&
+          error.deathEvidenceKind === 'kill-delivered'
+        ) {
+          child.close.exitConfirmation.awaitingObservation = true
+          return false
+        }
+        throw error
+      }
     },
     // Proven exit stands; descendant/follow-up failures are log-only.
     (error) =>

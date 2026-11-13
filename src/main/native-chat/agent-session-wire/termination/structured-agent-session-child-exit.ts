@@ -22,10 +22,8 @@ import {
   type StructuredAgentSessionExitSettlement,
   type StructuredAgentSessionLeftoverStore
 } from './structured-agent-session-leftover-settlement'
-import type { StaleStructuredAgentSessionStateJournal } from './structured-agent-session-stale-state-settlement'
 import {
   captureUnfinishedStructuredAgentSessionWork,
-  type DeadGenerationJournal,
   unfinishedStructuredAgentSessionWorkWasInterrupted
 } from './structured-agent-session-unfinished-work'
 import type { StructuredAgentSessionLogger } from '../host/structured-agent-session-logger'
@@ -37,15 +35,14 @@ import type { StructuredAgentSessionHostRuntimeState } from '../host/structured-
 import type { StructuredAgentSessionStartFlights } from '../startup/structured-agent-session-start-flight'
 import type { StructuredAgentSessionStartupAttempts } from '../startup/structured-agent-session-startup-attempt'
 
-export type StructuredAgentSessionChildExitSession = Pick<
-  StructuredAgentSessionHostSession,
-  'child' | 'lastEndedChild'
-> & { journal: DeadGenerationJournal & StaleStructuredAgentSessionStateJournal }
-
-export type StructuredAgentSessionGenerationEnded = (
-  sessionId: string,
-  options?: { restate?: boolean }
-) => void
+import type {
+  StructuredAgentSessionChildExitSession,
+  StructuredAgentSessionGenerationEnded
+} from './structured-agent-session-child-exit-contract'
+export type {
+  StructuredAgentSessionChildExitSession,
+  StructuredAgentSessionGenerationEnded
+} from './structured-agent-session-child-exit-contract'
 
 export type StructuredAgentSessionChildExitContext<
   TSession extends StructuredAgentSessionChildExitSession = StructuredAgentSessionHostSession
@@ -119,6 +116,10 @@ export async function endExitedStructuredAgentSessionChildUnderSerialize<
     return
   }
   const close = child.close
+  if (close?.exitConfirmation && exit.deathEvidenceKind === 'kill-delivered') {
+    close.exitConfirmation.awaitingObservation = true
+    return
+  }
   const failedClose =
     close?.failure?.kind === 'hostFault' || close?.failure?.kind === 'pluginInputRequired'
   const stoppedPlugin = exit.failure?.kind === 'pluginInputRequired' && close?.cause === 'user-stop'

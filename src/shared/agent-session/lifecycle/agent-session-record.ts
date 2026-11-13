@@ -1,4 +1,5 @@
 import { isOptionalUsageLimitContinueCancel } from './agent-session-usage-limit-continue'
+import { hasValidPoolAccount, type AgentSessionPoolAccount } from './agent-session-pool-account'
 import type { AgentSessionDeathEvidence } from './agent-session-death-evidence'
 import { isAgentSessionRewindRecord, type AgentSessionRewindRecord } from './agent-session-rewind'
 import { isAgentSessionLaunchArgs } from './agent-session-launch-args'
@@ -121,6 +122,7 @@ export type AgentSessionRecord = {
   accountHome: AgentSessionAccountHome
   /** Optional host-written construction observation; checked independently of record readability. */
   acquiredAccount?: unknown
+  poolAccount?: AgentSessionPoolAccount
   /** Initial launch directory in host path syntax. Floating sessions resume here; worktree/folder IDs resolve their durable location. */
   launchDirectory?: string
   /** Provider options the user chose, replayed whenever a new owner starts the session. */
@@ -312,6 +314,7 @@ export function isPersistedAgentSessionObservationRecord(
       isAgentSessionId(record.sessionId) &&
       isAgentSessionExecutionLocation(record.location) &&
       isStructuredAgentId(record.provider) &&
+      hasValidPoolAccount(record) &&
       isAgentSessionAccountHome(record.accountHome) &&
       (record.launchDirectory === undefined ||
         isBoundedString(record.launchDirectory, MAX_PATH_LENGTH)) &&

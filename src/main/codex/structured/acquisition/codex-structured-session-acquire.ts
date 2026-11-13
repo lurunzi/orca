@@ -4,10 +4,7 @@ import {
   CODEX_STRUCTURED_HANDLE_NAMESPACE,
   isAgentSessionProviderHandleInNamespace
 } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
-import type {
-  AgentSessionAcquisition,
-  StructuredAgentSessionAcquireInput
-} from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
+import type { AgentSessionAcquisition } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { launchPreparationFailure } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter-errors'
 import {
   closeFailedCodexAcquisition,
@@ -31,37 +28,20 @@ import { providerSpawnAbsent } from '../../../provider-process/provider-executab
 import { providerStartupFailureFact } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-failure-text'
 import {
   assertCodexConnectionOpen,
-  mintCodexAcquisitionGeneration,
-  type CodexAcquisitionRegistry,
-  type CodexAcquisitionAttempt,
-  type CodexSession,
-  type CodexStructuredSessionAdapterDeps
+  mintCodexAcquisitionGeneration
 } from '../session-lifecycle/codex-structured-session-state'
-import type { CodexStructuredSessionTeardown } from '../session-lifecycle/codex-structured-session-teardown'
-import type { CodexStructuredNotificationRetry } from '../session-lifecycle/codex-structured-notification-retry'
-import type { deliverCodexServerRequest } from '../session-lifecycle/codex-structured-provider-events'
+import type { CodexStructuredSessionAcquireInput } from './codex-structured-session-acquire-input'
 import { codexAcquisitionNotificationHandler } from './codex-structured-acquisition-notification'
+import { prepareDashboardCodexAuthentication } from '../../../dashboard-accounts/dashboard-codex-authentication'
+import {
+  codexStructuredChildLaunch,
+  codexDashboardAuthenticationCurrent
+} from '../../codex-structured-dashboard-authentication'
 import { codexStartFailure } from '../../app-server/codex-startup-outcome'
 
-export async function acquireCodexStructuredSession(input: {
-  input: StructuredAgentSessionAcquireInput
-  deps: CodexStructuredSessionAdapterDeps
-  sessions: Map<string, CodexSession>
-  acquisitions: CodexAcquisitionRegistry
-  notificationRetries: CodexStructuredNotificationRetry
-  deliver: (
-    acquisition: CodexAcquisitionAttempt['window'],
-    sessionId: string,
-    event: () => unknown,
-    retainedBytes?: number
-  ) => void
-  handleServerRequest: (
-    sessionId: string,
-    request: Parameters<typeof deliverCodexServerRequest>[2]
-  ) => void
-  handleUnhandledFrame: (sessionId: string, kind: string, payload: unknown) => void
-  forceCloseUnexpected: CodexStructuredSessionTeardown['forceCloseUnexpected']
-}): Promise<AgentSessionAcquisition> {
+export async function acquireCodexStructuredSession(
+  input: CodexStructuredSessionAcquireInput
+): Promise<AgentSessionAcquisition> {
   const { input: acquireInput, deps, sessions, acquisitions, notificationRetries } = input
   const sessionId = acquireInput.identity.sessionId
   const { previousAttempt, attempt } = acquisitions.start(sessionId)
@@ -117,6 +97,15 @@ export async function acquireCodexStructuredSession(input: {
       throw new Error(`codex app-server for session ${sessionId} could not be stopped`)
     }
     acquisitions.assertCurrent(sessionId, attempt)
+    const dashboardAuthentication = await prepareDashboardCodexAuthentication(
+      codexDashboardAuthenticationCurrent({ sessions, acquisitions, attempt, acquireInput }),
+      input.mailbox,
+      {},
+      acquireInput.launch?.poolAccount
+    ).catch((error: unknown) => {
+      throw launchPreparationFailure(error)
+    })
+    acquisitions.assertCurrent(sessionId, attempt)
     const resolvedLaunch = await deps
       .resolveLaunch({
         identity: acquireInput.identity,
@@ -135,32 +124,38 @@ export async function acquireCodexStructuredSession(input: {
             ...(acquireInput.options.model ? { model: acquireInput.options.model } : {})
           }
     acquisitions.assertCurrent(sessionId, attempt)
-    account = launch.codexHome ? deps.resolveAccountKind?.(launch.codexHome) : undefined
+    account =
+      !dashboardAuthentication && launch.codexHome
+        ? deps.resolveAccountKind?.(launch.codexHome)
+        : undefined
+    const onNotification = codexAcquisitionNotificationHandler({
+      acquisition,
+      sessionId,
+      dispatchEchoes,
+      primaryThreadId: () => primaryThreadId,
+      notificationRetries,
+      deliver: input.deliver,
+      now: deps.now ?? Date.now
+    })
     const connection = await open(
+      codexStructuredChildLaunch(launch, dashboardAuthentication !== null),
       {
-        command: launch.command,
-        args: launch.args,
-        cwd: launch.cwd,
-        ...(launch.env ? { env: launch.env } : {}),
-        ...(launch.envToDelete ? { envToDelete: launch.envToDelete } : {})
-      },
-      {
-        onNotification: codexAcquisitionNotificationHandler({
-          acquisition,
-          sessionId,
-          dispatchEchoes,
-          primaryThreadId: () => primaryThreadId,
-          notificationRetries,
-          deliver: input.deliver,
-          now: deps.now ?? Date.now
-        }),
-        onServerRequest: (request) =>
+        onNotification: (method, params) => {
+          if (!dashboardAuthentication?.handleNotification(method, params)) {
+            onNotification(method, params)
+          }
+        },
+        onServerRequest: (request) => {
+          if (dashboardAuthentication?.handleRefresh(acquisition.connection, request)) {
+            return
+          }
           input.deliver(
             acquisition,
             sessionId,
             () => input.handleServerRequest(sessionId, request),
             Buffer.byteLength(JSON.stringify(request), 'utf8')
-          ),
+          )
+        },
         onUnhandledFrame: (kind, payload) =>
           input.deliver(
             acquisition,
@@ -184,8 +179,7 @@ export async function acquireCodexStructuredSession(input: {
               )
             }
             if (attempt.acquisitionGeneration && !sessions.has(sessionId)) {
-              attempt.exitProven = true
-              attempt.exitError = error
+              Object.assign(attempt, { exitProven: true, exitError: error })
               attempt.dispose?.()
               acquisitions.deleteIfCurrent(sessionId, attempt)
               deps.onEvent?.({
@@ -209,8 +203,7 @@ export async function acquireCodexStructuredSession(input: {
               })
             }
             if (sessions.get(sessionId)?.connection === acquisition.connection) {
-              attempt.exitProven = true
-              attempt.exitError = error
+              Object.assign(attempt, { exitProven: true, exitError: error })
             }
             handleCodexSessionExit({
               sessions,
@@ -241,6 +234,7 @@ export async function acquireCodexStructuredSession(input: {
     }
     acquisitions.assertCurrent(sessionId, attempt)
     const process = await spawnIdentity.read(connection.pid)
+    const dashboardProcess = { ...process }
     acquisitions.assertCurrent(sessionId, attempt)
     if (connection.closed && exitedOnItsOwn) {
       throw exitedOnItsOwn
@@ -269,6 +263,8 @@ export async function acquireCodexStructuredSession(input: {
           acquisitions,
           attempt,
           connection,
+          dashboardAuthentication,
+          process: dashboardProcess,
           translator,
           dispatchEchoes,
           subagentExecutions,
