@@ -28,6 +28,7 @@ import type { AgentSessionOwnerProbe } from '../../../../shared/agent-session/li
 import type { AgentJournalCursor } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+import type { UsageLimitAccountScope } from '../recovery/structured-agent-session-usage-limit-account-hold'
 import type {
   AgentSessionNamingError,
   AgentSessionStatusSummary
@@ -191,9 +192,17 @@ export type StructuredAgentSessionHostDeps = {
     isEnabled: () => boolean
     subscribe: (changed: () => void) => () => void
     isWorkspaceAsleep: (workspaceId: string) => boolean
-    /** The provider's usage for the account its chats launch under; null when Orca cannot read it. */
+    /** The hold scope of a launch at `home` and its polled usage; undefined when it can't hold. */
+    accountUsage?: (
+      provider: AgentSessionRecord['provider'],
+      home: AgentSessionAccountHome
+    ) => Promise<UsageLimitAccountScope | undefined>
+    /** Synchronous witness of every source `accountUsage` reads; an attribution holds while it does. */
+    accountWitness?: (provider: AgentSessionRecord['provider']) => string
+    /** Fork: the provider's polled usage (Cursor/Antigravity too), read to tell whether an ACP
+     *  turn that failed without saying why hit a usage limit; null when Orca cannot read it. */
     readAccountUsage?: (provider: string) => UsageLimitAccountReading | null
-    /** Asks the provider for fresh usage; settles once the next reading carries the answer. */
+    /** Fork: asks the provider for fresh usage; settles once the next reading carries the answer. */
     refreshAccountUsage?: () => Promise<void>
   }
   startupLimits?: Partial<StructuredAgentSessionStartupLimits>

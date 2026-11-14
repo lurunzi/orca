@@ -170,7 +170,7 @@ export function nativeChatPaneHeader(
 export function structuredChatPaneHeader(
   view: Parameters<typeof nativeChatPaneHeader>[0],
   worktreeId: string | null,
-  colorScheme: React.CSSProperties['colorScheme'],
+  { colorScheme }: Pick<React.CSSProperties, 'colorScheme'>,
   commands: Record<'titleActions' | 'header' | 'headerDialog', React.ReactNode>,
   handOff?: NativeChatHandOff
 ): React.JSX.Element {

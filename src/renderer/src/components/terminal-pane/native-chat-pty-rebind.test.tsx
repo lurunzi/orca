@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
-import { createTerminalLayoutActions } from '@/store/terminals/terminal-layout-state'
+import { createTerminalLayoutActions } from '@/store/terminals/layout/terminal-layout-state'
 import type { AppState } from '@/store/types'
 import { useTerminalPaneLayoutBindings } from './layout/ownership/use-terminal-pane-layout-bindings'
 import { useTerminalPaneProjection } from './controller/use-terminal-pane-projection'
@@ -68,6 +68,11 @@ function renderChat(ptyId = 'pty-chat') {
       ]
     }
   })
+  const manager = {
+    getActivePane: () => panes[0],
+    getPanes: () => panes,
+    getLeafId: (id: number) => panes.find((pane) => pane.id === id)?.leafId
+  }
   const controller = {
     tabId: 'tab',
     worktreeId: 'wt',
@@ -79,13 +84,8 @@ function renderChat(ptyId = 'pty-chat') {
     settings: null,
     systemPrefersDark: false,
     shouldMeasureHiddenStartup: false,
-    managerRef: {
-      current: {
-        getActivePane: () => panes[0],
-        getPanes: () => panes,
-        getLeafId: (id: number) => panes.find((pane) => pane.id === id)?.leafId
-      }
-    },
+    managerRef: { current: manager },
+    terminalManager: manager,
     paneTransportsRef: { current: transports },
     paneTitles: {},
     terminalError: null,

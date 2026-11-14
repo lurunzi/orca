@@ -46,9 +46,8 @@ import { countRepoTerminalsNotKnownExited } from '../workspaces/removal/project-
 type NullableBinding<K extends keyof HostBindings> = HostBindings[K] | null
 
 export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeWithTerminalDrivers {
-  declare acquireFileWatcherRemoval: ConstructorParameters<
-    typeof RuntimeProjectGroupController
-  >[0]['acquireFileWatcherRemoval']
+  protected abstract finishGroupFolderCreation: Calls.FinishGroupFolderCreation
+  declare acquireFileWatcherRemoval: Calls.AcquireFileWatcherRemoval
   protected abstract tryGetWorkspaceSessionHostIdForWorktree(
     worktreeId: string
   ): ExecutionHostId | null
@@ -209,7 +208,7 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
   protected readonly legacyWorkerRecoveryPersistence =
     new RuntimeLegacyWorkerTerminalRecoveryPersistence(
       () => this.store,
-      () => this.getOrchestrationDb(),
+      () => this.getExistingOrchestrationDb(),
       (worktreeId) => this.tryGetWorkspaceSessionHostIdForWorktree(worktreeId)
     )
 
@@ -244,13 +243,13 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
     persist: (resolutions) => this.legacyWorkerRecoveryPersistence.persist(resolutions),
     rollback: (candidate) => this.rollbackLegacyWorkerTerminalSurface(candidate),
     reconcileMissing: (candidate) =>
-      this.legacyWorkerRecoveryPersistence.reconcileMissing(candidate),
+      this.legacyWorkerRecoveryPersistence.reconcileMissing(candidate, this.lostWorkerReport),
     notifyResolution: (candidate, resolution) =>
       this.notifier?.resolveLegacyWorkerTerminalRecovery?.(candidate.paneKey, resolution),
     canRecoverPersistentLocalPtys: () => this.canRecoverPersistentLocalPtysFn(),
     isTerminalProvenAbsent: (candidate) => this.isLeafPtyProvenAbsent(candidate.ptyId),
     hasRequestedReleases: () =>
-      this.getOrchestrationDb().listWorkerTerminalReleaseBacklog(1).length > 0,
+      (this.getExistingOrchestrationDb()?.listWorkerTerminalReleaseBacklog(1).length ?? 0) > 0,
     reconcileRequestedReleases: () => reconcileRequestedWorkerTerminalReleases(this),
     reconcile: (options) => this.reconcileLegacyWorkerTerminals(options),
     updateRetry: (plan, deferredDispatchIds, options) =>
@@ -292,6 +291,7 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
   })
 
   protected readonly projectGroups = new RuntimeProjectGroupController({
+    finishFolderCreation: (...args) => this.finishGroupFolderCreation(...args),
     getStore: () => this.store,
     resolveRepo: (...args) => this.managedWorktreeQueries.resolveRepoForConnection(...args),
     notifyReposChanged: () => this.notifyReposChanged(),

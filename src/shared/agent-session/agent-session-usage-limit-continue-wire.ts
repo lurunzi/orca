@@ -1,8 +1,9 @@
-/** Host-derived automatic-continue schedule for a chat's latest usage-limit cut. */
-export type AgentSessionUsageLimitContinueState = {
+/** A usage-limited chat's automatic continue, as the host publishes it on the status summary. */
+export type AgentSessionUsageLimitContinue = {
   turnItemId: string
   resetsAt: number
-  state: 'scheduled' | 'cancelled' | 'failed' | 'off'
-  /** When the account's own usage says the limit lasts past `resetsAt`; the send waits for it. */
+  /** When Orca continues instead of `resetsAt`: later while the account still shows spent,
+   *  earlier once the chat would continue on another account. Absent: `resetsAt`. */
   continueAt?: number
+  state: 'scheduled' | 'cancelled' | 'failed' | 'off'
 }

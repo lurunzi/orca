@@ -6,7 +6,7 @@ import { initialTranscriptChatView } from '../../../../shared/transcript-chat-la
 import type { AgentLaunchPreferences } from '../../../../shared/agent-session/agent-session-host-authority'
 import type { Repo } from '../../../../shared/repo-types'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
-import type { WorktreeStartupLaunch } from '../../../../shared/worktree/launch-types'
+import type { WorktreeStartupLaunch } from '../../../../shared/worktree/creation/launch-types'
 import { repoIsRemote } from '../../../../shared/agent-launch/startup/agent-launch-remote'
 import { getRepoSshConnectionId } from '../../../../shared/execution-host'
 import { isTuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent-config'
@@ -41,7 +41,7 @@ type AttributedWorktreeStartupLaunch = WorktreeStartupLaunch & {
 }
 
 type StartupEnvironment = {
-  repo: Repo
+  repo: Pick<Repo, 'path' | 'connectionId' | 'executionHostId'>
   settings: ReturnType<RuntimeStore['getSettings']>
   /** Resolve the execution host's quoting/spawn fact, or the repair error that refuses startup. */
   getLaunchRuntime: (agent: TuiAgent) => ReturnType<typeof resolveStartupAgentLaunchRuntime>
@@ -273,7 +273,7 @@ export async function buildWorktreeStartupForAgent(
 }
 
 export async function resolveWorktreeCreateAgentStartup(
-  args: RuntimeManagedWorktreeCreateArgs,
+  args: Omit<RuntimeManagedWorktreeCreateArgs, 'repoSelector' | 'name'>,
   build: (
     agent: TuiAgent,
     prompt: string | undefined,

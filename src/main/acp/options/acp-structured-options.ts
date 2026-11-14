@@ -9,6 +9,8 @@ import type {
 import type { AgentSessionOptionsResult } from '../../../shared/agent-session/options/agent-session-options-result'
 import {
   acpFastOption,
+  acpReportedFullAccessMode,
+  listedAcpModelIds,
   selectAcpConfigOption,
   withAcpFastMode,
   type AcpSelectOption,
@@ -46,6 +48,8 @@ export class AcpStructuredOptions {
   readonly picked = new Set<string>()
   readonly appliedInput = new Map<string, string>()
   readonly applied = new Map<string, string>()
+  // A control without refreshed options leaves the prior current values unproven.
+  private readonly unobservedCurrent = new Set<'model' | 'effort'>()
   writeRevision = 0
   /** Orca's own writes in flight; config changes outside them are the agent's own. */
   writing = 0
@@ -77,12 +81,17 @@ export class AcpStructuredOptions {
 
   invalidateInput(key: string): void {
     this.appliedInput.delete(key)
+    if (key === 'model' || key === 'effort') {
+      this.unobservedCurrent.add(key)
+    }
     if (key === 'model') {
       this.appliedInput.delete('effort')
       this.appliedInput.delete('fastMode')
+      this.unobservedCurrent.add('effort')
     }
     if (key === 'effort' && this.dialect.effortChangesModel) {
       this.appliedInput.delete('model')
+      this.unobservedCurrent.add('model')
     }
   }
 
@@ -98,6 +107,7 @@ export class AcpStructuredOptions {
     this.models = response.models ?? null
     this.resolvesConfig = origin === 'new'
     this.appliedInput.clear()
+    this.unobservedCurrent.clear()
     this.selectorProof = null
   }
 
@@ -120,14 +130,11 @@ export class AcpStructuredOptions {
     }
   }
 
-  matchesNativeRestoredModel(value: string): boolean {
-    if (this.resolvesConfig || this.picked.has('model')) {
+  matchesNativeRestoredOption(key: 'model' | 'effort', value: string): boolean {
+    if (this.resolvesConfig || this.picked.has(key) || this.unobservedCurrent.has(key)) {
       return false
     }
-    return (
-      value.length > 0 &&
-      (this.select('model')?.currentValue ?? this.models?.currentModelId) === value
-    )
+    return value.length > 0 && this.currentValues()[key] === value
   }
 
   notePick(key: string): void {
@@ -139,6 +146,14 @@ export class AcpStructuredOptions {
       return
     }
     this.configOptions = configOptions
+    if (this.writing === 0 && this.unsettled.size === 0) {
+      if (this.select('model')) {
+        this.unobservedCurrent.delete('model')
+      }
+      if (this.select('thought_level')) {
+        this.unobservedCurrent.delete('effort')
+      }
+    }
     const proof = this.selectorProof
     if (!proof || this.writing > 0) {
       return
@@ -216,10 +231,7 @@ export class AcpStructuredOptions {
   }
 
   listedModelIds(): string[] {
-    const modelOption = this.select('model')
-    return modelOption
-      ? acpSelectChoices(modelOption).map((choice) => choice.value)
-      : (this.models?.availableModels.map((model) => model.modelId) ?? [])
+    return listedAcpModelIds(this.select('model'), this.models)
   }
 
   /** Native choices never establish an unobserved model's capability or configured default. */
@@ -317,10 +329,7 @@ export class AcpStructuredOptions {
     const mode = current
       ? (Object.entries(values).find(([, value]) => value === current)?.[0] ?? null)
       : null
-    // Orca's own Full access runs the agent in its ask mode.
-    return mode === 'ask' && this.applied.get('permissionMode') === 'full-access'
-      ? 'full-access'
-      : mode
+    return acpReportedFullAccessMode(mode, this.applied.get('permissionMode'))
   }
 
   // Match the mode category rather than assuming an agent's config ID.

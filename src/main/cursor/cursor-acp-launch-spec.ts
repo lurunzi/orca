@@ -4,7 +4,7 @@ import { directoryAccountBinding } from '../acp/launch/acp-account-binding'
 import { CURSOR_ACP_DIALECT } from '../acp/acp-dialects/cursor-dialect'
 import { readCursorModelCatalog } from '../acp/acp-dialects/cursor-model-catalog'
 import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/agent-session-setup-commands'
-import type { StructuredAgentSessionHistory } from '../native-chat/structured-agent-cli-conversations'
+import type { StructuredAgentSessionHistory } from '../native-chat/conversation-adoption/structured-agent-cli-conversations'
 
 // ACP chats live in <config>/acp-sessions; terminal `--resume` reads <config>/chats, so neither resumes the other.
 const CURSOR_ACP_SESSION_HISTORY: StructuredAgentSessionHistory = {

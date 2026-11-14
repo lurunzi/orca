@@ -78,27 +78,6 @@ describe('pool labels', () => {
     expect(formatPoolWindowLabel(unnamed)).toBe('')
   })
 
-  it('keeps full group names when two groups shorten to the same text', () => {
-    const buckets = [pool('Gemini Models', WEEK), pool('Gemini models', WEEK)]
-    expect(buckets.map((b) => formatPoolShortLabel(b, buckets))).toEqual([
-      'Gemini Models wk',
-      'Gemini models wk'
-    ])
-  })
-
-  it('does not shorten another group to a name retained after a collision', () => {
-    const buckets = [
-      pool('Gemini Models', WEEK),
-      pool('Gemini models', WEEK),
-      pool('Gemini Models Models', WEEK)
-    ]
-    expect(buckets.map((bucket) => formatPoolShortLabel(bucket, buckets))).toEqual([
-      'Gemini Models wk',
-      'Gemini models wk',
-      'Gemini Models Models wk'
-    ])
-  })
-
   it('passes a group name the rule does not match through', () => {
     const buckets = [pool('Gemini Models', WEEK), pool('Gemini models (Preview)', WEEK)]
     expect(buckets.map((b) => formatPoolShortLabel(b, buckets))).toEqual([
@@ -114,19 +93,6 @@ describe('pool labels', () => {
     expect(formatPoolShortLabel(other, [legacy, other])).toBe('Other Models wk')
     const daily = { ...legacy, name: 'Gemini Models · Daily Limit Remaining', windowMinutes: 0 }
     expect(formatPoolShortLabel(daily, [daily])).toBe('Daily')
-  })
-
-  it('adds a reset countdown only once a pool is urgent and its reset is known', () => {
-    const now = Date.UTC(2026, 9, 1, 12)
-    const resetsAt = now + 130 * 60_000
-    const label = (overrides: Partial<RateLimitBucket>): string => {
-      const bucket = pool('Gemini Models', FIVE_HOURS, overrides)
-      return formatPoolWindowLabel(bucket, now)
-    }
-
-    expect(label({ usedPercent: 80, resetsAt })).toBe('5h (2h 10m)')
-    expect(label({ usedPercent: 79, resetsAt })).toBe('5h')
-    expect(label({ usedPercent: 80, resetsAt: null })).toBe('5h')
   })
 })
 

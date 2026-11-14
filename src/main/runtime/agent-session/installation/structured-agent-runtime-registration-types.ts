@@ -6,12 +6,12 @@ import type { AgentSessionAccountHome } from '../../../../shared/agent-session/l
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import type { AgentCliVersionReader } from '../../../agent-launch/preflight/agent-cli-version-probe'
-import type { StructuredAgentCliConversations } from '../../../native-chat/structured-agent-cli-conversations'
+import type { StructuredAgentCliConversations } from '../../../native-chat/conversation-adoption/structured-agent-cli-conversations'
 import type {
   StructuredAgentSessionAdapter,
   StructuredAgentSessionLifecycleEvent
 } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
-import type { StructuredAgentCommandSettings } from '../../../native-chat/structured-agent-command-resolution'
+import type { StructuredAgentCommandSettings } from '../../../native-chat/agent-launch/structured-agent-command-resolution'
 import type { AcpHostBackendSettings } from '../../../acp/launch/acp-launch-contract'
 import type { StructuredAgentDefinition } from '../../../native-chat/agent-session-wire/providers/structured-agent-definition'
 import type { StructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-host'

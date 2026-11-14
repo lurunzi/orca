@@ -1,12 +1,12 @@
 import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
 import { buildAiVaultResumeCommand } from '../../../shared/ai-vault/resume/ai-vault-resume-command'
-import { generatedSessionTitle } from '../session-scanner-accumulator'
+import { generatedSessionTitle } from '../parsing/session-scanner-accumulator'
 import {
   readCursorChatMeta,
   wasCursorChatMetaRefused
 } from '../scanners/cursor/session-scanner-cursor-chat-meta'
 import { devinSessionsIndexForSidecar } from '../scanners/devin/session-scanner-devin-db'
-import { isCursorAcpSessionMetaPath } from '../session-scanner-cursor-acp-parser'
+import { isCursorAcpSessionMetaPath } from '../scanners/cursor/session-scanner-cursor-acp-parser'
 import type { SessionSidecarObservation } from './session-sidecar-stat'
 import type { SessionFileCandidate } from '../session-scanner-types'
 

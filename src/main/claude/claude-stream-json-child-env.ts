@@ -1,6 +1,6 @@
-import { buildClaudeChildProcessEnv } from './claude-child-process-environment'
-import { withoutInheritedClaudeConfigDir } from './claude-config-dir-pin'
-import { withoutRejectedClaudeApiKey } from './claude-rejected-api-key'
+import { buildClaudeChildProcessEnv } from './child-process/claude-child-process-environment'
+import { withoutInheritedClaudeConfigDir } from './structured/launch/claude-config-dir-pin'
+import { withoutRejectedClaudeApiKey } from './configuration/claude-rejected-api-key'
 
 function withoutKeys(env: Record<string, string>, keys: readonly string[]): Record<string, string> {
   for (const key of keys) {

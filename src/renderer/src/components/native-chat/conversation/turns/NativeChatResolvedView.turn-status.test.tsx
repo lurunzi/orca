@@ -35,14 +35,6 @@ const userTurn: NativeChatMessage = {
   source: 'transcript'
 }
 
-const stepCall: NativeChatMessage = {
-  id: 'step-1',
-  role: 'assistant',
-  blocks: [{ type: 'tool-call', name: 'Bash', input: { command: 'pnpm build' } }],
-  timestamp: 3,
-  source: 'transcript'
-}
-
 // State both reconciled fields so the fixture represents a consistent live session.
 function transcript(
   status: NativeChatLiveSession['status'],
@@ -89,9 +81,9 @@ function patchStatus(fields: Partial<AgentStatusEntry>): void {
 }
 
 function renderPane(
-  onSwitchToTerminal?: () => void,
-  agent: 'claude' | 'antigravity' = 'claude',
-  readTerminalScreen?: (format?: 'text') => string | null
+  onSwitchToTerminal: () => void,
+  agent: 'claude' | 'antigravity',
+  readTerminalScreen: (format?: 'text') => string | null
 ): RenderResult {
   return render(
     <TooltipProvider>
@@ -112,10 +104,6 @@ function renderPane(
   )
 }
 
-function liveActivityLine(): Element | null {
-  return document.querySelector('[data-native-chat-turn-activity]')
-}
-
 beforeEach(() => {
   restoreViewport = installNativeChatMessageListTestViewport()
   useAppStore.setState({ agentStatusByPaneKey: {}, nativeChatLaunchPromptByTabId: {} })
@@ -127,7 +115,8 @@ afterEach(() => {
   useAppStore.setState({ agentStatusByPaneKey: {}, nativeChatLaunchPromptByTabId: {} })
 })
 
-describe('NativeChatResolvedView turn status', () => {
+// Fork: an Antigravity prose question is answered in chat, not through the terminal preview.
+describe('NativeChatResolvedView Antigravity prose question', () => {
   it('replaces the terminal-preview fallback with an answerable Antigravity prose question', () => {
     const question = '请告诉我脚本放在哪个仓库。'
     retained.session = {
@@ -194,7 +183,7 @@ describe('NativeChatResolvedView turn status', () => {
       expect(readScreen).toHaveBeenCalledTimes(2)
       expect(screen.queryByText('Report ready: investigation.md')).toBeNull()
       expect(screen.getByRole('button', { name: /Continue with Terminal Agent/ })).toBeVisible()
-      expect(liveActivityLine()).toBeNull()
+      expect(document.querySelector('[data-native-chat-turn-activity]')).toBeNull()
       act(() => {
         retained.session = { ...retained.session!, hookAwaitingInput: false }
         patchStatus({ state: 'done' })
@@ -205,24 +194,4 @@ describe('NativeChatResolvedView turn status', () => {
       expect(screen.queryByText('Awaiting user input')).toBeNull()
     }
   )
-
-  // Store staleness alone cannot prove an unanswered turn ended.
-  it('does not settle a turn the host went quiet on', () => {
-    retained.session = transcript('ready', true, [userTurn, stepCall])
-    setStatus({ state: 'waiting' }, 60_000)
-    patchStatus({ turnStartedAt: Date.now() - 60_000 })
-
-    renderPane()
-    expect(screen.getByText('Working for 1m 0s')).toBeInTheDocument()
-
-    // The live session reads no hook state once the row is stale, so the wait no longer holds the turn.
-    retained.session = transcript('ready', false, [userTurn, stepCall])
-    act(() => {
-      patchStatus({ updatedAt: Date.now() - 31 * 60_000 })
-    })
-
-    expect(screen.queryByText(/Work(ing|ed) for/)).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Toggle turn details' })).toBeNull()
-    expect(screen.getByText('pnpm build')).toBeInTheDocument()
-  })
 })

@@ -7,7 +7,7 @@ import { guardNativeChatAgentTransport } from '../../../native-chat-provider-cap
 import type {
   NativeChatApi,
   NativeChatAppendedMessages
-} from '../../../../../../../preload/api/native-chat-api'
+} from '../../../../../../../preload/api/native-chat/native-chat-api'
 import { isWebClientLocation } from '@/app-shell/platform/web-client-location'
 import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import { runtimeEnvironmentSupportsCapability } from '@/runtime/rpc/compatibility/runtime-capability-proof'

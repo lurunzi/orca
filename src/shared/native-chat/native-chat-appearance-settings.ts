@@ -18,7 +18,7 @@ export type NativeChatAppearanceSettings = {
 export type AgentDefaultSurface = 'chat' | 'terminal'
 
 export type NativeChatGlobalSettings = {
-  /** Chat UI: leave settled turns expanded instead of folding them behind their status row. */
+  /** Chat UI: keep settled turns expanded, not folded under their status row. Absent = off. */
   nativeChatExpandFinishedTurns?: boolean
   /** Unlisted agents follow this default; absent means terminal. */
   agentDefaultSurface?: AgentDefaultSurface

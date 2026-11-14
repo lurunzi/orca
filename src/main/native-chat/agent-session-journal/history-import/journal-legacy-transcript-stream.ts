@@ -1,12 +1,15 @@
-import { decodeClaudeTranscriptLine } from '../../transcript-line-decoders-claude'
-import { decodeCodexTranscriptLine } from '../../transcript-line-decoders-codex'
-import { decodeCursorTranscriptLine } from '../../transcript-line-decoders-cursor'
-import { decodeAntigravityTranscriptLine } from '../../transcript-line-decoders-antigravity'
-import { decodeGrokTranscriptLine } from '../../transcript-line-decoders-grok'
-import { decodeOmpTranscriptLine } from '../../transcript-line-decoders-omp'
+import { decodeClaudeTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-claude'
+import { decodeCodexTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-codex'
+import { decodeCursorTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-cursor'
+import { decodeAntigravityTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-antigravity'
+import { decodeGrokTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-grok'
+import { decodeOmpTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-omp'
 import { createReadStream } from 'node:fs'
-import { decodeTranscriptStream } from '../../transcript-stream-lines'
-import { readCodexLocalHistory, type CodexHistoryRecord } from '../../codex-local-history'
+import { decodeTranscriptStream } from '../../transcript-streaming/transcript-stream-lines'
+import {
+  readCodexLocalHistory,
+  type CodexHistoryRecord
+} from '../../transcript-history/codex/codex-local-history'
 
 export async function readLegacyImportTranscript(
   input: { filePath: string; codex: boolean; roots?: readonly string[] },
