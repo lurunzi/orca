@@ -3,12 +3,9 @@ import { waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
 import type { ProviderProcessLaunch } from '../provider-process/provider-process-launch'
 import type { CodexAppServerServerRequest } from '../codex/app-server/codex-app-server-connection-types'
 import type { DashboardCodexLifecycleOptions, DashboardCodexRpc } from './dashboard-codex-rpc'
-import { readDashboardCodexAllocationContext } from './dashboard-allocation-reader'
+import { waitForDashboardAllocation } from './dashboard-allocation-wait'
 import type { CodexPoolIdentity } from '../../shared/agent-session/lifecycle/agent-session-pool-account'
-import {
-  codexPoolIdentityFromAllocation,
-  canUseCodexPoolIdentity
-} from './dashboard-codex-pool-authentication'
+import { readDashboardCodexPoolContext } from './dashboard-codex-pool-authentication'
 import type { DashboardCodexBinding } from './dashboard-codex-adoption-protocol'
 import { DashboardCodexRefresh } from './dashboard-codex-refresh'
 import type { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
@@ -66,16 +63,14 @@ export async function prepareDashboardCodexAuthentication(
       throw new DashboardAllocationError()
     }
     // Connection ownership starts after spawn; acquisition rechecks before spawning.
-    const context = await waitForPromiseWithSignal(readDashboardCodexAllocationContext(), signal)
-    if (
-      !context ||
-      signal.aborted ||
-      (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt)
-    ) {
-      throw new DashboardAllocationError()
-    }
-    const identity = codexPoolIdentityFromAllocation(context.instanceId, context.allocation)
-    if (expectedIdentity && !canUseCodexPoolIdentity(expectedIdentity, identity)) {
+    const { context, identity } = await waitForPromiseWithSignal(
+      waitForDashboardAllocation(() => readDashboardCodexPoolContext(expectedIdentity), {
+        signal,
+        deadlineAt: options.deadlineAt
+      }),
+      signal
+    )
+    if (signal.aborted || (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt)) {
       throw new DashboardAllocationError()
     }
     return new DashboardCodexAuthentication(context.allocation, current, mailbox, options, identity)

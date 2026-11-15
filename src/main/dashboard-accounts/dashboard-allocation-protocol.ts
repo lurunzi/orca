@@ -24,6 +24,7 @@ export class DashboardAllocationError extends Error {
     super(DashboardAllocationErrorCode.Unavailable)
   }
 }
+export class DashboardAllocationPendingError extends DashboardAllocationError {}
 
 export const DASHBOARD_ALLOCATION_LIMIT_BYTES = 1024 * 1024
 const id = z.string().min(1).max(128)

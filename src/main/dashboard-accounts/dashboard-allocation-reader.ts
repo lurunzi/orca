@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import {
   DASHBOARD_ALLOCATION_LIMIT_BYTES,
   DashboardAllocationError,
+  DashboardAllocationPendingError,
+  DashboardAllocationReason,
   DashboardAllocationState,
   parseDashboardAllocation,
   type DashboardAllocationSnapshot,
@@ -15,6 +17,10 @@ import { readDashboardInstanceId } from './dashboard-instance-id'
 
 const directory = '/run/orca-dashboard'
 const file = join(directory, 'desired-accounts.json')
+const pendingReasons: ReadonlySet<DashboardAllocationReason> = new Set([
+  DashboardAllocationReason.RefreshPending,
+  DashboardAllocationReason.CredentialExpired
+])
 function requireOwnership(stat: Stats, mode: number): void {
   if (stat.uid !== 0 || stat.gid !== 1000 || (stat.mode & 0o777) !== mode) {
     throw new DashboardAllocationError()
@@ -34,7 +40,13 @@ export async function readDashboardAllocation(): Promise<DashboardAllocationSnap
     if (!parent.isDirectory() || parent.isSymbolicLink()) {
       throw new DashboardAllocationError()
     }
-    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW)
+    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW).catch(
+      (error: unknown) => {
+        throw error instanceof Error && 'code' in error && error.code === 'ENOENT'
+          ? new DashboardAllocationPendingError()
+          : error
+      }
+    )
     try {
       const stat = await handle.stat()
       requireOwnership(stat, 0o640)
@@ -49,8 +61,8 @@ export async function readDashboardAllocation(): Promise<DashboardAllocationSnap
     } finally {
       await handle.close()
     }
-  } catch {
-    throw new DashboardAllocationError()
+  } catch (error) {
+    throw error instanceof DashboardAllocationPendingError ? error : new DashboardAllocationError()
   }
 }
 export type DashboardCodexAllocationContext = {
@@ -73,12 +85,22 @@ function requireAvailableAllocation(
   binding: DashboardAllocationSnapshot['bindings'][number]
 ): asserts binding is DashboardCodexAllocation | DashboardClaudeAllocation {
   if (
-    binding.state !== DashboardAllocationState.Available ||
-    (binding.expires_at !== null &&
-      (!Number.isFinite(Date.parse(binding.expires_at)) ||
-        Date.parse(binding.expires_at) <= Date.now()))
+    binding.state === DashboardAllocationState.Unavailable &&
+    pendingReasons.has(binding.reason)
   ) {
+    throw new DashboardAllocationPendingError()
+  }
+  if (binding.state !== DashboardAllocationState.Available) {
     throw new DashboardAllocationError()
+  }
+  if (binding.expires_at !== null) {
+    const expiresAt = Date.parse(binding.expires_at)
+    if (!Number.isFinite(expiresAt)) {
+      throw new DashboardAllocationError()
+    }
+    if (expiresAt <= Date.now()) {
+      throw new DashboardAllocationPendingError()
+    }
   }
 }
 export async function readDashboardClaudeAllocation(): Promise<DashboardClaudeAllocation | null> {

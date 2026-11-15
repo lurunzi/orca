@@ -5,12 +5,15 @@ import {
   type DashboardCodexRefreshScope
 } from './dashboard-codex-refresh-protocol'
 import {
+  DashboardAllocationError,
+  DashboardAllocationPendingError,
   DashboardAllocationState,
   DashboardToolProvider,
   type DashboardCodexAllocation
 } from './dashboard-allocation-protocol'
 import { readDashboardCodexAllocationContext } from './dashboard-allocation-reader'
 import { DashboardCodexRefreshMailbox } from './dashboard-codex-refresh-mailbox'
+import type { CodexPoolIdentity } from '../../shared/agent-session/lifecycle/agent-session-pool-account'
 import {
   DashboardCodexAuthentication,
   dashboardCodexChildLaunch,
@@ -111,6 +114,89 @@ describe('Dashboard Codex external authentication', () => {
     ).rejects.toMatchObject({
       message: 'dashboard_allocation_unavailable'
     })
+  })
+
+  it('waits for an allocation delivered after a restarted runtime resumes the session', async () => {
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
+    vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
+    vi.mocked(readDashboardCodexAllocationContext)
+      .mockRejectedValueOnce(new DashboardAllocationPendingError())
+      .mockResolvedValueOnce({ instanceId: 'instance-fixture', allocation })
+    await expect(
+      prepareDashboardCodexAuthentication(() => true, new DashboardCodexRefreshMailbox())
+    ).resolves.toBeInstanceOf(DashboardCodexAuthentication)
+    expect(readDashboardCodexAllocationContext).toHaveBeenCalledTimes(2)
+  })
+
+  it('waits for a stale snapshot to reach an inherited pool identity and rejects another account at once', async () => {
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
+    vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
+    const inherited: CodexPoolIdentity = {
+      instanceId: 'instance-fixture',
+      provider: DashboardToolProvider.Codex,
+      accountId: 'pool-fixture',
+      bindingRevision: 3,
+      credentialVersion: 4
+    }
+    vi.mocked(readDashboardCodexAllocationContext)
+      .mockResolvedValueOnce({
+        instanceId: 'instance-fixture',
+        allocation: { ...allocation, credential_version: 3 }
+      })
+      .mockResolvedValueOnce({ instanceId: 'instance-fixture', allocation })
+    await expect(
+      prepareDashboardCodexAuthentication(
+        () => true,
+        new DashboardCodexRefreshMailbox(),
+        {},
+        inherited
+      )
+    ).resolves.toBeInstanceOf(DashboardCodexAuthentication)
+    expect(readDashboardCodexAllocationContext).toHaveBeenCalledTimes(2)
+    vi.mocked(readDashboardCodexAllocationContext).mockClear()
+    vi.mocked(readDashboardCodexAllocationContext).mockResolvedValue({
+      instanceId: 'instance-fixture',
+      allocation: { ...allocation, account_id: 'other-pool-fixture' }
+    })
+    await expect(
+      prepareDashboardCodexAuthentication(
+        () => true,
+        new DashboardCodexRefreshMailbox(),
+        {},
+        inherited
+      )
+    ).rejects.toMatchObject({ message: 'dashboard_allocation_unavailable' })
+    expect(readDashboardCodexAllocationContext).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops waiting at the caller deadline and does not retry a permanent rejection', async () => {
+    vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-fixture')
+    vi.stubEnv('ORCA_DASHBOARD_CODEX_AUTH_EXPERIMENT', '1')
+    vi.useFakeTimers({ now: Date.parse('2026-11-15T12:00:00.000Z') })
+    try {
+      vi.mocked(readDashboardCodexAllocationContext).mockRejectedValue(
+        new DashboardAllocationPendingError()
+      )
+      const waiting = prepareDashboardCodexAuthentication(
+        () => true,
+        new DashboardCodexRefreshMailbox(),
+        { deadlineAt: Date.parse('2026-11-15T12:00:00.600Z') }
+      )
+      const rejected = expect(waiting).rejects.toMatchObject({
+        message: 'dashboard_allocation_unavailable'
+      })
+      await vi.advanceTimersByTimeAsync(1000)
+      await rejected
+      expect(readDashboardCodexAllocationContext).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
+    vi.mocked(readDashboardCodexAllocationContext).mockReset()
+    vi.mocked(readDashboardCodexAllocationContext).mockRejectedValue(new DashboardAllocationError())
+    await expect(
+      prepareDashboardCodexAuthentication(() => true, new DashboardCodexRefreshMailbox())
+    ).rejects.toMatchObject({ message: 'dashboard_allocation_unavailable' })
+    expect(readDashboardCodexAllocationContext).toHaveBeenCalledTimes(1)
   })
 
   it('removes conflicting explicit and inherited auth without dropping proxy, directory or arguments', () => {

@@ -1,6 +1,7 @@
 import { applyClaudeEnvPatch } from '../claude-accounts/environment'
 import type { DashboardClaudeAllocation } from './dashboard-allocation-protocol'
 import { readDashboardClaudeAllocation } from './dashboard-allocation-reader'
+import { waitForDashboardAllocation } from './dashboard-allocation-wait'
 import type { DashboardClaudeLaunchBinding } from './dashboard-claude-launch-protocol'
 
 export const DASHBOARD_CLAUDE_ENV_TO_DELETE: readonly string[] = [
@@ -30,7 +31,7 @@ type DashboardClaudePreparedLaunch = {
 export async function prepareDashboardClaudeLaunch(
   source: Record<string, string>
 ): Promise<DashboardClaudePreparedLaunch> {
-  const allocation = await readDashboardClaudeAllocation()
+  const allocation = await waitForDashboardAllocation(readDashboardClaudeAllocation)
   return {
     launch: allocation
       ? {
