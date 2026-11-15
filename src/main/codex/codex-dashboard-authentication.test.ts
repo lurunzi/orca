@@ -348,6 +348,36 @@ describe('Codex Dashboard startup wiring', () => {
     }
   })
 
+  it('reopens a pool session whose journal already holds the resumed history', async () => {
+    const history = await chat({ now: 1700000000000 })
+    const open = async () => {
+      const codex = setup()
+      codex.routes['thread/turns/list'] = () => ({ data: [turn(0)], nextCursor: null })
+      const adapter = adapterFor(codex, { resumeThreadId: HISTORY_THREAD })
+      try {
+        const acquired = await adapter.acquire({
+          identity: identityFor(HISTORY_SESSION),
+          fence: 1,
+          spawnToken: 'spawn-9',
+          events: history.deferred.sink
+        })
+        return await adapter.open({
+          sessionId: HISTORY_SESSION,
+          fence: 1,
+          acquisitionGeneration: acquired.acquisitionGeneration,
+          signal: new AbortController().signal
+        })
+      } finally {
+        await adapter.closeAll()
+      }
+    }
+    await open()
+    await history.reopen()
+    const reopened = await open()
+    expect(history.texts()).toEqual(['user:ask 0', 'assistant:answer 0'])
+    expect(reopened.poolAuthentication?.identity).toMatchObject({ accountId: 'pool-fixture' })
+  })
+
   it('refuses a pool receipt when required history is unwritten while keeping personal catch-up optional', async () => {
     const events = {
       appendItem: vi.fn(),

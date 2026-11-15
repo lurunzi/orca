@@ -206,5 +206,6 @@ export async function catchUpCodexThread(input: {
   } finally {
     discardHelpers?.()
   }
-  return outcome === 'committed' || outcome === 'checked'
+  // `nothing`: the journal already holds every provider turn, so history is covered.
+  return outcome !== 'skipped'
 }
