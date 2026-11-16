@@ -10,7 +10,7 @@ import type { GlobalSettings } from '../../../../../../shared/global-settings-ty
 import type { AccountsPaneSectionModel } from '../accounts-pane-types'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
 import { UnavailableEntryLabel, UnavailableEntryReason } from '../../../unavailable-entry'
-import { resolveLocalAccountRuntimeTarget } from '../../../../../../shared/local-account-runtime'
+import { resolveLocalAccountRuntimeTarget } from '../../../../../../shared/agent-accounts/local-account-runtime'
 import { getRendererAppPlatform } from '../../../../app-shell/platform/renderer-app-platform'
 
 export function renderAccountsLocationSection(
