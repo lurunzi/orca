@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/class-names'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import { useTranslate } from '@/i18n/use-translate'
 import { skillCountLabel } from '../presentation/skill-display-labels'
 import { SKILLS_PAGE_COLUMN } from './skills-page-column'
@@ -21,6 +22,7 @@ export function SkillsPageHeader({
   hostLabel,
   onClose,
   onStartShare,
+  shareUnavailable,
   deleteSupported,
   deleteUnsupportedReason,
   onStartDelete,
@@ -34,6 +36,8 @@ export function SkillsPageHeader({
   hostLabel: string | null
   onClose: () => void
   onStartShare: () => void
+  /** The skills' host cannot share them from this computer; the page notice says why. */
+  shareUnavailable: boolean
   /** Disable deletion with a reason until the target and host capability are known. */
   deleteSupported: boolean
   deleteUnsupportedReason: string | null
@@ -84,9 +88,17 @@ export function SkillsPageHeader({
             ) : null}
           </div>
         </div>
-        <Button type="button" size="sm" onClick={onStartShare}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={shareUnavailable}
+          aria-disabled={shareUnavailable ? true : undefined}
+          onClick={onStartShare}
+        >
           <Share2 className="size-3.5" />
-          {t('auto.components.skills.SkillShareSelectionControls.01c5a15e02', 'Share skills')}
+          <UnavailableEntryLabel unavailable={shareUnavailable}>
+            {t('auto.components.skills.SkillShareSelectionControls.01c5a15e02', 'Share skills')}
+          </UnavailableEntryLabel>
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={onInstallFromLink}>
           <Download className="size-3.5" />

@@ -122,6 +122,9 @@ export function SkillsList({
         agentByRootPath={agentByRootPath}
         ownerHostId={ownerHostId}
         shareable={detailSkill ? isSkillShareEligible(detailSkill, local) : false}
+        shareUnavailableReason={
+          detailSkill && !local ? skillShareEligibilityReason(detailSkill, local, false, t) : null
+        }
         deletable={detailSkill ? deleteSupported && isSkillDeleteEligible(detailSkill) : false}
         deleteDisabledReason={detailSkill ? deleteReasonFor(detailSkill) : null}
         onOpenChange={(open) => {
@@ -169,6 +172,9 @@ export function SkillsList({
               selected={selectedIds.has(skill.id)}
               selectable={deleting ? deleteEligible : shareEligible && !duplicateNameSelected}
               shareable={shareEligible}
+              shareUnavailableReason={
+                local ? null : skillShareEligibilityReason(skill, local, false, t)
+              }
               deletable={deleteSupported && deleteEligible}
               deleteDisabledReason={deleteReasonFor(skill)}
               disabledLabel={

@@ -207,6 +207,7 @@ export default function SkillsPage(): React.JSX.Element {
 
   const skills = result?.skills ?? EMPTY_SKILLS
   const local = runtimeTarget?.kind === 'local'
+  const shareUnavailable = hostLabel !== null && !local
   const agentByRootPath = useMemo(() => skillAgentByRootPath(result), [result])
   const agentOptions = useMemo(() => skillAgentOptions(result), [result])
   const visibleSkills = useMemo(
@@ -259,6 +260,7 @@ export default function SkillsPage(): React.JSX.Element {
           }
           destructive={deleting}
           busy={deleting && deleteFlow.running}
+          unavailable={!deleting && shareUnavailable}
           selectedCount={selectedSkillIds.size}
           eligibleCount={eligibleCount}
           onSelectAll={() => setSelectedSkillIds((current) => addSelected(current, visibleSkills))}
@@ -284,6 +286,7 @@ export default function SkillsPage(): React.JSX.Element {
             setSelectionMode('share')
             setSelectedSkillIds(new Set())
           }}
+          shareUnavailable={shareUnavailable}
           deleteSupported={deleteFlow.supported}
           deleteUnsupportedReason={deleteFlow.unsupportedReason}
           onStartDelete={() => {
@@ -335,7 +338,7 @@ export default function SkillsPage(): React.JSX.Element {
             <SkillSharedLinksView query={filters.query} shares={ownedShares} />
           ) : (
             <>
-              {hostLabel && !local ? <SkillsRemoteShareNotice hostLabel={hostLabel} /> : null}
+              {shareUnavailable ? <SkillsRemoteShareNotice hostLabel={hostLabel} /> : null}
               {loading && skills.length === 0 ? (
                 <SkillsListSkeleton />
               ) : visibleSkills.length > 0 ? (

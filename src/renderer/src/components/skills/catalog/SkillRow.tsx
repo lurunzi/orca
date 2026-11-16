@@ -52,6 +52,7 @@ export function SkillRow({
   selected,
   selectable,
   shareable,
+  shareUnavailableReason,
   deletable,
   deleteDisabledReason,
   disabledLabel,
@@ -71,6 +72,8 @@ export function SkillRow({
   selected: boolean
   selectable: boolean
   shareable: boolean
+  /** Set when the skill's host cannot share it from this computer. */
+  shareUnavailableReason: string | null
   deletable: boolean
   /** Shown on the `Delete…` item itself, so it reads outside selection mode too. */
   deleteDisabledReason: string | null
@@ -116,6 +119,7 @@ export function SkillRow({
       label: t('auto.components.skills.SkillCard.d25a1b8ae6', 'Share skill'),
       icon: <Share2 />,
       disabled: !shareable,
+      unavailableReason: shareUnavailableReason,
       onSelect: onShare
     },
     {
