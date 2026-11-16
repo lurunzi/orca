@@ -23,7 +23,10 @@ describe('packaged runtime resources', () => {
 
       const sources = new Map([
         ['out\\main\\index.js', 'const z = require("zod"); const sqlite = require("node:sqlite")'],
-        ['out\\main\\agent-hooks\\managed-agent-hook-controls.js', 'const YAML = require("yaml")']
+        [
+          'out\\main\\agent-hooks\\installation\\managed-agent-hook-controls.js',
+          'const YAML = require("yaml")'
+        ]
       ])
       const asar = {
         listPackage: () => [...sources.keys()].map((entry) => `\\${entry}`),

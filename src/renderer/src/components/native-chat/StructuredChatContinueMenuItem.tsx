@@ -1,19 +1,17 @@
 import { MessageSquarePlus } from 'lucide-react'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 
 export function StructuredChatContinueMenuItem({
   onSelect
 }: {
   onSelect: () => void
 }): React.JSX.Element {
+  const t = useTranslate()
   return (
     <DropdownMenuItem onSelect={onSelect}>
       <MessageSquarePlus />
-      {translate(
-        'components.agentSessionContinuation.continueInNewSession',
-        'Continue in New Session…'
-      )}
+      {t('components.agentSessionContinuation.continueInNewSession', 'Continue in New Session…')}
     </DropdownMenuItem>
   )
 }
