@@ -10,6 +10,7 @@ import { useOptionalShortcutLabel } from '@/hooks/useShortcutLabel'
 import type { OpenFile } from '../../store/slices/editor/types/open-file'
 import { useTranslate } from '@/i18n/use-translate'
 import { LocalOnlyMenuHint } from '@/components/local-only-menu-hint'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import {
   getRevealInFileManagerLabel,
   getWorkspaceFileRevealOwner,
@@ -196,7 +197,9 @@ export function EditorFileTabContextMenu({
             disabled={revealBlocked}
             onSelect={() => void revealInFileManager(file.filePath, revealOwner)}
           >
-            {getRevealInFileManagerLabel(t)}
+            <UnavailableEntryLabel unavailable={revealBlocked}>
+              {getRevealInFileManagerLabel(t)}
+            </UnavailableEntryLabel>
             {revealBlocked ? <LocalOnlyMenuHint /> : null}
           </ContextMenuItem>
         </>

@@ -16,6 +16,7 @@ import { NO_OPEN_IN_APPLICATIONS } from '@/lib/files/os-open/open-in-application
 import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type { OpenInApplication } from '../../../../shared/ui-chrome-types'
 import { useTranslate } from '@/i18n/use-translate'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import {
   getOpenInEntryAvailability,
   openOpenInAppsSettings,
@@ -88,7 +89,12 @@ export function OpenInContextSubmenu({
               ) : (
                 <ExternalLink className="size-3.5" />
               )}
-              <span className="min-w-0 truncate">{application.label}</span>
+              <UnavailableEntryLabel
+                unavailable={availability.disabled}
+                className="min-w-0 truncate"
+              >
+                {application.label}
+              </UnavailableEntryLabel>
               {availability.metadata ? (
                 <span className="ml-auto shrink-0 text-2xs text-muted-foreground">
                   {availability.metadata}

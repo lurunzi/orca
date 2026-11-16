@@ -1,6 +1,7 @@
 import { Copy, ExternalLink } from 'lucide-react'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { LocalOnlyMenuHint } from '@/components/local-only-menu-hint'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import { useAppStore } from '@/store/index'
 import type { OpenFile } from '@/store/slices/editor/types/open-file'
 import { isRevealOrEditorOpenBlocked } from '@/lib/files/os-open/local-path-open-guard'
@@ -29,7 +30,9 @@ export function EditorFileLocationMenuItems({
         onSelect={() => void revealInFileManager(file.filePath, revealOwner)}
       >
         <ExternalLink />
-        {getRevealInFileManagerLabel(t)}
+        <UnavailableEntryLabel unavailable={revealBlocked}>
+          {getRevealInFileManagerLabel(t)}
+        </UnavailableEntryLabel>
         {revealBlocked ? <LocalOnlyMenuHint /> : null}
       </DropdownMenuItem>
       <DropdownMenuItem onSelect={onCopyPath}>

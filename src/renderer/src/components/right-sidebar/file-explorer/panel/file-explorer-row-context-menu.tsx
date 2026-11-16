@@ -29,6 +29,7 @@ import { detectLanguage } from '../../../../../../shared/editor-language/editor-
 import { openFileInBrowserTab } from '@/lib/browser/documents/file-preview'
 import { useTranslate } from '@/i18n/use-translate'
 import { LocalOnlyMenuHint } from '@/components/local-only-menu-hint'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import {
   getRevealInFileManagerLabel,
   getWorkspaceFileRevealOwner,
@@ -262,7 +263,9 @@ export function FileExplorerRowContextMenu({
         onSelect={() => void revealInFileManager(node.path, revealOwner)}
       >
         <ExternalLink />
-        {getRevealInFileManagerLabel(t)}
+        <UnavailableEntryLabel unavailable={revealBlocked}>
+          {getRevealInFileManagerLabel(t)}
+        </UnavailableEntryLabel>
         {revealBlocked ? <LocalOnlyMenuHint /> : null}
       </ContextMenuItem>
       <ContextMenuSeparator />
