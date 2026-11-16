@@ -15,6 +15,7 @@ import {
 } from '@/app-shell/updates/update-check-click-options'
 import type { UpdateCheckOptions } from '../../../../../../shared/updater/update-status-types'
 import { DropdownMenuItem, DropdownMenuSeparator } from '../../../ui/dropdown-menu'
+import { UnavailableEntryLabel, UnavailableEntryMenuHint } from '@/components/unavailable-entry'
 
 type RuntimeServerRowMenuProps = {
   showUpdate: boolean
@@ -27,6 +28,8 @@ type RuntimeServerRowMenuProps = {
   actionBusy: boolean
   isBusy: boolean
   connectDisabled: boolean
+  /** The server is the default host for new projects, which cannot be removed. */
+  removeBlocked: boolean
   /** Managed-server lifecycle items, placed between setup and removal. */
   managedItems?: React.ReactNode
   onUpdate: () => void
@@ -49,6 +52,7 @@ export function RuntimeServerRowMenuItems({
   actionBusy,
   isBusy,
   connectDisabled,
+  removeBlocked,
   managedItems,
   onUpdate,
   onConnect,
@@ -112,9 +116,23 @@ export function RuntimeServerRowMenuItems({
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       {managedItems}
-      <DropdownMenuItem variant="destructive" disabled={isBusy} onSelect={onRemove}>
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={isBusy || removeBlocked}
+        onSelect={onRemove}
+      >
         <Trash2 />
-        {t('auto.components.settings.serverList.remove', 'Remove…')}
+        <UnavailableEntryLabel unavailable={removeBlocked}>
+          {t('auto.components.settings.serverList.remove', 'Remove…')}
+        </UnavailableEntryLabel>
+        {removeBlocked ? (
+          <UnavailableEntryMenuHint>
+            {t(
+              'auto.components.settings.RuntimeEnvironmentsPane.removeDefaultServerBlocked',
+              'This server is the default host for new projects. Choose another one under New projects open on before removing it.'
+            )}
+          </UnavailableEntryMenuHint>
+        ) : null}
       </DropdownMenuItem>
     </>
   )

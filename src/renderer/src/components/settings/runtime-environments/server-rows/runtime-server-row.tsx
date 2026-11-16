@@ -339,6 +339,7 @@ export function RuntimeServerRow({
             actionBusy={actionBusy}
             isBusy={isBusy}
             connectDisabled={row.connectionState === 'checking'}
+            removeBlocked={isActive}
             managedItems={
               managed ? (
                 <ManagedServerMenuItems lifecycle={managed} forgettable={managedForgettable} />
