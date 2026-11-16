@@ -63,6 +63,7 @@ export type TabEntryActionClassification = Exclude<
 export type TabEntryOption = {
   classification: TabEntryClassification
   id: string
+  unavailableReason?: string
 }
 
 function tabEntryActionOptionId(classification: TabEntryActionClassification): string {
@@ -183,8 +184,16 @@ export function getTabEntryOptions(
 
   if (isTabEntryAbsolutePathLike(trimmed)) {
     if (!context.allowAbsolutePaths) {
+      const classification: TabEntryActionClassification = {
+        kind: 'absolute-file',
+        filePath: trimmed
+      }
       return [
-        blockedOption('absolute-path-blocked', getTabEntryAbsolutePathRemoteBlockedMessage(t))
+        {
+          id: tabEntryActionOptionId(classification),
+          classification,
+          unavailableReason: getTabEntryAbsolutePathRemoteBlockedMessage(t)
+        }
       ]
     }
     try {
