@@ -405,11 +405,9 @@ describe('Jira client credential storage', () => {
     })
 
     // Same-host PAT accounts need verified viewer identity to avoid overwriting each other.
-    const stored = JSON.parse(
+    const stored: { sites: { accountId: string }[] } = JSON.parse(
       readFileSync(join(tempHome, '.uda-orca', 'jira-sites.json'), 'utf-8')
-    ) as {
-      sites: { accountId: string }[]
-    }
+    )
     expect(stored.sites).toHaveLength(2)
     expect(stored.sites.map((site) => site.accountId).sort()).toEqual(['alice', 'bot'])
   })
