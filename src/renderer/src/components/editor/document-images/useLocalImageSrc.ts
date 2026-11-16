@@ -140,7 +140,8 @@ export function useLocalImageSrc(
           setDisplaySrc(url ?? undefined)
           // A new attachment can become readable after its optimistic row first mounts.
           if (!url && retryChatImage && retries < 2) {
-            retryTimer = setTimeout(load, ++retries * 250)
+            retries += 1
+            retryTimer = setTimeout(load, retries * 250)
           }
         })
     }
