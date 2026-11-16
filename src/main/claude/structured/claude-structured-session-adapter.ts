@@ -52,6 +52,7 @@ import { claudePromptCancelRoute } from './journal/claude-structured-prompt-repl
 import { claudeForkForRewind } from '../transcripts/claude-rewind-fork'
 import { copyClaudeConversation } from '../transcripts/claude-conversation-copy'
 import { ClaudeConversationNaming } from '../conversation-naming/claude-conversation-naming'
+import * as processState from './claude-structured-session-process-state'
 
 export class ClaudeStructuredSessionAdapter implements StructuredAgentSessionAdapter {
   private readonly sessions = new Map<string, ClaudeSession>()
@@ -75,6 +76,9 @@ export class ClaudeStructuredSessionAdapter implements StructuredAgentSessionAda
       emit: (session, event) => this.emit(session, event)
     }
   }
+
+  readDashboardClaudeLaunches = () =>
+    processState.readClaudeDashboardLaunches(this.sessions, this.acquisitions.size, this.exits)
 
   supportsLocation = supportsClaudeStructuredLocation
 
@@ -210,14 +214,8 @@ export class ClaudeStructuredSessionAdapter implements StructuredAgentSessionAda
     const held = session && claudeHeldSends(session)
     return held ?? (this.settledExitErrors.has(sessionId) ? new Set() : undefined)
   }
-  holdsLiveProviderProcess = (sessionId: string, acquisitionGeneration: string): boolean => {
-    const session = this.sessions.get(sessionId)
-    return (
-      session?.acquisitionGeneration === acquisitionGeneration &&
-      session.connection.pid !== undefined &&
-      session.connection.exitVerdict.root === 'live'
-    )
-  }
+  holdsLiveProviderProcess = (sessionId: string, acquisitionGeneration: string): boolean =>
+    processState.holdsLiveClaudeProviderProcess(this.sessions, sessionId, acquisitionGeneration)
   answerPrompt: StructuredAgentSessionAdapter['answerPrompt'] = (request) =>
     settleClaudePromptFreeingChild(this.asker(request), answerClaudeStructuredPrompt)
   setOption: StructuredAgentSessionAdapter['setOption'] = (input) =>

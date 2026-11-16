@@ -162,7 +162,7 @@ export async function foundConversation(
     }
   }
   if (!replayed) {
-    await prepareForkFounding(params)
+    await prepareForkFounding(params, request)
   }
   const existing = context.sessions.get(sessionId)
   const opened = existing

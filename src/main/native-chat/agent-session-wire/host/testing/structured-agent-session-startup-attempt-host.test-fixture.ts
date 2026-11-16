@@ -41,7 +41,7 @@ export const CALLER = { callerKey: 'client-1' }
 export const eventually = (assertion: () => void | Promise<void>, interval = 0): Promise<void> =>
   vi.waitFor(assertion, { timeout: 10_000, interval })
 
-let root: string
+export let root: string
 export let store: AgentSessionRecordStore
 export let host: StructuredAgentSessionHost
 export let acquire: Mock<StructuredAgentSessionAdapter['acquire']>

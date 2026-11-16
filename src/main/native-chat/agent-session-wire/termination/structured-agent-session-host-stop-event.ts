@@ -12,7 +12,7 @@ import type { AgentSessionResumeTrigger } from '../../../../shared/agent-session
 import type { SubmissionRejectionFact } from '../../../../shared/agent-session/failures/agent-session-failure'
 
 /** Personal Stop already records its event; other host stops record cause, while quit uses cut-turn rows. */
-export type StructuredAgentSessionStopEnding =
+export type StructuredAgentSessionStopEnding = (
   | { recorded: 'user-stop'; observeClose?: AgentSessionCloseObserver }
   | {
       cause: Exclude<StructuredAgentSessionStopCause, 'user-stop'>
@@ -22,6 +22,7 @@ export type StructuredAgentSessionStopEnding =
       /** Idle retirement of unanswered sends records no active-work Stop. */
       resting?: true
     }
+) & { requireObservedExit?: true }
 
 const STOP_EVENT_DRAIN_TIMEOUT_MS = 1_000
 

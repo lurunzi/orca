@@ -32,8 +32,9 @@
 /src/renderer/src/components/native-chat/__fixtures__/cursor-model-*.txt -text whitespace=-blank-at-eol,cr-at-eol
 /src/main/daemon/__fixtures__/git-bash-installed-dll-format-capacity.bin -text
 /src/renderer/src/components/terminal-pane/terminal-link-transcripts/*.txt -text whitespace=cr-at-eol
-# verify:localization-runtime-catalog compares LF bytes.
+# Localization catalog generators compare LF bytes.
 /src/renderer/src/i18n/en-runtime-required.json linguist-generated=true text eol=lf
+/src/shared/plugins/languages/protected-copy-keys.json text eol=lf
 # verify:rpc-params-catalog compares LF bytes.
 /src/shared/rpc-contract/rpc-params-catalog.generated.ts linguist-generated=true text eol=lf
 # RPC recording goldens must match rpc:record's LF output.

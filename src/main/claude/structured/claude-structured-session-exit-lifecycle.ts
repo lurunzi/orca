@@ -24,6 +24,7 @@ import {
   settleClaudeExitedSession
 } from './claude-structured-session-close'
 import { retireClaudeDispatchWaiters } from './claude-structured-dispatch'
+import { retainsClaudePoolRootExit } from './claude-structured-close-exit-observation'
 import {
   AgentSessionAcquisitionExitUnprovenError,
   AgentSessionAcquisitionRootExitObservedError
@@ -108,8 +109,9 @@ export function observeClaudeSessionExit(
       .then((proven) => {
         // Observed root exit releases the lease even if tree cleanup remains unverified.
         if (
+          retainsClaudePoolRootExit(session) ||
           claudeCloseReport(session.connection, proven, error) instanceof
-          AgentSessionAcquisitionExitUnprovenError
+            AgentSessionAcquisitionExitUnprovenError
         ) {
           return undefined
         }

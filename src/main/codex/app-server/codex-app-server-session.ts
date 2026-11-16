@@ -14,8 +14,9 @@ import {
   type CodexAppServerSpawn
 } from './codex-app-server-process-tree-kill'
 import { createProviderRecordReader } from '../../provider-process/provider-record-reader'
+import * as sessionHooks from './codex-app-server-session-hooks'
 
-export type CodexAppServerInvocation = {
+export type CodexAppServerInvocation = sessionHooks.CodexAppServerHookedInvocation & {
   command: string
   args: string[]
   cwd?: string
@@ -145,6 +146,7 @@ export async function runCodexAppServerSession<T>(
     failPending(error)
   })
 
+  const hooked = sessionHooks.attach(invocation, child, lifetime, requestRpc, buildEarlyExitError)
   createProviderRecordReader({
     stdout: child.stdout,
     onRecord: (parsed) => {
@@ -152,7 +154,7 @@ export async function runCodexAppServerSession<T>(
         return
       }
       const message = parsed as JsonRpcResponse
-      if (typeof message.id !== 'number') {
+      if (hooked?.dispatch(message) || typeof message.id !== 'number') {
         return
       }
       const waiter = pending.get(message.id)
@@ -297,15 +299,15 @@ export async function runCodexAppServerSession<T>(
 
   try {
     const session = async (): Promise<T> => {
-      await requestRpc('initialize', {
+      const initialized = await requestRpc('initialize', {
         clientInfo: { name: 'orca_desktop', title: 'Orca', version: '0.0.0' },
         ...(invocation.experimentalApi ? { capabilities: { experimentalApi: true } } : {})
       })
-      notify('initialized')
+      await sessionHooks.initialized(hooked, notify, initialized)
       return body({ request: requestRpc, notify, signal: lifetime.signal })
     }
     // Killing the child cannot settle a callback awaiting unrelated work; race the whole callback.
-    return await Promise.race([session(), deadlinePromise])
+    return await Promise.race([session(), deadlinePromise, ...(hooked ? [hooked.ended] : [])])
   } catch (error) {
     if (
       error instanceof Error &&

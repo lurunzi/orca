@@ -20,8 +20,7 @@ import type { StructuredAgentSessionSinkBarrier } from '../journal-ingress/struc
 import {
   settleStructuredAgentSessionLeftovers,
   type StructuredAgentSessionExitSettlement,
-  type StructuredAgentSessionLeftoverStore,
-  type StructuredAgentSessionLeftoverSettlementInput
+  type StructuredAgentSessionLeftoverStore
 } from './structured-agent-session-leftover-settlement'
 import {
   captureUnfinishedStructuredAgentSessionWork,
@@ -35,15 +34,14 @@ import type { StructuredAgentSessionHostRuntimeState } from '../host/structured-
 import type { StructuredAgentSessionStartFlights } from '../startup/structured-agent-session-start-flight'
 import type { StructuredAgentSessionStartupAttempts } from '../startup/structured-agent-session-startup-attempt'
 
-export type StructuredAgentSessionChildExitSession = Pick<
-  StructuredAgentSessionHostSession,
-  'child' | 'lastEndedChild' | 'workChanged'
-> & { journal: StructuredAgentSessionLeftoverSettlementInput['journal'] }
-
-export type StructuredAgentSessionGenerationEnded = (
-  sessionId: string,
-  options?: { restate?: boolean }
-) => void
+import type {
+  StructuredAgentSessionChildExitSession,
+  StructuredAgentSessionGenerationEnded
+} from './structured-agent-session-child-exit-contract'
+export type {
+  StructuredAgentSessionChildExitSession,
+  StructuredAgentSessionGenerationEnded
+} from './structured-agent-session-child-exit-contract'
 
 export type StructuredAgentSessionChildExitContext<
   TSession extends StructuredAgentSessionChildExitSession = StructuredAgentSessionHostSession
@@ -117,6 +115,10 @@ export async function endExitedStructuredAgentSessionChildUnderSerialize<
     return
   }
   const close = child.close
+  if (close?.exitConfirmation && exit.deathEvidenceKind === 'kill-delivered') {
+    close.exitConfirmation.awaitingObservation = true
+    return
+  }
   const failedClose =
     close?.failure?.kind === 'hostFault' || close?.failure?.kind === 'pluginInputRequired'
   const stoppedPlugin = exit.failure?.kind === 'pluginInputRequired' && close?.cause === 'user-stop'

@@ -70,7 +70,8 @@ export async function copyStructuredChatRecordConversation(
   return {
     useRealCodexHome: false,
     forkedSession: {
-      ...forkedSession,
+      sessionId: forkedSession.sessionId,
+      ...(forkedSession.filePath !== undefined ? { filePath: forkedSession.filePath } : {}),
       // Use the chat provider’s CLI; an opencode2 history row may run opencode.
       agent: record.provider
     }
