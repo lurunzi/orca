@@ -68,7 +68,7 @@ export function ProviderAccountChatButton({
 }
 
 export function signInRunsOnThisComputerLabel(t: Translate): string {
-  return t('auto.components.status.bar.StatusBar.signInRunsHere', 'Sign-in runs on this computer')
+  return t('settings.remoteUnavailable.signInRunsOnThisComputer', 'Sign-in runs on this computer')
 }
 
 export function providerChatAccountControl(
