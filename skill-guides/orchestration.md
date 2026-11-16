@@ -105,6 +105,12 @@ worker may edit, and the evidence that proves it is done. Say whether a
 non-zero exit means the Task failed or capturing it is the deliverable. Send
 fixes to a worker unless the user gave them to you.
 
+For a long or non-English spec, write it to a file with your file tool and pass
+`--spec-file <path>`; Orca reads the file as
+UTF-8. Never read it back through the shell into `--spec`: on Windows,
+PowerShell 5.1 `Get-Content` decodes it in the ANSI code page and Orca refuses
+the garbled text.
+
 Fetch this guide once. Summarize the worker's evidence; rerun checks only for a
 gap or contradiction.
 

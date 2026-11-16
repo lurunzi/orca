@@ -22,11 +22,12 @@ describe('PluginInstallLinkState', () => {
 })
 
 describe('isRoutedOrcaDeepLink', () => {
-  it('claims plugin and skill links on macOS open-url, nothing else', () => {
+  it('claims plugin, skill and pairing links on macOS open-url, nothing else', () => {
     expect(isRoutedOrcaDeepLink(LINK)).toBe(true)
     expect(isRoutedOrcaDeepLink('orca://plugins/bad')).toBe(true)
     expect(isRoutedOrcaDeepLink('orca://skills/share/abc_1')).toBe(true)
-    expect(isRoutedOrcaDeepLink('orca://pair?code=x')).toBe(false)
+    expect(isRoutedOrcaDeepLink('orca://pair?code=x')).toBe(true)
+    expect(isRoutedOrcaDeepLink('orca://pairing?code=x')).toBe(false)
     expect(isRoutedOrcaDeepLink('https://example.com/plugins/acme.dusk')).toBe(false)
   })
 })

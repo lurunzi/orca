@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { getRequiredStringFlag, getRequiredStringFlagAllowingEmpty } from './flags'
+import { looksLikeGbkDecodedUtf8 } from './garbled-utf8-text'
 import { RuntimeClientError } from '../runtime/types'
 
 type BodyOptions = {
@@ -57,9 +58,26 @@ export async function readTextOrFileFlag(
     }
     return undefined
   }
-  return hasText
-    ? getRequiredStringFlagAllowingEmpty(flags, flag)
-    : readBodyFile(getRequiredStringFlag(flags, fileFlag), cwd)
+  if (hasText) {
+    return refuseGarbled(getRequiredStringFlagAllowingEmpty(flags, flag), `--${flag}`, fileFlag)
+  }
+  const path = getRequiredStringFlag(flags, fileFlag)
+  const text = await readBodyFile(path, cwd)
+  // A named file is read as UTF-8 here, so only the shell-piped stdin path can
+  // arrive already garbled; a file may legitimately quote garbled text.
+  return path === '-' ? refuseGarbled(text, `--${fileFlag} -`, fileFlag) : text
+}
+
+function refuseGarbled(text: string, source: string, fileFlag: string): string {
+  if (looksLikeGbkDecodedUtf8(text)) {
+    throw new RuntimeClientError(
+      'invalid_argument',
+      `${source} looks garbled: UTF-8 text was decoded in the Windows ANSI code page before ` +
+        `reaching Orca (for example Windows PowerShell 5.1 Get-Content without -Encoding UTF8). ` +
+        `Write the text to a UTF-8 file and pass --${fileFlag} <path>; Orca reads that file as UTF-8.`
+    )
+  }
+  return text
 }
 
 async function readBodyFile(path: string, cwd: string): Promise<string> {
