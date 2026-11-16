@@ -20715,7 +20715,6 @@
         "noModelsMatch": "No models match your search.",
         "cursorModels": "Cursor Models",
         "otherModels": "Other Models",
-        "moreModels": "More models",
         "toggleOption": "Toggle {{value0}}",
         "pillAccessibleName": "{{value0}} {{value1}}",
         "sentNotConfirmed": "Sent to the agent — not confirmed",

@@ -66,7 +66,7 @@ function setStatus(payload: Omit<AgentStatusPayload, 'prompt' | 'agentType'>, ag
   useAppStore.setState((store) => ({
     agentStatusByPaneKey: {
       ...store.agentStatusByPaneKey,
-      [paneKey]: { ...live, stateStartedAt: Date.now() - age }
+      [paneKey]: { ...live, stateStartedAt: NOW - age }
     }
   }))
 }
@@ -104,13 +104,19 @@ function renderPane(
   )
 }
 
+// Status ages are measured from a fixed clock; only Date is faked so React timers stay real.
+const NOW = Date.UTC(2026, 0, 1)
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
   restoreViewport = installNativeChatMessageListTestViewport()
   useAppStore.setState({ agentStatusByPaneKey: {}, nativeChatLaunchPromptByTabId: {} })
 })
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   restoreViewport()
   useAppStore.setState({ agentStatusByPaneKey: {}, nativeChatLaunchPromptByTabId: {} })
 })
