@@ -1,4 +1,4 @@
-import { Loader2, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Loader2, Plus, Trash2, X } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { selectClaudeProviderAccount } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
@@ -32,6 +32,7 @@ import {
   trackAccountAddition
 } from '../sign-in/account-add-cancel-target'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
+import { ClaudeSignInAgainControls } from './claude-sign-in-again-controls'
 
 export function renderClaudeAccountsSection(
   model: AccountsPaneSectionModel,
@@ -69,6 +70,9 @@ export function renderClaudeAccountsSection(
       (account) => account.email.toLowerCase() === systemDefaultEmail.toLowerCase()
     )
   const addDisabled = claudeAction !== 'idle' || wslCapabilitiesLoading || accountRuntimeUnavailable
+  const signInUnavailableReason = isRemoteAccountScope
+    ? t('settings.remoteUnavailable.signInRunsOnThisComputer', 'Sign-in runs on this computer')
+    : undefined
   // Remote additions must run login on the account owner rather than this device.
   const addClaudeAccount = (copyLink: boolean): Promise<void> =>
     runClaudeAccountAction('adding', () =>
@@ -141,10 +145,11 @@ export function renderClaudeAccountsSection(
                   )}
                   {t('auto.components.settings.AccountsPane.7e9977b560', 'Add account')}
                 </Button>
-                {!isRemoteAccountScope && canOfferClaudeSignInLink(accountRuntime.runtime) ? (
+                {canOfferClaudeSignInLink(accountRuntime.runtime) ? (
                   <ClaudeSignInLinkMenu
                     variant="outline"
                     disabled={addDisabled}
+                    unavailableReason={signInUnavailableReason}
                     onCopyLink={() => void addClaudeAccount(true)}
                   />
                 ) : null}
@@ -335,32 +340,13 @@ export function renderClaudeAccountsSection(
                         </span>
                       </button>
                       <div className="flex shrink-0 items-center justify-end gap-1 max-md:w-full max-md:flex-wrap">
-                        <ButtonGroup>
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              void reauthenticate(false)
-                            }}
-                            disabled={isRemoteAccountScope || isBusy}
-                            className="h-6 px-2 text-muted-foreground hover:text-foreground"
-                          >
-                            {isReauthing ? (
-                              <Loader2 className="size-3 animate-spin" />
-                            ) : (
-                              <RefreshCw className="size-3" />
-                            )}
-                            {t('accounts.claude.signInAgain', 'Sign in again')}
-                          </Button>
-                          {canOfferClaudeSignInLink(accountRuntimeView.runtime) ? (
-                            <ClaudeSignInLinkMenu
-                              variant="ghost"
-                              disabled={isRemoteAccountScope || isBusy}
-                              onCopyLink={() => void reauthenticate(true)}
-                            />
-                          ) : null}
-                        </ButtonGroup>
+                        <ClaudeSignInAgainControls
+                          runtime={accountRuntimeView.runtime}
+                          busy={isBusy}
+                          reauthing={isReauthing}
+                          unavailableReason={signInUnavailableReason}
+                          onReauthenticate={(copyLink) => void reauthenticate(copyLink)}
+                        />
                         <Button
                           variant="ghost"
                           size="xs"
@@ -392,9 +378,11 @@ export function renderClaudeAccountsSection(
             recordFeatureInteraction={recordFeatureInteraction}
           />
         )}
-        {isRemoteAccountScope ? null : (
-          <ClaudeRunningSessionSwitchSetting settings={settings} updateSettings={updateSettings} />
-        )}
+        <ClaudeRunningSessionSwitchSetting
+          settings={settings}
+          updateSettings={updateSettings}
+          unavailable={isRemoteAccountScope}
+        />
       </SettingsGroup>
     </div>
   )

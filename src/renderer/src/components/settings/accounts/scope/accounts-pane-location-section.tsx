@@ -9,6 +9,9 @@ import { WSL_DEFAULT_DISTRO_KEY } from '../../../provider-accounts/provider-acco
 import type { GlobalSettings } from '../../../../../../shared/global-settings-types'
 import type { AccountsPaneSectionModel } from '../accounts-pane-types'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '../../../unavailable-entry'
+import { resolveLocalAccountRuntimeTarget } from '../../../../../../shared/local-account-runtime'
+import { getRendererAppPlatform } from '../../../../app-shell/platform/renderer-app-platform'
 
 export function renderAccountsLocationSection(
   model: AccountsPaneSectionModel,
@@ -16,6 +19,8 @@ export function renderAccountsLocationSection(
 ): React.JSX.Element | null {
   const {
     accountRuntime,
+    isRemoteAccountScope,
+    settings,
     updateSettingsOrThrow,
     onAccountLocationChange,
     wslAvailable,
@@ -37,7 +42,12 @@ export function renderAccountsLocationSection(
       )
     }
   }
-  const accountRuntimeControls = wslSupportedPlatform ? (
+  // Under a remote scope the row shows this computer's own choice, read from its settings.
+  const selectedRuntime = isRemoteAccountScope
+    ? resolveLocalAccountRuntimeTarget(settings, getRendererAppPlatform()).runtime
+    : accountRuntime.runtime
+  const offersLocation = wslSupportedPlatform || isRemoteAccountScope
+  const accountRuntimeControls = offersLocation ? (
     <SearchableSetting
       title={t('auto.components.settings.AccountsPane.91a1b78e67', 'Account location')}
       description={t(
@@ -48,7 +58,11 @@ export function renderAccountsLocationSection(
       keywords={['account', 'location', 'windows', 'wsl', 'linux', 'provider', 'auth']}
     >
       <SettingsRow
-        label={t('auto.components.settings.AccountsPane.46cf7e7495', 'Account location')}
+        label={
+          <UnavailableEntryLabel unavailable={isRemoteAccountScope}>
+            {t('auto.components.settings.AccountsPane.46cf7e7495', 'Account location')}
+          </UnavailableEntryLabel>
+        }
         alignTop
         description={
           accountRuntime.runtime === 'wsl' && !wslAvailable && !wslCapabilitiesLoading
@@ -65,22 +79,34 @@ export function renderAccountsLocationSection(
           <div className="flex w-44 flex-col items-stretch gap-2">
             <SettingsSegmentedControl
               ariaLabel={t('auto.components.settings.AccountsPane.46cf7e7495', 'Account location')}
-              value={accountRuntime.runtime}
+              value={selectedRuntime}
               onChange={(value) => void updateAccountLocation({ localAccountRuntime: value })}
               equalWidth
               options={[
-                { value: 'host', label: getHostRuntimeLabel(t) },
-                ...(wslSupportedPlatform
+                {
+                  value: 'host',
+                  label: getHostRuntimeLabel(t),
+                  disabled: isRemoteAccountScope || undefined
+                },
+                ...(offersLocation
                   ? [
                       {
                         value: 'wsl',
                         label: t('auto.components.settings.AccountsPane.8619f9afa9', 'WSL'),
-                        disabled: wslCapabilitiesLoading || !wslAvailable
+                        disabled: isRemoteAccountScope || wslCapabilitiesLoading || !wslAvailable
                       } as const
                     ]
                   : [])
               ]}
             />
+            {isRemoteAccountScope ? (
+              <UnavailableEntryReason>
+                {t(
+                  'settings.remoteUnavailable.appliesToThisComputerOnly',
+                  'Applies to this computer only'
+                )}
+              </UnavailableEntryReason>
+            ) : null}
             {wslSupportedPlatform && accountRuntime.runtime === 'wsl' ? (
               <Select
                 value={accountRuntime.wslDistro ?? WSL_DEFAULT_DISTRO_KEY}

@@ -11,9 +11,18 @@ import { SearchableSetting } from '../../section-layout/SearchableSetting'
 import { openAppHttpLinkFromAnchor } from '@/lib/browser/navigation/app-http-link-open'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
 import { ACCOUNTS_SECTION_IDS } from '../accounts-search'
+import {
+  UnavailableEntryIcon,
+  UnavailableEntryLabel,
+  UnavailableEntryReason
+} from '../../../unavailable-entry'
 const GROK_CLI_DOCS_URL = 'https://docs.x.ai/build/overview'
 
-export function GrokAccountsSection(): React.JSX.Element {
+export function GrokAccountsSection({
+  unavailable = false
+}: {
+  unavailable?: boolean
+}): React.JSX.Element {
   const t = useTranslate()
   const refreshGrokRateLimits = useAppStore((s) => s.refreshGrokRateLimits)
   const grokUsage = useAppStore((s) => s.rateLimits.grok)
@@ -41,8 +50,11 @@ export function GrokAccountsSection(): React.JSX.Element {
 
   // Usage refreshes can change sign-in state; reload status on arrival.
   useEffect(() => {
+    if (unavailable) {
+      return
+    }
     void loadStatus()
-  }, [loadStatus, grokUsage?.updatedAt])
+  }, [loadStatus, grokUsage?.updatedAt, unavailable])
 
   const handleRefreshUsage = async (): Promise<void> => {
     setRefreshing(true)
@@ -54,11 +66,11 @@ export function GrokAccountsSection(): React.JSX.Element {
     }
   }
 
-  const signedIn = status?.signedIn === true
+  const signedIn = !unavailable && status?.signedIn === true
   const tokenFresh = status?.tokenFresh === true
   // Unified billing has monthly included usage instead of weekly credits; keep its usage row visible.
   const usageIsWeekly = Boolean(grokUsage?.weekly)
-  const usageWindow = grokUsage?.weekly ?? grokUsage?.monthly ?? null
+  const usageWindow = unavailable ? null : (grokUsage?.weekly ?? grokUsage?.monthly ?? null)
   // Explain unreported usage instead of hiding the row or implying healthy allowance (#15740).
   const unavailableReason =
     signedIn && !usageWindow && grokUsage?.status === 'unavailable'
@@ -70,8 +82,12 @@ export function GrokAccountsSection(): React.JSX.Element {
       <SettingsGroup
         title={
           <span className="flex items-center gap-2">
-            <AgentIcon agent="grok" size={16} />
-            {t('auto.components.settings.GrokAccountsSection.a1b2c3d4e5', 'Grok (xAI)')}
+            <UnavailableEntryIcon unavailable={unavailable}>
+              <AgentIcon agent="grok" size={16} />
+            </UnavailableEntryIcon>
+            <UnavailableEntryLabel unavailable={unavailable}>
+              {t('auto.components.settings.GrokAccountsSection.a1b2c3d4e5', 'Grok (xAI)')}
+            </UnavailableEntryLabel>
           </span>
         }
         description={t(
@@ -99,7 +115,14 @@ export function GrokAccountsSection(): React.JSX.Element {
             )}
           />
           <div className="min-w-0 flex-1 space-y-1">
-            {loading ? (
+            {unavailable ? (
+              <UnavailableEntryReason className="block">
+                {t(
+                  'settings.remoteUnavailable.shownForThisComputerOnly',
+                  'Shown for this computer only'
+                )}
+              </UnavailableEntryReason>
+            ) : loading ? (
               <p className="text-xs text-muted-foreground">
                 {t('auto.components.settings.GrokAccountsSection.ad47a33f72', 'Loading…')}
               </p>
@@ -137,12 +160,15 @@ export function GrokAccountsSection(): React.JSX.Element {
                 </p>
               </>
             )}
-            {status?.error ? <p className="text-xs text-destructive">{status.error}</p> : null}
+            {!unavailable && status?.error ? (
+              <p className="text-xs text-destructive">{status.error}</p>
+            ) : null}
           </div>
           <Button
             variant="outline"
             size="xs"
-            disabled={refreshing}
+            disabled={unavailable || refreshing}
+            aria-disabled={unavailable || undefined}
             onClick={() => void handleRefreshUsage()}
             className="shrink-0 gap-1"
           >
@@ -151,7 +177,9 @@ export function GrokAccountsSection(): React.JSX.Element {
             ) : (
               <RefreshCw className="size-3" />
             )}
-            {t('auto.components.settings.GrokAccountsSection.3325d996cb', 'Refresh usage')}
+            <UnavailableEntryLabel unavailable={unavailable}>
+              {t('auto.components.settings.GrokAccountsSection.3325d996cb', 'Refresh usage')}
+            </UnavailableEntryLabel>
           </Button>
         </div>
 

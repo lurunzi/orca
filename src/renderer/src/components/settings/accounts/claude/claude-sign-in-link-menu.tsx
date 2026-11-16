@@ -11,6 +11,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '../../../ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../../ui/tooltip'
+import { UnavailableEntryIcon } from '../../../unavailable-entry'
 
 export function canOfferClaudeSignInLink(runtime: 'host' | 'wsl' | undefined): boolean {
   return canCopyClaudeSignInLink(navigator.userAgent.includes('Windows'), runtime)
@@ -48,13 +50,37 @@ export function withCopiedClaudeLink(
 export function ClaudeSignInLinkMenu({
   variant,
   disabled,
+  unavailableReason,
   onCopyLink
 }: {
   variant: 'outline' | 'ghost'
   disabled: boolean
+  unavailableReason?: string
   onCopyLink: () => void
 }): React.JSX.Element {
   const t = useTranslate()
+  if (unavailableReason) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={variant}
+            size="icon-xs"
+            aria-disabled="true"
+            aria-label={unavailableReason}
+            onClick={(event) => event.preventDefault()}
+          >
+            <UnavailableEntryIcon>
+              <ChevronDown />
+            </UnavailableEntryIcon>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          {unavailableReason}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>

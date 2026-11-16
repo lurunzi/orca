@@ -75,6 +75,7 @@ export function AccountsPane({
   nativeAccounts = false,
   onAccountLocationChange,
   wslSupportedPlatform = false,
+  localWslSupportedPlatform = false,
   wslAvailable = false,
   wslDistros = EMPTY_WSL_DISTROS,
   wslCapabilitiesLoading = false,
@@ -326,8 +327,9 @@ export function AccountsPane({
         <ManagedDataAccountsSection provider="devin" target={accountOwner} />
       </div>
     ) : null,
-    wslSupportedPlatform &&
-    !isRemoteAccountScope &&
+    (isRemoteAccountScope
+      ? localWslSupportedPlatform && !isWebClientLocation()
+      : wslSupportedPlatform) &&
     !wslHostDistro &&
     matchesSettingsSearch(searchQuery, getAccountsLocationSearchEntries())
       ? renderAccountsLocationSection(model, t)
@@ -363,10 +365,10 @@ export function AccountsPane({
       />
     ) : null,
     matchesSettingsSearch(searchQuery, getAccountsGrokSearchEntries()) ? (
-      <GrokAccountsSection key="grok" />
+      <GrokAccountsSection key="grok" unavailable={isRemoteAccountScope} />
     ) : null,
     matchesSettingsSearch(searchQuery, getAccountsCursorSearchEntries()) ? (
-      <CursorAccountsSection key="cursor" />
+      <CursorAccountsSection key="cursor" unavailable={isRemoteAccountScope} />
     ) : null,
     matchesSettingsSearch(searchQuery, getAccountsZcodePlanSearchEntries()) ? (
       <ZcodePlanAccountsSection

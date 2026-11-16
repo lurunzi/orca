@@ -8,6 +8,7 @@ import { BROWSER_USER_AGENT_SETTINGS_TARGET_ID } from '@/components/settings/nav
 import { useTranslate } from '@/i18n/use-translate'
 import { SearchableSetting } from '../section-layout/SearchableSetting'
 import { SettingsRow, SettingsSegmentedControl } from '../form-controls/SettingsFormControls'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '../../unavailable-entry'
 
 type BrowserUserAgentSettingProps = {
   hostId: ExecutionHostId
@@ -69,15 +70,47 @@ export function BrowserUserAgentSetting({
       .finally(() => setSaving(false))
   }
 
+  const modeOptions = (disabled: boolean) =>
+    [
+      {
+        value: 'clean',
+        disabled,
+        label: t('settings.browser.userAgent.optionClean', 'Cleaned'),
+        tooltip: t(
+          'settings.browser.userAgent.optionCleanTooltip',
+          'Removes Orca and Electron tokens to match imported Chrome sessions.'
+        )
+      },
+      {
+        value: 'native',
+        disabled,
+        label: t('settings.browser.userAgent.optionNative', 'Native'),
+        tooltip: t(
+          'settings.browser.userAgent.optionNativeTooltip',
+          "Keeps Electron's built-in identity for sites that reject the cleaned identity."
+        )
+      }
+    ] as const
+
   let control: React.JSX.Element
   if (!isLocal) {
+    // The remote host's mode is not read here, so no option is shown as selected.
     control = (
-      <span className="text-xs text-muted-foreground">
-        {t(
-          'settings.browser.userAgent.remoteUnsupported',
-          'Manage browser identity on the remote host with the Orca CLI.'
-        )}
-      </span>
+      <div className="space-y-1 text-right">
+        <SettingsSegmentedControl<BrowserUserAgentMode | ''>
+          size="sm"
+          ariaLabel={title}
+          value=""
+          onChange={() => {}}
+          options={modeOptions(true)}
+        />
+        <UnavailableEntryReason className="block">
+          {t(
+            'settings.browser.userAgent.remoteUnsupported',
+            'Manage browser identity on the remote host with the Orca CLI.'
+          )}
+        </UnavailableEntryReason>
+      </div>
     )
   } else if (!status) {
     control = (
@@ -111,26 +144,7 @@ export function BrowserUserAgentSetting({
           ariaLabel={title}
           value={status.identity.configuredMode}
           onChange={setMode}
-          options={[
-            {
-              value: 'clean',
-              disabled: saving,
-              label: t('settings.browser.userAgent.optionClean', 'Cleaned'),
-              tooltip: t(
-                'settings.browser.userAgent.optionCleanTooltip',
-                'Removes Orca and Electron tokens to match imported Chrome sessions.'
-              )
-            },
-            {
-              value: 'native',
-              disabled: saving,
-              label: t('settings.browser.userAgent.optionNative', 'Native'),
-              tooltip: t(
-                'settings.browser.userAgent.optionNativeTooltip',
-                "Keeps Electron's built-in identity for sites that reject the cleaned identity."
-              )
-            }
-          ]}
+          options={modeOptions(saving)}
         />
         {status.identity.restartRequired ? (
           <div className="text-[11px] text-muted-foreground">
@@ -149,7 +163,11 @@ export function BrowserUserAgentSetting({
       description={description}
       keywords={['browser', 'identity', 'user agent', 'native', 'cleaned', 'restart']}
     >
-      <SettingsRow label={title} description={description} control={control} />
+      <SettingsRow
+        label={<UnavailableEntryLabel unavailable={!isLocal}>{title}</UnavailableEntryLabel>}
+        description={description}
+        control={control}
+      />
     </SearchableSetting>
   )
 }

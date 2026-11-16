@@ -1482,6 +1482,11 @@
       "supportedKeys": "Define only the supported keys: `scripts` and `setup`.",
       "supportedArchiveKeys": "Define only the supported keys: `scripts`, `setup`, and `archive`.",
       "invalidArchive": "The file is present, but Orca could not find a valid setup or archive script."
+    },
+    "remoteUnavailable": {
+      "signInRunsOnThisComputer": "Sign-in runs on this computer",
+      "appliesToThisComputerOnly": "Applies to this computer only",
+      "shownForThisComputerOnly": "Shown for this computer only"
     }
   },
   "menu": {

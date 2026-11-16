@@ -36,3 +36,17 @@ export function UnavailableEntryReason({
 }): React.JSX.Element {
   return <span className={cn('text-xs text-muted-foreground', className)}>{children}</span>
 }
+
+/** Icon of an entry whose target's host cannot run it; the label carries the strike. */
+export function UnavailableEntryIcon({
+  unavailable = true,
+  children
+}: {
+  unavailable?: boolean
+  children: React.ReactNode
+}): React.JSX.Element {
+  if (!unavailable) {
+    return <>{children}</>
+  }
+  return <span className="inline-flex opacity-50">{children}</span>
+}
