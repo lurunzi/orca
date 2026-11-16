@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   sendRuntimePtyInputVerified: vi.fn((..._args: unknown[]) => Promise.resolve(true)),
   sendNativeChatAskAnswer: vi.fn(),
   sendNativeChatMessage: vi.fn(),
-  storeState: { agentStatusByPaneKey: new Map() as ReadonlyMap<string, unknown> }
+  storeState: { agentStatusByPaneKey: new Map<string, unknown>() }
 }))
 
 const PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'

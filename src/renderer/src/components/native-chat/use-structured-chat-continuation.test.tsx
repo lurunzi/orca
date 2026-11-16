@@ -113,15 +113,18 @@ describe('structured chat continuation', () => {
   })
 
   it('offers continuation from the host transcript before any page loads', () => {
-    const status: Partial<AgentStatusEntry> = {
+    const status: AgentStatusEntry = {
+      paneKey: 'tab-1:pane',
+      state: 'done',
+      updatedAt: 0,
+      stateStartedAt: 0,
+      stateHistory: [],
       providerSession: { key: 'session_id', id: 's-1', transcriptPath: '/home/u/s-1.jsonl' },
       prompt: 'last ask',
       lastAssistantMessage: 'tool noise',
       lastAssistantMessageIsToolOutput: true
     }
-    mocks.state.agentStatusByPaneKey = acceptedAgentStatuses([
-      ['tab-1:pane', status as AgentStatusEntry]
-    ])
+    mocks.state.agentStatusByPaneKey = acceptedAgentStatuses([['tab-1:pane', status]])
     render(<Harness messages={[]} />)
 
     fireEvent.click(screen.getByRole('button', { name: CONTINUE }))
