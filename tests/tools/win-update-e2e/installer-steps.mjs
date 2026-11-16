@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { assertWin32 } from './platform-guard.mjs'
 import { runCommandSync } from './powershell-runner.mjs'
 
-const PRODUCT_NAME = 'Orca'
+const PRODUCT_NAME = 'UDA Orca'
 const EXE_NAME = 'Orca.exe'
 
 /** Programs root that per-user oneClick NSIS installs into. */

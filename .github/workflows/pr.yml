@@ -1235,8 +1235,9 @@ jobs:
           test -s "$deb"
           test -s "$rpm"
           # UDA Orca: the /opt folder follows productName, so locate the marker instead of naming the folder.
-          deb_marker_path="$(dpkg-deb --fsys-tarfile "$deb" | tar -t | grep -m1 '^\./opt/[^/]*/resources/package-type$')"
-          rpm_marker_path="$(rpm2cpio "$rpm" | cpio --quiet -t | grep -m1 '^\./opt/[^/]*/resources/package-type$')"
+          # grep reads the whole listing (no -m1): an early exit would SIGPIPE tar under pipefail.
+          deb_marker_path="$(dpkg-deb --fsys-tarfile "$deb" | tar -t | grep '^\./opt/[^/]*/resources/package-type$')"
+          rpm_marker_path="$(rpm2cpio "$rpm" | cpio --quiet -t | grep '^\./opt/[^/]*/resources/package-type$')"
           deb_marker="$(dpkg-deb --fsys-tarfile "$deb" | tar -xOf - "$deb_marker_path")"
           rpm_marker="$(rpm2cpio "$rpm" | cpio --quiet --extract --to-stdout "$rpm_marker_path")"
           [[ "$deb_marker" == deb ]] || { echo "Expected deb marker, got: $deb_marker"; exit 1; }
