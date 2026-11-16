@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
+import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
 import type { ComputerAwakeMode } from '../../../../shared/computer-awake-mode'
 import {
   optimisticRemoteComputerAwake,
@@ -58,18 +59,14 @@ export function useRemoteComputerAwake(
         }
       })
     }
-    read()
-    const timer = window.setInterval(
-      () => {
-        if (document.visibilityState !== 'hidden') {
-          read()
-        }
-      },
-      menuOpen ? MENU_OPEN_POLL_MS : MENU_CLOSED_POLL_MS
-    )
+    // Reads at once, pauses while the window is hidden and reads again when it comes back.
+    const stopPolling = installWindowVisibilityInterval({
+      run: read,
+      intervalMs: menuOpen ? MENU_OPEN_POLL_MS : MENU_CLOSED_POLL_MS
+    })
     return () => {
       cancelled = true
-      window.clearInterval(timer)
+      stopPolling()
     }
   }, [environmentId, menuOpen])
 
