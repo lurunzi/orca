@@ -21443,7 +21443,8 @@
         "updateFailed": "Could not change orchestration identity",
         "busy": "Busy — try after the turn",
         "unavailable": "Unavailable",
-        "label": "Orchestration identity"
+        "label": "Orchestration identity",
+        "remote": "Only chats on this computer can hold an identity"
       },
       "coordinator": {
         "toggle": "Coordinator mode",

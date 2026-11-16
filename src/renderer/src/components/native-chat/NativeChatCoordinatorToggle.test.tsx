@@ -94,9 +94,11 @@ describe('NativeChatCoordinatorToggle', () => {
 
     rerender(<NativeChatCoordinatorToggle sessionId="remote" isWorking={false} />)
     await screen.findByText('Only chats on this computer can coordinate')
-    expect(screen.getByRole('button', { name: 'Coordinator mode' }).hasAttribute('disabled')).toBe(
-      true
-    )
+    const remoteToggle = screen.getByRole('button', {
+      name: 'Only chats on this computer can coordinate'
+    })
+    expect(remoteToggle.hasAttribute('disabled')).toBe(true)
+    expect(remoteToggle.getAttribute('aria-disabled')).toBe('true')
   })
 
   it('explains, without reading identity, why a terminal-agent chat cannot coordinate', () => {

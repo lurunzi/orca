@@ -79,15 +79,17 @@ describe('NativeChatOrchestrationIdentityMenuItem', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders nothing and never queries for a remote runtime', () => {
+  it('shows a disabled item with the reason and never queries for a remote runtime', () => {
     const api = installApi({ state: 'disabled' })
-    const { container } = render(
+    render(
       <NativeChatOrchestrationIdentityMenuItem
         sessionId="s1"
         target={{ kind: 'environment', environmentId: 'env-1' }}
       />
     )
-    expect(container.innerHTML).toBe('')
+    const item = screen.getByRole('menuitemcheckbox')
+    expect(item.hasAttribute('disabled')).toBe(true)
+    expect(item.textContent).toContain('Only chats on this computer can hold an identity')
     expect(api.get).not.toHaveBeenCalled()
   })
 

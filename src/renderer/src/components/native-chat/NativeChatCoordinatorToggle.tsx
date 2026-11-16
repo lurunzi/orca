@@ -23,6 +23,13 @@ export function coordinatorTargetFor(
   return { sessionId: null, unavailableReason: transport ? 'remote' : 'terminal-agent' }
 }
 
+function isRemoteUnavailable(
+  reason: CoordinatorUnavailableReason | undefined,
+  status: StructuredSessionOrchestrationIdentityStatus | null
+): boolean {
+  return reason === 'remote' || (status?.state === 'unavailable' && status.reason === 'not-local')
+}
+
 function unavailableReasonLabel(
   reason: CoordinatorUnavailableReason | undefined,
   status: StructuredSessionOrchestrationIdentityStatus | null
@@ -33,7 +40,7 @@ function unavailableReasonLabel(
       'Only Claude and Codex chats can coordinate'
     )
   }
-  if (reason === 'remote' || (status?.state === 'unavailable' && status.reason === 'not-local')) {
+  if (isRemoteUnavailable(reason, status)) {
     return translate(
       'components.native-chat.coordinator.remote',
       'Only chats on this computer can coordinate'
@@ -139,6 +146,7 @@ export function NativeChatCoordinatorToggle({
   // Why disabled, not hidden: a missing button reads as a bug; the tooltip says why.
   const reason = unavailableReasonLabel(unavailableReason, status)
   const ready = reason === null
+  const remoteReason = isRemoteUnavailable(unavailableReason, status) ? reason : null
   const enabled = typeof queuedValue === 'boolean' ? queuedValue : status?.state === 'enabled'
   const hasQueuedChange = queuedValue !== undefined && queuedValue !== (status?.state === 'enabled')
   const label = t('components.native-chat.coordinator.toggle', 'Coordinator mode')
@@ -161,7 +169,8 @@ export function NativeChatCoordinatorToggle({
           <Toggle
             variant="contrast"
             size="sm"
-            aria-label={label}
+            aria-label={remoteReason ?? label}
+            aria-disabled={remoteReason ? true : undefined}
             pressed={enabled}
             disabled={pending || !ready}
             onPressedChange={onPressedChange}
@@ -169,7 +178,7 @@ export function NativeChatCoordinatorToggle({
           >
             <span className="relative size-4" aria-hidden="true">
               <Network className="size-4" />
-              {!ready ? <Slash className="absolute inset-0 size-4" /> : null}
+              {!ready && !remoteReason ? <Slash className="absolute inset-0 size-4" /> : null}
             </span>
             {hasQueuedChange || enabled ? (
               <span className="absolute -right-1 -top-1 rounded-full bg-background text-foreground ring-1 ring-border">
