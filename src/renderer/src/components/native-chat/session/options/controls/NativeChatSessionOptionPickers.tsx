@@ -98,10 +98,7 @@ function PickerTrigger(props: {
           {props.disabledReason ? <div>{props.disabledReason}</div> : null}
           {props.queued ? (
             <div>
-              {translate(
-                'components.native-chat.composer.appliesNextTurn',
-                'Applies after this turn'
-              )}
+              {t('components.native-chat.composer.appliesNextTurn', 'Applies after this turn')}
             </div>
           ) : null}
           {props.dispatched ? (

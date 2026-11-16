@@ -197,10 +197,11 @@ export function useNativeChatSessionOptions(args: {
     let stopRetry = (): void => {}
     stopRetry = installWindowVisibilityInterval({
       run: () => {
-        if (found || attempts++ >= 60) {
+        if (found || attempts >= 60) {
           stopRetry()
           return
         }
+        attempts += 1
         void reportCurrentValues()
       },
       intervalMs: 1_000
