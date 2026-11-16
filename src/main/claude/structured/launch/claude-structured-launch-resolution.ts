@@ -1,5 +1,7 @@
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
 import { prepareClaudeLaunchAccount } from './claude-launch-account'
+import type { DashboardClaudeLaunchBinding } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
+import { prepareDashboardClaudeLaunch } from '../../../dashboard-accounts/dashboard-claude-environment'
 import { assertStructuredAgentResolutionCurrent } from '../../../native-chat/agent-launch/structured-agent-command-resolution'
 import { activeProviderContext } from '../../../../shared/agent-session/agent-session-provider-context'
 import { getClaudeProfileRouter } from '../../../claude-accounts/profiles/routing/claude-profile-installed-router'
@@ -121,6 +123,7 @@ export type ClaudeStructuredLaunch = {
   cwd: string
   env?: Record<string, string>
   envToDelete?: readonly string[]
+  dashboardBinding?: DashboardClaudeLaunchBinding
   claudeConfigDir: string
   accountRecipe?: ClaudeAccountRecipe
   providerSessionId: string
@@ -284,12 +287,14 @@ export function claudeStructuredLaunchPart(
         hasTranscript: deps.hasTranscript
       })
     }
+    const dashboard = await prepareDashboardClaudeLaunch(env)
     return {
       launch: {
         pathToClaudeCodeExecutable: command,
         prefixArgs,
         account: accountRecipe.route === 'managed' ? 'managed' : 'system',
         accountRecipe,
+        ...dashboard.launch,
         options: {
           ...CLAUDE_STRUCTURED_BASE_OPTIONS,
           ...permission,
@@ -317,8 +322,8 @@ export function claudeStructuredLaunchPart(
           ? { forkedFromKey: agentSessionProviderHandleKey(head) }
           : {})
       },
-      env,
-      inheritedEnvToDelete: [],
+      env: dashboard.env,
+      inheritedEnvToDelete: dashboard.inheritedEnvToDelete,
       // The agent runtime follows Orca's CLI directory on PATH so another orca cannot shadow it.
       cliRuntimeCommand: command
     }

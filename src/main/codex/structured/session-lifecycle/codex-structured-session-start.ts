@@ -1,4 +1,8 @@
 import { withStructuredHistoryInvocation } from '../../../native-chat/agent-session-wire/acquisition/structured-agent-session-history-invocation'
+import type { AgentSessionProcessIdentity } from '../../../../shared/agent-session/lifecycle/agent-session-record'
+import type { DashboardCodexBinding } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
+import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
+import { DashboardCodexRefreshSource } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import type { AgentSessionAccountKind } from '../../../../shared/agent-session/agent-session-availability'
 import {
   throwIfSignalAborted,
@@ -46,6 +50,7 @@ import {
   type CodexStructuredSessionAdapterDeps
 } from './codex-structured-session-state'
 import type { CodexStructuredSessionTeardown } from './codex-structured-session-teardown'
+import type { DashboardCodexAuthentication } from '../../../dashboard-accounts/dashboard-codex-authentication'
 
 type CodexOpenContext = {
   input: StructuredAgentSessionAcquireInput
@@ -56,12 +61,25 @@ type CodexOpenContext = {
   acquisitions: CodexAcquisitionRegistry
   attempt: CodexAcquisitionAttempt
   connection: CodexAppServerConnection
+  dashboardAuthentication: DashboardCodexAuthentication | null
+  process: AgentSessionProcessIdentity
   translator: CodexJournalTranslator | null
   dispatchEchoes: CodexDispatchEchoes
   subagentExecutions: CodexSubagentExecutions
   setPrimaryThreadId: (threadId: string) => void
   forceCloseUnexpected: CodexStructuredSessionTeardown['forceCloseUnexpected']
   unbindReadingControl?: () => void
+}
+
+export function openCodexStructuredAcquisition(
+  acquisitions: CodexAcquisitionRegistry,
+  input: StructuredAgentSessionProviderOpenInput
+) {
+  const attempt = acquisitions.get(input.sessionId)
+  if (!attempt?.open) {
+    return Promise.reject(new Error(`no spawned codex child for session ${input.sessionId}`))
+  }
+  return attempt.open(input)
 }
 
 /** The host owns the open promise and closes the spawned child if this rejects. */
@@ -89,11 +107,25 @@ export async function openCodexStructuredSession(
     assertCodexConnectionOpen(connection, sessionId)
   }
   current()
-  await waitForPromiseWithSignal(
+  const version = await waitForPromiseWithSignal(
     initializeCodexAppServerConnection(connection, null),
     openInput.signal
   )
   current()
+  let dashboardBinding: DashboardCodexBinding | undefined
+  if (start.dashboardAuthentication) {
+    dashboardBinding = await waitForPromiseWithSignal(
+      start.dashboardAuthentication.authenticate(connection, version, {
+        source: DashboardCodexRefreshSource.Session,
+        session_id: sessionId,
+        fence: input.fence,
+        acquisition_generation: generation,
+        process: { ...start.process }
+      }),
+      openInput.signal
+    )
+    current()
+  }
   const threadLaunch = await waitForPromiseWithSignal(
     withCodexVisualsThreadConfig(connection, launch, {
       sessionId,
@@ -120,13 +152,14 @@ export async function openCodexStructuredSession(
   start.setPrimaryThreadId(opened.threadId)
   attempt.window.appliedSettings.observe(opened)
   const returnedTurns = Array.isArray(opened.thread?.turns) ? opened.thread.turns : []
-  if (
-    translator &&
-    input.events &&
-    (returnedTurns.length > 0 || (launch.resumeThreadId !== null && !opened.supersededThreadId))
-  ) {
+  const needsHistory =
+    returnedTurns.length > 0 || (launch.resumeThreadId !== null && !opened.supersededThreadId)
+  if (start.dashboardAuthentication && needsHistory && (!translator || !input.events)) {
+    throw new DashboardAllocationError()
+  }
+  if (translator && input.events && needsHistory) {
     const sink = input.events
-    await waitForPromiseWithSignal(
+    const historyReady = await waitForPromiseWithSignal(
       withStructuredHistoryInvocation(attempt, openInput.signal, (signal) =>
         catchUpCodexThread({
           connection,
@@ -147,6 +180,9 @@ export async function openCodexStructuredSession(
       openInput.signal
     )
     current()
+    if (start.dashboardAuthentication && !historyReady) {
+      throw new DashboardAllocationError()
+    }
   }
   const configured =
     opened.serviceTier === undefined
@@ -209,11 +245,20 @@ export async function openCodexStructuredSession(
   // Fork: the composer's next-prompt suggestion, restored on a resumed thread.
   session.promptSuggestion = new CodexPromptSuggestion(session, () => input.events?.publish())
   current()
+  const poolAuthentication = start.dashboardAuthentication
+    ? {
+        identity: start.dashboardAuthentication.authenticatedPoolIdentity(),
+        process: { ...start.process }
+      }
+    : undefined
   sessions.set(sessionId, session)
   for (const event of attempt.window.drain()) {
     event()
   }
   current()
+  if (dashboardBinding) {
+    session.dashboardAdoption = { binding: { ...dashboardBinding }, process: { ...start.process } }
+  }
   acquisitions.deleteIfCurrent(sessionId, attempt)
   if (launch.resumeThreadId && !opened.supersededThreadId) {
     void session.promptSuggestion.restore(opened.thread)
@@ -229,6 +274,7 @@ export async function openCodexStructuredSession(
   })
   session.skillReport.refresh()
   return {
+    ...(poolAuthentication ? { poolAuthentication } : {}),
     link: codexProviderHandleLink({
       threadId: opened.threadId,
       ...(opened.supersededThreadId

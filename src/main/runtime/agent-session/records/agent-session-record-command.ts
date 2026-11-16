@@ -22,6 +22,10 @@ import {
 import { releaseAgentSessionOwnerAfterSurfaceClose } from '../ownership/agent-session-surface-release-transition'
 import { pinAgentSessionRecordLaunchDirectory } from './agent-session-record-launch-directory'
 import {
+  recordCodexPoolAuthentication,
+  type DashboardCodexPoolAuthenticationProof
+} from '../../../dashboard-accounts/dashboard-codex-pool-authentication'
+import {
   pickAgentSessionOption,
   recordAgentSessionRanOptions,
   replaceAgentSessionRecordOptions,
@@ -58,7 +62,11 @@ export type AgentSessionRecordCommand =
     }
   | { kind: 'evict'; args: WithoutRecord<typeof evictAgentSessionOwner> }
   | { kind: 'release-unproven'; args: WithoutRecord<typeof releaseUnprovenAgentSessionOwner> }
-  | { kind: 'provider-handle'; args: WithoutRecord<typeof recordAgentSessionProviderHandle> }
+  | {
+      kind: 'provider-handle'
+      args: WithoutRecord<typeof recordAgentSessionProviderHandle>
+      pool?: DashboardCodexPoolAuthenticationProof
+    }
   | { kind: 'resume-point'; args: WithoutRecord<typeof reviseAgentSessionProviderResumePoint> }
   | {
       kind: 'release-surface'
@@ -153,7 +161,10 @@ export function applyAgentSessionRecordCommand(
       next = releaseUnprovenAgentSessionOwner({ ...command.args, record })
       break
     case 'provider-handle':
-      next = recordAgentSessionProviderHandle({ ...command.args, record })
+      next = recordAgentSessionProviderHandle({
+        ...command.args,
+        record: command.pool ? recordCodexPoolAuthentication(record, command.pool) : record
+      })
       break
     case 'resume-point':
       next = reviseAgentSessionProviderResumePoint({ ...command.args, record })

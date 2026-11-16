@@ -15,6 +15,7 @@ import type {
 } from '../../../shared/agent-usage/rate-limits/rate-limit-types'
 import type { Store } from '../../persistence/loading-store/store'
 import type { RateLimitService } from '../../rate-limits/service/rate-limit-service'
+import { DashboardAllocationError } from '../../dashboard-accounts/dashboard-allocation-protocol'
 import type { CodexRuntimeHomeService } from '../runtime-home-service'
 import { getSelectedCodexAccountIdForTarget } from '../account-management/runtime-selection'
 import { ManagedCodexHomeTemporarilyUnavailableError } from '../managed-homes/host-codex-managed-home-ownership'
@@ -60,6 +61,9 @@ export class CodexResetCreditCoordinator {
     idempotencyKey: string,
     expectedScope: CodexResetCreditExpectedScope
   ): Promise<CodexResetCreditConsumeResult> {
+    if (process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined) {
+      return Promise.reject(new DashboardAllocationError())
+    }
     if (this.ledger.error) {
       return Promise.reject(this.ledger.error)
     }
@@ -102,6 +106,9 @@ export class CodexResetCreditCoordinator {
   }
 
   async consumeCurrent(): Promise<CodexRateLimitResetResult> {
+    if (process.env.ORCA_DASHBOARD_INSTANCE_ID !== undefined) {
+      throw new DashboardAllocationError()
+    }
     if (this.ledger.error) {
       throw this.ledger.error
     }

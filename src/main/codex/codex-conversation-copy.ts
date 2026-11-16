@@ -74,7 +74,8 @@ async function turns(
 
 export async function copyCodexConversation(
   input: CopyInput,
-  invocation: CodexProviderInvocationDeps | undefined
+  invocation: CodexProviderInvocationDeps | undefined,
+  run: typeof runCodexProviderAppServer = runCodexProviderAppServer
 ) {
   let starting = false
   let dispatched = false
@@ -117,7 +118,7 @@ export async function copyCodexConversation(
     }
     let history = legacy && !checkpoint.turnId ? await physicalHistory(undefined) : undefined
     starting = true
-    return await runCodexProviderAppServer(
+    return await run(
       record,
       {
         ...invocation,

@@ -277,7 +277,7 @@ export class StructuredAgentSessionHost {
 
   waitForSendSettlement = this.clientDelivery.waitForSendSettlement
 
-  private mutations = mutationWiring.structuredAgentSessionMutationDelegates(
+  mutations = mutationWiring.structuredAgentSessionMutationDelegates(
     () => this.mutationContext(),
     () => this.attachContext()
   )

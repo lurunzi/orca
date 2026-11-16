@@ -27,7 +27,7 @@ import {
 import { adoptWslHostLoginEnvironmentLogged } from '../orcad/host-runtime/orcad-wsl-host-login-environment'
 import { createOrcadStartupTiming } from '../orcad/diagnostics/orcad-startup-timing'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../shared/layout-owner-switch'
-import { restoreOrcadTerminalAuthority } from '../orcad/host-runtime/orcad-restored-terminal-authority'
+import { restoreOrcadRuntimeAuthority } from '../orcad/host-runtime/orcad-runtime-authority'
 import { installOrcadFeatureReadiness } from '../runtime/rpc/startup/orcad-readiness'
 import { isAgentStatusHooksEnabled } from '../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
 
@@ -253,7 +253,7 @@ export async function activateBackendRuntime(
   // Recover browser/orchestration authority before clients attach to the runtime graph.
   runtime.rehydrateClientHostedBrowserPages()
 
-  await restoreOrcadTerminalAuthority(runtime, timed, featureReadiness)
+  await restoreOrcadRuntimeAuthority(runtime, timed, featureReadiness)
   runtime.agentTransitions.seedRestoredRows()
   void runtime.sidebarFacts?.reconcileSortStampTiers(getLocalPtyProvider())
 

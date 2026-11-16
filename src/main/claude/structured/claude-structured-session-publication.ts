@@ -45,6 +45,7 @@ function claudeSessionInitialization(input: {
         sessionId: naming.chat,
         providerSessionId: launch.providerSessionId,
         resumesTranscript: launch.resumesTranscript,
+        dashboardPooled: launch.dashboardBinding !== undefined,
         account: launch.account,
         emit: input.emit,
         requestTimeoutMs: input.requestTimeoutMs
@@ -120,6 +121,19 @@ export function createClaudeSessionPublication(input: {
       accountHome: agentSessionAccountHome(CLAUDE_STRUCTURED_AGENT, input.launch.claudeConfigDir)
     },
     session: {
+      ...(input.launch.dashboardBinding
+        ? {
+            dashboardLaunch: {
+              binding: {
+                account_id: input.launch.dashboardBinding.account_id,
+                binding_revision: input.launch.dashboardBinding.binding_revision,
+                credential_version: input.launch.dashboardBinding.credential_version
+              },
+              process: { ...input.process },
+              initialized: false
+            }
+          }
+        : {}),
       connection: input.connection,
       providerSessionId: input.launch.providerSessionId,
       leafUuid: input.leafUuid,

@@ -2,13 +2,17 @@ import { readAgentSessionHydrationPage } from '../publication/history/agent-sess
 import { forkHistoryReader } from '../publication/history/agent-session-fork-marker'
 import type { AgentSessionRecordStore } from '../../../runtime/agent-session/records/agent-session-record-store'
 import type { SqlAgentSessionJournal as AgentSessionJournal } from '../../agent-session-journal/journal-sql-store'
-import type { AgentSessionAttachParams } from './structured-agent-session-attach'
+import type { AgentSessionAttachParams, reserveRequestFor } from './structured-agent-session-attach'
 
-export async function prepareForkFounding(params: AgentSessionAttachParams): Promise<void> {
+export async function prepareForkFounding(
+  params: AgentSessionAttachParams,
+  request: Pick<ReturnType<typeof reserveRequestFor>, 'poolCopy'>
+): Promise<void> {
   if (!params.fork) {
     return
   }
   await params.fork.revalidate()
+  request.poolCopy = params.fork.poolCopy
 }
 
 export function readForkHydration(

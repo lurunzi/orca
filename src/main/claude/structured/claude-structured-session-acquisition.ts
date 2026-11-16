@@ -29,20 +29,13 @@ import { isRootClaudeFrame } from './turns/claude-turn-opening'
 import { withClaudeAccountContext } from '../claude-structured-session-account-context'
 import { createClaudeStartupOutcome, endsClaudeStartup } from './claude-structured-startup-outcome'
 import { claudeStartupResultError } from '../sdk-transport/claude-stream-json-exit-error'
+import { reportClaudeLateRootExit } from './claude-structured-close-exit-observation'
 import * as ui from './claude-structured-plugin-ui-recovery'
 
-export async function acquireClaudeSession({
-  input,
-  deps,
-  sessions,
-  acquisitions,
-  exits,
-  naming,
-  callbacks
-}: Omit<
-  Parameters<typeof resolveClaudeAcquisitionLaunch>[0],
-  'previous' | 'attempt'
->): Promise<AgentSessionAcquisition> {
+export async function acquireClaudeSession(
+  args: Omit<Parameters<typeof resolveClaudeAcquisitionLaunch>[0], 'previous' | 'attempt'>
+): Promise<AgentSessionAcquisition> {
+  const { input, deps, sessions, acquisitions, exits, naming, callbacks } = args
   const sessionId = input.identity.sessionId
   const prompts = new ClaudePromptRegistry()
   const { previous, attempt } = acquisitions.start(sessionId, prompts)
@@ -211,6 +204,7 @@ export async function acquireClaudeSession({
           onExit: permissions.closeThen((error, exit) => {
             if (exit?.expected) {
               naming?.failed()
+              reportClaudeLateRootExit(sessionId, liveSession, input, deps, callbacks)
               callbacks.finishClose(sessionId, attempt)
               return
             }

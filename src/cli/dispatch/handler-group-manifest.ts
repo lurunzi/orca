@@ -5,6 +5,7 @@ import { LINEAR_HANDLER_GROUP } from '../linear/linear-handler-group'
 import { REFERENCE_HANDLER_GROUP } from '../references/reference-handler-group'
 import { SERVE_PAIRING_HANDLER_GROUPS } from '../server/serve-pairing-handler-groups'
 import { PLUGIN_HANDLER_GROUPS } from '../plugins/plugin-handler-groups'
+import { DASHBOARD_ACCOUNT_HANDLER_GROUP } from '../accounts/dashboard-account-handler-group'
 import { HOST_HANDLER_GROUPS } from '../hosts/host-handler-groups'
 import { WORKTREE_HANDLER_GROUPS } from '../workspaces/worktree-handler-groups'
 
@@ -41,6 +42,7 @@ export const HANDLER_GROUPS: readonly HandlerGroup[] = [
     keys: ['account add', 'account list', 'account select', 'account rm'],
     load: async () => (await import('../accounts/account.js')).ACCOUNT_HANDLERS
   },
+  DASHBOARD_ACCOUNT_HANDLER_GROUP,
   {
     name: 'artifacts',
     keys: [

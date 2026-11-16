@@ -26,7 +26,8 @@ export function mintStructuredAgentSessionStartupAttempt(input: {
     launch: {
       location: record.location,
       accountHome: record.accountHome,
-      ...(record.launchDirectory === undefined ? {} : { launchDirectory: record.launchDirectory })
+      ...(record.launchDirectory === undefined ? {} : { launchDirectory: record.launchDirectory }),
+      ...(record.poolAccount === undefined ? {} : { poolAccount: { ...record.poolAccount } })
     },
     ...(options ? { options } : {}),
     ...(input.permissionMode ? { permissionMode: input.permissionMode } : {}),

@@ -40,6 +40,7 @@ import {
   showAgentSessionTabs
 } from '../agent-session-tab-table'
 import { commitAgentSessionFounding } from './agent-session-founding-admission'
+import { codexPoolCopySourceIds } from '../../../dashboard-accounts/dashboard-codex-pool-copy'
 import type { AgentSessionStoreState } from './agent-session-store-state'
 
 export type AgentSessionStoreCommand =
@@ -103,7 +104,8 @@ export function agentSessionStoreCommandSelection(command: AgentSessionStoreComm
     case 'reserve':
     case 'found':
       return {
-        recordIds: [command.request.sessionId],
+        // A pool copy's founding rechecks its source row in the same transaction.
+        recordIds: [command.request.sessionId, ...codexPoolCopySourceIds(command.request.poolCopy)],
         operation: command.request.operation,
         adoptedNativeId: command.request.adoptedHandleLink?.handle.nativeId,
         legacyRecordIds: command.legacyTabIds,
