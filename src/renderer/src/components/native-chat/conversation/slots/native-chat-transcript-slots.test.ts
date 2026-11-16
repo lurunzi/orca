@@ -87,4 +87,3 @@ describe('a message from another session', () => {
     expect(visible).toEqual(['prompt', 'handoff', 'reply'])
   })
 })
-
