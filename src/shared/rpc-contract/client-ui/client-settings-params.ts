@@ -12,6 +12,7 @@ import { normalizePRBotAuthorOverrides } from '../../source-control/review-comme
 import { WorktreeVisibilityDefaultsUpdate } from '../workspaces/worktree-visibility-defaults-params'
 import { WorkspaceCleanupRulesParam } from '../workspace-cleanup/workspace-cleanup-policy-params'
 import { AGENT_CHAT_PERMISSION_MODES } from '../../agent-launch/permissions/agent-chat-permission-mode'
+import { COMPUTER_AWAKE_MODES } from '../../computer-awake-mode'
 
 export const TaskProviderParam = z.custom<TaskProvider>(isTaskProvider, {
   message: 'Unknown task provider'
@@ -132,7 +133,9 @@ export const SettingsUpdate = z
       .optional(),
     nativeChatAutoContinueAfterUsageLimit: z.boolean().optional(),
     nativeChatPermissionMode: z.enum(AGENT_CHAT_PERMISSION_MODES).optional(),
-    workspaceCleanupPolicy: WorkspaceCleanupRulesParam.optional()
+    workspaceCleanupPolicy: WorkspaceCleanupRulesParam.optional(),
+    /** Keeps this host awake, not the client that asks. */
+    computerAwakeMode: z.enum(COMPUTER_AWAKE_MODES).optional()
   })
   .strict()
   .default({})

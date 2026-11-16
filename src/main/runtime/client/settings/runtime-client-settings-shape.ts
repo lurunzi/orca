@@ -5,6 +5,7 @@ import type { VoiceSettings } from '../../../../shared/speech-types'
 import type { ExecutionHostId } from '../../../../shared/execution-host'
 import type { WorkspaceCleanupRules } from '../../../../shared/workspace-cleanup/workspace-cleanup-policy'
 import type { SourceControlAiActionDefaults } from '../../../../shared/source-control/ai/recipes/source-control-ai-actions'
+import type { ComputerAwakeStatus } from '../../../../shared/computer-awake-mode'
 
 export type RuntimeClientSettings = Pick<
   GlobalSettings,
@@ -49,6 +50,8 @@ export type RuntimeClientSettings = Pick<
   sourceControlAi: RuntimeClientSourceControlAi
   /** Models directory and microphone stay host-private. */
   voice: Pick<VoiceSettings, 'enabled' | 'sttModel'>
+  /** Absent on hosts that cannot hold themselves awake (headless daemons, older builds). */
+  computerAwake?: ComputerAwakeStatus
 }
 
 /** The saved per-action launch recipes (agent, prompt template, agent args), already migrated. */
@@ -86,4 +89,5 @@ export type RuntimeClientSettingsUpdate = Pick<
   | 'nativeChatPermissionMode'
   | 'nativeChatAutoContinueAfterUsageLimit'
   | 'workspaceCleanupPolicy'
+  | 'computerAwakeMode'
 >

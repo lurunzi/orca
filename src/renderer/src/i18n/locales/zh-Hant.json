@@ -4870,7 +4870,15 @@
             "ariaLabel": "{{title}}，{{status}}",
             "onDescription": "讓這台電腦持續處於喚醒狀態",
             "autoDescription": "代理程式工作時防止電腦進入睡眠狀態",
-            "offDescription": "允許正常的系統睡眠行為"
+            "offDescription": "允許正常的系統睡眠行為",
+            "notSupported": "不支援",
+            "unreachable": "無法連線",
+            "ariaLabelMachine": "{{title}}，{{machine}}，{{status}}",
+            "setFailed": "未能變更 {{host}} 上的設定。",
+            "thisComputer": "本機",
+            "switchMachine": "{{title}}：{{machine}}，{{status}}。切換機器",
+            "remoteOnDescription": "讓 {{host}} 持續處於喚醒狀態",
+            "remoteAutoDescription": "{{host}} 上有代理程式工作時防止它進入睡眠狀態"
           },
           "RuntimeHostStatusRow": {
             "previous_connection_closed": "之前的連線關閉了",

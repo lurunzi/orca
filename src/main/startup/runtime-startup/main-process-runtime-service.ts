@@ -147,6 +147,13 @@ export function initializeMainProcessRuntime(): OrcaRuntimeService {
     applySessionSearchSettings: applySessionSearchSettingsChange,
     skillTransactionRecovery: state.skillTransactionRecovery
   })
+  // A paired client may choose to keep this machine awake instead of its own.
+  if (state.agentAwakeService) {
+    runtime.attachComputerAwakeControl({
+      getStatus: () => state.agentAwakeService?.getStatus() ?? { mode: 'off', active: false },
+      setMode: (mode) => state.agentAwakeService?.setMode(mode)
+    })
+  }
   // Both desktop and headless serve own a host-local search service.
   const sessionSearch = installChildSessionSearchService({
     dataRoot: getCanonicalUserDataPath(),

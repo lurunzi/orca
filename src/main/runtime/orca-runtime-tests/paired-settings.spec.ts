@@ -3,9 +3,44 @@ import './runtime-test-module-registration.spec'
 import { OrcaRuntimeService } from '../orca-runtime'
 import { applyAgentStatusHooksEnabledMock } from '../orca-runtime-test-mocks/setup.spec'
 import { deferred, store } from './orca-runtime-test-fixtures.spec'
-import '../client/settings/runtime-client-settings'
+import { RuntimeClientSettingsController } from '../client/settings/runtime-client-settings'
 
 describe('OrcaRuntimeService', () => {
+  it('lets a paired client keep this host awake', async () => {
+    let settings = store.getSettings()
+    const setMode = vi.fn()
+    const controller = new RuntimeClientSettingsController({
+      getSettings: () => settings,
+      updateSettings: (updates) => {
+        settings = { ...settings, ...updates }
+      }
+    })
+    controller.attachComputerAwake({ getStatus: () => ({ mode: 'on', active: true }), setMode })
+
+    const result = await controller.update({ computerAwakeMode: 'on' })
+
+    expect(setMode).toHaveBeenCalledExactlyOnceWith('on')
+    expect(settings).toMatchObject({
+      computerAwakeMode: 'on',
+      keepComputerAwakeWhileAgentsRun: true
+    })
+    expect(result.computerAwake).toEqual({ mode: 'on', active: true })
+  })
+
+  it('refuses an awake mode on a host that cannot hold itself awake', async () => {
+    const updateSettings = vi.fn()
+    const controller = new RuntimeClientSettingsController({
+      getSettings: () => store.getSettings(),
+      updateSettings
+    })
+
+    await expect(controller.update({ computerAwakeMode: 'on' })).rejects.toThrow(
+      'computer_awake_unsupported'
+    )
+    expect(updateSettings).not.toHaveBeenCalled()
+    expect(controller.get()).not.toHaveProperty('computerAwake')
+  })
+
   it('repairs missing hooks when explicitly enabled again', async () => {
     const settings = { ...store.getSettings(), agentStatusHooksEnabled: true }
     const runtime = new OrcaRuntimeService({
