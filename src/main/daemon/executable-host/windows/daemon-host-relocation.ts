@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join, win32 as winPath } from 'node:path'
 import { getAppEnvironment } from '../../../../shared/app-environment'
+import { PRODUCT_IDENTITY } from '../../../../shared/product-identity'
 import {
   buildDaemonHostManifest,
   daemonHostFitsPathBudget,
@@ -67,9 +68,6 @@ function currentBuildFingerprint(
   const observed = observedBuilds.get(key)
   return observed?.entrySourcePath === sources.entrySourcePath ? observed.fingerprint : null
 }
-
-// Keep runtimes out of roaming storage; match the NSIS uninstall root in config/nsis/orca-installer-hooks.nsh.
-const LOCAL_HOST_ROOT_NAME = 'Orca'
 
 // Match getDaemonEntryPath() so relocation copies the same entry the install runtime would fork.
 function resolveEntrySourcePath(resourcesPath: string, observedEntryPath?: string): string {
@@ -140,7 +138,8 @@ export function getDaemonHostRootDir(): string {
   if (typeof localAppData === 'string' && localAppData.length > 0) {
     return join(
       localAppData,
-      LOCAL_HOST_ROOT_NAME,
+      // Keep runtimes out of roaming storage; match the NSIS uninstall root (orca-installer-hooks.nsh).
+      PRODUCT_IDENTITY.productName,
       PROFILE_HOST_SUBDIR,
       userDataProfileKey(userDataPath)
     )

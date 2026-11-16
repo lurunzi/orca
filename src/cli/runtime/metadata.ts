@@ -6,6 +6,7 @@ import {
   getRuntimeMetadataPath,
   type RuntimeMetadata
 } from '../../shared/runtime-bootstrap'
+import { PRODUCT_IDENTITY } from '../../shared/product-identity'
 import { RuntimeClientError } from './types'
 
 export function readMetadata(userDataPath: string): RuntimeMetadata {
@@ -55,7 +56,7 @@ export function getPlatformUserDataPath(
   homeDir = homedir()
 ): string {
   if (platform === 'darwin') {
-    return join(homeDir, 'Library', 'Application Support', 'orca')
+    return join(homeDir, 'Library', 'Application Support', PRODUCT_IDENTITY.dataDirName)
   }
   if (platform === 'win32') {
     const appData = process.env.APPDATA
@@ -65,8 +66,8 @@ export function getPlatformUserDataPath(
         'APPDATA is not set, so the Orca runtime metadata path cannot be resolved.'
       )
     }
-    return join(appData, 'orca')
+    return join(appData, PRODUCT_IDENTITY.dataDirName)
   }
   // Match Electron’s packaged userData path.
-  return join(process.env.XDG_CONFIG_HOME || join(homeDir, '.config'), 'orca')
+  return join(process.env.XDG_CONFIG_HOME || join(homeDir, '.config'), PRODUCT_IDENTITY.dataDirName)
 }

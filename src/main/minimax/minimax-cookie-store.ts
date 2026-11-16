@@ -1,9 +1,9 @@
 import { getSecretStore } from '../../shared/secret-store'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { hardenExistingSecureFile, writeSecureFile } from '../../shared/secure-storage/secure-file'
 import type { SecretAtRestProtection } from '../../shared/secret-at-rest-protection'
+import { orcaHomeDir } from '../../shared/product-identity-home'
 
 const MINIMAX_COOKIE_FILE = 'minimax-session-cookie.enc'
 export const COOKIE_ENVELOPE_PREFIX = 'orca-minimax-cookie:v1:'
@@ -16,7 +16,7 @@ type MiniMaxCookieEnvelope = {
 }
 
 function getOrcaDir(): string {
-  return join(homedir(), '.orca')
+  return orcaHomeDir()
 }
 
 export function getMiniMaxCookiePath(): string {

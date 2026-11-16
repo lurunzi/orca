@@ -26,7 +26,7 @@ function writeLegacyLinearFiles(token: string, viewer: Record<string, unknown>):
 }
 
 function writeLegacyLinearToken(token: string | Buffer, viewer: Record<string, unknown>): void {
-  const orcaDir = join(tempHome, '.orca')
+  const orcaDir = join(tempHome, '.uda-orca')
   mkdirSync(orcaDir, { recursive: true })
   writeFileSync(join(orcaDir, 'linear-token.enc'), token)
   writeFileSync(join(orcaDir, 'linear-viewer.json'), JSON.stringify(viewer), {
@@ -37,7 +37,7 @@ function writeLegacyLinearToken(token: string | Buffer, viewer: Record<string, u
 function workspaceTokenPath(workspaceId: string): string {
   return join(
     tempHome,
-    '.orca',
+    '.uda-orca',
     'linear-tokens',
     `${Buffer.from(workspaceId).toString('base64url')}.enc`
   )
@@ -47,7 +47,7 @@ function writeMultiWorkspaceFiles(
   workspaces: { id: string; token: string | Buffer; credentialRevision?: number }[],
   selectedWorkspaceId: string
 ): void {
-  const orcaDir = join(tempHome, '.orca')
+  const orcaDir = join(tempHome, '.uda-orca')
   mkdirSync(join(orcaDir, 'linear-tokens'), { recursive: true })
   writeFileSync(
     join(orcaDir, 'linear-workspaces.json'),
@@ -166,7 +166,7 @@ describe('Linear workspace file cross-process visibility', () => {
     })
     const linear = await loadClientModule()
     expect(linear.getClients('legacy')[0]?.apiKey).toBe('token-alpha')
-    const path = join(tempHome, '.orca', 'linear-token.enc')
+    const path = join(tempHome, '.uda-orca', 'linear-token.enc')
     writeFileSync(path, 'token-beta')
     expect(linear.getClients('legacy')[0]?.apiKey).toBe('token-beta')
     rmSync(path)

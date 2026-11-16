@@ -5,6 +5,7 @@ import {
   getPlatformManifestReadiness,
   requestGitHubReleaseHead
 } from './updater-release-readiness'
+import { PRODUCT_RELEASE_REPO_SLUG } from '../../../shared/product-identity'
 
 import {
   applyReleaseDelay,
@@ -12,12 +13,16 @@ import {
   type ReleaseDelayResult
 } from './updater-release-delay'
 
-const ATOM_FEED_URL = 'https://github.com/stablyai/orca/releases.atom'
+const RELEASE_REPO_URL = `https://github.com/${PRODUCT_RELEASE_REPO_SLUG}`
+const ATOM_FEED_URL = `${RELEASE_REPO_URL}/releases.atom`
+const RELEASE_REPO_PATH_PATTERN = PRODUCT_RELEASE_REPO_SLUG.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const MAX_MANIFEST_PROBE_CANDIDATES = 6
 
 // Atom includes stable and prerelease tags without channel filtering.
 const ENTRY_RE = /<entry>([\s\S]*?)<\/entry>/g
-const TAG_HREF_RE = /href="https:\/\/github\.com\/stablyai\/orca\/releases\/tag\/([^"]+)"/
+const TAG_HREF_RE = new RegExp(
+  `href="https://github\\.com/${RELEASE_REPO_PATH_PATTERN}/releases/tag/([^"]+)"`
+)
 const ENTRY_UPDATED_RE = /<updated>([^<]+)<\/updated>/
 
 export function normalizeTagToVersion(tag: string): string {
@@ -69,13 +74,15 @@ async function fetchReleaseFeedTags(): Promise<ReleaseFeedTag[] | null> {
 export async function fetchLatestStableReleaseTag(): Promise<string | null> {
   try {
     // Resolve only the release-page redirect; installer redirects continue on to signed storage URLs.
-    const latestUrl = 'https://github.com/stablyai/orca/releases/latest'
+    const latestUrl = `${RELEASE_REPO_URL}/releases/latest`
     const response = await requestGitHubReleaseHead(latestUrl)
     if (!response?.redirectUrl || response.statusCode < 300 || response.statusCode >= 400) {
       return null
     }
     const target = new URL(response.redirectUrl, latestUrl)
-    const match = target.pathname.match(/^\/stablyai\/orca\/releases\/tag\/([^/]+)$/)
+    const match = target.pathname.match(
+      new RegExp(`^/${RELEASE_REPO_PATH_PATTERN}/releases/tag/([^/]+)$`)
+    )
     if (target.origin !== 'https://github.com' || !match) {
       return null
     }

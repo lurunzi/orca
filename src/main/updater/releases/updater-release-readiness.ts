@@ -1,7 +1,8 @@
 import { net } from 'electron'
 import { parse } from 'yaml'
+import { PRODUCT_RELEASE_REPO_SLUG } from '../../../shared/product-identity'
 
-const RELEASES_DOWNLOAD_BASE = 'https://github.com/stablyai/orca/releases/download'
+const RELEASES_DOWNLOAD_BASE = `https://github.com/${PRODUCT_RELEASE_REPO_SLUG}/releases/download`
 export const FETCH_TIMEOUT_MS = 5000
 
 export function getReleaseDownloadUrl(tag: string): string {
@@ -107,7 +108,7 @@ async function getReleaseAssetReadiness(tag: string, assetName: string): Promise
   const isGitHubReleaseAsset =
     process.platform === 'win32' &&
     (isRelativeAsset ||
-      /^https:\/\/github\.com\/stablyai\/orca\/releases\/download\//i.test(assetName))
+      assetName.toLowerCase().startsWith(`${RELEASES_DOWNLOAD_BASE.toLowerCase()}/`))
   const assetUrl = isRelativeAsset
     ? getReleaseAssetUrl(tag, assetName.split('/').findLast(Boolean) ?? assetName)
     : assetName
