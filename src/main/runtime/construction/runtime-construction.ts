@@ -14,7 +14,7 @@ import type { ProjectExecutionRuntimeResolution } from '../../../shared/executio
 import { OrcaRuntimeWithLinearCommands } from '../integrations/linear/linear-commands'
 
 import type { RuntimeStore } from './runtime-store-contract'
-import { installGitHubProjectAccounts } from '../../github/github-project-account'
+import { installGitHubProjectAccounts } from '../../github/accounts/github-project-account'
 import type { WorkspaceSleepPlatform } from '../workspaces/sleep/workspace-sleep-platform'
 import type { StatsCollector } from '../../stats/collector'
 
@@ -50,19 +50,19 @@ import { RuntimeClientSettingsController } from '../client/settings/runtime-clie
 import { RuntimeSessionSearchSettingsController } from '../integrations/ai-vault/runtime-session-search-settings'
 import { RuntimeAutomationController } from '../integrations/automations/runtime-automation-controller'
 import { RuntimeOrchestrationFederation } from '../orchestration/federation/runtime-orchestration-federation'
-import { configureRuntimeCodexHomeSessionSources } from './runtime-codex-home-session-sources'
+import { configureAiVaultSessionSources } from '../../ai-vault/discovery/ai-vault-scan-roots'
+import { configureHostReadableTranscriptPathSources } from '../../native-chat/transcript-discovery/host-readable-transcript-path'
 import { createEphemeralAgentSessionClaimSigner } from '../agent-session/ownership/agent-session-claim-identity'
 import { registerConptyDa1OverrideInstaller } from '../terminal/output/terminal-model-query-authority'
 import { registerTerminalViewAttributesApplier } from '../terminal/view/terminal-view-attribute-store'
 import { RuntimeMachineName } from '../hosts/platform-probe/runtime-machine-name'
-import { setPRConflictSummaryRemoteFetches } from '../../github/conflict-summary'
+import { setPRConflictSummaryRemoteFetches } from '../../github/pull-requests/conflicts/conflict-summary'
 import { DESKTOP_TERMINAL_SCROLLBACK_ROWS_DEFAULT } from '../../../shared/terminal/replay/terminal-scrollback-policy'
 
 // oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- SAFETY: The constructor installs every checked canonical surface.
 export abstract class OrcaRuntimeWithStateFields extends OrcaRuntimeWithLinearCommands {
   declare protected readonly getLocalProviderFn: HostServices['getLocalProviderFn']
   declare readonly onPtyStopped: HostServices['onPtyStopped']
-  declare protected readonly onTerminalScreenPermission: HostServices['onTerminalScreenPermission']
   declare protected readonly onTerminalAgentStatus: HostServices['onTerminalAgentStatus']
   declare protected readonly onTerminalProgramStatusFacet: HostServices['onTerminalProgramStatusFacet']
   declare protected readonly onTerminalSideEffects: HostServices['onTerminalSideEffects']
@@ -274,11 +274,18 @@ export abstract class OrcaRuntimeWithStateFields extends OrcaRuntimeWithLinearCo
     this.dropAgentStatusForRemovedWorktreeFn = deps?.dropAgentStatusForRemovedWorktree ?? null
     this.canRecoverPersistentLocalPtysFn = deps?.canRecoverPersistentLocalPtys ?? (() => true)
     this.getPairedDeviceNameFn = deps?.getPairedDeviceName ?? (() => null)
-    configureRuntimeCodexHomeSessionSources(deps?.getAdditionalAiVaultCodexHomePaths)
+    // Headless serve skips registerCoreHandlers but still needs managed-Codex/WSL AiVault sources.
+    if (deps?.getAdditionalAiVaultCodexHomePaths) {
+      configureAiVaultSessionSources({
+        getAdditionalCodexHomePaths: deps.getAdditionalAiVaultCodexHomePaths
+      })
+      configureHostReadableTranscriptPathSources({
+        getAdditionalCodexHomePaths: deps.getAdditionalAiVaultCodexHomePaths
+      })
+    }
     // Resolve lazily: attachMainWindowServices replaces the initial provider with the daemon adapter later (§4.3).
     this.getLocalProviderFn = deps?.getLocalProvider ?? null
     this.onPtyStopped = deps?.onPtyStopped ?? null
-    this.onTerminalScreenPermission = deps?.onTerminalScreenPermission ?? null
     this.onTerminalAgentStatus = deps?.onTerminalAgentStatus ?? null
     this.onTerminalProgramStatusFacet = deps?.onTerminalProgramStatusFacet ?? null
     this.onClaudeTerminalEvidence = deps?.onClaudeTerminalEvidence ?? null

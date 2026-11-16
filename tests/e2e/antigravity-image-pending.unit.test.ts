@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeAntigravityTranscriptLine } from '../../src/main/native-chat/transcript-line-decoders-antigravity'
+import { decodeAntigravityTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-antigravity'
 import { formatAgentImagePath } from '../../src/shared/agent-image-paste'
 import {
   pendingSendsAsMessages,

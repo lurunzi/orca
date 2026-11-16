@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type * as HostReadableTranscriptPath from './host-readable-transcript-path'
-import type * as WslTranscriptFsGate from './wsl-transcript-fs-gate'
+import type * as HostReadableTranscriptPath from './transcript-discovery/host-readable-transcript-path'
+import type * as WslTranscriptFsGate from './transcript-filesystem/wsl-transcript-fs-gate'
 
 const UBUNTU_ROOT = '\\\\wsl.localhost\\Ubuntu\\home\\ada\\.cursor\\projects'
 const DEBIAN_ROOT = '\\\\wsl.localhost\\Debian\\home\\ada\\.cursor\\projects'
@@ -33,22 +33,24 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('./host-readable-transcript-path', async (importOriginal) => ({
+vi.mock('./transcript-discovery/host-readable-transcript-path', async (importOriginal) => ({
   ...(await importOriginal<typeof HostReadableTranscriptPath>()),
   wslCursorProjectsDirs: mocks.homes
 }))
-vi.mock('./wsl-transcript-fs-gate', async (importOriginal) => ({
+vi.mock('./transcript-filesystem/wsl-transcript-fs-gate', async (importOriginal) => ({
   ...(await importOriginal<typeof WslTranscriptFsGate>()),
   runWslTranscriptFsTask: mocks.gate
 }))
 // Windows hosts would otherwise probe the real distros before the mocked gate runs.
-vi.mock('./wsl-transcript-running-admission', () => ({ admitWslTranscriptPath: async () => {} }))
-vi.mock('../ai-vault/session-scanner-discovery', () => ({
+vi.mock('./transcript-filesystem/wsl-transcript-running-admission', () => ({
+  admitWslTranscriptPath: async () => {}
+}))
+vi.mock('../ai-vault/discovery/session-scanner-discovery', () => ({
   walkSessionFiles: mocks.walk
 }))
 
 import { resolveSessionFilePath } from './session-file-resolver'
-import { WslTranscriptFsError } from './wsl-transcript-fs-gate'
+import { WslTranscriptFsError } from './transcript-filesystem/wsl-transcript-fs-error'
 
 beforeEach(() => {
   mocks.homes.mockClear()

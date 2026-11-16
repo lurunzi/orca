@@ -13,6 +13,7 @@ import { readsTrustedScreen } from '../../agent-state-rules/agent-state-rules-en
 import { showsScreenProbeBanner } from '../../agent-state-rules/agent-state-text-anchors'
 import { buildTerminalWaitText } from './terminal-wait-tail-state'
 import type { TuiIdleVerdict } from './tui-idle-evidence'
+import { settlesForMidTurnInput } from './terminal-delivery-refusal'
 import {
   outputClockOf,
   ptyTuiIdleEvidence,
@@ -63,11 +64,21 @@ export class RuntimeTerminalWait {
   ) {}
 
   /** Why one helper: the immediate check and the poll must rank the same terminal the same way. */
-  private evaluate(pty: RuntimePtyWorktreeRecord, waitText: string): TuiIdleVerdict {
-    return screenRuledTuiIdleVerdict(
+  private evaluate(
+    pty: RuntimePtyWorktreeRecord,
+    waitText: string,
+    acceptsMidTurnInput: boolean | undefined
+  ): { verdict: TuiIdleVerdict; ready: boolean } {
+    const verdict = screenRuledTuiIdleVerdict(
       this.deps.getScreenReadiness?.(pty.ptyId, waitText),
       ptyTuiIdleEvidence(this.deps, pty, () => waitText)
     )
+    return {
+      verdict,
+      ready:
+        verdict.kind === 'ready-strong' ||
+        (!!acceptsMidTurnInput && settlesForMidTurnInput(verdict, pty.ptyId, this.deps))
+    }
   }
 
   async wait(
@@ -78,6 +89,8 @@ export class RuntimeTerminalWait {
       signal?: AbortSignal
       /** Main-internal, never on the wire: see `TerminalWaiter.launchReadiness`. */
       launchReadiness?: boolean
+      /** Main-internal, never on the wire: see `TerminalWaiter.acceptsMidTurnInput`. */
+      acceptsMidTurnInput?: boolean
     }
   ): Promise<RuntimeTerminalWaitResult> {
     const condition = options?.condition ?? 'exit'
@@ -90,11 +103,13 @@ export class RuntimeTerminalWait {
     }
     const waitText = buildTerminalWaitText(pty.tailBuffer, pty.tailPartialLine, pty.preview)
     // Only strong verdicts settle synchronously; weak evidence needs the poll's rendered-screen check.
-    const verdict = condition === 'tui-idle' ? this.evaluate(pty, waitText) : null
+    const ranked =
+      condition === 'tui-idle' ? this.evaluate(pty, waitText, options?.acceptsMidTurnInput) : null
+    const verdict = ranked?.verdict ?? null
     if (verdict?.kind === 'blocked') {
       return buildPtyTerminalWaitBlockedResult(handle, condition, pty, verdict.reason)
     }
-    if (verdict?.kind === 'ready-strong') {
+    if (ranked?.ready) {
       return buildPtyTerminalWaitResult(handle, condition, pty)
     }
     return await new Promise<RuntimeTerminalWaitResult>((resolve, reject) => {
@@ -114,7 +129,8 @@ export class RuntimeTerminalWait {
         timeout: null,
         cancelIdlePoll: null,
         abortCleanup: null,
-        ...(options?.launchReadiness ? { launchReadiness: true } : {})
+        ...(options?.launchReadiness ? { launchReadiness: true } : {}),
+        ...(options?.acceptsMidTurnInput ? { acceptsMidTurnInput: true } : {})
       }
       if (!this.waiters.bindAbort(waiter, options?.signal)) {
         reject(new Error('request_aborted'))

@@ -1,3 +1,4 @@
+// Fork: kept for the fork's native-chat view tests after upstream retired it (#41617).
 const TEST_VIEWPORT_HEIGHT_PX = 1_000_000
 const TEST_ROW_HEIGHT_PX = 48
 

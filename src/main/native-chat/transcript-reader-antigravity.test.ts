@@ -8,7 +8,7 @@ import {
   nativeChatLineDecoderForAgent,
   readNativeChatTranscriptTailFile
 } from './transcript-tail-reader'
-import { nativeChatTurnLifecycleDecoderForAgent } from './transcript-turn-lifecycle'
+import { nativeChatTurnLifecycleDecoderForAgent } from './transcript-decoding/transcript-turn-lifecycle'
 
 let root: string | undefined
 

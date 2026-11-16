@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native'
 import {
   mobileNativeChatComposerSkillStyles as styles,
   type MobileNativeChatComposerFieldProps
@@ -22,7 +22,7 @@ export function MobileNativeChatComposerField({
 }: MobileNativeChatComposerFieldProps) {
   useMobileColorScheme()
   const [fieldHeight, setFieldHeight] = useState(0)
-  const ownRef = useRef<TextInput>(null)
+  const ownRef = useRef<TextInputInstance>(null)
   const input = ref ?? ownRef
   const suggestion = useMobileNativeChatFieldSuggestion(value, props.onChangeText, input)
   const fieldPlaceholder = suggestion.text ? undefined : placeholder

@@ -6,7 +6,7 @@ import { isNativeLocalLocation } from '../../../../shared/execution-host'
 import { agentSessionPinnedLaunchDirectory } from '../records/agent-session-record-launch-directory'
 import { structuredAgentRuntimeMetadata } from '../installation/structured-agent-runtime-metadata'
 import type { StructuredAgentAccountSwitchSettings } from '../installation/structured-agent-runtime-registration-types'
-import type { StructuredAgentTranscriptImport } from '../../../native-chat/structured-agent-cli-conversations'
+import type { StructuredAgentTranscriptImport } from '../../../native-chat/conversation-adoption/structured-agent-cli-conversations'
 
 export type RecoveryContextCache = {
   key?: string

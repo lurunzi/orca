@@ -1,4 +1,4 @@
-import type { NativeChatApi } from '../../../../preload/api-types'
+import type { NativeChatApi } from '../../../../preload/api/native-chat/native-chat-api'
 import {
   RUNTIME_NATIVE_CHAT_READ_ERROR,
   RUNTIME_NATIVE_CHAT_TOO_OLD

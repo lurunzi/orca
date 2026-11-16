@@ -1,6 +1,7 @@
 import type { AgentSessionOptionsResult } from '../../shared/agent-session/options/agent-session-options-result'
 import type { AcpDialect } from './acp-dialects/acp-dialect'
-import type { SessionConfigOption } from './generated/acp-protocol.generated'
+import type { SessionConfigOption, SessionModelState } from './generated/acp-protocol.generated'
+import { acpSelectChoices } from './options/acp-select-choices'
 
 export type AcpSelectOption = Extract<SessionConfigOption, { type: 'select' }>
 
@@ -67,4 +68,22 @@ export function withAcpFastMode(
       confirmed: [...(read.current.confirmed ?? []), 'fastMode']
     }
   }
+}
+
+/** Model ids the session lists: its model config option, else the legacy model state. */
+export function listedAcpModelIds(
+  modelOption: AcpSelectOption | null,
+  models: SessionModelState | null
+): string[] {
+  return modelOption
+    ? acpSelectChoices(modelOption).map((choice) => choice.value)
+    : (models?.availableModels.map((model) => model.modelId) ?? [])
+}
+
+/** Orca's own Full access runs the agent in its ask mode, so an ask report under it reads as Full access. */
+export function acpReportedFullAccessMode(
+  mode: string | null,
+  appliedPermissionMode: string | undefined
+): string | null {
+  return mode === 'ask' && appliedPermissionMode === 'full-access' ? 'full-access' : mode
 }

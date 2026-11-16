@@ -3,7 +3,7 @@ import { resolveStructuredAgentSessionForkIntent } from '../../native-chat/agent
 import {
   captureStructuredAgentCliSource,
   structuredAgentCliSourceFromEvidence
-} from '../../native-chat/structured-agent-cli-source'
+} from '../../native-chat/conversation-adoption/structured-agent-cli-source'
 import type { OrcaRuntimeWithRestoreStructuredAgentSessionTabsOnce as RestoreStructuredAgentSessionTabsOnceMethods } from './structured-session-tab-restoration'
 import { hostUnsupportedCreateRefusal } from './structured-session-create-refusal'
 import { StructuredSessionWorkspaceScope } from './structured-session-workspace-scope'

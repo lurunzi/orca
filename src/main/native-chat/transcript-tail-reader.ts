@@ -1,4 +1,4 @@
-import { readOpenCodeNativeChatTranscriptTail } from './transcript-opencode'
+import { readOpenCodeNativeChatTranscriptTail } from './transcript-history/opencode/transcript-opencode'
 import { isENOENT } from '../ipc/filesystem/access/filesystem-path-containment'
 import type { AgentType } from '../../shared/agent-status/contracts/agent-status-types'
 import type {
@@ -10,33 +10,33 @@ import { resolveSessionFilePath, type ResolveSessionFileOptions } from './sessio
 import {
   nativeChatLineDecoderForAgent,
   type NativeChatLineDecoder
-} from './transcript-line-decoder-for-agent'
-import { transcriptFallbackId } from './transcript-fallback-id'
-import { inTranscriptFileOrder } from './transcript-file-order'
-import { extendTranscriptBoundary } from './transcript-file-version'
+} from './transcript-decoding/transcript-line-decoder-for-agent'
+import { transcriptFallbackId } from './transcript-streaming/transcript-fallback-id'
+import { inTranscriptFileOrder } from './transcript-streaming/transcript-file-order'
+import { extendTranscriptBoundary } from './transcript-watching/transcript-file-version'
 import {
   nativeChatTurnLifecycleDecoderForAgent,
   type NativeChatTurnLifecycleDecoder
-} from './transcript-turn-lifecycle'
+} from './transcript-decoding/transcript-turn-lifecycle'
 import {
   findLastCompleteLineEnd,
   readTranscriptByteAt,
   TAIL_CHUNK_BYTES
-} from './transcript-tail-boundary'
+} from './transcript-watching/transcript-tail-boundary'
 import {
   closeTranscriptHandle,
   openTranscriptFile,
   readTranscriptFile,
   transcriptFileStat
-} from './wsl-transcript-fs-access'
-import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
+} from './transcript-filesystem/wsl-transcript-fs-access'
+import { wslTranscriptFsRefusal } from './transcript-filesystem/wsl-transcript-fs-error'
 
 export const MAX_NATIVE_CHAT_TRANSCRIPT_RECORD_BYTES = 2 * 1024 * 1024
 
 export {
   nativeChatLineDecoderForAgent,
   type NativeChatLineDecoder
-} from './transcript-line-decoder-for-agent'
+} from './transcript-decoding/transcript-line-decoder-for-agent'
 
 export async function readNativeChatTranscriptTailFile(
   filePath: string,

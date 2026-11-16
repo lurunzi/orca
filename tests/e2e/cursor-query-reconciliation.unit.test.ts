@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeCursorTranscriptLine } from '../../src/main/native-chat/transcript-line-decoders-cursor'
+import { decodeCursorTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-cursor'
 import {
   pendingSendsAsMessages,
   prunePendingSends
