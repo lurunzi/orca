@@ -1,7 +1,7 @@
 import { isPluginInstallLinkArgument } from '../../../shared/plugins/catalog/plugin-install-link'
 import { isPairingLinkArgument } from '../../../shared/remote-runtime/pairing/pairing-deep-link'
 import { toOrcaDeepLink } from '../../../shared/product-identity'
-import { parseSkillShareId } from '../../../shared/skill-share-link'
+import { parseSkillShareId } from '../../../shared/skills/sharing/skill-share-link'
 
 /** macOS open-url: claim only links Orca routes, so other schemes keep their default handling. */
 export function isRoutedOrcaDeepLink(url: string): boolean {

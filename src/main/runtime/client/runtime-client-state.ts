@@ -14,7 +14,7 @@ import {
 } from '../../../shared/execution-host'
 import type { IPtyProvider } from '../../providers/pty/provider-contract'
 import { killAllProcessesForWorktree } from '../workspaces/removal/worktree-teardown'
-import type { MemorySnapshot, StatsSummary } from '../../../shared/process-stats-types'
+import type { MemorySnapshot, StatsSummary } from '../../../shared/diagnostics/process-stats-types'
 import { collectMemorySnapshot } from '../../memory/collector'
 import type { PersistedUIState } from '../../../shared/persisted-ui-state-types'
 import { isDeepStrictEqual } from 'node:util'
@@ -22,9 +22,9 @@ import type {
   AgentListPublication,
   AgentPaneActivityChange
 } from '../../../shared/agent-status/presentation/agent-list-status'
-import type { FeatureInteractionId } from '../../../shared/feature-interaction-catalog'
+import type { FeatureInteractionId } from '../../../shared/feature-education/interactions/feature-interaction-catalog'
 import type { RuntimeClientSettingsUpdate } from './settings/runtime-client-settings-shape'
-import type { ComputerAwakeHostControl } from '../../../shared/computer-awake-mode'
+import type { ComputerAwakeHostControl } from '../../../shared/app-lifecycle/computer-awake-mode'
 import type { AgentLaunchSettingsMutation } from '../../../shared/agent-launch/choices/agent-launch-settings'
 import type { TerminalQuickCommand } from '../../../shared/terminal/quick-commands/terminal-quick-command-types'
 import type { TerminalQuickCommandMutation } from '../../../shared/terminal/quick-commands/terminal-quick-commands'
@@ -236,7 +236,7 @@ export abstract class OrcaRuntimeWithPtyForegroundProcessReads extends OrcaRunti
 
   /** Lets paired clients read and set this host's own awake mode. */
   attachComputerAwakeControl(control: ComputerAwakeHostControl): void {
-    this.clientSettings.attachComputerAwake(control)
+    this.clientSettings.computerAwake.attach(control)
   }
 
   getClientTerminalQuickCommands(): TerminalQuickCommand[] {

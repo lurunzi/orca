@@ -28,16 +28,17 @@ export function restartStructuredAgentSessionAgent(
       return { restarted: false, reason: 'not-running' }
     }
     const context = host.context()
-    const work = heldStructuredAgentSessionCurrentWork(
+    const work = await heldStructuredAgentSessionCurrentWork(
       context.deps.store,
       sessionId,
       session.journal,
       session
     )
+    const recoverable = await session.journal.reads.input({ kind: 'recoverable-submissions' })
     if (
       child.phase === 'starting' ||
       host.deliveryActive(sessionId) ||
-      session.journal.inputOrder.recoverableSubmissions().some(isQueuedAgentJournalSubmission) ||
+      recoverable.submissions.some(isQueuedAgentJournalSubmission) ||
       work.activeTurnId() !== null ||
       work.hasActionablePrompt()
     ) {

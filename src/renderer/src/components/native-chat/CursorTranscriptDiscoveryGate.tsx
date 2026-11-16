@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
-import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/non-secure-context-uuid'
+import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/identifiers/non-secure-context-uuid'
 import { resolveAiVaultTargetWorkspacePath } from '../right-sidebar/ai-vault/session-actions/ai-vault-session-launch-target'
 import {
   cursorSessionMatchesWorkspace,
@@ -94,7 +94,7 @@ export function CursorTranscriptDiscoveryGate(): null {
       const panePrefixes = (state.unifiedTabsByWorktree[worktreeId] ?? [])
         .filter((tab) => tab.contentType === 'terminal')
         .map((tab) => `${tab.entityId}:`)
-      const represented = Object.entries(state.agentStatusByPaneKey).some(
+      const represented = Array.from(state.agentStatusByPaneKey).some(
         ([paneKey, entry]) =>
           panePrefixes.some((prefix) => paneKey.startsWith(prefix)) &&
           entry.providerSession?.id === session.sessionId

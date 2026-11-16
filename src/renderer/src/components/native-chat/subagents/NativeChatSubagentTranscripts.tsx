@@ -4,6 +4,7 @@ import { NativeChatMessageList } from '../NativeChatMessageList'
 import { NativeChatSideChatForkPointContext } from '../messages/actions/native-chat-fork-context'
 import { NativeChatToolRunWindowProvider } from '../tools/runs/native-chat-tool-run-window-context'
 import type { NativeChatFind } from '../viewport/find/use-native-chat-find'
+import { useNativeChatInboxJump } from '../native-chat-inbox-jump-requests'
 import {
   noteNativeChatSubagentParent,
   openNativeChatSubagent,
@@ -34,6 +35,7 @@ export function NativeChatSubagentTranscripts({
   find: Pick<NativeChatFind, 'isOpen' | 'query'>
 }): React.JSX.Element {
   const openId = useNativeChatOpenSubagent(paneKey)?.agentId ?? null
+  const inboxJump = useNativeChatInboxJump(paneKey)
   const open = useCallback(
     (agentId: string | null) => openNativeChatSubagent(paneKey, agentId),
     [paneKey]
@@ -88,6 +90,7 @@ export function NativeChatSubagentTranscripts({
         >
           <NativeChatMessageList
             {...props}
+            jumpRequest={inboxJump}
             isVisible={isVisible && shown === null}
             subagentView={main}
           />

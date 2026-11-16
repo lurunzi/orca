@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import { installWindowVisibilityInterval } from '@/lib/window-activity/window-visibility-interval'
-import type { ComputerAwakeMode } from '../../../../shared/computer-awake-mode'
+import type { ComputerAwakeMode } from '../../../../shared/app-lifecycle/computer-awake-mode'
 import {
   optimisticRemoteComputerAwake,
   parseRemoteComputerAwake,

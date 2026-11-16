@@ -2,12 +2,12 @@ import { useEffect, useId, useState } from 'react'
 import { useTranslate } from '@/i18n/use-translate'
 import { callAntigravityChatFullAccessApprovals } from '@/runtime/provider-accounts/sign-in/runtime-antigravity-accounts-client'
 import { useStructuredAgentSessionHostCapabilityState } from '@/runtime/native-chat/host-capabilities/structured-agent-session-host-capability'
-import { ANTIGRAVITY_CHAT_FULL_ACCESS_APPROVALS_RUNTIME_CAPABILITY } from '../../../../shared/account-runtime-capabilities'
+import { ANTIGRAVITY_CHAT_FULL_ACCESS_APPROVALS_RUNTIME_CAPABILITY } from '../../../../shared/remote-runtime/protocol/account-runtime-capabilities'
 import {
   resolveAntigravityChatFullAccessApprovals,
   type AntigravityChatFullAccessApprovals
 } from '../../../../shared/antigravity-chat-full-access-approvals'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { AntigravityChatAuthSettingRow } from './AntigravityChatAuthSettingRow'
 

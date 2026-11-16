@@ -1,5 +1,5 @@
 import { basename } from 'node:path'
-import { isWslUncPath } from '../../../shared/wsl-paths'
+import { isWslUncPath } from '../../../shared/file-access/wsl-paths'
 import { walkSessionFiles } from '../../ai-vault/discovery/session-scanner-discovery'
 import { AI_VAULT_AGENT_SOURCES } from '../../ai-vault/discovery/session-scanner-agent-sources'
 import { wslGatedReaddir } from '../transcript-filesystem/wsl-transcript-fs-access'

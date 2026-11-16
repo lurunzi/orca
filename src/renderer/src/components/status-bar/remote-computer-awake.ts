@@ -2,7 +2,7 @@ import {
   COMPUTER_AWAKE_MODES,
   type ComputerAwakeMode,
   type ComputerAwakeStatus
-} from '../../../../shared/computer-awake-mode'
+} from '../../../../shared/app-lifecycle/computer-awake-mode'
 
 /** What this client knows about one remote host's own awake setting. */
 export type RemoteComputerAwake =

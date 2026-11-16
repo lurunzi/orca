@@ -10,7 +10,7 @@ import type {
 import type { ProviderTimelineRequestBody } from '../../native-chat/agent-session-timeline/provider-timeline-event'
 import type { AcpAgentError } from '../transport/acp-errors'
 import type { AgentSessionOptionChoice } from '../../../shared/agent-session/agent-session-wire'
-import type { AgentSessionExecutionOptions } from '../../../shared/agent-session/options/agent-session-execution-options'
+import type { AgentSessionExecutionOptions } from '../../../shared/agent-session/options/protocol/agent-session-execution-options'
 import type {
   AvailableCommand,
   ClientCapabilities,
@@ -27,9 +27,17 @@ export const pendingAcpResolution = {
   resolvedAt: null
 } as const
 
+export type AcpAdvertisedEfforts = {
+  efforts: AgentSessionOptionChoice[]
+  defaultEffort?: string
+  declaredDefaultEffort?: string | null
+}
+
 export type AcpRequestPresentation = {
   body: ProviderTimelineRequestBody
   reply(response: AgentSessionPromptResponse | null): unknown
+  /** A URL request the agent may later report finished with `elicitation/complete`. */
+  elicitationId?: string
 }
 
 export type AcpRequestSettlement = { reply: unknown; plan?: string }
@@ -152,17 +160,19 @@ export type AcpDialect = {
     params: unknown
   ): { sessionId: string; promptId: string; stopReason: string } | undefined
   contextWindow?(models: unknown): number | undefined
-  modelEfforts?(model: ModelInfo): {
-    efforts: AgentSessionOptionChoice[]
-    defaultEffort?: string
-    declaredDefaultEffort?: string | null
-  }
+  modelEfforts?(model: ModelInfo): AcpAdvertisedEfforts
+  /** Efforts of a listed model family that `models` advertises only as per-effort variants. */
+  familyEfforts?(family: string, models: readonly ModelInfo[]): AcpAdvertisedEfforts | undefined
   /** Native thinking choices remain valid across models; the agent clamps unsupported levels. */
   clampsUnlistedEffort?: true
   /** Opt-in because advertising forms changes agent behaviour; requests use the generic handlers. */
   clientCapabilities?: Pick<ClientCapabilities, 'elicitation' | '_meta'>
+  /** Requests that name no session; they belong to the chat's own. */
+  sessionlessRequests?: readonly string[]
   /** Claimed permission requests are never auto-approved. */
   request?(method: string, params: unknown): AcpRequestPresentation | undefined
+  /** The agent's own notification that a URL request it raised finished, carrying `elicitationId`. */
+  elicitationComplete?(method: string): boolean
   settleRequest?(method: string, params: unknown): AcpRequestSettlement | undefined
   promptErrorDetail?(error: AcpAgentError): string | undefined
   promptFailure?(
@@ -172,15 +182,11 @@ export type AcpDialect = {
   authenticationRequired?(error: AcpAgentError): boolean
   /** The agent dropped this session; only a new child can reopen it. */
   sessionLost?(error: AcpAgentError, sessionId: string): boolean
+  /** The agent refused to reopen this session from `cwd` because it keeps it in another folder. */
+  sessionInOtherFolder?(error: AcpAgentError, sessionId: string, cwd: string): boolean
   hookBlock?(meta: unknown): AcpHookBlock | undefined
   failedTurnText?(stopReason: string): string
   compactionReply?(text: string): AcpCompactionReply | undefined
-  /** Extension requests that name no session; they belong to the connection's one session. */
-  sessionlessRequests?: readonly string[]
-  /** Preferred ids when a model reports several thought_level options (e.g. thinking and effort). */
-  effortOptionIds?: readonly string[]
-  /** A per-model boolean config option ('true'/'false') that Orca's Fast toggle drives. */
-  fastOptionId?: string
   /** Rewrites a requested model the session does not list into a listed model and its options. */
   resolveModelSelection?(
     options: AgentSessionExecutionOptions,
@@ -205,6 +211,8 @@ export type AcpDialect = {
   signInAccount?: AgentSessionAccountKind
   /** Which session rows are the agent's own built-ins, as this process's initialize response proves. */
   builtinCommands?(initialized: InitializeResponse): (command: AvailableCommand) => boolean
+  /** This agent's fast parameter, mapped to Orca's fast mode toggle. */
+  fastConfigId?: string
 }
 
 export type AcpChildStops = { subagents: boolean; backgroundTasks: boolean }

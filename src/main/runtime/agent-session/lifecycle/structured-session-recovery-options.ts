@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
-import { agentSessionProviderHandleChainHead } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
+import { agentSessionProviderHandleChainHead } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
 import { isNativeLocalLocation } from '../../../../shared/execution-host'
 import { agentSessionPinnedLaunchDirectory } from '../records/agent-session-record-launch-directory'
 import { structuredAgentRuntimeMetadata } from '../installation/structured-agent-runtime-metadata'

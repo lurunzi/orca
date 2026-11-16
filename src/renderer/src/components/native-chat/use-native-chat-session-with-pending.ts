@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { useAppStore } from '../../store'
+import { useAgentStatus } from '@/runtime/agent-status/use-agent-status'
 import {
   pendingSendsAsMessages,
   type NativeChatPendingSend
-} from '../../../../shared/native-chat/transcript/native-chat-pending-sends'
+} from '../../../../shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 import {
   deriveNativeChatStreamingText,
   nativeChatStreamingMessage
@@ -25,11 +25,10 @@ export function useNativeChatSessionWithPending<T extends NativeChatLiveSession>
 }): T {
   const { paneKey, session, pending, commandMarkers, working, workingEpoch } = args
   // Preview the in-progress hook reply before its completed transcript turn arrives.
-  const hookPreview = useAppStore((s) => s.agentStatusByPaneKey[paneKey]?.lastAssistantMessage)
+  const hookStatus = useAgentStatus(paneKey)
+  const hookPreview = hookStatus?.lastAssistantMessage
   // Tool stdout/errors ride the same field for status-card previews; they are not the reply.
-  const hookPreviewIsToolOutput = useAppStore(
-    (s) => s.agentStatusByPaneKey[paneKey]?.lastAssistantMessageIsToolOutput === true
-  )
+  const hookPreviewIsToolOutput = hookStatus?.lastAssistantMessageIsToolOutput === true
   const pendingMessages = useMemo(
     () => pendingSendsAsMessages(pending, session.messages, workingEpoch),
     [pending, session.messages, workingEpoch]

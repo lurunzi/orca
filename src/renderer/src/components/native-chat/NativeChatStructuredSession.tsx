@@ -33,7 +33,7 @@ import { useNativeChatRootInputRouting } from '@/components/native-chat/composer
 import { useNativeChatFontSize } from '@/components/native-chat/appearance/use-native-chat-font-size'
 import { useNativeChatFind } from '@/components/native-chat/viewport/find/use-native-chat-find'
 import { NativeChatFindBar } from '@/components/native-chat/viewport/find/NativeChatFindBar'
-import { nativeChatQueueFollowUps } from '../../../../shared/native-chat/input/native-chat-follow-up-behavior'
+import { nativeChatQueueFollowUps } from '../../../../shared/native-chat/input/composer/native-chat-follow-up-behavior'
 import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
 import { useNativeChatLinkActions } from '@/components/native-chat/links/actions/use-native-chat-link-actions'
 import { NativeChatLinkClickContext } from '@/components/native-chat/links/actions/native-chat-link-click-context'
@@ -183,8 +183,7 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
     messageListRef: submits.messageListRef,
     fileLinkContext,
     rewind: controller.rewind.surface,
-    onFind: find.open,
-    chat: { agent: props.agent, paneKey, controller }
+    onFind: find.open
   })
   const prompt = controller.prompts[0] ?? null
   // Unknown prompts leave the composer usable; a send starts a turn whose cancel can resolve them.
@@ -333,7 +332,6 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
                         structuredAttachments
                         runtimeContext={imageRuntimeContext}
                         deliveryNotices={deliveryNotices}
-                        jumpRequest={paneCommands.inbox.jumpRequest}
                         timedRows={timedRows}
                       />
                     )}
@@ -373,6 +371,8 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
               isVisible={props.isVisible}
               turnId={controller.turnId}
               workingStartedAt={controller.workingStartedAt}
+              target={props.target}
+              focusComposer={focusComposer}
             />
           )}
           {composerShown || subagentOpen ? null : <NativeChatPromptSlotNotices notices={notices} />}

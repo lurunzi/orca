@@ -17,7 +17,7 @@ export function findCursorTranscriptTerminal(
 ): CursorTranscriptTerminal | null {
   const tabs = state.tabsByWorktree[worktreeId] ?? []
   const keys = new Set([
-    ...Object.keys(state.agentStatusByPaneKey),
+    ...state.agentStatusByPaneKey.keys(),
     ...Object.keys(state.sleepingAgentSessionsByPaneKey)
   ])
   for (const paneKey of keys) {
@@ -26,7 +26,7 @@ export function findCursorTranscriptTerminal(
     if (!pane || !tab) {
       continue
     }
-    const live = state.agentStatusByPaneKey[paneKey]
+    const live = state.agentStatusByPaneKey.get(paneKey)
     const retained = state.sleepingAgentSessionsByPaneKey[paneKey]
     const agent = live ? live.agentType : retained?.agent
     const provider = live ? live.providerSession : retained?.providerSession

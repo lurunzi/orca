@@ -3,7 +3,7 @@ import {
   pendingSendsAsMessages,
   prunePendingSends,
   type NativeChatPendingSend
-} from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
+} from '../../src/shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 import { decodeClaudeTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-claude'
 import { decodeClaudeTurnLifecycle } from '../../src/main/native-chat/transcript-decoding/transcript-turn-lifecycle'
 

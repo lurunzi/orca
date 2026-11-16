@@ -21,9 +21,9 @@ import {
   computerAwakeSettingsForMode,
   normalizeComputerAwakeMode,
   type ComputerAwakeStatus
-} from '../../../../shared/computer-awake-mode'
+} from '../../../../shared/app-lifecycle/computer-awake-mode'
 import { toRuntimeExecutionHostId } from '../../../../shared/execution-host'
-import { getHostDisplayLabelOverrides } from '../../../../shared/host-setting-overrides'
+import { getHostDisplayLabelOverrides } from '../../../../shared/execution-host/host-setting-overrides'
 import { isListedRemoteServer } from '../../../../shared/remote-runtime/host-catalog/runtime-environments'
 import { ComputerAwakeMenu } from './ComputerAwakeMenu'
 import {
@@ -32,7 +32,7 @@ import {
   storeComputerAwakeTargetId,
   type RemoteComputerAwake
 } from './remote-computer-awake'
-import { STATUS_BAR_CONTEXT_MENU_EXEMPT_PROPS } from './status-bar-context-menu-policy'
+import { STATUS_BAR_CONTEXT_MENU_EXEMPT_PROPS } from './composition/status-bar-context-menu-policy'
 import { useRemoteComputerAwake } from './use-remote-computer-awake'
 
 const INACTIVE_STATUS: ComputerAwakeStatus = {

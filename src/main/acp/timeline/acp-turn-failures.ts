@@ -4,7 +4,7 @@ import {
 } from '../../../shared/agent-session/failures/agent-session-failure'
 
 import { agentSessionFailureWords } from '../../../shared/agent-session/failures/agent-session-failure-words'
-import { BoundedMap } from '../../../shared/bounded-map'
+import { BoundedMap } from '../../../shared/collections/bounded-map'
 import type { AgentSessionUsageLimit } from '../../../shared/agent-session/failures/agent-session-usage-limit'
 import type {
   ProviderTimelineEvent,

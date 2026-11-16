@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import path from 'node:path'
-import type { AppIdentity } from '../../../shared/app-identity'
+import type { AppIdentity } from '../../../shared/app-lifecycle/identity/app-identity'
 import { PRODUCT_IDENTITY } from '../../../shared/product-identity'
 
 const BASE_APP_NAME = PRODUCT_IDENTITY.productName

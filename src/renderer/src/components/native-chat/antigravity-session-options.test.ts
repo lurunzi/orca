@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session/options/agent-session-option-catalog'
-import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat/input/native-chat-pty-session-options'
+import { createNativeChatPtySessionOptions } from '../../../../shared/native-chat/input/session-options/native-chat-pty-session-options'
 
 const AGY_MODELS_STDOUT = [
   'Fetching available models...',

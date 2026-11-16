@@ -22,7 +22,7 @@ import {
 import { addSessionContent } from '../../parsing/session-scanner-messages'
 import { asRecord } from '../../parsing/session-record-fields'
 import { extractContentText } from '../../parsing/session-scanner-text-normalization'
-import { extractString } from '../../../../shared/trimmed-string'
+import { extractString } from '../../../../shared/text/trimmed-string'
 import { parseJsonObject } from '../../parsing/session-json-object'
 
 type ParserSessionOptions = {

@@ -8,12 +8,12 @@ import type {
   NativeChatMessage,
   NativeChatToolCallBlock
 } from '../../../../../../shared/native-chat/native-chat-types'
-import { deriveNativeChatRowContent } from '../../../../../../shared/native-chat/transcript/native-chat-row-content'
+import { deriveNativeChatRowContent } from '../../../../../../shared/native-chat/transcript/row-content/native-chat-row-content'
 import { NativeChatReasoningRow } from '../reasoning/NativeChatReasoningRow'
 import { NativeChatNoticeRow } from '../notices/NativeChatNoticeRow'
 import { nativeChatNoticeBlock } from '../../../../../../shared/native-chat/native-chat-notice'
 import { nativeChatMessageRowBlocks } from './native-chat-message-row-words'
-import { withoutSentImagePromptMarkers } from '../../../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
+import { withoutSentImagePromptMarkers } from '../../../../../../shared/native-chat/transcript/images/native-chat-sent-image-prompt-markers'
 import { ProviderFrameRow } from '../diagnostics/NativeChatProviderDetails'
 import type { NativeChatDiffReveal } from '../../../../../../shared/native-chat/tools/native-chat-turn-diffs'
 import type { RuntimeFileOperationArgs } from '@/runtime/files/runtime-file-client-types'

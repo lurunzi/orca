@@ -4,6 +4,7 @@ import type { ExecutionHostId } from '../../../shared/execution-host'
 import { parseWorkspaceSession } from '../../../shared/workspace-session/workspace-session-schema'
 import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
 import { createTestStore } from '@/store/testing/app-store-test-fixture'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 import { createTabsSliceMockApi } from '@/store/slices/tabs/tabs-slice-test-harness'
 import type * as WorktreeOwnerModule from './workspace/ownership/worktree-runtime-owner'
 import type * as RetirementModule from '@/runtime/native-chat/tab-retirement/structured-agent-session-tab-retirement'
@@ -164,18 +165,21 @@ function managedCursor(sessionId = 'one') {
         ptyIdsByLeafId: { [leafId]: 'cursor-pty' }
       }
     },
-    agentStatusByPaneKey: {
-      [paneKey]: {
+    agentStatusByPaneKey: acceptedAgentStatuses([
+      [
         paneKey,
-        agentType: 'cursor',
-        providerSession: { key: 'session_id', id: sessionId },
-        state: 'done',
-        prompt: '',
-        updatedAt: 1,
-        stateStartedAt: 1,
-        stateHistory: []
-      }
-    }
+        {
+          paneKey,
+          agentType: 'cursor',
+          providerSession: { key: 'session_id', id: sessionId },
+          state: 'done',
+          prompt: '',
+          updatedAt: 1,
+          stateStartedAt: 1,
+          stateHistory: []
+        }
+      ]
+    ])
   })
   const unified = store
     .getState()
@@ -244,18 +248,21 @@ it('converges a reader into the structured Cursor chat that owns its session', (
   })
   const paneKey = structuredAgentSessionPaneKey(worker.id, 'native-worker')
   store.setState({
-    agentStatusByPaneKey: {
-      [paneKey]: {
+    agentStatusByPaneKey: acceptedAgentStatuses([
+      [
         paneKey,
-        agentType: 'cursor',
-        providerSession: { key: 'session_id', id: 'one' },
-        state: 'done',
-        prompt: '',
-        updatedAt: 1,
-        stateStartedAt: 1,
-        stateHistory: []
-      }
-    }
+        {
+          paneKey,
+          agentType: 'cursor',
+          providerSession: { key: 'session_id', id: 'one' },
+          state: 'done',
+          prompt: '',
+          updatedAt: 1,
+          stateStartedAt: 1,
+          stateHistory: []
+        }
+      ]
+    ])
   })
   store.getState().activateTab(reader.id, { worktreeId: WT })
   reconcileCursorTranscriptTabs(WT)

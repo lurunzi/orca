@@ -3,7 +3,7 @@ import {
   detectTerminalWaitBlockedReason,
   isKnownReadyPromptPreview
 } from './terminal/wait/terminal-wait-detection'
-import type { RuntimeTerminalWaitBlockedReason } from '../../shared/runtime-types'
+import type { RuntimeTerminalWaitBlockedReason } from '../../shared/terminal/runtime/runtime-terminal-contracts'
 
 const ANTIGRAVITY_FRAME = /^\u2500{8,}$/
 const ANTIGRAVITY_EMPTY_COMPOSERS = new Set([

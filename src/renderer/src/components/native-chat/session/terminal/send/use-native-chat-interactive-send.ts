@@ -16,8 +16,8 @@ import {
   formatAskAnswer,
   hasAskAnswer,
   type AskAnswerSelection
-} from '../../../../../../../shared/native-chat/input/native-chat-ask-answer'
-import type { AskPrompt } from '../../../../../../../shared/native-chat/input/native-chat-ask-types'
+} from '../../../../../../../shared/native-chat/input/questions/native-chat-ask-answer'
+import type { AskPrompt } from '../../../../../../../shared/native-chat/input/questions/native-chat-ask-types'
 import {
   sendNativeChatAskAnswer,
   sendNativeChatMessage,
@@ -109,7 +109,7 @@ export function useNativeChatInteractiveSend(
       const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
       // Capture the question baseline before paced/remote delivery so late settlement cannot clear a replacement question’s wait.
       const questionStatusBaseline = stepsAnswer
-        ? useAppStore.getState().agentStatusByPaneKey[paneKey]
+        ? useAppStore.getState().agentStatusByPaneKey.get(paneKey)
         : undefined
       let settledHandle: NativeChatSendHandle | null = null
       const onSettled = (delivered: boolean): void => {
@@ -173,14 +173,14 @@ export function useNativeChatInteractiveSend(
       return
     }
     // Why: this Escape bypasses xterm.onData; infer like an acknowledged typed Escape, from the status before it.
-    const statusBeforeEscape = useAppStore.getState().agentStatusByPaneKey[paneKey] ?? null
+    const statusBeforeEscape = useAppStore.getState().agentStatusByPaneKey.get(paneKey) ?? null
     void sendRawVerified(ESC).then((accepted) => {
       if (!accepted) {
         return
       }
       void createAgentInterruptInference({
         paneKey,
-        getStatusEntry: () => useAppStore.getState().agentStatusByPaneKey[paneKey],
+        getStatusEntry: () => useAppStore.getState().agentStatusByPaneKey.get(paneKey),
         inferInterrupt: (request) =>
           window.api.agentStatus.inferInterrupt(request).catch((err) => {
             console.warn('[agent-interrupt] native-chat inference failed:', err)

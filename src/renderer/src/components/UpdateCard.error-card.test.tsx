@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, type RenderResult } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LinuxPackageInstallRecovery, UpdateStatus } from '../../../shared/update-status-types'
+import type {
+  LinuxPackageInstallRecovery,
+  UpdateStatus
+} from '../../../shared/updater/update-status-types'
 import { useAppStore } from '../store'
 import { UpdateCard } from './UpdateCard'
 import { NotificationCardStack } from './NotificationCardStack'

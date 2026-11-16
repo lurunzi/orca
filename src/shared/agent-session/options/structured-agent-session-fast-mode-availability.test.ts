@@ -8,7 +8,7 @@ import {
 import {
   canSetStructuredAgentSessionOption,
   structuredAgentSessionOptionSnapshot
-} from './structured-agent-session-option-snapshot'
+} from './view/structured-agent-session-option-snapshot'
 
 const models = [{ id: 'opus', label: 'Opus', isDefault: true, supportsFastMode: true, efforts: [] }]
 const current = { model: 'opus', fastMode: false, confirmed: ['fastMode'] }

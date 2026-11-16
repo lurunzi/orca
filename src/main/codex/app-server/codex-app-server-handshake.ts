@@ -1,6 +1,6 @@
 import type { CodexAppServerConnection } from './codex-app-server-connection-types'
 import { isProviderRecord as isAppServerRecord } from '../../provider-process/provider-json-record'
-import { parseCliVersion } from '../../../shared/app-version'
+import { parseCliVersion } from '../../../shared/app-lifecycle/identity/app-version'
 
 /** The caller owns the bound; null leaves cancellation to its startup signal. */
 export async function initializeCodexAppServerConnection(

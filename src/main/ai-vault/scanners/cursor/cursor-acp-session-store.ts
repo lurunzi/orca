@@ -1,7 +1,7 @@
 import { tableExists } from '../../../opencode-usage/schema-helpers'
 import { readOpenCodeDatabase } from '../opencode/sqlite/session-scanner-opencode-sqlite-open'
 import { asRecord } from '../../parsing/session-record-fields'
-import { extractString } from '../../../../shared/trimmed-string'
+import { extractString } from '../../../../shared/text/trimmed-string'
 
 // cursor-agent acp keeps each chat in a content-addressed store.db: meta row "0" names the latest root
 // blob, whose protobuf field 1 lists the conversation's message blob ids in order.

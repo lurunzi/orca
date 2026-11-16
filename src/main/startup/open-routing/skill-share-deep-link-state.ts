@@ -1,7 +1,7 @@
 import { pluginInstallLinkFromArguments } from '../../../shared/plugins/catalog/plugin-install-link'
 import { pairingLinkFromArguments } from '../../../shared/remote-runtime/pairing/pairing-deep-link'
 import { toOrcaDeepLink } from '../../../shared/product-identity'
-import { skillShareIdFromArguments } from '../../../shared/skill-share-link'
+import { skillShareIdFromArguments } from '../../../shared/skills/sharing/skill-share-link'
 
 const REPEAT_WINDOW_MS = 3_000
 const BURST_LIMIT = 5

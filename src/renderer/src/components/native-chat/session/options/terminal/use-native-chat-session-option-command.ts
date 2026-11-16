@@ -17,7 +17,7 @@ import {
   createClaudeModelSwitchConfirmationObserver,
   type ClaudeModelSwitchConfirmationObserver
 } from './claude-model-switch-confirmation'
-import type { NativeChatSessionOptionDispatchCommand } from '../../../../../../../shared/native-chat/input/native-chat-session-option-dispatch'
+import type { NativeChatSessionOptionDispatchCommand } from '../../../../../../../shared/native-chat/input/session-options/native-chat-session-option-dispatch'
 import { translate } from '@/i18n/i18n'
 import { sendRuntimePtyInputVerified } from '@/runtime/hosted-terminals/input/runtime-terminal-verified-input'
 import { switchCursorModel } from '../../../cursor-model-switch'

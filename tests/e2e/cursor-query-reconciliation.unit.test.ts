@@ -3,7 +3,7 @@ import { decodeCursorTranscriptLine } from '../../src/main/native-chat/transcrip
 import {
   pendingSendsAsMessages,
   prunePendingSends
-} from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
+} from '../../src/shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 import { launchPromptAsMessage } from '../../src/renderer/src/components/native-chat/session/terminal/delivery/native-chat-pending'
 
 function cursorMessage(role: 'user' | 'assistant', text: string, id: string) {

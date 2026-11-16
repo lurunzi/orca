@@ -6,11 +6,11 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import type { AgentSessionContinuationRequest } from '@/lib/agent-session/context/agent-session-continuation'
 import type { AgentStatusEntry } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 
 const mocks = vi.hoisted(() => {
-  const agentStatusByPaneKey: Record<string, Partial<AgentStatusEntry>> = {}
   const dialogRequests: AgentSessionContinuationRequest[] = []
-  return { state: { agentStatusByPaneKey }, dialogRequests }
+  return { state: { agentStatusByPaneKey: null as unknown }, dialogRequests }
 })
 
 vi.mock('@/store', () => {
@@ -72,9 +72,11 @@ function Harness(props: {
   )
 }
 
+mocks.state.agentStatusByPaneKey = acceptedAgentStatuses()
+
 afterEach(() => {
   cleanup()
-  mocks.state.agentStatusByPaneKey = {}
+  mocks.state.agentStatusByPaneKey = acceptedAgentStatuses()
   mocks.dialogRequests.length = 0
 })
 
@@ -111,12 +113,15 @@ describe('structured chat continuation', () => {
   })
 
   it('offers continuation from the host transcript before any page loads', () => {
-    mocks.state.agentStatusByPaneKey['tab-1:pane'] = {
+    const status: Partial<AgentStatusEntry> = {
       providerSession: { key: 'session_id', id: 's-1', transcriptPath: '/home/u/s-1.jsonl' },
       prompt: 'last ask',
       lastAssistantMessage: 'tool noise',
       lastAssistantMessageIsToolOutput: true
     }
+    mocks.state.agentStatusByPaneKey = acceptedAgentStatuses([
+      ['tab-1:pane', status as AgentStatusEntry]
+    ])
     render(<Harness messages={[]} />)
 
     fireEvent.click(screen.getByRole('button', { name: CONTINUE }))

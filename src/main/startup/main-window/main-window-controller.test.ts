@@ -48,6 +48,7 @@ vi.mock('../../window/activation/focus-existing-window', () => ({
 }))
 
 import { openMainWindow } from './main-window-controller'
+import { openOrReuseMainWindow } from './main-window-reuse'
 
 describe('main window ownership during startup', () => {
   beforeEach(() => {
@@ -58,22 +59,22 @@ describe('main window ownership during startup', () => {
     })
   })
 
-  it('reuses a window opened by activation before deferred startup resumes', () => {
+  it('reuses a window opened by activation before deferred startup resumes', async () => {
     const window = {
       isDestroyed: () => false,
       isVisible: () => true
     }
     mocks.state.mainWindow = window
 
-    expect(openMainWindow({ revealOnDidFinishLoad: true })).toBe(window)
-    expect(openMainWindow()).toBe(window)
+    await expect(openMainWindow({ revealOnDidFinishLoad: true })).resolves.toBe(window)
+    await expect(openMainWindow()).resolves.toBe(window)
     expect(mocks.safelyRevealWindow).not.toHaveBeenCalled()
     expect(mocks.requireServices).not.toHaveBeenCalled()
     expect(mocks.createWindow).not.toHaveBeenCalled()
     expect(mocks.logStartup).not.toHaveBeenCalled()
   })
 
-  it('reveals a hidden loaded window when reused with revealOnDidFinishLoad', () => {
+  it('reveals a hidden loaded window when reused with revealOnDidFinishLoad', async () => {
     const window = {
       isDestroyed: () => false,
       isVisible: () => false,
@@ -84,12 +85,12 @@ describe('main window ownership during startup', () => {
     }
     mocks.state.mainWindow = window
 
-    expect(openMainWindow({ revealOnDidFinishLoad: true })).toBe(window)
+    await expect(openMainWindow({ revealOnDidFinishLoad: true })).resolves.toBe(window)
     expect(mocks.safelyRevealWindow).toHaveBeenCalledWith(window)
     expect(window.webContents.once).not.toHaveBeenCalled()
   })
 
-  it('schedules reveal on did-finish-load when reusing an unrevealed loading window', () => {
+  it('schedules reveal on did-finish-load when reusing an unrevealed loading window', async () => {
     let loadHandler: (() => void) | undefined
     const window = {
       isDestroyed: () => false,
@@ -105,7 +106,7 @@ describe('main window ownership during startup', () => {
     }
     mocks.state.mainWindow = window
 
-    expect(openMainWindow({ revealOnDidFinishLoad: true })).toBe(window)
+    await expect(openMainWindow({ revealOnDidFinishLoad: true })).resolves.toBe(window)
     expect(mocks.safelyRevealWindow).not.toHaveBeenCalled()
     expect(window.webContents.once).toHaveBeenCalledWith('did-finish-load', expect.any(Function))
 
@@ -115,12 +116,36 @@ describe('main window ownership during startup', () => {
 
   it.each([null, { isDestroyed: () => true }])(
     'still checks startup readiness when the previous window is absent or destroyed: %s',
-    (window) => {
+    async (window) => {
       mocks.state.mainWindow = window
 
-      expect(() => openMainWindow()).toThrow('startup services not ready')
+      await expect(openMainWindow()).rejects.toThrow('startup services not ready')
       expect(mocks.requireServices).toHaveBeenCalledOnce()
       expect(mocks.createWindow).not.toHaveBeenCalled()
     }
   )
+
+  it('hands a window still preparing its services over only once its open settles', async () => {
+    const window = { isDestroyed: () => false, isVisible: () => true }
+    let current: MainWindowStub | null = null
+    const preparing = Promise.withResolvers<MainWindowStub>()
+    const open = vi.fn(() => {
+      current = window
+      return preparing.promise
+    })
+    const read = () => current as never
+
+    const first = openOrReuseMainWindow({}, read, open as never)
+    let reusedSettled = false
+    const reused = openOrReuseMainWindow({}, read, open as never).finally(() => {
+      reusedSettled = true
+    })
+    await Promise.resolve()
+    expect(reusedSettled).toBe(false)
+
+    preparing.reject(new Error('Main window closed while preparing services'))
+    await expect(first).rejects.toThrow('Main window closed while preparing services')
+    await expect(reused).rejects.toThrow('Main window closed while preparing services')
+    expect(open).toHaveBeenCalledOnce()
+  })
 })

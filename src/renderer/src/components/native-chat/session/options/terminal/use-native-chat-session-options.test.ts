@@ -2,8 +2,8 @@
 
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CatalogModel } from '../../../../../../../shared/agent-session/options/agent-session-option-catalog-types'
-import type { NativeChatSessionOptionDispatchCommand } from '../../../../../../../shared/native-chat/input/native-chat-session-option-dispatch'
+import type { CatalogModel } from '../../../../../../../shared/agent-session/options/catalog-providers/agent-session-option-catalog-types'
+import type { NativeChatSessionOptionDispatchCommand } from '../../../../../../../shared/native-chat/input/session-options/native-chat-session-option-dispatch'
 import { clearNativeChatModelEnrichmentForTests } from '../catalog/native-chat-session-option-enrichment'
 import { AGENT_MODEL_CATALOG_FRESH_MS } from '../../../../../../../shared/agent-model-catalog-refresh-policy'
 
@@ -22,11 +22,13 @@ vi.mock('../catalog/native-chat-session-option-discovery', () => ({
 const storeState: {
   settings: Record<string, unknown>
   updateSettings: () => Promise<undefined>
-  agentStatusByPaneKey: Record<string, { model?: string; modelSwitchCommand?: 'orca-model' }>
+  agentStatusByPaneKey: Map<string, { model?: string; modelSwitchCommand?: 'orca-model' }> & {
+    subscribe: () => () => void
+  }
 } = {
   settings: {},
   updateSettings: async () => undefined,
-  agentStatusByPaneKey: {}
+  agentStatusByPaneKey: Object.assign(new Map(), { subscribe: () => () => {} })
 }
 
 vi.mock('../../../../../store/index', () => ({
@@ -61,7 +63,7 @@ describe('useNativeChatSessionOptions model reporting', () => {
     discoverModels.mockReset()
     settingsRpc.mockReset()
     settingsRpc.mockResolvedValue(undefined)
-    storeState.agentStatusByPaneKey = {}
+    storeState.agentStatusByPaneKey = Object.assign(new Map(), { subscribe: () => () => {} })
     Object.defineProperty(window, 'api', { configurable: true, value: undefined })
   })
 

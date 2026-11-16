@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { createStructuredAgentSessionEventCoalescer } from '../../../shared/agent-session/structured-agent-session-coalescer'
 import { EMPTY_STRUCTURED_AGENT_SESSION } from '../../../shared/agent-session/structured-agent-session-reducer'
 import { reduceWithPromptSuggestion } from '../../../shared/structured-agent-session-prompt-suggestion-reducer'
@@ -19,6 +19,12 @@ it('carries suggestions through idle checkpoints, coalescing, clearing and recon
     frames.push(event)
     state = reduceWithPromptSuggestion(state, { type: 'event', event })
   })
+  // Deliveries queue per subscriber, so a frame lands after the call that caused it returns.
+  const settled = (value: string | null | undefined) =>
+    vi.waitFor(() => {
+      coalescer.flush()
+      expect(state.promptSuggestion).toBe(value)
+    })
   try {
     const journal = await journals.open({ identity: identityFor(), stateDirectory: root })
     const sessionId = identityFor().sessionId
@@ -34,19 +40,20 @@ it('carries suggestions through idle checkpoints, coalescing, clearing and recon
       fence: 7,
       emit: coalescer.push
     })
-    expect(state.promptSuggestion).toBe('Add tests')
+    await settled('Add tests')
     promptSuggestion = 'Run tests'
     subscribers.publish(sessionId, journal)
-    coalescer.flush()
-    expect(state.promptSuggestion).toBe('Run tests')
+    await settled('Run tests')
     promptSuggestion = null
     subscribers.publish(sessionId, journal)
-    coalescer.flush()
-    expect(state.promptSuggestion).toBeNull()
+    await settled(null)
     const count = frames.length
+    // An unchanged suggestion owes no frame; the next change's frame follows it in order.
     subscribers.publish(sessionId, journal)
-    coalescer.flush()
-    expect(frames).toHaveLength(count)
+    promptSuggestion = 'Lint'
+    subscribers.publish(sessionId, journal)
+    await settled('Lint')
+    expect(frames).toHaveLength(count + 1)
     close()
     promptSuggestion = 'Explain tests'
     subscribers.open({
@@ -57,8 +64,7 @@ it('carries suggestions through idle checkpoints, coalescing, clearing and recon
       cursor: journal.cursor(),
       emit: coalescer.push
     })
-    coalescer.flush()
-    expect(state.promptSuggestion).toBe('Explain tests')
+    await settled('Explain tests')
     expect(state.items).toEqual([])
     expect(journal.cursor()).toEqual(originalCursor)
     // An older host's reset omits the field and must discard stale text.
@@ -69,7 +75,7 @@ it('carries suggestions through idle checkpoints, coalescing, clearing and recon
       fence: 7,
       emit: coalescer.push
     })
-    expect(state.promptSuggestion).toBeUndefined()
+    await settled(undefined)
   } finally {
     coalescer.dispose()
     await journals.closeAll()

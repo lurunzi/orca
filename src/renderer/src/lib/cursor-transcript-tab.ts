@@ -52,7 +52,7 @@ function cursorStructuredTab(worktreeId: string, sessionId: string): Tab | null 
         isStructuredTab(tab) &&
         !tab.agentTranscript &&
         tab.agentSessionAgent === 'cursor' &&
-        state.agentStatusByPaneKey[structuredAgentSessionPaneKey(tab.id, tab.entityId)]
+        state.agentStatusByPaneKey.get(structuredAgentSessionPaneKey(tab.id, tab.entityId))
           ?.providerSession?.id === sessionId
     ) ?? null
   )

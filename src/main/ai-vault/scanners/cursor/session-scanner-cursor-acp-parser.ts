@@ -13,7 +13,7 @@ import { asRecord } from '../../parsing/session-record-fields'
 import { normalizeTitleText } from '../../parsing/session-scanner-text-normalization'
 import type { FileWithMtime } from '../../session-scanner-types'
 import type { TranscriptMessageSink } from '../../transcripts/session-transcript-consumers'
-import { extractString } from '../../../../shared/trimmed-string'
+import { extractString } from '../../../../shared/text/trimmed-string'
 import { readJsonObjectIfExists } from '../../discovery/session-json-file'
 
 // `cursor-agent acp` writes <config>/acp-sessions/<id>/{meta.json,store.db}, never agent-transcripts.
