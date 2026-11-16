@@ -270,6 +270,8 @@ describe('cross-version structured agent sessions', () => {
           fence: store.getConversation(SESSION)?.currentFence,
           backgroundTasks: null,
           commands: null,
+          // Fork: a subscriber's first frame states the prompt suggestion, null when there is none.
+          promptSuggestion: null,
           hostNow: expect.any(Number)
         })
       }
