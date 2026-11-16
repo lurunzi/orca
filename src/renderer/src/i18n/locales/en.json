@@ -1486,7 +1486,8 @@
     "remoteUnavailable": {
       "signInRunsOnThisComputer": "Sign-in runs on this computer",
       "appliesToThisComputerOnly": "Applies to this computer only",
-      "shownForThisComputerOnly": "Shown for this computer only"
+      "shownForThisComputerOnly": "Shown for this computer only",
+      "defaultHost": "Default host"
     }
   },
   "menu": {

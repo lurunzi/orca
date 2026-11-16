@@ -116,24 +116,33 @@ export function RuntimeServerRowMenuItems({
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       {managedItems}
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={isBusy || removeBlocked}
-        onSelect={onRemove}
+      {/* Disabled items ignore pointer events; the full reason sits on a wrapper. */}
+      <div
+        title={
+          removeBlocked
+            ? t(
+                'auto.components.settings.RuntimeEnvironmentsPane.removeDefaultServerBlocked',
+                'This server is the default host for new projects. Choose another one under New projects open on before removing it.'
+              )
+            : undefined
+        }
       >
-        <Trash2 />
-        <UnavailableEntryLabel unavailable={removeBlocked}>
-          {t('auto.components.settings.serverList.remove', 'Remove…')}
-        </UnavailableEntryLabel>
-        {removeBlocked ? (
-          <UnavailableEntryMenuHint>
-            {t(
-              'auto.components.settings.RuntimeEnvironmentsPane.removeDefaultServerBlocked',
-              'This server is the default host for new projects. Choose another one under New projects open on before removing it.'
-            )}
-          </UnavailableEntryMenuHint>
-        ) : null}
-      </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={isBusy || removeBlocked}
+          onSelect={onRemove}
+        >
+          <Trash2 />
+          <UnavailableEntryLabel unavailable={removeBlocked}>
+            {t('auto.components.settings.serverList.remove', 'Remove…')}
+          </UnavailableEntryLabel>
+          {removeBlocked ? (
+            <UnavailableEntryMenuHint>
+              {t('settings.remoteUnavailable.defaultHost', 'Default host')}
+            </UnavailableEntryMenuHint>
+          ) : null}
+        </DropdownMenuItem>
+      </div>
     </>
   )
 }

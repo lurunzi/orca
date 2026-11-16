@@ -317,24 +317,33 @@ export function HostSectionHeaderMenu({ row }: { row: HostHeaderRow }): React.JS
         {model.actions.includes('remove') && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              disabled={removeBlocked}
-              onSelect={() => setRemoveOpen(true)}
+            {/* Disabled items ignore pointer events; the full reason sits on a wrapper. */}
+            <div
+              title={
+                removeBlocked
+                  ? t(
+                      'auto.components.settings.RuntimeEnvironmentsPane.removeDefaultServerBlocked',
+                      'This server is the default host for new projects. Choose another one under New projects open on before removing it.'
+                    )
+                  : undefined
+              }
             >
-              <Trash2 className="size-3.5" />
-              <UnavailableEntryLabel unavailable={removeBlocked}>
-                {t('auto.components.sidebar.HostSectionHeaderMenu.6e7f8a9b0c', 'Remove host…')}
-              </UnavailableEntryLabel>
-              {removeBlocked ? (
-                <UnavailableEntryMenuHint>
-                  {t(
-                    'auto.components.settings.RuntimeEnvironmentsPane.removeDefaultServerBlocked',
-                    'This server is the default host for new projects. Choose another one under New projects open on before removing it.'
-                  )}
-                </UnavailableEntryMenuHint>
-              ) : null}
-            </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                disabled={removeBlocked}
+                onSelect={() => setRemoveOpen(true)}
+              >
+                <Trash2 className="size-3.5" />
+                <UnavailableEntryLabel unavailable={removeBlocked}>
+                  {t('auto.components.sidebar.HostSectionHeaderMenu.6e7f8a9b0c', 'Remove host…')}
+                </UnavailableEntryLabel>
+                {removeBlocked ? (
+                  <UnavailableEntryMenuHint>
+                    {t('settings.remoteUnavailable.defaultHost', 'Default host')}
+                  </UnavailableEntryMenuHint>
+                ) : null}
+              </DropdownMenuItem>
+            </div>
           </>
         )}
       </DropdownMenuContent>
