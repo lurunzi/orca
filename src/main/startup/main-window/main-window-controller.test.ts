@@ -48,7 +48,7 @@ vi.mock('../../window/activation/focus-existing-window', () => ({
 }))
 
 import { openMainWindow } from './main-window-controller'
-import { openOrReuseMainWindow } from './main-window-reuse'
+import { createMainWindowOpener } from './main-window-reuse'
 
 describe('main window ownership during startup', () => {
   beforeEach(() => {
@@ -126,18 +126,22 @@ describe('main window ownership during startup', () => {
   )
 
   it('hands a window still preparing its services over only once its open settles', async () => {
-    const window = { isDestroyed: () => false, isVisible: () => true }
-    let current: MainWindowStub | null = null
+    const window: MainWindowStub = { isDestroyed: () => false, isVisible: () => true }
+    const shown: { current: MainWindowStub | null } = { current: null }
     const preparing = Promise.withResolvers<MainWindowStub>()
     const open = vi.fn(() => {
-      current = window
+      shown.current = window
       return preparing.promise
     })
-    const read = () => current as never
+    const openOrReuse = createMainWindowOpener<MainWindowStub>({
+      current: () => shown.current,
+      open,
+      reveal: vi.fn()
+    })
 
-    const first = openOrReuseMainWindow({}, read, open as never)
+    const first = openOrReuse({})
     let reusedSettled = false
-    const reused = openOrReuseMainWindow({}, read, open as never).finally(() => {
+    const reused = openOrReuse({}).finally(() => {
       reusedSettled = true
     })
     await Promise.resolve()
