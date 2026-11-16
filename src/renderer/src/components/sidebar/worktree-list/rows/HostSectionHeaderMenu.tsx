@@ -29,8 +29,6 @@ import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { sshConnectVerb } from '@/ssh/ssh-connect-verb'
 import { formatSshUserFacingError } from '@/components/settings/ssh/targets/ssh-user-facing-error'
-import { isRuntimeEnvironmentRemovalBlocked } from '@/components/settings/runtime-environments/catalog/runtime-environment-host-details'
-import { UnavailableEntryLabel, UnavailableEntryMenuHint } from '@/components/unavailable-entry'
 import { parseExecutionHostId } from '../../../../../../shared/execution-host'
 import { runtimePairingRepairRoute } from '../../../../../../shared/remote-runtime/host-catalog/runtime-environments'
 
@@ -111,14 +109,6 @@ export function HostSectionHeaderMenu({ row }: { row: HostHeaderRow }): React.JS
     wslDistroStopped: stoppedWslDistro !== null
   })
   const removalTarget = resolveHostRemoval(row.hostId)
-  const removeBlocked = useAppStore(
-    (s) =>
-      runtimeEnvironmentId !== null &&
-      isRuntimeEnvironmentRemovalBlocked(
-        s.settings?.activeRuntimeEnvironmentId,
-        runtimeEnvironmentId
-      )
-  )
 
   const handleManage = useCallback(() => {
     openManageHost(row)
@@ -317,33 +307,13 @@ export function HostSectionHeaderMenu({ row }: { row: HostHeaderRow }): React.JS
         {model.actions.includes('remove') && (
           <>
             <DropdownMenuSeparator />
-            {/* Disabled items ignore pointer events; the full reason sits on a wrapper. */}
-            <div
-              title={
-                removeBlocked
-                  ? t(
-                      'auto.components.settings.RuntimeEnvironmentsPane.removeDefaultServerBlocked',
-                      'This server is the default host for new projects. Choose another one under New projects open on before removing it.'
-                    )
-                  : undefined
-              }
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setRemoveOpen(true)}
             >
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                disabled={removeBlocked}
-                onSelect={() => setRemoveOpen(true)}
-              >
-                <Trash2 className="size-3.5" />
-                <UnavailableEntryLabel unavailable={removeBlocked}>
-                  {t('auto.components.sidebar.HostSectionHeaderMenu.6e7f8a9b0c', 'Remove host…')}
-                </UnavailableEntryLabel>
-                {removeBlocked ? (
-                  <UnavailableEntryMenuHint>
-                    {t('settings.remoteUnavailable.defaultHost', 'Default host')}
-                  </UnavailableEntryMenuHint>
-                ) : null}
-              </DropdownMenuItem>
-            </div>
+              <Trash2 className="size-3.5" />
+              {t('auto.components.sidebar.HostSectionHeaderMenu.6e7f8a9b0c', 'Remove host…')}
+            </DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
