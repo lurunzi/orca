@@ -10,6 +10,8 @@
   },
   "main": "./out/main/index.js",
   "scripts": {
+    "ci:local": "node config/scripts/ci-local.mjs",
+    "prepare:cross-version-releases": "node config/scripts/prepare-cross-version-releases.mjs",
     "check:dependencies": "pnpm run build:packages && node config/scripts/dependency-security/audit-tools/check-dependency-security.mjs",
     "install:release": "pnpm install --frozen-lockfile --cpu=current,x64,arm64",
     "audit:perf": "oxlint --config config/oxlint-performance-audit.json --format json src",
@@ -406,9 +408,9 @@
   "lint-staged": {
     "{*.{ts,tsx,js,jsx,mjs,mts,cts},!(cloud)/**/*.{ts,tsx,js,jsx,mjs,mts,cts}}": [
       "oxlint --no-error-on-unmatched-pattern",
-      "oxlint --config config/oxlint-js-plugins.json",
+      "oxlint --no-error-on-unmatched-pattern --config config/oxlint-js-plugins.json",
       "ast-grep scan --config config/sgconfig.yml --min-severity warning",
-      "oxlint --config config/oxlint-react-doctor.json",
+      "oxlint --no-error-on-unmatched-pattern --config config/oxlint-react-doctor.json",
       "oxfmt --write --no-error-on-unmatched-pattern"
     ],
     "{*.{json,css,md,mdx,yml,yaml},!(cloud)/**/*.{json,css,md,mdx,yml,yaml}}": [
