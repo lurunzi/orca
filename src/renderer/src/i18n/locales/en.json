@@ -5350,7 +5350,9 @@
             "staleCodexSessions_one": "{{count}} Codex session is still on the old account.",
             "staleCodexSessions_other": "{{count}} Codex sessions are still on the old account.",
             "windowWeeks": "{{value0}}wk",
-            "museUsageMenu": "Muse Usage"
+            "museUsageMenu": "Muse Usage",
+            "resetRedeemsHere": "Redeems against this computer's Codex login",
+            "signInRunsHere": "Sign-in runs on this computer"
           },
           "StatusBarUsageEmptyCta": {
             "828c764a79": "Connect an account",

@@ -42,6 +42,7 @@ export function CodexSwitcherMenu({
     accountsLoaded,
     activeTarget,
     canRedeemReset,
+    redeemResetUnavailable,
     handleConfirmReset,
     handleOpenChange,
     handleResetMenuSelect,
@@ -76,25 +77,24 @@ export function CodexSwitcherMenu({
     isBusy
   )
   if (accountControl?.add) {
-    return chatAction?.target.kind === 'local' ? accountControl.button : null
+    return accountControl.button
   }
   const rows = (selectedGroup?.targets ?? []).map((target) => {
     const inactiveUsage = target.id
       ? inactiveCodexAccounts.find((a) => a.accountId === target.id)
       : null
+    const signedOut =
+      !target.active && target.id !== null && isUnavailableInactiveUsage(inactiveUsage?.rateLimits)
     // Why: sign-in spawns a local `codex login`, so a remote-owned account can't be re-authed from this desktop.
-    const showSignInAction =
-      !hasActiveRuntimeEnvironment &&
-      !target.active &&
-      target.id !== null &&
-      isUnavailableInactiveUsage(inactiveUsage?.rateLimits)
-    return { target, inactiveUsage, showSignInAction }
+    const showSignInAction = !hasActiveRuntimeEnvironment && signedOut
+    return { target, inactiveUsage, showSignInAction, signedOut }
   })
-  const unavailableUsageRows = rows.filter((row) => row.showSignInAction)
+  const unavailableUsageRows = rows.filter((row) => row.signedOut)
   const renderRow = ({
     target,
     inactiveUsage,
-    showSignInAction
+    showSignInAction,
+    signedOut
   }: (typeof rows)[number]): React.JSX.Element => (
     <AccountSwitchRowItem
       label={target.name}
@@ -110,11 +110,12 @@ export function CodexSwitcherMenu({
       }}
       disabled={isBusy || target.active}
       action={
-        showSignInAction ? (
+        signedOut ? (
           <InlineUsageSignInAction
             accountLabel={target.label}
             isSigningIn={reauthenticatingAccountId === target.id}
             disabled={isBusy}
+            signInUnavailable={!showSignInAction}
             onSignIn={() => {
               if (target.id !== null) {
                 void handleSignInAccount(target.id, target.runtimeTarget)
@@ -124,7 +125,7 @@ export function CodexSwitcherMenu({
         ) : undefined
       }
     >
-      {showSignInAction ? null : renderUsage(target.active, inactiveUsage)}
+      {signedOut ? null : renderUsage(target.active, inactiveUsage)}
     </AccountSwitchRowItem>
   )
   function renderUsage(
@@ -168,6 +169,7 @@ export function CodexSwitcherMenu({
             resetCreditCount={resetCreditCount}
             resetCreditExpiry={resetCreditExpiry}
             canRedeemReset={canRedeemReset}
+            redeemResetUnavailable={redeemResetUnavailable}
             isRedeemingReset={isRedeemingReset}
             onReset={handleResetMenuSelect}
             renderAction={(action) => (
@@ -220,7 +222,7 @@ export function CodexSwitcherMenu({
           openSettingsPage()
         }}
       >
-        {rows.filter((row) => !row.showSignInAction).map(renderRow)}
+        {rows.filter((row) => !row.signedOut).map(renderRow)}
         {unavailableUsageRows.length > 0 ? (
           <>
             <DropdownMenuLabel className="mt-1">
