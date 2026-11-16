@@ -20,6 +20,12 @@ export const CLI_MAIN_ENTRY_NAMES = [
   // `orca vm env doctor` runs its checks in the CLI process.
   'environment-doctor/environment-doctor',
   'environment-doctor/environment-doctor-host',
+  // `orca dashboard-accounts` parses its replies with these schemas in the CLI process.
+  'dashboard-accounts/dashboard-agent-restart-protocol',
+  'dashboard-accounts/dashboard-allocation-protocol',
+  'dashboard-accounts/dashboard-claude-launch-protocol',
+  'dashboard-accounts/dashboard-codex-adoption-protocol',
+  'dashboard-accounts/dashboard-codex-refresh-protocol',
   'persistence/profile-state/access/profile-state-access',
   'persistence/profile-state/offline-access/profile-state-active-location',
   'persistence/profile-state/database/profile-state-storage-classification',
