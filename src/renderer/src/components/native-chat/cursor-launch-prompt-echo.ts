@@ -1,5 +1,5 @@
-import { normalizeNativeChatUserText } from '../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
-import { getUtf8ByteLengthForCodePoint } from '../../../../shared/utf8-byte-limits'
+import { normalizeNativeChatUserText } from '../../../../shared/native-chat/transcript/images/native-chat-image-transcript-markers'
+import { getUtf8ByteLengthForCodePoint } from '../../../../shared/text/utf8-byte-limits'
 
 /** Match the captured Cursor transcript damage: one UTF-8 character became one replacement per byte. */
 export function matchesCursorLaunchPromptEcho(sent: string, recorded: string): boolean {

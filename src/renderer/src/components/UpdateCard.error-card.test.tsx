@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, type RenderResult } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LinuxPackageInstallRecovery, UpdateStatus } from '../../../shared/update-status-types'
+import type {
+  LinuxPackageInstallRecovery,
+  UpdateStatus
+} from '../../../shared/updater/update-status-types'
 import { useAppStore } from '../store'
 import { UpdateCard } from './UpdateCard'
 import { NotificationCardStack } from './NotificationCardStack'
@@ -107,7 +110,7 @@ describe('UpdateCard Windows signature failures', () => {
     expect(screen.queryByText(message)).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Check official releases' }))
-    expect(openUrl).toHaveBeenCalledWith('https://github.com/stablyai/orca/releases')
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/lurunzi/orca/releases')
     expect(openUrl).not.toHaveBeenCalledWith(expect.stringContaining('/tag/'))
   })
 })
@@ -167,7 +170,7 @@ describe('UpdateCard Linux package-install recovery', () => {
     expect(screen.queryByText('Manual Install Required')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Retry Download' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Download Manually' }))
-    expect(openUrl).toHaveBeenCalledWith('https://github.com/stablyai/orca/releases/tag/v1.4.200')
+    expect(openUrl).toHaveBeenCalledWith('https://github.com/lurunzi/orca/releases/tag/v1.4.200')
   })
 
   it('relaunches once when Enable & Restart is double-clicked', async () => {

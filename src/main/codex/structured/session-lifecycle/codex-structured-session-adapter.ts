@@ -1,5 +1,7 @@
-import { copyCodexConversation } from '../../codex-conversation-copy'
-import { readCodexSessionAccountUsage } from './codex-session-account-usage'
+import { readCodexDashboardAdoptions } from '../../codex-structured-session-process-state'
+import { copyCodexConversationForAccount } from '../../codex-pool-conversation-copy'
+import { readCodexSessionAccountUsageForAccount } from './codex-pool-session-account-usage'
+import { manageCodexSessionMcp } from './codex-session-mcp'
 import * as permission from '../turns/codex-structured-turn-permission'
 import * as Suggestion from '../../codex-prompt-suggestion-session'
 import { projectCodexSessionOptions } from '../catalog/codex-structured-service-tier'
@@ -21,14 +23,10 @@ import {
   applyCodexStructuredSessionOption,
   readLiveCodexSessionOptions
 } from '../catalog/codex-structured-session-options'
-import {
-  prepareCodexMessageDispatch,
-  readCodexAppliedInputOptions
-} from '../turns/codex-structured-message-options'
+import * as messageOptions from '../turns/codex-structured-message-options'
 import {
   CodexAcquisitionRegistry,
   requireLiveCodexSession,
-  type CodexAcquisitionAttempt,
   type CodexSession,
   type CodexStructuredSessionAdapterDeps,
   type CodexStructuredSessionEvent
@@ -40,6 +38,7 @@ import {
 } from './codex-structured-provider-events'
 import { createCodexStructuredNotificationRetry } from './codex-structured-notification-retry'
 import { acquireCodexStructuredSession } from '../acquisition/codex-structured-session-acquire'
+import { deliverCodexAcquisitionEvent } from '../acquisition/codex-structured-acquisition-window'
 import * as requestEndWait from '../turns/codex-request-end-wait'
 import { changeCodexThreadGoalWithSettings } from '../threads/codex-structured-thread-goal'
 import { startCodexTerminalStopProbe } from '../background-work/codex-background-terminals'
@@ -49,21 +48,31 @@ import {
   answerCodexStructuredPrompt,
   cancelCodexStructuredTurn
 } from '../prompts/codex-structured-prompt-ownership'
-import { renameCodexProviderSession } from './codex-provider-session-rename'
+import { renameCodexProviderSessionForAccount } from './codex-pool-provider-session-rename'
+import { DashboardCodexRefreshMailbox } from '../../../dashboard-accounts/dashboard-codex-refresh-mailbox'
 import * as codexRewind from '../threads/codex-structured-rewind'
 import * as turnEnd from '../turns/codex-structured-turn-end-settlement'
 import { codexAcquireFailure } from '../../app-server/codex-startup-outcome'
 import { openCodexStart, recoverCodexRewindAtStart } from './codex-structured-start-verdict'
 import { codexLiveProviderProcessHold } from './codex-structured-live-provider-process'
+import { CodexShortLivedOperations } from './codex-short-lived-operations'
 
 export class CodexStructuredSessionAdapter implements SessionAdapter {
   private readonly sessions = new Map<string, CodexSession>()
   private readonly acquisitions = new CodexAcquisitionRegistry()
+  private readonly mailbox = new DashboardCodexRefreshMailbox()
+  private readonly shortLived: CodexShortLivedOperations
   private readonly notificationRetries: ReturnType<typeof createCodexStructuredNotificationRetry>
   private readonly teardown: CodexStructuredSessionTeardown
 
   constructor(private readonly deps: CodexStructuredSessionAdapterDeps) {
     this.atRestCommands = deps.atRestCommands
+    this.shortLived = new CodexShortLivedOperations({ mailbox: this.mailbox, ...deps })
+    this.readAccountUsage = readCodexSessionAccountUsageForAccount(
+      this.sessions,
+      () => deps.providerInvocation,
+      this.shortLived
+    )
     this.notificationRetries = createCodexStructuredNotificationRetry({
       sessionFor: (sessionId) => this.sessions.get(sessionId),
       translate: (sessionId, session, method, params, observedAt, dispatchSequenceAtReceipt) =>
@@ -87,10 +96,15 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   }
 
   copyConversation: NonNullable<SessionAdapter['copyConversation']> = (input) =>
-    copyCodexConversation(input, this.deps.providerInvocation)
-  readAccountUsage = readCodexSessionAccountUsage(this.sessions, () => this.deps.providerInvocation)
+    copyCodexConversationForAccount(input, this.deps.providerInvocation, this.shortLived)
+  readAccountUsage: NonNullable<SessionAdapter['readAccountUsage']>
+  manageMcp = manageCodexSessionMcp(this.sessions, () => this.deps.providerInvocation)
 
   supportsLocation = supportsCodexStructuredLocation
+
+  readDashboardCodexRefreshes = () => this.mailbox.read()
+
+  readDashboardCodexProcesses = () => readCodexDashboardAdoptions(this.sessions, this.acquisitions)
 
   readCommands: NonNullable<SessionAdapter['readCommands']> = (sessionId) =>
     this.sessions.get(sessionId)?.skillReport?.read()
@@ -98,10 +112,11 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   readonly atRestCommands: CodexStructuredSessionAdapterDeps['atRestCommands']
 
   renameProviderSession: NonNullable<SessionAdapter['renameProviderSession']> = (input) =>
-    renameCodexProviderSession({
+    renameCodexProviderSessionForAccount({
       ...input,
       session: this.sessions.get(input.record.sessionId),
-      invocation: this.deps.providerInvocation
+      invocation: this.deps.providerInvocation,
+      owner: this.shortLived
     })
 
   permissionModeRequiresAcquisition = permission.codexNativeResumeRequirement(this.sessions)
@@ -114,9 +129,10 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
       deps: this.deps,
       sessions: this.sessions,
       acquisitions: this.acquisitions,
+      mailbox: this.mailbox,
       notificationRetries: this.notificationRetries,
       deliver: (acquisition, sessionId, event, retainedBytes) =>
-        this.deliver(acquisition, sessionId, event, retainedBytes),
+        deliverCodexAcquisitionEvent(this.sessions, acquisition, sessionId, event, retainedBytes),
       handleServerRequest: (sessionId, request) => this.handleServerRequest(sessionId, request),
       handleUnhandledFrame: (sessionId, kind, payload) =>
         this.handleUnhandledFrame(sessionId, kind, payload),
@@ -128,24 +144,6 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
 
   open = (input: StructuredAgentSessionProviderOpenInput) =>
     openCodexStart(this.acquisitions, input)
-
-  /** Buffers pre-publication events and drops events from superseded children. */
-  private deliver(
-    acquisition: CodexAcquisitionAttempt['window'],
-    sessionId: string,
-    event: () => unknown,
-    retainedBytes?: number
-  ): void {
-    if (acquisition.buffer(event, retainedBytes)) {
-      return
-    }
-    if (this.sessions.get(sessionId)?.connection === acquisition.connection) {
-      event()
-    } else if (acquisition.isOverflowed) {
-      // Overflow fails acquisition; close the child so callers can retry.
-      void acquisition.connection?.close()
-    }
-  }
 
   /** Journal first so observers never see an event ahead of its durable row. */
   private emit(
@@ -163,6 +161,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
       return admission
     }
     if (event.type === 'notification') {
+      turnEnd.publishCodexTurnOpened(session, event, this.sessions)
       // Only an admitted turn end settles; a refused one settles on the retry that lands.
       turnEnd.settleCodexSendsInEndedTurn(session, event)
       // Child records observe refused frames only after a retry reaches the journal.
@@ -239,7 +238,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
     try {
       const outcome = await dispatchCodexTurn(
         session,
-        await prepareCodexMessageDispatch(
+        await messageOptions.prepareCodexMessageDispatch(
           session,
           input,
           () => this.sessions.get(input.sessionId) === session
@@ -325,8 +324,9 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   readOptions = (input: { sessionId: string; fence: number }) =>
     readLiveCodexSessionOptions(this.session(input.sessionId), this.deps.requestTimeoutMs)
 
-  readAppliedInputOptions: NonNullable<SessionAdapter['readAppliedInputOptions']> = (input) =>
-    readCodexAppliedInputOptions(this.sessions.get(input.sessionId), input)
+  captureMessageSteeringInputs: NonNullable<SessionAdapter['captureMessageSteeringInputs']> = (
+    input
+  ) => messageOptions.readCodexMessageSteeringInputs(this.sessions.get(input.sessionId), input)
 
   projectOptions = (sessionId: string, options: Readonly<Record<string, string>>) =>
     projectCodexSessionOptions(this.sessions.get(sessionId), options)
@@ -335,13 +335,12 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
     this.teardown.close(sessionId, observeClose)
   forceCloseSession = (sessionId: string): Promise<boolean> => this.teardown.forceClose(sessionId)
   disposeSession: NonNullable<SessionAdapter['disposeSession']> = this.closeSession
-  closeAll = (): Promise<void> => this.teardown.closeAll()
+  closeAll = (): Promise<void> => this.teardown.closeAll(this.shortLived)
   releaseAcquisition = (input: { sessionId: string }): Promise<boolean> =>
     this.teardown.close(input.sessionId)
   hasOwnedAcquisition = (sessionId: string): boolean =>
     this.acquisitions.get(sessionId) !== undefined || this.sessions.has(sessionId)
 
-  private session(sessionId: string): CodexSession {
-    return requireLiveCodexSession(this.sessions, sessionId)
-  }
+  private session = (sessionId: string): CodexSession =>
+    requireLiveCodexSession(this.sessions, sessionId)
 }

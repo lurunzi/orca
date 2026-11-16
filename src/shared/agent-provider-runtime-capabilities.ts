@@ -1,4 +1,4 @@
-import { RUNTIME_CAPABILITIES } from './protocol-version'
+import { RUNTIME_CAPABILITIES } from './remote-runtime/protocol/protocol-version'
 
 // Fork-added capabilities for the Cursor and Antigravity integrations.
 export const AGENT_SESSION_CURSOR_RESUME_RUNTIME_CAPABILITY =

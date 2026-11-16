@@ -1,14 +1,14 @@
 import { ipcMain } from 'electron'
 import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../shared/layout-owner-switch'
 import { placeUnshownLiveTerminalsBestEffort } from '../runtime/terminal/adoption/unshown-live-terminal-placement'
-import { recoverLegacyWorkerTerminalsForRendererStartup } from './legacy-worker-renderer-recovery'
-import { logStartupMilestone } from './startup-diagnostics'
+import { recoverLegacyWorkerTerminalsForRendererStartup } from './pty-startup/legacy-worker-renderer-recovery'
+import { logStartupMilestone } from './diagnostics/startup-diagnostics'
 import { mainProcessState as state } from './main-process-state'
 import {
   consumeQuitAndStopAllSessionsRequest,
   quitAfterRendererStoppedAllSessions
-} from './main-window-actions'
-import { resolveOsOpenedDocuments } from './os-opened-documents'
+} from './main-window/main-window-actions'
+import { resolveOsOpenedDocuments } from './open-routing/os-opened-documents'
 import {
   onStructuredAgentSessionsHeldChanged,
   structuredAgentSessionsHeld
@@ -86,6 +86,7 @@ export function registerMainProcessIpcHandlers(): void {
   )
   ipcMain.handle('ui:consumePendingSkillShare', () => state.skillShareDeepLinks.consume())
   ipcMain.handle('ui:consumePendingPluginInstallLink', () => state.pluginInstallLinks.consume())
+  ipcMain.handle('ui:consumePendingRemotePairingLink', () => state.remotePairingLinks.consume())
   // Pull delivers cold-start Open With and proves the listener is ready for later pushes.
   ipcMain.handle('ui:consumePendingMarkdownFileOpens', async () => {
     state.osDocumentOpenListenerReady = true

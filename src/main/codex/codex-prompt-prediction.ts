@@ -1,4 +1,4 @@
-import { hasReachedAppVersion } from '../../shared/app-version'
+import { hasReachedAppVersion } from '../../shared/app-lifecycle/identity/app-version'
 import type { CodexAppServerConnection } from './app-server/codex-app-server-connection-types'
 import { isProviderRecord as isAppServerRecord } from '../provider-process/provider-json-record'
 import {

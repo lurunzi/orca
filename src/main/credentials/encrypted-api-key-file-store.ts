@@ -1,14 +1,14 @@
-import { getSecretStore } from '../../shared/secret-store'
+import { getSecretStore } from '../../shared/secure-storage/secret-store'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import {
   hardenExistingSecureFile,
   isUnreadableError,
   writeSecureFile
 } from '../../shared/secure-storage/secure-file'
-import type { SecretAtRestProtection } from '../../shared/secret-at-rest-protection'
+import type { SecretAtRestProtection } from '../../shared/secure-storage/secret-at-rest-protection'
 import { ApiKeyFileUnreadableError } from './api-key-file-unreadable-error'
+import { orcaHomeDir } from '../../shared/product-identity-home'
 
 type EncryptedApiKeyFileStore = {
   /** Envelope location and prefix used by orcad's plaintext migration. */
@@ -40,7 +40,7 @@ export function createEncryptedApiKeyFileStore({
   }
 
   function getOrcaDir(): string {
-    return join(homedir(), '.orca')
+    return orcaHomeDir()
   }
 
   function getApiKeyPath(): string {

@@ -10,7 +10,7 @@ export const STRUCTURED_AGENT_SESSION_RESTART_AGENT_METHODS = [
     params: RestartAgentParams,
     handler: async (params, ctx) => {
       const host = await requireInstalledStructuredHost(ctx, params.sessionId)
-      return host.restartAgent(params.sessionId, params.force === true)
+      return host.lifetime.restartAgent(params.sessionId, params.force === true)
     }
   })
 ]

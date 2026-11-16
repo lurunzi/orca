@@ -1,17 +1,25 @@
+import type { StructuredMessageSteeringInputs } from '../../../../shared/agent-session/options/codex-message-compiler'
+import type {
+  AgentSessionMcpOperation,
+  AgentSessionMcpResult
+} from '../../../../shared/agent-session/agent-session-mcp'
 import type { PrepareStructuredRewind } from './structured-agent-session-rewind-contract'
 import type { ProviderProcessCloseOptions } from '../../../provider-process/provider-process-close'
-import type { NativeCopyCoverage } from '../../agent-session-journal/context-epochs/journal-history-origin'
+import type { DashboardCodexAdoptionState } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
+import type { DashboardCodexRefreshState } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
+import type { DashboardClaudeLaunchState } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
 import type { StructuredAgentSessionConversationCopyInput } from './structured-agent-session-conversation-copy-input'
+import type { StructuredAgentSessionProviderRenameInput } from './structured-agent-session-provider-rename-input'
 import type { CodexAccountUsageRead } from '../../../rate-limits/providers/codex/codex-rpc-rate-limit-mapper'
-import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/agent-session-acquired-account'
+import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
 import type { StructuredAgentSessionAdmitFreshInput } from '../delivery/structured-agent-session-input-admission'
-import type { AiVaultConversationCopy } from '../../../../shared/ai-vault/resume/ai-vault-resume-preparation'
+import type { StructuredAgentSessionConversationCopyResult } from './structured-agent-session-conversation-copy-result'
 import type { AgentChatPermissionChoice } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import type {
   AgentSessionRewindFork,
-  AgentSessionRewindReason,
   AgentSessionRewindSupport
-} from '../../../../shared/agent-session/lifecycle/agent-session-rewind'
+} from '../../../../shared/agent-session/lifecycle/rewind/agent-session-rewind'
+import type { AgentSessionRewindReason } from '../../../../shared/agent-session/lifecycle/rewind/agent-session-rewind-reasons'
 // The host owns journal/lease authority; adapters report delivery uncertainty without guessing.
 
 import type {
@@ -20,8 +28,8 @@ import type {
   AgentJournalTurnItem
 } from '../../../../shared/agent-session/journal/agent-session-journal-types'
 import type { AgentJournalItemIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
-import type { AgentSessionProviderHandleLink } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
-import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+import type { AgentSessionProviderHandleLink } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
+import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type {
   AgentSessionExecutionLocation,
   AgentSessionProcessIdentity,
@@ -39,7 +47,7 @@ import type {
 export type AgentSessionIdleConfirmation = 'idle' | 'busy' | 'unknown'
 
 import type { AgentJournalDispatchRejection } from '../../../../shared/agent-session/failures/agent-session-failure-words'
-import type { AgentSessionExecutionOptions } from '../../../../shared/agent-session/options/agent-session-execution-options'
+import type { AgentSessionExecutionOptions } from '../../../../shared/agent-session/options/protocol/agent-session-execution-options'
 import type { AgentSessionPromptResponse } from '../../../../shared/agent-session/agent-session-question-answer'
 import type {
   StructuredAgentSessionStartupAttempt,
@@ -174,7 +182,15 @@ export type StructuredAgentSessionSetOptionInput = {
 }
 
 export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & {
+  readDashboardCodexProcesses?(): DashboardCodexAdoptionState
+  readDashboardCodexRefreshes?(): DashboardCodexRefreshState
+  readDashboardClaudeLaunches?(): DashboardClaudeLaunchState
   readAccountUsage?(record: AgentSessionRecord, signal: AbortSignal): Promise<CodexAccountUsageRead>
+  /** The `/mcp` panel's read or action on the chat's MCP servers; never enters the mutation queue. */
+  manageMcp?(
+    record: AgentSessionRecord,
+    operation: AgentSessionMcpOperation
+  ): Promise<AgentSessionMcpResult>
   open: StructuredAgentSessionProviderOpen
   supportsCreate?(location: AgentSessionExecutionLocation, agent: string): boolean
   /** Keep runtime/location support in adapter data for remote enablement. */
@@ -305,15 +321,12 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
   ): Promise<void | Readonly<Record<string, string>>>
   /** Opt in only when setOption can update idle metadata without a provider turn. */
   canSetOptionWhileIdle?(input: StructuredAgentSessionSetOptionInput): boolean
-  /** A saved pick retires this child's earlier execution reports until a turn carries it. */
-  noteOptionPick?(input: { sessionId: string; fence: number; key: string; value: string }): void
-  /** Applied inputs for this exact child; observations never decide message admission. */
-  readAppliedInputOptions?(input: {
+  /** Finite live compiler facts for this exact child, without a proposed card. */
+  captureMessageSteeringInputs?(input: {
     sessionId: string
     fence: number
     acquisitionGeneration: string | null
-    next: AgentSessionExecutionOptions | undefined
-  }): { active: AgentSessionExecutionOptions; next: AgentSessionExecutionOptions } | null
+  }): StructuredMessageSteeringInputs
   /** Synchronous capability projection; never acquires inventory or changes saved intent. */
   projectOptions?(
     sessionId: string,
@@ -334,14 +347,10 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
   /** Copy the provider conversation without changing the chat’s ID; omit for CLI-based forks. */
   copyConversation?(
     input: StructuredAgentSessionConversationCopyInput
-  ): Promise<AiVaultConversationCopy & { resumeCursor?: string; coverage?: NativeCopyCoverage }>
+  ): Promise<StructuredAgentSessionConversationCopyResult>
   /** Give the agent's own conversation the user's chat name, as the agent's own rename would:
    *  through the live child holding that conversation, otherwise at rest. Best effort. */
-  renameProviderSession?(input: {
-    record: AgentSessionRecord
-    providerSessionId: string
-    name: string
-  }): Promise<void>
+  renameProviderSession?(input: StructuredAgentSessionProviderRenameInput): Promise<void>
   /** Capture native invocation inputs at the committed explicit occurrence. */
   nameProviderConversation?(input: {
     record: AgentSessionRecord
@@ -350,10 +359,6 @@ export type StructuredAgentSessionAdapter = StructuredAgentSessionAdapterStop & 
     inheritance?: boolean
   }): Promise<void> | undefined
   stopProviderNaming?(): void
-  captureConversationTitleOwner?(record: AgentSessionRecord): {
-    isCurrent: (record: AgentSessionRecord) => boolean
-    generate: (firstPrompt: string, shouldExecute: () => boolean) => Promise<unknown>
-  } | null
   /** True proves child exit; root/processless verdicts throw only after finalization (stopAgentSessionProviderRoot). */
   closeSession?(
     sessionId: string,

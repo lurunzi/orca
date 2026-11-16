@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import SyncDatabase from '../../../sqlite/sync-database'
 import { firstWorkspacePath } from './antigravity-conversation-summaries'
 import { scanAiVaultSessions } from '../../session-scanner'
-import { isolatedScanRoots, writeAntigravityTranscript } from '../../session-scanner-test-fixtures'
+import {
+  isolatedScanRoots,
+  writeAntigravityTranscript
+} from '../../scanner-fixtures/session-scanner-test-fixtures'
 
 const temporaryDirectories: string[] = []
 

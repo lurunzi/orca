@@ -2,8 +2,8 @@
 // of the draft. Split from native-chat-runtime-send.ts to keep that file bounded.
 
 import { sendRuntimePtyInput } from '@/runtime/hosted-terminals/input/runtime-terminal-input-send'
-import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
-import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/native-chat-paste-bytes'
+import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/questions/native-chat-answer-stepping'
+import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/composer/native-chat-paste-bytes'
 import type { NativeChatSendOptions } from './session/terminal/send/native-chat-runtime-send'
 
 export type NativeChatSubmitConfirmation = {

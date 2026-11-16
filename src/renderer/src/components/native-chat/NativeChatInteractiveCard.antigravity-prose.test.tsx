@@ -7,17 +7,23 @@ import type { AgentType } from '../../../../shared/agent-status/contracts/agent-
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
 import type { NativeChatInteractiveSend } from './session/terminal/send/use-native-chat-interactive-send'
 
-const state = vi.hoisted(
-  (): {
-    agentStatusByPaneKey: { pane: { interactivePrompt: string | undefined; toolName: undefined } }
-  } => ({
-    agentStatusByPaneKey: {
-      pane: { interactivePrompt: undefined, toolName: undefined }
-    }
-  })
-)
+const state = vi.hoisted(() => {
+  const pane: { interactivePrompt: string | undefined; toolName: undefined } = {
+    interactivePrompt: undefined,
+    toolName: undefined
+  }
+  return {
+    pane,
+    agentStatusByPaneKey: { get: (key: string) => (key === 'pane' ? pane : undefined) }
+  }
+})
 vi.mock('../../store', () => ({
   useAppStore: (selector: (store: typeof state) => unknown) => selector(state)
+}))
+vi.mock('@/runtime/agent-status/use-agent-status', () => ({
+  useAgentStatus: (key: string) => state.agentStatusByPaneKey.get(key),
+  useAgentStatusSelector: (key: string, select: (entry: unknown) => unknown) =>
+    select(state.agentStatusByPaneKey.get(key))
 }))
 
 import { NativeChatInteractiveCard } from './prompts/NativeChatInteractiveCard'
@@ -82,7 +88,7 @@ function Pane({ id = 'reply-1' }: { id?: string }): React.JSX.Element | null {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  state.agentStatusByPaneKey.pane.interactivePrompt = undefined
+  state.pane.interactivePrompt = undefined
   nativeChatPromptDismissals.clearForTests()
   send.sendAnswer.mockReturnValue({ settleAfterMs: 6000 })
 })
@@ -112,7 +118,7 @@ describe('Antigravity prose native question card', () => {
   )
 
   it('does not replace a live permission prompt, including an unrecognised prompt', () => {
-    state.agentStatusByPaneKey.pane.interactivePrompt = 'permission selector'
+    state.pane.interactivePrompt = 'permission selector'
     render(<Pane />)
     expect(screen.queryByText(QUESTION)).not.toBeInTheDocument()
   })

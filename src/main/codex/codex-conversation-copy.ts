@@ -4,12 +4,12 @@ import {
   AgentConversationCopyError,
   AgentConversationCopyStartError,
   agentConversationCopyRefusal
-} from '../native-chat/agent-conversation-copy-error'
+} from '../native-chat/conversation-adoption/agent-conversation-copy-error'
 import { isAgentSessionRefusalError } from '../../shared/agent-session/failures/agent-session-wire-refusals'
 import { join } from 'node:path'
-import { requireLegacyAgentSessionAccountHome } from '../../shared/agent-session/lifecycle/agent-session-account-home'
+import { requireLegacyAgentSessionAccountHome } from '../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import { parseAgentJournalItemKey } from '../../shared/agent-session/journal/agent-session-journal-item-key'
-import { asRecord } from '../ai-vault/session-scanner-values'
+import { asRecord } from '../ai-vault/parsing/session-record-fields'
 import type { StructuredAgentSessionAdapter } from '../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { resolveSessionFilePath } from '../native-chat/session-file-resolver'
 import {
@@ -74,7 +74,8 @@ async function turns(
 
 export async function copyCodexConversation(
   input: CopyInput,
-  invocation: CodexProviderInvocationDeps | undefined
+  invocation: CodexProviderInvocationDeps | undefined,
+  run: typeof runCodexProviderAppServer = runCodexProviderAppServer
 ) {
   let starting = false
   let dispatched = false
@@ -117,7 +118,7 @@ export async function copyCodexConversation(
     }
     let history = legacy && !checkpoint.turnId ? await physicalHistory(undefined) : undefined
     starting = true
-    return await runCodexProviderAppServer(
+    return await run(
       record,
       {
         ...invocation,

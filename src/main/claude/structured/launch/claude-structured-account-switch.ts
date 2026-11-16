@@ -1,6 +1,6 @@
 import { realpath } from 'node:fs/promises'
 import { join } from 'node:path'
-import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
+import { getClaudeProfileRouter } from '../../../claude-accounts/profiles/routing/claude-profile-installed-router'
 
 /** Claude resumes from its projects folder, so every selectable account must share the chat's. */
 export async function claudeChatAccountSwitchable(input: {

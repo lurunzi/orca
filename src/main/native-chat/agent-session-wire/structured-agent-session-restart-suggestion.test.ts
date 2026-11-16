@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { StructuredAgentSessionAdapter } from './providers/structured-agent-session-adapter'
-import { claudeAndCodexRouter } from './providers/testing/structured-agent-session-adapter-router-test-support'
+import { claudeAndCodexRouter } from './providers/testing/structured-agent-session-adapter-router.test-fixture'
 import {
   claudeProviderHandle,
   codexProviderHandle
-} from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+} from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 
 function harness(agent: 'claude' | 'codex') {
   let suggestion: string | null = 'Inspect the changes'

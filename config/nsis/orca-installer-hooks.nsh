@@ -7,8 +7,9 @@
 ; #10138/#23225: electron-builder’s APP_ASSOCIATE overwrites the extension’s default without backup,
 ; and APP_UNASSOCIATE never restores it. Register only additive ProgID/OpenWithProgids/SupportedTypes
 ; entries; never write the extension’s default handler. Sync extensions with isOsOpenedDocumentName().
-!define MARKDOWN_PROGID "Orca.Markdown"
-!define TABULAR_PROGID "Orca.Tabular"
+; UDA Orca: own ProgIDs, so uninstalling one app never deletes the official Orca's keys.
+!define MARKDOWN_PROGID "UDAOrca.Markdown"
+!define TABULAR_PROGID "UDAOrca.Tabular"
 
 !macro ORCA_REGISTER_DOCUMENT_OPEN_WITH EXT PROGID
   WriteRegNone SHELL_CONTEXT "Software\Classes\${EXT}\OpenWithProgids" "${PROGID}"
@@ -59,8 +60,8 @@
     ${endIf}
     nsExec::Exec 'taskkill /F /IM "${APP_EXECUTABLE_FILENAME}" $2'
     Pop $0
-    nsExec::Exec 'taskkill /F /IM "orca-terminal-daemon.exe" $2'
-    Pop $0
+    ; UDA Orca never shipped the renamed orca-terminal-daemon.exe host; sweeping that image name
+    ; would end the official Orca's terminals, so it is left out here.
     ; WSL hosts: the detached wsl.exe holders and each host's server keep their distros running. Orca
     ; ends only the holders its profile recorded, each checked by pid, start time and command line.
     ; The last install for this user also stops each recorded host's server in a running distro: the
@@ -69,7 +70,7 @@
     ; WSL host sees nothing here. These are the folders Electron's userData (app.getName()) can be, as the
     ; deleteAppData step lists them; a custom --user-data-dir can't be known here.
     ; Sync the flags with WSL_HOLDER_UNINSTALL_FLAG and WSL_SERVER_UNINSTALL_FLAG in
-    ; src/main/startup/wsl-holder-uninstall-preflight.ts.
+    ; src/main/startup/uninstall/wsl-holder-uninstall-preflight.ts.
     ${if} $installMode == "all"
       SetShellVarContext current
     ${endIf}
@@ -114,7 +115,7 @@
     ; app, but once that folder is removed every agent fails a hook per event, so the last Orca for
     ; this user takes the entries out. Another install, or an unreadable registry, keeps them.
     ; Best effort: the exit code never blocks uninstall.
-    ; Sync the flag with AGENT_HOOKS_UNINSTALL_FLAG in src/main/startup/agent-hooks-uninstall-preflight.ts.
+    ; Sync the flag with AGENT_HOOKS_UNINSTALL_FLAG in src/main/startup/uninstall/agent-hooks-uninstall-preflight.ts.
     !insertmacro ORCA_OTHER_INSTALL_STATE $1
     ${if} $1 == "none"
       nsExec::Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" --orca-uninstall-remove-agent-hooks'
@@ -122,13 +123,16 @@
     ${endIf}
     ; The `orca` command's PATH entry (Settings → Command line) would otherwise outlive the app.
     !insertmacro ORCA_REMOVE_USER_PATH_ENTRY "$INSTDIR\resources\bin"
+    ; The `uda-orca` command wrapper folder (WINDOWS_PACKAGED_COMMAND_DIR in src/main/cli/installation/cli-install-constants.ts).
+    !insertmacro ORCA_REMOVE_USER_PATH_ENTRY "$LOCALAPPDATA\UDA Orca\bin"
     Pop $2
     Pop $1
     Pop $0
     ; Give the OS a moment to release the image lock before removing the tree.
     Sleep 500
-    RMDir /r "$LOCALAPPDATA\Orca\daemon-host"
-    RMDir /r "$LOCALAPPDATA\Orca\daemon-host-profiles"
+    RMDir /r "$LOCALAPPDATA\UDA Orca\daemon-host"
+    RMDir /r "$LOCALAPPDATA\UDA Orca\daemon-host-profiles"
+    RMDir /r "$LOCALAPPDATA\UDA Orca\bin"
   ${endIf}
   ; customInstall rewrites associations on every update, so remove them during uninstallOldVersion too.
   DeleteRegKey SHELL_CONTEXT "Software\Classes\${MARKDOWN_PROGID}"

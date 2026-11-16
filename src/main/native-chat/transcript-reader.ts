@@ -1,4 +1,4 @@
-import { readOpenCodeNativeChatTranscriptFull } from './transcript-opencode'
+import { readOpenCodeNativeChatTranscriptFull } from './transcript-history/opencode/transcript-opencode'
 import { isENOENT } from '../ipc/filesystem/access/filesystem-path-containment'
 import type { AgentType } from '../../shared/agent-status/contracts/agent-status-types'
 import type {
@@ -6,19 +6,17 @@ import type {
   NativeChatTurnLifecycle
 } from '../../shared/native-chat/native-chat-types'
 import { resolveNativeChatTranscriptAgent } from '../../shared/native-chat/native-chat-agent-support'
-import { errorMessage } from '../ai-vault/session-scanner-values'
+import { errorMessage } from '../../shared/errors/error-message'
 import { resolveSessionFilePath, type ResolveSessionFileOptions } from './session-file-resolver'
-import { openTranscriptReadStream } from './wsl-transcript-fs-access'
-import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
-import {
-  decodeAntigravityTranscriptLine,
-  decodeClaudeTranscriptLine,
-  decodeCodexTranscriptLine,
-  decodeCursorTranscriptLine,
-  decodeGrokTranscriptLine,
-  decodeOmpTranscriptLine
-} from './transcript-line-decoders'
-import { decodeTranscriptStream } from './transcript-stream-lines'
+import { openTranscriptReadStream } from './transcript-filesystem/wsl-transcript-fs-access'
+import { wslTranscriptFsRefusal } from './transcript-filesystem/wsl-transcript-fs-error'
+import { decodeAntigravityTranscriptLine } from './transcript-decoding/transcript-line-decoders-antigravity'
+import { decodeClaudeTranscriptLine } from './transcript-decoding/transcript-line-decoders-claude'
+import { decodeCodexTranscriptLine } from './transcript-decoding/transcript-line-decoders-codex'
+import { decodeCursorTranscriptLine } from './transcript-decoding/transcript-line-decoders-cursor'
+import { decodeGrokTranscriptLine } from './transcript-decoding/transcript-line-decoders-grok'
+import { decodeOmpTranscriptLine } from './transcript-decoding/transcript-line-decoders-omp'
+import { decodeTranscriptStream } from './transcript-streaming/transcript-stream-lines'
 
 export type ReadTranscriptResult =
   | {

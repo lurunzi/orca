@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { lstat, readFile, readlink } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
-import type { CliInstallMethod, CliInstallStatus } from '../../../shared/cli-install-types'
+import type { CliInstallMethod, CliInstallStatus } from '../../../shared/cli/cli-install-types'
 import { isAppImageExtractedLauncherPath } from '../appimage/appimage-extracted-root'
 import { DEV_COMMAND_NAME, DEV_LAUNCHER_DIR } from './cli-install-constants'
 import {
@@ -15,7 +15,12 @@ import { isPathInsideOrEqual, samePathEntry } from '../command-paths/cli-install
 import { extractLegacyAppImageCliWrapperTarget } from '../appimage/legacy-appimage-cli-wrapper'
 
 // Match after-install.sh's electron-builder name variants when reclaiming packaged launchers.
-const PACKAGED_LINUX_LAUNCHER_DIRECTORIES = ['/opt/Orca', '/opt/orca-ide', '/opt/orca']
+const PACKAGED_LINUX_LAUNCHER_DIRECTORIES = [
+  '/opt/UDA Orca',
+  '/opt/Orca',
+  '/opt/orca-ide',
+  '/opt/orca'
+]
 
 export class CliCommandInspection extends CliInstallLocation {
   protected async inspectSymlink(

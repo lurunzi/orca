@@ -3,12 +3,12 @@ import { savePastedTextAsWebAgentSessionAttachment } from './web-pasted-text-upl
 import { createWebExplorerRootSync } from './web-explorer-root-sync'
 import { createWebJiraFilterStateApi } from './web-jira-filter-state-api'
 import type { PreloadApi } from '../../../../preload/api-types'
-import { assertClipboardTextWithinLimitWithYield } from '../../../../shared/clipboard-text'
-import type { ReadClipboardTextOptions } from '../../../../shared/clipboard-text'
-import { normalizeFeatureInteractions } from '../../../../shared/feature-interactions'
-import type { FeatureInteractionId } from '../../../../shared/feature-interactions'
+import { assertClipboardTextWithinLimitWithYield } from '../../../../shared/clipboard/clipboard-text'
+import type { ReadClipboardTextOptions } from '../../../../shared/clipboard/clipboard-text'
+import { normalizeFeatureInteractions } from '../../../../shared/feature-education/interactions/feature-interactions'
+import type { FeatureInteractionId } from '../../../../shared/feature-education/interactions/feature-interaction-catalog'
 import { prepareWebHostUiUpdates } from './web-host-ui-update-preparation'
-import type { PairedUiState } from '../../../../shared/pairing-local-ui-fields'
+import type { PairedUiState } from '../../../../shared/remote-runtime/pairing/pairing-local-ui-fields'
 import {
   clipboardHasImage,
   readClipboardImageThumbnail,
@@ -186,6 +186,8 @@ export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
     consumePendingSkillShare: () => Promise.resolve(null),
     onOpenPluginInstallLink: () => noopUnsubscribe,
     consumePendingPluginInstallLink: () => Promise.resolve(null),
+    onOpenRemotePairingLink: () => noopUnsubscribe,
+    consumePendingRemotePairingLink: () => Promise.resolve(null),
     // Why: the web client has no OS shell handing it files, so there is never a queued open.
     onOpenMarkdownFiles: () => noopUnsubscribe,
     consumePendingMarkdownFileOpens: () => Promise.resolve([]),
@@ -203,7 +205,6 @@ export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
     onToggleQuickCommandsMenu: () => noopUnsubscribe,
     onOpenTasks: () => noopUnsubscribe,
     onOpenNewWorkspace: () => noopUnsubscribe,
-    onDeleteCurrentWorkspace: () => noopUnsubscribe,
     onOpenWorkspaceBoard: () => noopUnsubscribe,
     onToggleAgentDashboard: () => noopUnsubscribe,
     onJumpToWorktreeIndex: () => noopUnsubscribe,

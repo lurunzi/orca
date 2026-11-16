@@ -17,14 +17,14 @@ import {
 } from './antigravity-submit-confirmation'
 import { NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT } from './session/terminal/send/native-chat-input-clear'
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
-import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
+import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/questions/native-chat-answer-stepping'
 import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_RETRY_MAX
 } from './native-chat-submit-confirmation'
 import { sendNativeChatMessageWithImageAttachments } from './session/terminal/send/native-chat-runtime-image-send'
-import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/native-chat-paste-bytes'
+import { NATIVE_CHAT_SUBMIT } from '../../../../shared/native-chat/input/composer/native-chat-paste-bytes'
 
 const RULE = '─'.repeat(120)
 const HEADER = ['      ▄▀▀▄        Antigravity CLI 1.2.8', '─'.repeat(60)]

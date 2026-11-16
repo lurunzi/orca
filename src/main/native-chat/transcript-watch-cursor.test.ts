@@ -6,7 +6,7 @@ import type {
   NativeChatMessage,
   NativeChatTurnLifecycle
 } from '../../shared/native-chat/native-chat-types'
-import type { NativeChatTranscriptSubscription } from './transcript-watch-contract'
+import type { NativeChatTranscriptSubscription } from './transcript-watching/transcript-watch-contract'
 import { subscribeNativeChatTranscript } from './transcript-watch'
 
 const subscriptions = new Set<NativeChatTranscriptSubscription>()

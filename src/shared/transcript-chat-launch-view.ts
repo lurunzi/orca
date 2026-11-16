@@ -1,9 +1,9 @@
-import { canMirrorLaunchDraftToNativeChat } from './native-chat/input/native-chat-launch-draft-mirrorability'
-import { isNativeChatTranscriptLocalReadable } from './native-chat/transcript/native-chat-transcript-readability'
+import { canMirrorLaunchDraftToNativeChat } from './native-chat/input/composer/native-chat-launch-draft-mirrorability'
+import { isNativeChatTranscriptLocalReadable } from './native-chat/transcript/messages/native-chat-transcript-readability'
 import {
   nativeChatPreferenceFor,
   type NativeChatDefaultSettings
-} from './structured-native-chat-launch-route'
+} from './agent-launch/choices/structured-native-chat-launch-route'
 
 export const TRANSCRIPT_CHAT_AGENTS = ['cursor', 'antigravity'] as const
 

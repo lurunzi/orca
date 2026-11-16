@@ -1,6 +1,6 @@
 import type { CanUseTool, OnUserDialog, PermissionResult } from '@anthropic-ai/claude-agent-sdk'
 import { SESSION_INBOX_TOOL_NAMES } from '../../../shared/session-inbox-tool-contract'
-import type { ClaudePromptRegistry } from '../claude-prompt-registry'
+import type { ClaudePromptRegistry } from './permissions/claude-prompt-registry'
 import type { ClaudeStructuredSessionEvent } from './claude-structured-session-state'
 import type { ClaudeStreamJsonConnectionHandlers } from '../claude-stream-json-connection'
 import type { ClaudeStructuredLaunch } from './launch/claude-structured-launch-resolution'
@@ -9,7 +9,7 @@ import { createClaudeFullAccessPolicy } from './claude-full-access-policy'
 import {
   claudePermissionPresentation,
   claudePermissionSubject
-} from '../claude-permission-presentation'
+} from './permissions/claude-permission-presentation'
 
 export type ClaudePermissionCallbackDeps = {
   sessionId: string

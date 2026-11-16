@@ -2,7 +2,7 @@ import { copyFile, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
-import { removeTree } from '../../../shared/windows-transient-lock-removal'
+import { removeTree } from '../../../shared/file-write/windows-transient-lock-removal'
 import { prepareLegacyTranscriptImport } from './history-import/journal-legacy-import'
 
 const roots: string[] = []

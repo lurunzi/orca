@@ -1,7 +1,7 @@
 import {
   agentSessionAccountHome,
   agentSessionAccountHomePath
-} from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+} from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import { ACP_LAUNCH_SPECS } from '../../../acp/launch/acp-launch-registry'
 import type { AcpLaunchSpec } from '../../../acp/launch/acp-launch-contract'
@@ -20,7 +20,7 @@ import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../
 import { supportsClaudeStructuredLocation } from '../../../claude/structured/launch/claude-structured-location-support'
 import { supportsAcpStructuredLocation } from '../../../acp/session/acp-structured-location-support'
 import { PI_RPC_RUNTIME_METADATA } from '../../../pi/rpc-runtime-metadata'
-import { getClaudeProfileRouter } from '../../../claude-accounts/claude-profile-installed-router'
+import { getClaudeProfileRouter } from '../../../claude-accounts/profiles/routing/claude-profile-installed-router'
 import { claudeChatAccountSwitchable } from '../../../claude/structured/launch/claude-structured-account-switch'
 import { codexChatAccountSwitchable } from '../../../codex/structured/launch/codex-structured-account-switch'
 import {
@@ -32,7 +32,7 @@ import {
   claudeModelCatalogDiscovery,
   codexModelCatalogDiscovery
 } from '../model-catalog/structured-agent-model-catalog-discovery'
-import { resolveStructuredAgentCommand } from '../../../native-chat/structured-agent-command-resolution'
+import { resolveStructuredAgentCommand } from '../../../native-chat/agent-launch/structured-agent-command-resolution'
 import { getProfileUserDataPath } from '../../../orca-profiles/profile-storage-paths'
 import type {
   StructuredAgentAccountHomeRequest,
@@ -61,7 +61,8 @@ function acpChatProgram(spec: AcpLaunchSpec): StructuredAgentChatProgram {
       ? {
           hostAlternative: async (shellEnv, settings) =>
             (await selectAcpHostAccountHome(spec, shellEnv, getProfileUserDataPath(), settings)) !==
-            null
+            null,
+          ...(managedRuntime ? { onlyHostAlternative: () => managedRuntime.pin() === null } : {})
         }
       : {})
   }
@@ -95,8 +96,7 @@ function acpMetadata(spec: AcpLaunchSpec): StructuredAgentRuntimeMetadata {
               })
               return { ...invocation, env }
             },
-            minimumVersions,
-            ...(spec.readVersion ? { readVersion: spec.readVersion } : {})
+            minimumVersions
           }
         }
       : {}),

@@ -3,7 +3,7 @@ import { lstat, mkdir, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { readNodeFileWithinLimit } from '../../../shared/file-content/node-bounded-file-reader'
-import { renameFileWithWindowsRetryAsync } from '../../../shared/windows-retry-file-operations'
+import { renameFileWithWindowsRetryAsync } from '../../../shared/file-write/windows-retry-file-operations'
 import {
   isConfiguredTerminalLimit,
   MAX_CONFIGURED_TERMINALS,
@@ -15,6 +15,7 @@ import { isSafeOwnedDirectory } from '../../../shared/owned-private-directory'
 import { awaitDaemonValueWithinCallerDeadline } from '../launch/daemon-request-deadline'
 import { DEFAULT_MAX_HOST_TERMINALS, resolveMaxHostTerminals } from './host-terminal-ledger'
 import { SystemPtyLimit } from './system-pty-limit'
+import { orcaHomeDir } from '../../../shared/product-identity-home'
 
 export function hostTerminalPolicyPath(home: string, machine: string | null): string | null {
   if (!machine) {
@@ -24,7 +25,7 @@ export function hostTerminalPolicyPath(home: string, machine: string | null): st
     .update(`${process.platform}:${machine}`)
     .digest('hex')
     .slice(0, 16)
-  return join(home, '.orca', 'host-settings', key, 'terminals.json')
+  return join(orcaHomeDir(home), 'host-settings', key, 'terminals.json')
 }
 
 async function readSavedMaximum(path: string): Promise<number | null> {

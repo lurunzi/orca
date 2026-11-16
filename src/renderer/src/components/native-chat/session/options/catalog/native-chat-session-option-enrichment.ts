@@ -4,8 +4,8 @@ import {
   AGENT_MODEL_CATALOG_FAILURE_TTL_MS
 } from '../../../../../../../shared/agent-model-catalog-refresh-policy'
 import { getAgentSessionOptionCatalog } from '../../../../../../../shared/agent-session/options/agent-session-option-catalog'
-import type { CatalogModel } from '../../../../../../../shared/agent-session/options/agent-session-option-catalog-types'
-import { mergeDiscoveredCatalogModels } from '../../../../../../../shared/native-chat/input/native-chat-discovered-catalog-models'
+import type { CatalogModel } from '../../../../../../../shared/agent-session/options/catalog-providers/agent-session-option-catalog-types'
+import { mergeDiscoveredCatalogModels } from '../../../../../../../shared/native-chat/input/session-options/native-chat-discovered-catalog-models'
 
 type CatalogEnrichmentEntry = {
   state: 'idle' | 'pending' | 'settled'

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { decodeAntigravityTranscriptLine } from '../../src/main/native-chat/transcript-line-decoders-antigravity'
-import { formatAgentImagePath } from '../../src/shared/agent-image-paste'
+import { decodeAntigravityTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-antigravity'
+import { formatAgentImagePath } from '../../src/shared/native-chat/input/composer/agent-image-paste'
 import {
   pendingSendsAsMessages,
   prunePendingSends
-} from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
+} from '../../src/shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 
 function userTurn(paths: string[], text: string) {
   return decodeAntigravityTranscriptLine(

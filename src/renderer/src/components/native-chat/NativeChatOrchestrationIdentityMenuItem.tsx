@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { DropdownMenuCheckboxItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { translate } from '@/i18n/i18n'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import { useTranslate } from '@/i18n/use-translate'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { StructuredSessionOrchestrationIdentityStatus } from '../../../../shared/structured-session-orchestration-identity'
 
 type NativeChatOrchestrationIdentityMenuItemProps = {
@@ -15,6 +15,7 @@ export function NativeChatOrchestrationIdentityMenuItem({
   sessionId,
   target
 }: NativeChatOrchestrationIdentityMenuItemProps): React.JSX.Element | null {
+  const t = useTranslate()
   const api = window.api.orchestrationIdentity
   // Why: structured identities are local-only; paired/remote runtimes cannot grant one.
   const offered = api !== undefined && target.kind === 'local'
@@ -62,7 +63,7 @@ export function NativeChatOrchestrationIdentityMenuItem({
       })
       .catch((error: unknown) => {
         toast.error(
-          translate(
+          t(
             'components.native-chat.orchestrationIdentity.updateFailed',
             'Could not change orchestration identity'
           ),
@@ -80,11 +81,8 @@ export function NativeChatOrchestrationIdentityMenuItem({
     status?.state !== 'unavailable'
       ? null
       : status.reason === 'busy'
-        ? translate(
-            'components.native-chat.orchestrationIdentity.busy',
-            'Busy — try after the turn'
-          )
-        : translate('components.native-chat.orchestrationIdentity.unavailable', 'Unavailable')
+        ? t('components.native-chat.orchestrationIdentity.busy', 'Busy — try after the turn')
+        : t('components.native-chat.orchestrationIdentity.unavailable', 'Unavailable')
 
   return (
     <>
@@ -96,7 +94,7 @@ export function NativeChatOrchestrationIdentityMenuItem({
         // Why: keep the menu open so the settled state is visible after the provider restarts.
         onSelect={(event) => event.preventDefault()}
       >
-        {translate('components.native-chat.orchestrationIdentity.label', 'Orchestration identity')}
+        {t('components.native-chat.orchestrationIdentity.label', 'Orchestration identity')}
         {unavailableLabel ? (
           <span className="ml-auto text-2xs text-muted-foreground">{unavailableLabel}</span>
         ) : null}

@@ -5,7 +5,7 @@ import type {
   GitLabWorkItem,
   MRListState
 } from '../../../shared/gitlab-types'
-import type { IssueSourcePreference } from '../../../shared/repo-types'
+import type { IssueSourcePreference } from '../../../shared/repository/repo-types'
 import { mapIssueToWorkItem, mapMRToWorkItem } from '../requests/gitlab-response-mapping'
 import { acquire, release } from '../requests/glab-request-admission'
 import { classifyListFetchError } from '../requests/glab-error-classification'
@@ -15,7 +15,7 @@ import {
   glabHostnameArgs,
   glabRepoExecOptions
 } from '../projects/gitlab-project-ref-resolution'
-import { glabExecFileAsync } from '../../git/command-runner/glab-exec-file'
+import { glabExecFileAsync } from '../../git/command-runner/hosted-cli/glab-exec-file'
 import { parseGlabJsonList } from '../requests/glab-api-response'
 import { resolveIssueSource } from '../issues/gitlab-issue-source-resolution'
 import type { ProjectRef } from '../projects/project-ref-parser'

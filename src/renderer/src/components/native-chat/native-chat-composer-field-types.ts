@@ -1,12 +1,12 @@
 import type { ClipboardEventHandler, KeyboardEventHandler, ReactNode, RefObject } from 'react'
 import type { useImeEnterGestureOwnership } from '@/lib/text-input/ime/ime-composition-keyboard-event'
-import type { ComposerAutocomplete } from '../../../../shared/native-chat/input/native-chat-composer-autocomplete'
-import type { NativeChatPickerItem } from '../../../../shared/native-chat/input/native-chat-picker-items'
+import type { ComposerAutocomplete } from '../../../../shared/native-chat/input/composer/native-chat-composer-autocomplete'
+import type { NativeChatPickerItem } from '../../../../shared/native-chat/input/composer/native-chat-picker-items'
 import type {
   SessionOptionDescriptor,
   SessionOptionsSurface
 } from '../../../../shared/native-chat/input/native-chat-session-options'
-import type { NativeChatFollowUpBehavior } from '../../../../shared/native-chat/input/native-chat-follow-up-behavior'
+import type { NativeChatFollowUpBehavior } from '../../../../shared/native-chat/input/composer/native-chat-follow-up-behavior'
 import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
 import type { NativeChatMentionFiles } from './composer/pickers/use-native-chat-mention-files'
 import type { NativeChatComposerNotice } from './composer/controls/native-chat-composer-notice'
@@ -16,7 +16,7 @@ import type { NativeChatAfterStopSend } from './composer/submit/native-chat-comp
 import type { NativeChatComposerImageAttachment } from './attachments/chips/native-chat-image-attachment'
 import type { NativeChatOptionPickerRequest } from './session/options/controls/native-chat-option-picker-request'
 import type { NativeChatComposerGoalMode } from './composer/submit/use-native-chat-composer-submit'
-import type { NativeChatSteerChordPreview } from '../../../../shared/native-chat/input/use-native-chat-steer-chord-preview'
+import type { NativeChatSteerChordPreview } from '../../../../shared/native-chat/input/composer/use-native-chat-steer-chord-preview'
 
 export type NativeChatComposerFieldProps = {
   editSession?: { cancel: () => void }

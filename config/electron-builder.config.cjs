@@ -5,6 +5,9 @@ const {
   MACOS_FOLDER_USAGE_DESCRIPTIONS,
   applyMacHelperFolderUsageDescriptions
 } = require('./scripts/desktop-distribution/macos/macos-folder-usage-descriptions.cjs')
+const {
+  giveMacExecutableUniqueUuid
+} = require('./scripts/desktop-distribution/macos/macos-executable-uuid.cjs')
 const electronBuilderNativeRebuild = require('./scripts/desktop-distribution/runtime-verification/electron-builder-native-rebuild.cjs')
 const {
   assertPackagedDaemonEntryExists,
@@ -120,7 +123,23 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-const appId = 'com.stablyai.orca'
+// UDA Orca fork identity: keep equal to src/shared/product-identity.ts (CJS cannot import TS;
+// src/shared/product-identity.test.ts compares them).
+const UDA_ORCA_IDENTITY = {
+  appId: 'com.ultramarine.uda-orca',
+  productName: 'UDA Orca',
+  packageName: 'uda-orca',
+  protocolScheme: 'uda-orca',
+  releaseOwner: 'lurunzi',
+  releaseRepo: 'orca'
+}
+const appId = UDA_ORCA_IDENTITY.appId
+// Electron's packaged app.getName() is package.json `name`, which picks the userData folder.
+const extraMetadataVersion = devChannelBuildVersion
+  ? { version: devChannelBuildVersion }
+  : localBuildVersion
+    ? { version: localBuildVersion }
+    : {}
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -248,14 +267,10 @@ const ORCA_MAC_TEAM_ID = '6CX3WHS9HZ'
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: 'Orca',
-  protocols: [{ name: 'Orca', schemes: ['orca'] }],
+  productName: UDA_ORCA_IDENTITY.productName,
+  protocols: [{ name: UDA_ORCA_IDENTITY.productName, schemes: [UDA_ORCA_IDENTITY.protocolScheme] }],
   toolsets: { appimage: '1.0.3' },
-  ...(devChannelBuildVersion
-    ? { extraMetadata: { version: devChannelBuildVersion } }
-    : localBuildVersion
-      ? { extraMetadata: { version: localBuildVersion } }
-      : {}),
+  extraMetadata: { name: UDA_ORCA_IDENTITY.packageName, ...extraMetadataVersion },
   directories: {
     buildResources: 'resources/build'
   },
@@ -331,6 +346,7 @@ module.exports = {
     'out/package.json',
     'out/cli/**',
     'out/shared/**',
+    'out/main/worker-threads/worker-thread-{entry-path,spawn}.js',
     'out/main/agent-hooks/**',
     'out/main/antigravity/**',
     'out/main/claude/**',
@@ -348,26 +364,33 @@ module.exports = {
     'out/main/filesystem/macos-tree-clone.js',
     'out/main/orca-profiles/profile-index-store.js',
     'out/main/persistence/profile-state/**',
-    'out/main/plugins/plugin-authoring-checks.js',
+    'out/main/plugins/artifacts/plugin-artifact-validation.js',
+    'out/main/plugins/artifacts/plugin-content-hash.js',
+    'out/main/plugins/artifacts/plugin-host-call-validation.js',
+    'out/main/plugins/catalog/plugin-catalog-release-entry.js',
     'out/main/environment-doctor/environment-doctor.js',
     'out/main/environment-doctor/environment-doctor-host.js',
+    'out/main/dashboard-accounts/dashboard-*-protocol.js',
     // `orca plugin test` and `orca plugin check` load the runtime, kit and hooks in Node.
     'resources/plugins/declarative/*.mjs',
     'out/main/skills/bundled-skill-install/bundled-skill-local-host.js',
     'out/main/skills/bundled-skill-install/bundled-skill-installation.js',
-    'out/main/startup/http1-compatibility-marker.js',
+    'out/main/startup/network-compatibility/http1-compatibility-marker.js',
     'out/main/daemon-entry.js',
     'out/main/session-scanner-service-entry.js',
     'out/main/wsl-transcript-fs-process-entry.js',
     'out/main/foreign-sqlite-reader-entry.js',
+    'out/main/agent-identity-worker-entry.js',
     'out/main/session-search-worker-entry.js',
+    'out/main/journal-sql-worker-entry.js',
+    'out/main/journal-sql-reader-entry.js',
     'out/main/plugin-host-entry.js',
     'out/main/browser-extension-native-host-supervisor-entry.js',
     'out/main/computer-sidecar.js',
     'out/main/parcel-watcher-process-entry.js',
     'out/main/orcad/orcad-local-serve-selection-entry.js',
-    'out/main/orcad/orcad-stale-lock-reclaim.js',
-    'out/main/orcad/orcad-host-identity-reset.js',
+    'out/main/orcad/instance-lock/orcad-stale-lock-reclaim.js',
+    'out/main/orcad/profile-state/orcad-host-identity-reset.js',
     'out/main/chunks/**',
     'out/renderer/**',
     'out/mobile-web/**',
@@ -422,6 +445,17 @@ module.exports = {
       applyMacHelperFolderUsageDescriptions(
         join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`),
         context.packager.appInfo.productFilename
+      )
+      // Before signing, so the signature seals the rewritten executable.
+      giveMacExecutableUniqueUuid(
+        join(
+          context.appOutDir,
+          `${context.packager.appInfo.productFilename}.app`,
+          'Contents',
+          'MacOS',
+          context.packager.appInfo.productFilename
+        ),
+        context.packager.appInfo.id
       )
       const architecture = macSliceArch(context.arch, 'local-build compatibility')
       const schedulingAddon = buildMacShipItScheduling(resourcesDir, architecture)
@@ -765,8 +799,8 @@ module.exports = {
   npmRebuild: true,
   publish: {
     provider: 'github',
-    owner: 'stablyai',
-    repo: devChannelRepo ?? 'orca',
+    owner: UDA_ORCA_IDENTITY.releaseOwner,
+    repo: devChannelRepo ?? UDA_ORCA_IDENTITY.releaseRepo,
     // Keep main-repo releases draft until release-cut verifies all assets; early --publish always would expose missing Windows installers.
     releaseType: devChannelRepo ? 'prerelease' : 'draft'
   }

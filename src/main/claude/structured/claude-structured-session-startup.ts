@@ -1,5 +1,5 @@
-import { isClaudeQueryClosed } from '../claude-agent-sdk-control-requests'
-import { claudeStartFailure } from '../claude-startup-failure'
+import { isClaudeQueryClosed } from '../sdk-transport/claude-agent-sdk-control-requests'
+import { claudeStartFailure } from '../sdk-transport/claude-startup-failure'
 import {
   startupAcquisitionRefusal,
   providerExitObserved
@@ -8,8 +8,9 @@ import {
 
 import type { AgentSessionAccountKind } from '../../../shared/agent-session/agent-session-availability'
 import type { StructuredAgentSessionProviderOpenResult } from '../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
+import { assertDashboardClaudeAuthenticationSource } from '../../dashboard-accounts/dashboard-claude-authentication'
 import type { ClaudeStreamJsonConnection } from '../claude-stream-json-connection'
-import { ClaudeSlashCommandCatalog } from '../claude-slash-command-catalog'
+import { ClaudeSlashCommandCatalog } from '../command-catalog/claude-slash-command-catalog'
 import {
   claudeAuthDiagnostic,
   claudeInitializationAuthError,
@@ -66,11 +67,15 @@ export async function readClaudeStartupFacts(input: {
   sessionId: string
   providerSessionId: string
   resumesTranscript: boolean
+  dashboardPooled: boolean
   account?: AgentSessionAccountKind
   requestTimeoutMs: number | undefined
   emit: (event: ClaudeStructuredSessionEvent) => void
 }): Promise<ClaudeInitializeFacts> {
   const control = input.connection.initializationResult().then((result) => {
+    if (input.dashboardPooled) {
+      assertDashboardClaudeAuthenticationSource(result)
+    }
     const authError = claudeInitializationAuthError(result, input.account)
     if (authError) {
       throw authError

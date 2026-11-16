@@ -1,17 +1,18 @@
-import type { ClaudeNamingGeneration } from '../../claude-naming-generation'
-import { claudeProviderHandle } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+import type { ClaudeNamingGeneration } from '../../conversation-naming/claude-naming-generation'
+import { claudeProviderHandle } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import { AgentSessionAcquisitionExitUnprovenError } from '../../../native-chat/agent-session-wire/acquisition/structured-agent-session-acquisition-errors'
 import { launchPreparationFailure } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter-errors'
 import type { StructuredAgentSessionAcquireInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { stopAgentSessionProviderRoot } from '../../../native-chat/agent-session-wire/termination/structured-agent-session-provider-exit-proof'
 import { withAgentSessionCreatePhase } from '../../../observability/agent-session-instrumentation'
 import type { ClaudeStructuredLaunch } from './claude-structured-launch-resolution'
+import { retainsClaudePoolRootExit } from '../claude-structured-close-exit-observation'
 import {
   CLAUDE_APPLY_FLAG_SETTINGS_CONTROL,
   CLAUDE_CACHED_FLAG_CHECK_BUDGET_MS,
   CLAUDE_CLI_FLAG_PROBE_KILL_AFTER_MS,
   CLAUDE_EFFORT_FLAG
-} from '../../claude-cli-flag-support'
+} from '../../cli-capabilities/claude-cli-flag-support'
 import {
   claudeStructuredSpawnOptions,
   type ClaudeStructuredSpawnOptions
@@ -76,6 +77,9 @@ export async function resolveClaudeAcquisitionLaunch(args: {
       const firstProof = retainedExit.closePromise ? await retainedExit.closePromise : false
       const proven = firstProof || (await retainedExit.connection.close().catch(() => false))
       const cleanupError = claudeCloseReport(retainedExit.connection, proven, retainedExit.error)
+      if (retainsClaudePoolRootExit(retainedExit.session)) {
+        throw cleanupError ?? new AgentSessionAcquisitionExitUnprovenError(retainedExit.error)
+      }
       if (cleanupError instanceof AgentSessionAcquisitionExitUnprovenError) {
         throw cleanupError
       }

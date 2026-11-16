@@ -1,6 +1,6 @@
 import { newTabLaunchFields } from '@/lib/launch-agent-new-tab-fields'
 import { readNativeChatDiscoveredModelIdsForWorktree } from '@/components/native-chat/session/options/catalog/native-chat-session-option-discovery'
-import { seedNativeChatAppliedSessionOptions } from '../../../../../../shared/native-chat/input/native-chat-session-option-cache'
+import { seedNativeChatAppliedSessionOptions } from '../../../../../../shared/native-chat/input/session-options/native-chat-session-option-cache'
 import type { SessionOptionValue } from '../../../../../../shared/native-chat/input/native-chat-session-options'
 
 type NewTabFieldArgs = Parameters<typeof newTabLaunchFields>

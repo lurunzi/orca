@@ -2,11 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import {
-  findKeybindingConflicts,
-  getEffectiveKeybindingsForAction,
-  keybindingMatchesAction
-} from '../../shared/keybindings'
+import { findKeybindingConflicts } from '../../shared/keybindings/formatting'
+import { getEffectiveKeybindingsForAction } from '../../shared/keybindings/effective'
+import { keybindingMatchesAction } from '../../shared/keybindings/matching'
 import { getUserKeybindingsPath } from './keybinding-file'
 import { KeybindingService } from './keybinding-service'
 
@@ -27,7 +25,7 @@ describe('KeybindingService profile defaults', () => {
   }
 
   function write(document: unknown): void {
-    mkdirSync(join(home, '.orca'), { recursive: true })
+    mkdirSync(join(home, '.uda-orca'), { recursive: true })
     writeFileSync(getUserKeybindingsPath(home), JSON.stringify(document))
   }
 
@@ -116,7 +114,7 @@ describe('KeybindingService profile defaults', () => {
   })
 
   it('uses custom legacy settings in memory when importing fails and retries next launch', () => {
-    mkdirSync(join(home, '.orca', 'keybindings.json.tmp'), { recursive: true })
+    mkdirSync(join(home, '.uda-orca', 'keybindings.json.tmp'), { recursive: true })
     const options = {
       homePath: home,
       platform: 'darwin' as const,
@@ -128,7 +126,7 @@ describe('KeybindingService profile defaults', () => {
       'worktree.palette': ['Mod+Alt+J'],
       'terminal.clear': ['Mod+K']
     })
-    rmSync(join(home, '.orca', 'keybindings.json.tmp'), { recursive: true })
+    rmSync(join(home, '.uda-orca', 'keybindings.json.tmp'), { recursive: true })
     expect(new KeybindingService(options).getOverrides()).toEqual({
       'worktree.palette': ['Mod+Alt+J'],
       'terminal.clear': ['Mod+K']
@@ -141,14 +139,14 @@ describe('KeybindingService profile defaults', () => {
   })
 
   it('persists pending legacy choices together with a new settings edit after recovery', () => {
-    mkdirSync(join(home, '.orca', 'keybindings.json.tmp'), { recursive: true })
+    mkdirSync(join(home, '.uda-orca', 'keybindings.json.tmp'), { recursive: true })
     const older = new KeybindingService({
       homePath: home,
       platform: 'darwin',
       legacySearchDefaults: true,
       getLegacyOverrides: () => ({ 'worktree.palette': ['Mod+Alt+J'] })
     })
-    rmSync(join(home, '.orca', 'keybindings.json.tmp'), { recursive: true })
+    rmSync(join(home, '.uda-orca', 'keybindings.json.tmp'), { recursive: true })
     expect(older.setActionBindings('view.tasks', ['Ctrl+Alt+T']).overrides).toEqual({
       'worktree.palette': ['Mod+Alt+J'],
       'terminal.clear': ['Mod+K'],

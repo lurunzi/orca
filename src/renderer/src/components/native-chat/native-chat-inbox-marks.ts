@@ -3,7 +3,7 @@
 // the journal, and a mark only hides or annotates an entry until the agent's next word on it.
 
 import { useCallback, useSyncExternalStore } from 'react'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 
 export type NativeChatInboxMark = 'dismissed' | 'answered' | 'sent'
 

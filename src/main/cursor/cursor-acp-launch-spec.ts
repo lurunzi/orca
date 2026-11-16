@@ -1,16 +1,22 @@
 import { join } from 'node:path'
 import type { AcpLaunchSpec } from '../acp/launch/acp-launch-contract'
-import { directoryAccountBinding } from '../acp/launch/acp-account-binding'
 import { CURSOR_ACP_DIALECT } from '../acp/acp-dialects/cursor-dialect'
 import { readCursorModelCatalog } from '../acp/acp-dialects/cursor-model-catalog'
-import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/agent-session-setup-commands'
-import type { StructuredAgentSessionHistory } from '../native-chat/structured-agent-cli-conversations'
+import { directoryAccountBinding } from '../acp/launch/acp-account-binding'
+import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/launch/agent-session-setup-commands'
+import type { StructuredAgentSessionHistory } from '../native-chat/conversation-adoption/structured-agent-cli-conversations'
 
-// ACP chats live in <config>/acp-sessions; terminal `--resume` reads <config>/chats, so neither resumes the other.
-const CURSOR_ACP_SESSION_HISTORY: StructuredAgentSessionHistory = {
+// `--resume <id>` reads the terminal store; it cannot open a chat's ACP session.
+const CURSOR_SESSION_HISTORY: StructuredAgentSessionHistory = {
   rowAgents: ['cursor'],
   rowSessionId: (link) => link.handle.nativeId,
   parseResumeArgs: () => null
+}
+
+// The config folder holds Cursor's allowlist and sessions; its login lives elsewhere per platform.
+function cursorConfigDirectory(homePath: string, env: NodeJS.ProcessEnv): string {
+  const xdg = (env.XDG_CONFIG_HOME ?? process.env.XDG_CONFIG_HOME)?.trim()
+  return xdg ? join(xdg, 'cursor') : join(homePath, '.cursor')
 }
 
 /** cursor-agent runs hook commands through $SHELL; Orca's Windows hooks are PowerShell, so a
@@ -27,31 +33,32 @@ export function scrubCursorAcpEnvironment(
   return ['SHELL']
 }
 
-export const CURSOR_LAUNCH_SPEC = {
+export const CURSOR_LAUNCH_SPEC: AcpLaunchSpec = {
   agent: 'cursor',
   command: 'cursor-agent',
-  // No --force: Orca answers each permission request, approving them under Full access.
-  args: () => ['acp'],
+  // No bypass flag; full access approves permission requests individually.
+  args: () => ['--disable-auto-update', 'acp'],
   env: {},
   scrubEnvironment: scrubCursorAcpEnvironment,
   dialect: CURSOR_ACP_DIALECT,
   loginCommand: agentSessionSetupFor('cursor')?.loginCommand ?? [],
-  // Reuses the existing `cursor-agent login`; never starts an interactive sign-in.
-  authMethod: ({ advertised }) =>
-    advertised.includes('cursor_login') ? 'cursor_login' : undefined,
-  account: directoryAccountBinding('CURSOR_CONFIG_DIR', (homePath) => join(homePath, '.cursor')),
-  // The installer's folders, for hosts whose PATH snapshot predates the install.
+  // No authMethod: `authenticate` while signed out opens a browser and waits.
+  account: directoryAccountBinding('CURSOR_CONFIG_DIR', cursorConfigDirectory),
+  // The install script's default prefix; on Windows, the installer's folder.
   installDirectories: ({ env, homePath }) =>
     process.platform === 'win32'
       ? [join(env.LOCALAPPDATA ?? join(homePath, 'AppData', 'Local'), 'cursor-agent')]
       : [join(homePath, '.local', 'bin')],
+  // The build hash parses as a semver prerelease, so this is the day before the first verified ACP build.
+  minimumVersions: ['2026.10.21'],
   modelDiscovery: {
     kind: 'initialize',
-    read: readCursorModelCatalog,
+    read: (_initialized, connection) => readCursorModelCatalog(connection),
+    // Each model's listed defaults are its own, not the model a new session starts on.
     listingNamesConfiguredModel: false
   },
   transcriptImport: null,
-  sessionHistory: CURSOR_ACP_SESSION_HISTORY,
-  // Base model ids plus per-model effort options, instead of one fixed variant id per model.
-  clientCapabilitiesMeta: { parameterizedModelPicker: true }
-} satisfies AcpLaunchSpec
+  sessionHistory: CURSOR_SESSION_HISTORY,
+  // No session/close or delete: a naming task's session would stay in the user's Cursor history.
+  keepsEverySession: true
+}

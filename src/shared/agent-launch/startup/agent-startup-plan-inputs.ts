@@ -8,7 +8,7 @@ import {
 import { resolveStartupShell, type AgentStartupShell } from './tui-agent-startup-shell'
 import { terminalSessionOptionInputs } from './tui-agent-launch-command'
 import { rememberedNativeChatLaunchChoices } from '../../native-chat/input/terminal-native-chat-launch-seed'
-import { resolveLocalWindowsAgentStartupShell } from '../../windows-terminal-shell'
+import { resolveLocalWindowsAgentStartupShell } from '../../shell/launch/windows-terminal-shell'
 
 /** The settings slice a launch reads; hosts pass their whole `GlobalSettings` row. */
 export type AgentStartupSettings = Partial<

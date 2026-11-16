@@ -1,37 +1,45 @@
 import { describe, expect, it, vi } from 'vitest'
 import './runtime-test-module-registration.spec'
 import { OrcaRuntimeService } from '../orca-runtime'
-import {
-  applyAgentStatusHooksEnabledMock,
-  reconcileClaudeAgentViewMock
-} from '../orca-runtime-test-mocks/setup.spec'
+import { applyAgentStatusHooksEnabledMock } from '../orca-runtime-test-mocks/setup.spec'
 import { deferred, store } from './orca-runtime-test-fixtures.spec'
 import { RuntimeClientSettingsController } from '../client/settings/runtime-client-settings'
 
 describe('OrcaRuntimeService', () => {
-  it.each([true, false])(
-    'awaits navigation-only updates from paired clients (%s)',
-    async (enabled) => {
-      let settings = { ...store.getSettings(), claudeSubagentNavigationEnabled: !enabled }
-      const controller = new RuntimeClientSettingsController({
-        getSettings: () => settings,
-        updateSettings: (updates) => {
-          settings = { ...settings, ...updates }
-        }
-      })
-      const gate = deferred<void>()
-      reconcileClaudeAgentViewMock.mockImplementationOnce(() => gate.promise)
-      const complete = vi.fn()
-      const pending = controller.update({ claudeSubagentNavigationEnabled: enabled }).then(complete)
-      await vi.waitFor(() =>
-        expect(reconcileClaudeAgentViewMock).toHaveBeenLastCalledWith(settings)
-      )
-      expect(complete).not.toHaveBeenCalled()
-      gate.resolve()
-      await pending
-      expect(complete).toHaveBeenCalledOnce()
-    }
-  )
+  it('lets a paired client keep this host awake', async () => {
+    let settings = store.getSettings()
+    const setMode = vi.fn()
+    const controller = new RuntimeClientSettingsController({
+      getSettings: () => settings,
+      updateSettings: (updates) => {
+        settings = { ...settings, ...updates }
+      }
+    })
+    controller.computerAwake.attach({ getStatus: () => ({ mode: 'on', active: true }), setMode })
+
+    const result = await controller.update({ computerAwakeMode: 'on' })
+
+    expect(setMode).toHaveBeenCalledExactlyOnceWith('on')
+    expect(settings).toMatchObject({
+      computerAwakeMode: 'on',
+      keepComputerAwakeWhileAgentsRun: true
+    })
+    expect(result.computerAwake).toEqual({ mode: 'on', active: true })
+  })
+
+  it('refuses an awake mode on a host that cannot hold itself awake', async () => {
+    const updateSettings = vi.fn()
+    const controller = new RuntimeClientSettingsController({
+      getSettings: () => store.getSettings(),
+      updateSettings
+    })
+
+    await expect(controller.update({ computerAwakeMode: 'on' })).rejects.toThrow(
+      'computer_awake_unsupported'
+    )
+    expect(updateSettings).not.toHaveBeenCalled()
+    expect(controller.get()).not.toHaveProperty('computerAwake')
+  })
 
   it('repairs missing hooks when explicitly enabled again', async () => {
     const settings = { ...store.getSettings(), agentStatusHooksEnabled: true }

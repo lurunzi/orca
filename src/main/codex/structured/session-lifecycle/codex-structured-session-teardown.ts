@@ -13,6 +13,8 @@ import type {
   CodexStructuredSessionEvent
 } from './codex-structured-session-state'
 
+import type { CodexShortLivedOperations } from './codex-short-lived-operations'
+
 export type CodexStructuredSessionTeardownDeps = {
   sessions: Map<string, CodexSession>
   acquisitions: CodexAcquisitionRegistry
@@ -116,10 +118,19 @@ export class CodexStructuredSessionTeardown {
     }).then((closed) => this.settled(sessionId, closed))
   }
 
-  closeAll = (): Promise<void> =>
-    closeAllCodexSessions(this.deps.sessions, this.deps.acquisitions, (sessionId) =>
-      this.close(sessionId)
+  closeAll = async (shortLived?: CodexShortLivedOperations): Promise<void> => {
+    const providers = closeAllCodexSessions(
+      this.deps.sessions,
+      this.deps.acquisitions,
+      (sessionId) => this.close(sessionId)
     )
+    const results = await Promise.allSettled([providers, shortLived?.closeAll()])
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        throw result.reason
+      }
+    }
+  }
 
   private settled(sessionId: string, closed: boolean): boolean {
     if (closed) {

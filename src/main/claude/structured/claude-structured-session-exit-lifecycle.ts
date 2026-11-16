@@ -1,5 +1,5 @@
 import type { ClaudeStreamJsonConnection } from '../claude-stream-json-connection'
-import { withTimeout } from '../../../shared/promise-timeout-fallback'
+import { withTimeout } from '../../../shared/concurrency/promise-timeout-fallback'
 import {
   agentSessionFailureFact,
   providerDiagnosticOf
@@ -14,8 +14,8 @@ import {
   claudeSessionHasTurnWork,
   settledClaudeTurnEndLeaf
 } from './claude-structured-resume-point'
-import { claudeHeldSends } from '../claude-command-lifecycle'
-import { ClaudePluginInputError } from '../claude-plugin-ui'
+import { claudeHeldSends } from './turns/claude-command-lifecycle'
+import { ClaudePluginInputError } from '../sdk-transport/claude-plugin-ui'
 import type { AgentSessionStartEndings } from '../../native-chat/agent-session-wire/startup/structured-agent-session-start-failure'
 import { claudeExitEnding } from './claude-structured-start-ending'
 import {
@@ -24,6 +24,7 @@ import {
   settleClaudeExitedSession
 } from './claude-structured-session-close'
 import { retireClaudeDispatchWaiters } from './claude-structured-dispatch'
+import { retainsClaudePoolRootExit } from './claude-structured-close-exit-observation'
 import {
   AgentSessionAcquisitionExitUnprovenError,
   AgentSessionAcquisitionRootExitObservedError
@@ -57,6 +58,7 @@ export function observeClaudeSessionExit(
   if (!session || session.connection !== attempt.connection) {
     return
   }
+  session.historyCatchUp?.abort()
   const observedAt = lifecycle.deps.now?.() ?? Date.now()
   session.delivery.dispose()
   session.events?.observeExit?.(claudeHeldSends(session), observedAt)
@@ -107,8 +109,9 @@ export function observeClaudeSessionExit(
       .then((proven) => {
         // Observed root exit releases the lease even if tree cleanup remains unverified.
         if (
+          retainsClaudePoolRootExit(session) ||
           claudeCloseReport(session.connection, proven, error) instanceof
-          AgentSessionAcquisitionExitUnprovenError
+            AgentSessionAcquisitionExitUnprovenError
         ) {
           return undefined
         }

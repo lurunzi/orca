@@ -1,24 +1,23 @@
-import { nativeChatAskScanOrder } from './native-chat-ask-order'
-import { askOptionPreview } from './native-chat-ask-option-preview'
+import { nativeChatAskScanOrder } from './questions/native-chat-ask-order'
+import { askOptionPreview } from './questions/native-chat-ask-option-preview'
 import type {
   AskOption,
   AskPrompt,
   AskQuestion,
   InteractiveQuestionParser
-} from './native-chat-ask-types'
+} from './questions/native-chat-ask-types'
 import { isInterruptedStatusMessage, type NativeChatMessage } from '../native-chat-types'
 import {
   CODEX_ASYNC_QUESTION_TOOL,
   parseCodexAsyncQuestionsInput
-} from '../../codex-async-question-input'
+} from './questions/codex-async-question-input'
 import { parseAntigravityAskInput } from '../../native-chat-antigravity-ask'
 import {
   isDeliveredNativeChatUserMessage,
   isPendingNativeChatUserMessage,
   quotedByQueuedAnswer,
   withoutPendingQueuedAnswers
-} from './native-chat-ask-answer'
-export { isDeliveredNativeChatUserMessage } from './native-chat-ask-answer'
+} from './questions/native-chat-ask-answer'
 
 const QUESTION_TOOL_PARSERS = new Map<string, InteractiveQuestionParser>()
 

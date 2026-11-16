@@ -3,7 +3,7 @@ import { readCodexJournalRecord } from '../journal/codex-structured-journal-tran
 import { codexItemIdentity, readCodexThreadItem } from '../items/codex-thread-item-identity'
 import { CodexTurnOrdinals } from '../journal/codex-turn-ordinals'
 import type { AgentJournalItemIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
-import { waitForPromiseWithSignal } from '../../../../shared/abort-signal-reason'
+import { waitForPromiseWithSignal } from '../../../../shared/concurrency/abort-signal-reason'
 import type { StructuredAgentSessionEventSink } from '../../../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
 import type { StructuredAgentSessionLogger } from '../../../native-chat/agent-session-wire/host/structured-agent-session-logger'
 import {
@@ -19,12 +19,9 @@ import {
   loadCodexReceiptHistory,
   selectCodexHistoryTurn
 } from './codex-structured-thread-history-pages'
-import {
-  readCodexHistoryJournalView,
-  sameCodexHistoryJournalView
-} from '../../history/journal-views/codex-history-journal-view'
+import { readCodexHistoryJournalView } from '../../history/journal-views/codex-history-journal-view'
 
-/** Catch-up failures do not fail open; abandoned invocations cannot write. */
+/** Report verified history; callers decide whether catch-up gates open. */
 export async function catchUpCodexThread(input: {
   connection: Pick<CodexAppServerConnection, 'request'>
   threadId: string
@@ -41,7 +38,7 @@ export async function catchUpCodexThread(input: {
     clientMessageId: string,
     providerIdentity: AgentJournalItemIdentity
   ) => void | Promise<void>
-}): Promise<void> {
+}): Promise<boolean> {
   let restoreHelpers: (() => void) | undefined
   let discardHelpers: (() => void) | undefined
   const outcome = await runHistoryCatchUp({
@@ -54,9 +51,8 @@ export async function catchUpCodexThread(input: {
     timeoutMs: input.timeoutMs ?? DEFAULT_CODEX_REQUEST_TIMEOUT_MS,
     ...(input.logger ? { logger: input.logger } : {}),
     readView: (history, signal) => readCodexHistoryJournalView(history, input.threadId, signal),
-    sameView: sameCodexHistoryJournalView,
-    prepare: async ({ view: readView, history, journal, signal, deadline, check, yieldTurn }) => {
-      const view = readView()
+    prepare: async ({ view: readView, history, signal, deadline, check, yieldTurn }) => {
+      const view = await readView()
       const read = {
         connection: input.connection,
         threadId: input.threadId,
@@ -70,9 +66,13 @@ export async function catchUpCodexThread(input: {
         providerIdentity: AgentJournalItemIdentity
       ) => {
         check()
-        if (input.sink.journalHistory?.() !== history || history.epoch !== view.epoch) {
+        if (
+          input.sink.journalHistory?.() !== history ||
+          (await history.reads.physicalCursor()).epoch !== view.epoch
+        ) {
           throw new Error('stale-history')
         }
+        check()
         await waitForPromiseWithSignal(
           Promise.resolve(input.onReceipt?.(clientMessageId, providerIdentity)),
           signal
@@ -136,14 +136,16 @@ export async function catchUpCodexThread(input: {
           break
         }
       }
-      Object.assign(view, readCodexHistoryJournalView(history, input.threadId, signal))
+      Object.assign(view, await readCodexHistoryJournalView(history, input.threadId, signal))
+      const expectedCursor = view.physicalCursor
       const missing = paginate
         ? await discoverCodexHistory(read, view)
         : { pages: [], order: [...seen], rewound: view.latest !== null && !seen.has(view.latest) }
       const staging = createCodexHistoryImportPlan({
         sessionId: input.sessionId,
         threadId: input.threadId,
-        journal,
+        epoch: history.cursor().epoch,
+        reads: history.reads,
         nativePromptKeys: view.nativePromptKeys,
         subagentExecutions: input.subagentExecutions,
         outsideNotice: view.hasRows ? continuedOutsideNotice(missing.rewound) : undefined,
@@ -164,7 +166,7 @@ export async function catchUpCodexThread(input: {
           .sort((a, b) => rank(a) - rank(b))
         let next = 0
         let groupId: unknown
-        const offer = (turn: Record<string, unknown>) => {
+        const offer = async (turn: Record<string, unknown>) => {
           if (!selectCodexHistoryTurn(turn, view)) {
             return
           }
@@ -172,27 +174,26 @@ export async function catchUpCodexThread(input: {
             staging.completeTurn()
           }
           groupId = turn.id
-          staging.restore(turn)
+          await staging.restore(turn)
         }
         for await (const turn of loadCodexHistory(read, missing.pages, confirmReceipts)) {
           check()
           while (next < supplied.length && rank(supplied[next]!) <= rank(turn)) {
-            offer(supplied[next++]!)
+            await offer(supplied[next++]!)
             await yieldTurn()
           }
           if (selectCodexHistoryTurn(turn, view)) {
-            offer(turn)
+            await offer(turn)
           }
           await yieldTurn()
         }
         while (next < supplied.length) {
-          offer(supplied[next++]!)
+          await offer(supplied[next++]!)
           await yieldTurn()
         }
         const plan = staging.finish()
         restoreHelpers = staging.restoreHelpers
-        Object.assign(view, readCodexHistoryJournalView(history, input.threadId, signal))
-        return plan
+        return plan ? { ...plan, expectedCursor } : null
       } finally {
         staging.dispose()
       }
@@ -206,4 +207,6 @@ export async function catchUpCodexThread(input: {
   } finally {
     discardHelpers?.()
   }
+  // `nothing`: the journal already holds every provider turn, so history is covered.
+  return outcome !== 'skipped'
 }

@@ -1,5 +1,5 @@
 import { withAgentSessionCreatePhase } from '../../observability/agent-session-instrumentation'
-import { agentSessionAccountHome } from '../../../shared/agent-session/lifecycle/agent-session-account-home'
+import { agentSessionAccountHome } from '../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import { CLAUDE_STRUCTURED_AGENT } from './claude-structured-agent-definition'
 import { randomUUID } from 'node:crypto'
 import { refreshClaudeStructuredSessionOptions } from './launch/claude-structured-session-options'
@@ -8,8 +8,8 @@ import type {
   StructuredAgentSessionAcquireInput
 } from '../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 import { claudeProviderHandleLink } from './claude-structured-owner-identity'
-import type { ClaudePromptRegistry } from '../claude-prompt-registry'
-import type { ClaudeJournalTranslator } from '../claude-journal-translator-contract'
+import type { ClaudePromptRegistry } from './permissions/claude-prompt-registry'
+import type { ClaudeJournalTranslator } from './journal/claude-journal-translator-contract'
 import type {
   ClaudeSession,
   ClaudeSessionExit,
@@ -18,12 +18,12 @@ import type {
   ClaudeStructuredSessionEvent,
   ClaudeStructuredSessionAdapterDeps
 } from './claude-structured-session-state'
-import { ClaudeBackgroundTaskTracker } from '../claude-background-task-tracker'
-import { ClaudeChildWorkDecoder } from '../claude-child-work-decoder'
-import { ClaudeSlashCommandCatalog } from '../claude-slash-command-catalog'
+import { ClaudeBackgroundTaskTracker } from '../background-tasks/claude-background-task-tracker'
+import { ClaudeChildWorkDecoder } from '../child-work/claude-child-work-decoder'
+import { ClaudeSlashCommandCatalog } from '../command-catalog/claude-slash-command-catalog'
 import type { ClaudeStructuredLaunch } from './launch/claude-structured-launch-resolution'
 import type { ClaudeAcquisitionLaunch } from './launch/claude-structured-acquisition-launch'
-import type { ClaudeNamingGeneration } from '../claude-naming-generation'
+import type { ClaudeNamingGeneration } from '../conversation-naming/claude-naming-generation'
 import { readClaudeStartupFacts } from './claude-structured-session-startup'
 
 function claudeSessionInitialization(input: {
@@ -45,6 +45,7 @@ function claudeSessionInitialization(input: {
         sessionId: naming.chat,
         providerSessionId: launch.providerSessionId,
         resumesTranscript: launch.resumesTranscript,
+        dashboardPooled: launch.dashboardBinding !== undefined,
         account: launch.account,
         emit: input.emit,
         requestTimeoutMs: input.requestTimeoutMs
@@ -120,6 +121,19 @@ export function createClaudeSessionPublication(input: {
       accountHome: agentSessionAccountHome(CLAUDE_STRUCTURED_AGENT, input.launch.claudeConfigDir)
     },
     session: {
+      ...(input.launch.dashboardBinding
+        ? {
+            dashboardLaunch: {
+              binding: {
+                account_id: input.launch.dashboardBinding.account_id,
+                binding_revision: input.launch.dashboardBinding.binding_revision,
+                credential_version: input.launch.dashboardBinding.credential_version
+              },
+              process: { ...input.process },
+              initialized: false
+            }
+          }
+        : {}),
       connection: input.connection,
       providerSessionId: input.launch.providerSessionId,
       leafUuid: input.leafUuid,
@@ -197,7 +211,8 @@ export async function publishClaudeSessionAttempt({
   callbacks,
   sessions,
   exits,
-  recordPhase
+  recordPhase,
+  snapshotCurrent
 }: {
   sessionId: string
   session: ClaudeSession
@@ -206,8 +221,10 @@ export async function publishClaudeSessionAttempt({
   sessions: ReadonlyMap<string, ClaudeSession>
   exits: ReadonlyMap<string, ClaudeSessionExit>
   recordPhase: StructuredAgentSessionAcquireInput['recordPhase']
+  snapshotCurrent?: () => Promise<void>
 }): Promise<void> {
   await withAgentSessionCreatePhase('publish', recordPhase, async () => {
+    await snapshotCurrent?.()
     callbacks.publish(session)
     attempt.published = true
     attempt.delivery.flush()

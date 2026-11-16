@@ -7,7 +7,7 @@ import {
 } from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { useAppStore } from '@/store'
-import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/non-secure-context-uuid'
+import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/identifiers/non-secure-context-uuid'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { cursorSessionMatchesWorkspace } from '@/lib/cursor-transcript-tab'
 import { prepareAiVaultSessionForTerminalResume } from '@/lib/agent-session/resume/history/ai-vault-session-resume-preparation'

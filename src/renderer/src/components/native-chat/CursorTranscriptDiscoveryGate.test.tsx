@@ -17,7 +17,7 @@ type State = {
   host: ExecutionHostId
   workspaceSessionReady: boolean
   unifiedTabsByWorktree: Record<string, Tab[]>
-  agentStatusByPaneKey: Record<string, { providerSession?: { id: string } }>
+  agentStatusByPaneKey: ReadonlyMap<string, { providerSession?: { id: string } }>
 }
 const store = create<State>(() => ({
   activeWorktreeId: 'worker',
@@ -25,7 +25,7 @@ const store = create<State>(() => ({
   host: 'local',
   workspaceSessionReady: true,
   unifiedTabsByWorktree: {},
-  agentStatusByPaneKey: {}
+  agentStatusByPaneKey: new Map()
 }))
 vi.mock('@/store', () => ({ useAppStore: (...args: Parameters<typeof store>) => store(...args) }))
 // Zustand's imperative reads are part of the discovery fence.
@@ -90,7 +90,7 @@ beforeEach(() => {
     host: 'local',
     workspaceSessionReady: true,
     unifiedTabsByWorktree: {},
-    agentStatusByPaneKey: {}
+    agentStatusByPaneKey: new Map()
   })
   Object.defineProperty(window, 'api', {
     configurable: true,
@@ -164,7 +164,7 @@ it('keeps a session already represented by an Orca terminal in its existing pane
         }
       ]
     },
-    agentStatusByPaneKey: { 'terminal:root': { providerSession: { id: 'one' } } }
+    agentStatusByPaneKey: new Map([['terminal:root', { providerSession: { id: 'one' } }]])
   })
   mocks.list.mockResolvedValue(result([session('one', { modifiedAt: '2026-02-01T00:00:00Z' })]))
   render(<CursorTranscriptDiscoveryGate />)

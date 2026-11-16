@@ -13,7 +13,7 @@ import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/na
 import {
   buildNativeChatPasteBytes,
   NATIVE_CHAT_SUBMIT
-} from '../../../../shared/native-chat/input/native-chat-paste-bytes'
+} from '../../../../shared/native-chat/input/composer/native-chat-paste-bytes'
 import {
   NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_RETRY_MAX

@@ -12,18 +12,13 @@ import type {
   AgentSessionTurnContext,
   TurnOutcome
 } from '../operations/structured-agent-session-turns'
-import { isAgentSessionInteractionMode } from '../../../../shared/agent-session/options/agent-session-interaction-mode'
+import { isAgentSessionInteractionMode } from '../../../../shared/agent-session/options/permissions/agent-session-interaction-mode'
 import {
   type savedAgentSessionCatalogModels,
   structuredAgentSessionPickReply
 } from './structured-agent-session-pick-reply'
 import type { StructuredAgentSessionAdapter } from '../providers/structured-agent-session-adapter'
-import { pickAgentSessionOption } from '../../../runtime/agent-session/records/agent-session-record-options'
 import { restingClaudeFastRefusal } from '../claude-resting-fast-gate'
-import type {
-  StructuredAgentSessionHostSession,
-  StructuredAgentSessionProviderChild
-} from '../host/structured-agent-session-host-types'
 
 function acceptsOptionPick(
   agents: Pick<StructuredAgentRegistry, 'definition'>,
@@ -75,10 +70,7 @@ export function structuredAgentSessionRestingOptionOverridesRefusal(
 /** Records literal picks for registered keys; the native control owns value acceptance. */
 export async function recordStructuredAgentSessionOptionIntent(
   deps: {
-    store: Pick<
-      AgentSessionRecordStore,
-      'getRecord' | 'replaceSessionOptions' | 'reviseSessionOptions'
-    >
+    store: Pick<AgentSessionRecordStore, 'getRecord' | 'replaceSessionOptions' | 'updateRecord'>
     agents: Pick<StructuredAgentRegistry, 'definition'>
     adapter?: Pick<StructuredAgentSessionAdapter, 'projectOptions'>
   } & Parameters<typeof savedAgentSessionCatalogModels>[0],
@@ -113,7 +105,9 @@ export async function recordStructuredAgentSessionOptionIntent(
     options = { ...record.options, [input.key]: input.value }
   } else {
     const picked = { sessionId, fence, ...input, models: undefined, now: ctx.now() }
-    options = (await deps.store.reviseSessionOptions(pickAgentSessionOption, picked)).options ?? {}
+    options =
+      (await deps.store.updateRecord(picked.sessionId, { kind: 'pick-option', args: picked }))
+        .options ?? {}
   }
   ctx.publish()
   return {
@@ -125,35 +119,4 @@ export async function recordStructuredAgentSessionOptionIntent(
         structuredAgentSessionPickReply(options, undefined)
     }
   }
-}
-
-const modelPicks = new WeakMap<StructuredAgentSessionProviderChild, number>()
-
-/** Counts saved model picks per child, so a read can tell its captured report predates one. */
-export function structuredAgentSessionModelPicks(
-  child: StructuredAgentSessionProviderChild
-): number {
-  return modelPicks.get(child) ?? 0
-}
-
-/** A saved pick retires the current child's earlier reports, including ones a read already captured. */
-export function noteStructuredAgentSessionOptionPick(
-  context: {
-    deps: { adapter: Pick<StructuredAgentSessionAdapter, 'noteOptionPick'> }
-    sessions: ReadonlyMap<string, StructuredAgentSessionHostSession>
-  },
-  ctx: Pick<AgentSessionTurnContext, 'sessionId' | 'fence'>,
-  input: { key: string; value: string },
-  saved: boolean
-): void {
-  const { sessionId, fence } = ctx
-  // An old client's empty model clears nothing, so it retires no report.
-  if (!saved) {
-    return
-  }
-  const child = context.sessions.get(sessionId)?.child
-  if (input.key === 'model' && child?.fence === fence) {
-    modelPicks.set(child, structuredAgentSessionModelPicks(child) + 1)
-  }
-  context.deps.adapter.noteOptionPick?.({ sessionId, fence, ...input })
 }

@@ -49,7 +49,7 @@ const INSTALLED_LAYOUT = [
   'Orca.exe',
   'resources.pak',
   'snapshot_blob.bin',
-  'Uninstall Orca.exe',
+  'Uninstall UDA Orca.exe',
   'v8_context_snapshot.bin',
   'vk_swiftshader.dll',
   'vk_swiftshader_icd.json',

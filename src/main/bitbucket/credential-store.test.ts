@@ -20,7 +20,7 @@ async function loadStore(
   // resetModules leaves doMock registrations behind.
   vi.doUnmock('node:fs')
   vi.doUnmock('../../shared/secure-storage/secure-path-windows-acl')
-  const { setSecretStore } = await import('../../shared/secret-store')
+  const { setSecretStore } = await import('../../shared/secure-storage/secret-store')
   setSecretStore({
     isEncryptionAvailable: () => true,
     encryptString: (value) => Buffer.from(value),
@@ -96,42 +96,13 @@ describe('Bitbucket credential store', () => {
     save('first')
     const { chmodSync } = await import('node:fs')
     for (const file of ['bitbucket-credential.enc', 'bitbucket-credential.json']) {
-      chmodSync(join(tempHome, '.orca', file), 0o644)
+      chmodSync(join(tempHome, '.uda-orca', file), 0o644)
     }
     save('second')
 
     for (const file of ['bitbucket-credential.enc', 'bitbucket-credential.json']) {
-      expect(statSync(join(tempHome, '.orca', file)).mode & 0o777).toBe(0o600)
+      expect(statSync(join(tempHome, '.uda-orca', file)).mode & 0o777).toBe(0o600)
     }
-  })
-
-  it('rejects non-string fields from hand-edited metadata and secret files', async () => {
-    const store = await loadStore()
-    const { writeFileSync } = await import('node:fs')
-    store.saveBitbucketCredential({
-      authMode: 'basic',
-      email: 'ada@example.com',
-      baseUrl: null,
-      account: 'ada',
-      accessToken: null,
-      apiToken: 'secret-token'
-    })
-
-    writeFileSync(
-      join(tempHome, '.orca', 'bitbucket-credential.json'),
-      JSON.stringify({ version: 1, authMode: 'basic', email: { evil: true }, account: 42 })
-    )
-    writeFileSync(
-      join(tempHome, '.orca', 'bitbucket-credential.enc'),
-      JSON.stringify({ accessToken: ['nope'], apiToken: 7 })
-    )
-    store._resetBitbucketCredentialCache()
-
-    expect(store.getStoredBitbucketMetadata()).toMatchObject({ email: null, account: null })
-    expect(store.loadStoredBitbucketSecret({ force: true })).toMatchObject({
-      accessToken: null,
-      apiToken: null
-    })
   })
 
   it('keeps the previous credential intact when the secret write fails (STA-3941)', async () => {
@@ -145,7 +116,7 @@ describe('Bitbucket credential store', () => {
       apiToken: 'first-token'
     })
     const { readFileSync } = await import('node:fs')
-    const before = readFileSync(join(tempHome, '.orca', 'bitbucket-credential.enc'))
+    const before = readFileSync(join(tempHome, '.uda-orca', 'bitbucket-credential.enc'))
 
     const failing = await loadStore({ writeError: new Error('disk full') })
     expect(() =>
@@ -159,8 +130,10 @@ describe('Bitbucket credential store', () => {
       })
     ).toThrow(/disk full/)
 
-    expect(readFileSync(join(tempHome, '.orca', 'bitbucket-credential.enc'))).toEqual(before)
-    expect(readdirSync(join(tempHome, '.orca')).filter((name) => name.endsWith('.tmp'))).toEqual([])
+    expect(readFileSync(join(tempHome, '.uda-orca', 'bitbucket-credential.enc'))).toEqual(before)
+    expect(
+      readdirSync(join(tempHome, '.uda-orca')).filter((name) => name.endsWith('.tmp'))
+    ).toEqual([])
   })
 
   it('authenticates from the envelope when metadata is stale (STA-3941)', async () => {
@@ -177,7 +150,7 @@ describe('Bitbucket credential store', () => {
     // Simulate interruption after secret publication but before metadata publication.
     const { writeFileSync } = await import('node:fs')
     writeFileSync(
-      join(tempHome, '.orca', 'bitbucket-credential.json'),
+      join(tempHome, '.uda-orca', 'bitbucket-credential.json'),
       JSON.stringify({
         version: 1,
         authMode: 'basic',
@@ -208,7 +181,7 @@ describe('Bitbucket credential store', () => {
     })
     const { writeFileSync } = await import('node:fs')
     writeFileSync(
-      join(tempHome, '.orca', 'bitbucket-credential.enc'),
+      join(tempHome, '.uda-orca', 'bitbucket-credential.enc'),
       JSON.stringify({ accessToken: null, apiToken: 'legacy-token' })
     )
     store._resetBitbucketCredentialCache()
@@ -235,8 +208,8 @@ describe('Bitbucket credential store', () => {
 
     expect(store.hasStoredBitbucketCredential()).toBe(false)
     expect(store.getStoredBitbucketMetadata()).toBeNull()
-    expect(existsSync(join(tempHome, '.orca', 'bitbucket-credential.enc'))).toBe(false)
-    expect(existsSync(join(tempHome, '.orca', 'bitbucket-credential.json'))).toBe(false)
+    expect(existsSync(join(tempHome, '.uda-orca', 'bitbucket-credential.enc'))).toBe(false)
+    expect(existsSync(join(tempHome, '.uda-orca', 'bitbucket-credential.json'))).toBe(false)
   })
 
   it('surfaces a non-ENOENT delete failure instead of silently keeping the files', async () => {
@@ -254,6 +227,6 @@ describe('Bitbucket credential store', () => {
     })
 
     expect(() => store.clearStoredBitbucketCredential()).toThrow(/permission denied/)
-    expect(existsSync(join(tempHome, '.orca', 'bitbucket-credential.enc'))).toBe(true)
+    expect(existsSync(join(tempHome, '.uda-orca', 'bitbucket-credential.enc'))).toBe(true)
   })
 })

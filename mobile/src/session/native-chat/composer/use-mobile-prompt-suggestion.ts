@@ -8,7 +8,7 @@ import {
   useState,
   type RefObject
 } from 'react'
-import type { TextInput } from 'react-native'
+import type { TextInputInstance } from 'react-native'
 import type { MobileNativeChatController } from '../mobile-native-chat-controller-contract'
 
 export type MobilePromptSuggestionSource = {
@@ -166,7 +166,7 @@ const NO_EDITS = () => 0
 export function useMobileNativeChatFieldSuggestion(
   value: string,
   onChangeText: ((text: string) => void) | undefined,
-  ref: RefObject<TextInput | null>
+  ref: RefObject<TextInputInstance | null>
 ) {
   const offer = use(MobileNativeChatPromptSuggestionContext)
   return useMobilePromptSuggestion({

@@ -1,4 +1,5 @@
 import type { CodexProviderInvocationDeps } from './codex-provider-session-rename'
+import type { DashboardCodexSessionAdoption } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
 import type { CodexAppliedSettings } from '../catalog/codex-structured-applied-settings'
 import type { StructuredAgentSessionChildWorkProducer } from '../../../native-chat/agent-session-wire/observations/structured-agent-session-subagent-rows'
 import type { StructuredAgentSessionLogger } from '../../../native-chat/agent-session-wire/host/structured-agent-session-logger'
@@ -8,7 +9,6 @@ import type { AgentJournalAnsweredTurnIdentity } from '../../../../shared/agent-
 import type { AgentJournalItemIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
 import { randomUUID } from 'node:crypto'
 import type { AgentJournalDispatchRejection } from '../../../../shared/agent-session/failures/agent-session-failure-words'
-import { cancelProcessAcquisition } from '@orca/process-host/cancel-process-acquisition'
 import type { CodexAppServerConnection } from '../../app-server/codex-app-server-connection-types'
 import type { openCodexAppServerConnection } from '../../app-server/codex-app-server-connection'
 import { CodexAcquisitionWindow } from '../acquisition/codex-structured-acquisition-window'
@@ -24,12 +24,11 @@ import type { CodexPromptSuggestion } from '../../codex-prompt-suggestion'
 import type { CodexSkillReport } from '../catalog/codex-structured-skill-report'
 import type { CodexJournalTranslator } from '../journal/codex-structured-journal-contracts'
 import type { StructuredAgentSessionLifecycleEvent } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
-import type { CodexStructuredPermissionPolicy } from '../../../../shared/codex-permission-policy'
+import type { CodexStructuredLaunch } from '../launch/codex-structured-launch'
 import type { StructuredLaunchRequest } from '../../../runtime/agent-session/launch/structured-agent-launch-composition'
 import type { AgentModelCatalogStore } from '../../../native-chat/agent-model-catalog/agent-model-catalog-store'
 import type { AgentModelCatalogSessionAccess } from '../../../native-chat/agent-model-catalog/agent-model-catalog-lister'
 import type { StructuredAgentSessionProviderOpen } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
-import type { NativeChatVisualsLaunch } from '../../../native-chat/native-chat-visuals-delivery'
 import type { CodexSessionPermissions } from './codex-structured-session-permissions'
 import type { StructuredAgentSessionEventSink } from '../../../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
 
@@ -38,25 +37,7 @@ export type CodexSessionCatalogAccess = AgentModelCatalogSessionAccess & {
   demand?: (legacy?: boolean) => Promise<unknown>
 }
 
-export type CodexStructuredLaunch = {
-  prefixArgs?: readonly string[]
-  command: string
-  args: string[]
-  cwd: string
-  codexHome: string | null
-  resumeThreadId: string | null
-  /** Replace an unsaved thread created by this session; never supersede a proven resume. */
-  supersedeIfUnsaved?: boolean
-  permissionPolicy?: CodexStructuredPermissionPolicy
-  /** Open on the chosen model to avoid a first-turn switch. */
-  model?: string
-  /** Sealed child environment; envToDelete removes inherited keys. */
-  env?: Record<string, string>
-  envToDelete?: readonly string[]
-  /** Command values that must survive the user's shell environment policy. */
-  commandEnv?: Record<string, string>
-  visuals?: NativeChatVisualsLaunch
-}
+export type { CodexStructuredLaunch } from '../launch/codex-structured-launch'
 
 /** Boundaries retain host receipt time through buffering and retries. */
 export const CODEX_RECEIPT_TIMED_METHODS: ReadonlySet<string> = new Set([
@@ -94,6 +75,7 @@ export type CodexStructuredSessionEvent =
   | { type: 'ended'; sessionId: string; reason: string; observedAt?: number }
 
 export type CodexStructuredSessionAdapterDeps = {
+  hostId?: string
   providerInvocation?: CodexProviderInvocationDeps
   resolveAccountKind?: (home: string) => AgentSessionAccountKind | undefined
   atRestCommands?: StructuredAgentSessionAtRestCommands
@@ -134,6 +116,7 @@ export type CodexStructuredSessionAdapterDeps = {
 }
 
 export type CodexSession = {
+  dashboardAdoption?: DashboardCodexSessionAdoption
   promptSuggestion?: CodexPromptSuggestion
   events?: StructuredAgentSessionEventSink
   account?: AgentSessionAccountKind
@@ -170,6 +153,8 @@ export type CodexSession = {
   nativeDefaults?: { personality?: string; serviceTier?: string }
   /** Acquisition facts overlaid by controls actually sent, independently of reports or saved picks. */
   appliedTurnOptions?: Readonly<Record<string, string>>
+  /** Saved/start input choices before protocol shaping; later catalogs cannot change eligibility. */
+  appliedTurnInputOptions?: Readonly<Record<string, string>>
   appliedSettings?: CodexAppliedSettings
   /** Optional for adapters without a host catalog store. */
   catalogAccess?: CodexSessionCatalogAccess
@@ -228,6 +213,7 @@ export type CodexAcquisitionAttempt = {
   requestedClose?: boolean
   exitProven: boolean
   exitError?: Error
+  historyCatchUp?: AbortController
   finished: Promise<void>
   finish: () => void
 }
@@ -264,6 +250,7 @@ export class CodexAcquisitionRegistry {
       throw new Error('codex structured session adapter is closing')
     }
     const previousAttempt = this.attempts.get(sessionId)
+    previousAttempt?.historyCatchUp?.abort()
     const attempt = createCodexAcquisitionAttempt()
     this.attempts.set(sessionId, attempt)
     return { previousAttempt, attempt }
@@ -281,6 +268,7 @@ export class CodexAcquisitionRegistry {
 
   deleteIfCurrent(sessionId: string, attempt: CodexAcquisitionAttempt): void {
     if (this.attempts.get(sessionId) === attempt) {
+      attempt.historyCatchUp?.abort()
       this.attempts.delete(sessionId)
     }
   }
@@ -291,6 +279,7 @@ export class CodexAcquisitionRegistry {
     previous: CodexAcquisitionAttempt
   ): void {
     if (this.attempts.get(sessionId) === replacement) {
+      replacement.historyCatchUp?.abort()
       this.attempts.set(sessionId, previous)
     }
   }
@@ -309,30 +298,12 @@ export class CodexAcquisitionRegistry {
   }
 
   close(): void {
+    for (const attempt of this.attempts.values()) {
+      attempt.historyCatchUp?.abort()
+    }
     this.closing = true
     this.endings.clear()
   }
 }
 
-export async function cancelCodexAcquisitionAttempt(
-  attempt: CodexAcquisitionAttempt | undefined,
-  requestedClose = true
-): Promise<boolean> {
-  if (!attempt) {
-    return true
-  }
-  const closed = await cancelProcessAcquisition({
-    cancel: () => {
-      attempt.cancelled = true
-      attempt.requestedClose = requestedClose
-    },
-    connection: () => attempt.window.connection,
-    exitProven: () => attempt.exitProven,
-    finished: attempt.finished
-  })
-  if (closed) {
-    attempt.exitProven = true
-    attempt.dispose?.()
-  }
-  return closed
-}
+export { cancelCodexAcquisitionAttempt } from '../acquisition/codex-structured-acquisition-lifecycle'

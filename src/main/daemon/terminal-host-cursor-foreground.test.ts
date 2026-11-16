@@ -3,13 +3,13 @@ import { afterEach, expect, it, vi } from 'vitest'
 import type { IPty } from 'node-pty'
 import { TerminalHost } from './terminal-host/terminal-host'
 import { createPtyForegroundProcessTracker } from './pty-subprocess/foreground-process-tracker'
-import { confirmPtyProviderForegroundProcess } from '../providers/pty-process-inspection'
+import { confirmPtyProviderForegroundProcess } from '../providers/pty/process-inspection'
 
 const { scan, job } = vi.hoisted(() => ({ scan: vi.fn(), job: vi.fn() }))
-vi.mock('../providers/agent-foreground-process', () => ({
+vi.mock('../providers/foreground/agent-process', () => ({
   resolveAgentForegroundProcessWithAvailability: scan
 }))
-vi.mock('../providers/windows-pty-job-membership', () => ({
+vi.mock('../providers/foreground/windows/pty-job-membership', () => ({
   readWindowsPtyJobProcessIds: job,
   isWindowsPtyJobReadable: () => true
 }))

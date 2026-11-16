@@ -9,7 +9,7 @@ vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () =
 }))
 
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
-import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/native-chat-answer-stepping'
+import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/questions/native-chat-answer-stepping'
 import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   NATIVE_CHAT_COMPOSER_READY_POLL_MS,
@@ -19,7 +19,7 @@ import { NATIVE_CHAT_CLEAR_CONFIRM_MS } from './session/terminal/send/native-cha
 import {
   buildNativeChatPasteBytes,
   NATIVE_CHAT_SUBMIT
-} from '../../../../shared/native-chat/input/native-chat-paste-bytes'
+} from '../../../../shared/native-chat/input/composer/native-chat-paste-bytes'
 import { buildAgentTuiClearInputForText } from '../../../../shared/agent-launch/startup/agent-tui-input-clear'
 
 const PTY = 'pty-composer-ready'

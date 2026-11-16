@@ -2,15 +2,15 @@ import { ensureStructuredAgentModelCatalogOwner } from '../model-catalog/structu
 import type { StructuredAgentModelCatalogDeps } from './structured-agent-runtime-registration-types'
 import { resolveStructuredCodexAccountKind } from '../environment/structured-agent-account-home'
 import { nativeChatShellEnvironmentPolicy } from '../../../../shared/native-chat/native-chat-shell-environment'
-import { claudeStructuredAuthPolicyForSettings } from '../../../claude-accounts/claude-structured-auth-policy'
-import { resolveStructuredAgentCommand } from '../../../native-chat/structured-agent-command-resolution'
-import { structuredAgentConfiguredArgs } from '../../../native-chat/structured-agent-configured-args'
+import { claudeStructuredAuthPolicyForSettings } from '../../../claude-accounts/runtime-auth/claude-structured-auth-policy'
+import { resolveStructuredAgentCommand } from '../../../native-chat/agent-launch/structured-agent-command-resolution'
+import { structuredAgentConfiguredArgs } from '../../../native-chat/agent-launch/structured-agent-configured-args'
 import { getProfileUserDataPath } from '../../../orca-profiles/profile-storage-paths'
 import { isTuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent-config'
 import { resolveTuiAgentLaunchEnv } from '../../../../shared/agent-launch/choices/tui-agent-launch-defaults'
-import { overlayEnvironmentVariables } from '../../../../shared/environment-overlay'
+import { overlayEnvironmentVariables } from '../../../../shared/shell/launch/environment-overlay'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { StructuredAgentId } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
+import type { StructuredAgentId } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
 import type { RuntimeWorkspaceCatalog } from '../../workspaces/catalog/workspace-catalog'
 import type { OrcaRuntimeWithRefreshPtyWorktreeRecordsFromController } from '../../terminal/lifecycle/pty-worktree-refresh'
 import type { RuntimeAccountController } from '../environment/runtime-account-controller'
@@ -19,19 +19,11 @@ import type { OrcaRuntimeWithGetStructuredAgentSessionCreateSupport } from '../.
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { StructuredAgentSessionHostDeps } from '../../../native-chat/agent-session-wire/host/structured-agent-session-host-types'
 import { OrcaRuntimeWithStartTuiIdleVisibleReadProbe } from '../../terminal/wait/terminal-wait-visible-probe'
-import { readUsageLimitAccountReading } from '../../../rate-limits/usage-limit-account-reading'
-import type { RateLimitState } from '../../../../shared/rate-limit-types'
-
-const ACCOUNT_USAGE_OF_PROVIDER: Record<
-  string,
-  (state: RateLimitState) => RateLimitState['claude']
-> = {
-  claude: (state) => state.claude,
-  codex: (state) => state.codex,
-  cursor: (state) => state.cursor,
-  antigravity: (state) => state.antigravity
-}
-const POOLED_PROVIDERS = new Set(['cursor', 'antigravity'])
+import {
+  hostShellEnvironment,
+  hostShellEnvironmentRevision
+} from '../environment/structured-agent-shell-environment'
+import { usageLimitAccountSources } from './usage-limit-account-usage'
 
 export abstract class RuntimeStructuredAgentHost extends OrcaRuntimeWithStartTuiIdleVisibleReadProbe {
   abstract notifyStructuredSessionJournalActivity(sessionId: string): void
@@ -89,19 +81,14 @@ export abstract class RuntimeStructuredAgentHost extends OrcaRuntimeWithStartTui
         this.requireStore().getSettings().nativeChatAutoContinueAfterUsageLimit === true,
       subscribe: (changed) => this.requireStore().onSettingsChanged?.(changed) ?? (() => {}),
       isWorkspaceAsleep: (workspaceId) => this.isWorktreeTerminalSleepHeld(workspaceId),
-      readAccountUsage: (provider) => {
-        const state = this.accounts.usageRateLimits()?.getState()
-        const limits = state ? ACCOUNT_USAGE_OF_PROVIDER[provider]?.(state) : undefined
-        return limits === undefined
-          ? null
-          : readUsageLimitAccountReading(limits, { pooled: POOLED_PROVIDERS.has(provider) })
-      },
-      refreshAccountUsage: async () => {
-        await this.accounts
-          .usageRateLimits()
-          ?.refresh()
-          .catch(() => {})
-      }
+      ...usageLimitAccountSources({
+        rateLimits: () => this.accounts.usageRateLimits(),
+        settings: () => this.requireStore().getSettings(),
+        // The last capture: this runs every sweep pass and must not start a login shell.
+        shellEnvironment: () => hostShellEnvironment(true),
+        shellEnvironmentRevision: hostShellEnvironmentRevision,
+        claudeLaunchEnv: (settings) => this.structuredAgentLaunchEnv('claude', settings)
+      })
     }
   }
 

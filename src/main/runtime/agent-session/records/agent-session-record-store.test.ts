@@ -2,27 +2,32 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { AgentSessionOwnerProbe } from '../../../../shared/agent-session/lifecycle/agent-session-lease-adjudication'
+import { DashboardToolProvider } from '../../../../shared/dashboard-account-provider'
+import { AgentSessionPoolAccountOrigin } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-pool-account'
+import type { AgentSessionOwnerProbe } from '../../../../shared/agent-session/lifecycle/leases/agent-session-lease-adjudication'
 import type {
   AgentSessionExecutionLocation,
   AgentSessionProcessIdentity,
   AgentSessionRecord
 } from '../../../../shared/agent-session/lifecycle/agent-session-record'
-import type { AgentSessionProviderHandleLink } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
+import type { AgentSessionProviderHandleLink } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
 import type { AgentSessionRecordStore } from './agent-session-record-store'
 import {
-  openTestAgentSessionRecordStore,
-  readPersistedTestAgentSessionStore
+  closeTestAgentSessionRecordStores,
+  closeTestAgentSessionDatabase,
+  openTestAgentSessionDatabase,
+  openTestAgentSessionRecordStore
 } from './agent-session-record-store-test-harness'
 import {
-  closeTestJournalHostDatabases,
-  openTestJournalHostDatabase
-} from '../../../native-chat/agent-session-journal/store-lifecycle/journal-host-database-test-support'
+  editPersistedTestAgentSessionStore,
+  readPersistedTestAgentSessionStore,
+  withTestAgentSessionDatabase
+} from './agent-session-record-store-persistence.test-fixture'
 import type { AgentSessionReserveRequest } from '../ownership/agent-session-reservation-admission'
 import {
   claudeProviderHandle,
   codexProviderHandle
-} from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+} from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 
 const NOW = 1_800_000_000_000
 
@@ -128,11 +133,154 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  await closeTestJournalHostDatabases()
+  await closeTestAgentSessionRecordStores()
   await rm(directory, { recursive: true, force: true })
 })
 
+describe('pool account persistence', () => {
+  it('retains both pool origins after reopen while hiding them from conversations', async () => {
+    const store = await open()
+    await store.reserveOwner(reserveRequest({ sessionId: 'session-legacy' }))
+    const identity = {
+      instanceId: 'instance-1',
+      provider: DashboardToolProvider.Codex,
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7
+    } as const
+    const accounts = [
+      {
+        sessionId: 'session-authenticated',
+        poolAccount: {
+          version: 1,
+          ...identity,
+          origin: AgentSessionPoolAccountOrigin.Authenticated
+        }
+      },
+      {
+        sessionId: 'session-inherited',
+        poolAccount: {
+          version: 1,
+          ...identity,
+          origin: AgentSessionPoolAccountOrigin.InheritedCopy,
+          sourceSessionId: 'session-authenticated'
+        }
+      }
+    ] as const
+    for (const { sessionId } of accounts) {
+      await store.reserveOwner(
+        reserveRequest({
+          sessionId,
+          provider: DashboardToolProvider.Codex,
+          accountHome: { variable: 'CODEX_HOME', path: '/home/dev/.codex' }
+        })
+      )
+    }
+    await closeTestAgentSessionDatabase(directory)
+    await editPersistedTestAgentSessionStore(directory, (persisted) => {
+      for (const { sessionId, poolAccount } of accounts) {
+        persisted.records[sessionId] = { ...persisted.records[sessionId]!, poolAccount }
+      }
+    })
+    const reopened = await open()
+    expect(reopened.getRecord('session-authenticated')?.poolAccount).toEqual({
+      version: 1,
+      origin: 'authenticated',
+      instanceId: 'instance-1',
+      provider: 'codex',
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7
+    })
+    expect(reopened.getRecord('session-inherited')?.poolAccount).toEqual({
+      version: 1,
+      origin: 'inherited_copy',
+      instanceId: 'instance-1',
+      provider: 'codex',
+      accountId: 'account-1',
+      bindingRevision: 3,
+      credentialVersion: 7,
+      sourceSessionId: 'session-authenticated'
+    })
+    expect(reopened.getRecord('session-legacy')).toMatchObject({
+      sessionId: 'session-legacy',
+      schemaVersion: 2,
+      provider: 'claude'
+    })
+    expect(reopened.getRecord('session-legacy')).not.toHaveProperty('poolAccount')
+    expect(reopened.getConversation('session-authenticated')).toMatchObject({
+      sessionId: 'session-authenticated'
+    })
+    expect(reopened.getConversation('session-authenticated')).not.toHaveProperty('poolAccount')
+    expect(reopened.getConversation('session-inherited')).not.toHaveProperty('poolAccount')
+    expect(reopened.listConversations().map((conversation) => conversation.sessionId)).toEqual([
+      'session-legacy',
+      'session-authenticated',
+      'session-inherited'
+    ])
+    for (const conversation of reopened.listConversations()) {
+      expect(conversation).not.toHaveProperty('poolAccount')
+    }
+  })
+
+  it('refuses stored records with invalid pool metadata or a non-Codex provider', async () => {
+    const store = await open()
+    const invalid = await store.reserveOwner(
+      reserveRequest({
+        sessionId: 'session-invalid',
+        provider: DashboardToolProvider.Codex,
+        accountHome: { variable: 'CODEX_HOME', path: '/home/dev/.codex' }
+      })
+    )
+    const claude = await store.reserveOwner(reserveRequest({ sessionId: 'session-claude' }))
+    await closeTestAgentSessionDatabase(directory)
+    await withTestAgentSessionDatabase(directory, (db) => {
+      const update = db.prepare(
+        'UPDATE agent_session_records SET record_json = ? WHERE session_id = ?'
+      )
+      update.run(JSON.stringify({ ...invalid.record, poolAccount: null }), 'session-invalid')
+      update.run(
+        JSON.stringify({
+          ...claude.record,
+          poolAccount: {
+            version: 1,
+            origin: AgentSessionPoolAccountOrigin.Authenticated,
+            instanceId: 'instance-1',
+            provider: DashboardToolProvider.Codex,
+            accountId: 'account-1',
+            bindingRevision: 3,
+            credentialVersion: 7
+          }
+        }),
+        'session-claude'
+      )
+    })
+    const reopened = await open()
+    expect(reopened.isSessionUnreadable('session-invalid')).toBe(true)
+    expect(reopened.isSessionUnreadable('session-claude')).toBe(true)
+    expect(reopened.getConversation('session-invalid')).toBeNull()
+    expect(reopened.getConversation('session-claude')).toBeNull()
+  })
+})
+
 describe('acquisition path', () => {
+  it('replays a successful reservation using its saved session when the retry proposes another id', async () => {
+    const store = await open()
+    const request = reserveRequest()
+    await store.reserveOwner(request)
+    await store.commitOperationReceipt(
+      store.operationOutcomeReceipt({
+        callerKey: request.operation.callerKey,
+        operationId: request.operation.operationId,
+        outcome: { status: 'succeeded', sessionId: 'session-alpha' }
+      })
+    )
+    const replay = await store.reserveOwner({ ...request, sessionId: 'session-beta' })
+    expect(replay.disposition).toBe('replayed')
+    expect(replay.record.sessionId).toBe('session-alpha')
+    expect(store.getRecord('session-beta')).toBeNull()
+  })
+
   it('refuses a child that cannot echo the reserved spawn token', async () => {
     const store = await open()
     await store.reserveOwner(reserveRequest())
@@ -244,8 +392,10 @@ describe('concurrent claims', () => {
     const before = store.getRecord('session-alpha')
     const persistedBefore = await readPersistedTestAgentSessionStore(directory)
     // Fail the record update inside commit, like full-disk/I/O failure.
-    openTestJournalHostDatabase(directory).db.exec(
-      "CREATE TRIGGER fail_record_write BEFORE UPDATE ON agent_session_records BEGIN SELECT RAISE(ABORT, 'disk I/O error'); END"
+    await withTestAgentSessionDatabase(directory, (db) =>
+      db.exec(
+        "CREATE TRIGGER fail_record_write BEFORE UPDATE ON agent_session_records BEGIN SELECT RAISE(ABORT, 'disk I/O error'); END"
+      )
     )
     await expect(store.setConversationName('session-alpha', 'renamed')).rejects.toThrow(
       'disk I/O error'
@@ -290,6 +440,93 @@ describe('expiry is not eviction', () => {
 })
 
 describe('restart reconciliation', () => {
+  it('keeps recovery pending across receipts and real writer restarts, without invalidating observers', async () => {
+    await establishOwner(await open())
+    await closeTestAgentSessionDatabase(directory)
+    let store = await open()
+    await store.setConversationName('session-alpha', 'retained name')
+    expect(
+      (await readPersistedTestAgentSessionStore(directory)).records['session-alpha'].lease
+    ).toMatchObject({ runtimeFence: 1, unreconciled: true })
+    await expect(
+      store.renewLease({
+        sessionId: 'session-alpha',
+        fence: 1,
+        childProbe: MATCHED,
+        now: NOW + 100
+      })
+    ).rejects.toThrow('execution_owner_reconciling')
+
+    // A second real installation must retain debt that the first one did not complete.
+    await closeTestAgentSessionDatabase(directory)
+    store = await open()
+    await store.reconcileOnRestart({ probe: async () => MATCHED, now: NOW + 500 })
+    await expect(
+      store.renewLease({
+        sessionId: 'session-alpha',
+        fence: 1,
+        childProbe: MATCHED,
+        now: NOW + 600
+      })
+    ).resolves.toMatchObject({ lease: { runtimeFence: 1, ownerProcess: { pid: 4242 } } })
+    const database = await openTestAgentSessionDatabase(directory)
+    expect((await database.loadRecords()).records.get('session-alpha')?.lease.unreconciled).toBe(
+      false
+    )
+    expect(
+      (await readPersistedTestAgentSessionStore(directory)).records['session-alpha'].lease
+    ).toMatchObject({ runtimeFence: 1, unreconciled: false, ownerProcess: { pid: 4242 } })
+
+    await closeTestAgentSessionDatabase(directory)
+    store = await open()
+    await expect(
+      store.renewLease({
+        sessionId: 'session-alpha',
+        fence: 1,
+        childProbe: MATCHED,
+        now: NOW + 700
+      })
+    ).rejects.toThrow('execution_owner_reconciling')
+  })
+
+  it('rejects a held restart verdict after an ordinary record change', async () => {
+    await establishOwner(await open())
+    const store = await open()
+    const probe = Promise.withResolvers<AgentSessionOwnerProbe>()
+    const started = Promise.withResolvers<void>()
+    const stale = store.reconcileOnRestart({
+      probe: async () => {
+        started.resolve()
+        return probe.promise
+      },
+      now: NOW + 1_000
+    })
+    await started.promise
+    await store.setConversationName('session-alpha', 'new name')
+    probe.resolve({ outcome: 'pid-absent' })
+    expect(await stale).toEqual(new Map())
+    expect(
+      (await readPersistedTestAgentSessionStore(directory)).records['session-alpha']
+    ).toMatchObject({
+      conversationName: 'new name',
+      lease: {
+        runtimeFence: 1,
+        claimStatus: 'live',
+        unreconciled: true,
+        ownerProcess: { pid: 4242, spawnToken: 'spawn-a' }
+      }
+    })
+    await store.reconcileOnRestart({ probe: async () => MATCHED, now: NOW + 1_100 })
+    await expect(
+      store.renewLease({
+        sessionId: 'session-alpha',
+        fence: 1,
+        childProbe: MATCHED,
+        now: NOW + 1_200
+      })
+    ).resolves.toMatchObject({ lease: { runtimeFence: 1 } })
+  })
+
   it('never applies a stale restart probe to a lease another reconcile already settled', async () => {
     await establishOwner(await open())
     const store = await open()

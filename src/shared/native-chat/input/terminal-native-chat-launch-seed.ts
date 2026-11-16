@@ -7,8 +7,8 @@ import {
 import type { GlobalSettings } from '../../global-settings-types'
 import { isTuiAgent } from '../../agent-launch/catalog/tui-agent-config'
 import type { TuiAgent } from '../../agent-launch/catalog/tui-agent'
-import { resolveNativeChatSessionOptionDefaults } from './native-chat-session-option-defaults'
-import { decodeCatalogOptionValue } from '../../agent-session/options/structured-agent-session-option-codec'
+import { resolveNativeChatSessionOptionDefaults } from './session-options/native-chat-session-option-defaults'
+import { decodeCatalogOptionValue } from '../../agent-session/options/selection/structured-agent-session-option-codec'
 import type { SessionOptionValue } from './native-chat-session-options'
 
 export function rememberedNativeChatModelStillListed(args: {

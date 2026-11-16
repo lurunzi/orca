@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'node:url'
 import { columnExists, tableExists } from '../../../opencode-usage/schema-helpers'
 import { readOpenCodeDatabase } from '../opencode/sqlite/session-scanner-opencode-sqlite-open'
-import { asRecord } from '../../session-scanner-record-value'
-import { extractString } from '../../session-scanner-values'
+import { asRecord } from '../../parsing/session-record-fields'
+import { extractString } from '../../../../shared/text/trimmed-string'
 
 // Antigravity CLI replaced history.jsonl with this SQLite index; it alone records every conversation's workspace.
 const SUMMARIES_TABLE = 'conversation_summaries'

@@ -1,6 +1,5 @@
 import { agentMessageTranscriptText } from '../../../../../../shared/agent-session/agent-message-display-text'
-import { nativeChatMessageCopyText } from '../../../../../../shared/native-chat/transcript/native-chat-message-copy-text'
-import { withoutSentImagePromptMarkers } from '../../../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
+import { nativeChatMessageCopyText } from '../../../../../../shared/native-chat/transcript/messages/native-chat-message-copy-text'
 import { nativeChatStoppedBeforeStartLabel } from '../rows/native-chat-stopped-before-start-row'
 import type { NativeChatTranscriptSlot } from '../../conversation/slots/native-chat-transcript-slots'
 
@@ -13,9 +12,6 @@ export function nativeChatSlotCopyText(
   return slot?.kind === 'message'
     ? slot.message.from && (slot.message.role === 'user' || slot.message.agentStart)
       ? agentMessageTranscriptText(slot.message.blocks, slot.message.from, slot.message.shortened)
-      : nativeChatMessageCopyText(
-          { role: slot.message.role, blocks: withoutSentImagePromptMarkers(slot.message) },
-          nativeChatStoppedBeforeStartLabel()
-        )
+      : nativeChatMessageCopyText(slot.message, nativeChatStoppedBeforeStartLabel())
     : null
 }

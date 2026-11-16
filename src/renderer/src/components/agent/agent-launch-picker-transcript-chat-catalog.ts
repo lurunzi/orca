@@ -3,12 +3,15 @@ import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent
 import { agentPickerModelFromCatalogModel } from '../../../../shared/agent-launch/picker/agent-launch-picker-catalog'
 import { isTranscriptChatAgent } from '../../../../shared/transcript-chat-launch-view'
 import { loadNativeChatCatalogModelsForWorktree } from '../native-chat/session/options/catalog/native-chat-session-option-discovery'
+import type { RuntimeGitContext } from '@/runtime/source-control/git/runtime-git-client-context'
+import { agentPickerListsCliModels } from './agent-launch-picker-cli-model-catalog'
+import type { AgentPickerEntry } from '../../../../shared/agent-launch/picker/agent-launch-picker'
 
 /** Fork: without a structured listing, Cursor and Antigravity still list the models their terminal chat discovers. */
 export async function withTranscriptChatCatalogFallback(
   agent: TuiAgent,
   worktreeId: string | undefined,
-  request: Promise<AgentSessionModelCatalogResult> | undefined
+  request: Promise<AgentSessionModelCatalogResult | undefined> | undefined
 ): Promise<AgentSessionModelCatalogResult | undefined> {
   if (!isTranscriptChatAgent(agent)) {
     return await request
@@ -27,4 +30,29 @@ export async function withTranscriptChatCatalogFallback(
         fetchedAt: Date.now()
       }
     : structured
+}
+
+type CatalogRead = (
+  entry: AgentPickerEntry,
+  waitForListing: boolean,
+  signal: AbortSignal
+) => Promise<AgentSessionModelCatalogResult | undefined>
+
+/** Fork: entries carry their picker's worktree, so the fallback reads the same workspace. */
+export function withTranscriptChatCatalogReads<Reads extends { catalog: CatalogRead }>(
+  cliDiscoveryRuntime: RuntimeGitContext | null | undefined,
+  reads: Reads
+): Omit<Reads, 'catalog'> & { catalog: CatalogRead } {
+  const read = reads.catalog
+  return {
+    ...reads,
+    catalog: (entry, waitForListing, signal) =>
+      cliDiscoveryRuntime && agentPickerListsCliModels(entry)
+        ? read(entry, waitForListing, signal)
+        : withTranscriptChatCatalogFallback(
+            entry.agent,
+            entry.worktreeId,
+            read(entry, waitForListing, signal)
+          )
+  }
 }

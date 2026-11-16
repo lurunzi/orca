@@ -1,17 +1,17 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { findKeybindingConflicts, formatKeybindingList } from '../../shared/keybindings/formatting'
+import { getKeybindingPlatform, isKeybindingActionId } from '../../shared/keybindings/definitions'
 import {
-  findKeybindingConflicts,
-  formatKeybindingList,
-  getKeybindingPlatform,
   getKeybindingResetBindings,
-  isKeybindingActionId,
-  keybindingFileDiagnostic,
-  resolveKeybindingOverrides,
-  type KeybindingFileDiagnostic,
-  type KeybindingFileSnapshot,
-  type KeybindingOverrides
-} from '../../shared/keybindings'
+  resolveKeybindingOverrides
+} from '../../shared/keybindings/profile-defaults'
+import { keybindingFileDiagnostic } from '../../shared/keybindings/keybinding-diagnostic-copy'
+import type {
+  KeybindingFileDiagnostic,
+  KeybindingFileSnapshot,
+  KeybindingOverrides
+} from '../../shared/keybindings/types'
 import {
   createEmptyDocument,
   FILE_VERSION,
@@ -24,9 +24,10 @@ import {
   writeJsonDocument,
   type JsonObject
 } from './keybinding-file-parser'
+import { orcaHomeDir } from '../../shared/product-identity-home'
 
 export function getUserKeybindingsPath(homePath: string): string {
-  return join(homePath, '.orca', 'keybindings.json')
+  return join(orcaHomeDir(homePath), 'keybindings.json')
 }
 
 export function readKeybindingFile(

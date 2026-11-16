@@ -1,21 +1,26 @@
-import type { JournalReplacementItem } from '../../agent-session-journal/context-epochs/journal-epoch-replacement'
+import type { JournalSqlForkCopy } from '../../agent-session-journal/journal-sql-fork-copy'
 import type { NativeCopyOrigin } from '../../agent-session-journal/context-epochs/journal-history-origin'
 import { activeProviderContext } from '../../../../shared/agent-session/agent-session-provider-context'
+import {
+  requireCodexPoolCopyReceipt,
+  type CodexPoolCopyReceipt
+} from '../../../dashboard-accounts/dashboard-codex-pool-copy'
+import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 // Store CAS and idempotency rows make retried create/ensure replay instead of reserving another owner.
 
 import type { AgentSessionJournalIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
-import type { AgentSessionOwnerProbe } from '../../../../shared/agent-session/lifecycle/agent-session-lease-adjudication'
+import type { AgentSessionOwnerProbe } from '../../../../shared/agent-session/lifecycle/leases/agent-session-lease-adjudication'
 import type {
   StructuredAgentId,
   AgentSessionProviderHandle,
   AgentSessionProviderHandleLink
-} from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle'
+} from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
 import {
   agentSessionProviderHandleBelongsTo,
   agentSessionProviderHandleFromWire,
   type AgentSessionWireProviderHandle
-} from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
-import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+} from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
+import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type {
   AgentSessionExecutionLocation,
   AgentSessionLaunchArgs,
@@ -35,9 +40,9 @@ import type { AgentSessionMutationEnvelope } from '../../../../shared/agent-sess
 import {
   agentSessionFingerprintConflict,
   computeAgentSessionPayloadFingerprint
-} from '../../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
+} from '../../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
 import type { AgentSessionRecordStore } from '../../../runtime/agent-session/records/agent-session-record-store'
-import type { AgentSessionJournal } from '../../agent-session-journal/journal-store'
+import type { SqlAgentSessionJournal as AgentSessionJournal } from '../../agent-session-journal/journal-sql-store'
 import type { AdoptedTranscriptSource } from '../../agent-session-journal/history-import/adopted-transcript-source'
 import { structuredAgentSessionRefusalMessage } from '../operations/structured-agent-session-refusal-message'
 
@@ -54,8 +59,10 @@ export type AgentSessionAttachParams = {
   fork?: {
     sessionId: string
     itemId: string
+    poolCopy?: CodexPoolCopyReceipt
     revalidate: () => Promise<void>
-    prepared: JournalReplacementItem[]
+    prepared: JournalSqlForkCopy
+    withAdmission: <T>(run: () => Promise<T>) => Promise<T>
     historyOrigin?: NativeCopyOrigin
   }
   options?: Readonly<Record<string, string>>
@@ -73,6 +80,54 @@ export type AgentSessionAttachParams = {
     /** The source conversation's title; derived, so not part of the attach fingerprint. */
     conversationName?: string
   }
+}
+
+/** The fork preparation adds the journal fields once the copy is checked. */
+type AgentSessionForkAttachment = Omit<
+  NonNullable<AgentSessionAttachParams['fork']>,
+  'prepared' | 'withAdmission' | 'historyOrigin'
+>
+
+export function agentSessionForkAttachment(input: {
+  source: AgentSessionRecord
+  itemId: string
+  agent: StructuredAgentId
+  copy: { sessionId: string; poolCopy?: CodexPoolCopyReceipt }
+  providerSessionId: string
+  requireCurrent: () => Promise<unknown>
+  readSource: () => AgentSessionRecord
+  rowSessionId: (head: AgentSessionProviderHandleLink) => string
+}): AgentSessionForkAttachment {
+  const fork: AgentSessionForkAttachment = {
+    sessionId: input.source.sessionId,
+    itemId: input.itemId,
+    poolCopy: input.copy.poolCopy,
+    revalidate: async () => {
+      try {
+        await input.requireCurrent()
+        const current = input.readSource()
+        if (input.source.poolAccount && fork.poolCopy === undefined) {
+          throw new DashboardAllocationError()
+        }
+        const head = activeProviderContext(current).head
+        fork.poolCopy = requireCodexPoolCopyReceipt({
+          receipt: fork.poolCopy,
+          source: current,
+          sourceSessionId: input.source.sessionId,
+          agent: input.agent,
+          capturedSourceProviderSessionId: input.providerSessionId,
+          currentSourceProviderSessionId: head ? input.rowSessionId(head) : null,
+          targetProviderSessionId: input.copy.sessionId
+        })
+      } catch (error) {
+        if (fork.poolCopy !== undefined || input.source.poolAccount) {
+          throw new DashboardAllocationError()
+        }
+        throw error
+      }
+    }
+  }
+  return fork
 }
 
 export type AgentSessionAttachAuthority = {
@@ -174,7 +229,7 @@ export async function attachJournal(input: {
   const journal = await input.openConversation(input.record)
   return {
     journal,
-    unconfirmedClientMessageIds: journal.inputOrder.recoveredUnknownIds()
+    unconfirmedClientMessageIds: (await journal.reads.input({ kind: 'recovered-unknown-ids' })).ids
   }
 }
 

@@ -10,7 +10,7 @@ import {
   type ProfileStateStoreFactoryResult
 } from './profile-state/startup/profile-state-store-factory'
 import './profile-state/database/profile-state-database'
-import { profileStateDatabaseFile } from '../../shared/profile-state-storage-paths'
+import { profileStateDatabaseFile } from '../../shared/orca-profiles/profile-state-storage-paths'
 
 vi.mock('electron', () => ({
   app: {
@@ -31,10 +31,10 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../../telemetry/client', () => ({ track: () => {} }))
-vi.mock('../../telemetry/cohort-classifier', () => ({
+vi.mock('../telemetry/cohort-classifier', () => ({
   getCohortAtEmit: () => ({ nth_repo_added: 2 })
 }))
-vi.mock('../../ssh/ssh-config-parser', () => ({
+vi.mock('../ssh/config/ssh-config-parser', () => ({
   loadUserSshConfig: () => ({ hosts: [] }),
   sshConfigHostsToTargets: () => []
 }))

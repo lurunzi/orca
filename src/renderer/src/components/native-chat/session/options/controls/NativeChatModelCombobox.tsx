@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Check, ChevronRight } from 'lucide-react'
+import { Check } from 'lucide-react'
 import {
   Command,
   CommandEmpty,
@@ -11,10 +11,13 @@ import {
 import { nativeChatModelDescription } from './native-chat-model-description'
 import { useTranslate } from '@/i18n/use-translate'
 import type { SessionOptionSelectChoice } from '../../../../../../../shared/native-chat/input/native-chat-session-options'
-import { nativeChatSessionChoiceLabel } from '../../../../../../../shared/native-chat/input/native-chat-session-option-labels'
+import { nativeChatSessionChoiceLabel } from '../../../../../../../shared/native-chat/input/session-options/native-chat-session-option-labels'
 import { sayNativeChatSessionOptionTranslated as say } from './native-chat-session-option-labels-text'
 import { NativeChatSessionOptionChoiceBody } from './NativeChatSessionOptionChoiceBody'
 import { NativeChatSessionOptionWriteGroup } from './NativeChatSessionOptionWriteGroup'
+import { NativeChatCursorModelGroups } from './NativeChatCursorModelGroups'
+import { AgentPickerLegacyModelsToggle } from '../../../../agent/AgentPickerLegacyModelsToggle'
+import { useLegacyModelsExpanded } from '../../../../agent/use-legacy-models-expanded'
 import { getModelVariantSuffix, groupCursorModels } from '../../../cursor-model-groups'
 
 type NativeChatModelComboboxProps = {
@@ -54,22 +57,31 @@ export function NativeChatModelCombobox({
   const searchLabel = t('components.native-chat.composer.searchModels', 'Search models…')
   const search = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
-  const [expanded, setExpanded] = useState(false)
-
-  const hasSearch = query.trim().length > 0
-  const visibleChoices = useMemo(
-    () => choices.filter((choice) => !choice.searchOnly || hasSearch),
-    [choices, hasSearch]
+  const searching = Boolean(query.trim())
+  // The current value stays listed even while a pending pick still carries its hidden flag.
+  const listed = useMemo(
+    () => choices.filter((choice) => searching || !choice.hidden || choice.value === currentValue),
+    [choices, currentValue, searching]
   )
+  // Fork: Cursor lists Auto, its own models and each vendor's newest model; older ones fold below.
   const isGrouped = grouped ?? agent === 'cursor'
   const groups = useMemo(
-    () => (isGrouped ? groupCursorModels(visibleChoices, currentValue) : null),
-    [isGrouped, visibleChoices, currentValue]
+    () => (isGrouped ? groupCursorModels(listed.filter((choice) => !choice.legacy)) : null),
+    [isGrouped, listed]
   )
-
-  const showMoreModels = expanded || hasSearch
-
-  const renderModelItem = (choice: SessionOptionSelectChoice): React.JSX.Element => {
+  const currentInMoreModels =
+    currentValue !== undefined &&
+    (groups?.moreModels.some(
+      (choice) => choice.value === currentValue || currentValue.startsWith(`${choice.value}-`)
+    ) ??
+      false)
+  const [legacyExpanded, toggleLegacy] = useLegacyModelsExpanded(
+    currentInMoreModels || choices.some((choice) => choice.value === currentValue && choice.legacy)
+  )
+  // Membership ignores the selection, so picking a model never moves rows in the open list.
+  const folded = (choice: SessionOptionSelectChoice) => !searching && Boolean(choice.legacy)
+  const legacyChoices = listed.filter(folded)
+  const renderChoice = (choice: SessionOptionSelectChoice) => {
     const label = nativeChatSessionChoiceLabel(choice, say)
     const current = choice.value === currentValue
     const suffix = isGrouped ? getModelVariantSuffix(choice.value) : null
@@ -99,7 +111,6 @@ export function NativeChatModelCombobox({
       </CommandItem>
     )
   }
-
   return (
     <Command
       surface="inline"
@@ -127,51 +138,30 @@ export function NativeChatModelCombobox({
           {t('components.native-chat.composer.noModelsMatch', 'No models match your search.')}
         </CommandEmpty>
         <NativeChatSessionOptionWriteGroup busy={busy}>
-          {!isGrouped || !groups ? (
-            <CommandGroup>{visibleChoices.map(renderModelItem)}</CommandGroup>
+          {groups ? (
+            <NativeChatCursorModelGroups
+              groups={groups}
+              legacyChoices={listed.filter((choice) => choice.legacy)}
+              searching={searching}
+              expanded={legacyExpanded}
+              onToggle={toggleLegacy}
+              renderChoice={renderChoice}
+            />
           ) : (
-            <>
-              {groups.autoModel ? (
-                <CommandGroup>{renderModelItem(groups.autoModel)}</CommandGroup>
-              ) : null}
-              {groups.cursorModels.length > 0 ? (
-                <CommandGroup
-                  heading={t('components.native-chat.composer.cursorModels', 'Cursor Models')}
-                >
-                  {groups.cursorModels.map(renderModelItem)}
-                </CommandGroup>
-              ) : null}
-              {groups.otherModels.length > 0 ? (
-                <CommandGroup
-                  heading={t('components.native-chat.composer.otherModels', 'Other Models')}
-                >
-                  {groups.otherModels.map(renderModelItem)}
-                </CommandGroup>
-              ) : null}
-              {showMoreModels ? (
-                groups.moreModels.length > 0 ? (
-                  <CommandGroup
-                    heading={t('components.native-chat.composer.moreModels', 'More models')}
-                  >
-                    {groups.moreModels.map(renderModelItem)}
-                  </CommandGroup>
-                ) : null
-              ) : groups.moreModels.length > 0 ? (
-                <CommandGroup>
-                  <CommandItem
-                    value="more-models"
-                    keywords={[]}
-                    selection="palette"
-                    onSelect={() => setExpanded(true)}
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      {t('components.native-chat.composer.moreModels', 'More models')}
-                    </span>
-                    <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
-                  </CommandItem>
-                </CommandGroup>
-              ) : null}
-            </>
+            <CommandGroup>
+              {/* One keyed array, so a row moving between sections keeps its highlight. */}
+              {[
+                ...listed.filter((choice) => !folded(choice)).map(renderChoice),
+                ...(legacyExpanded ? legacyChoices.map(renderChoice) : []),
+                <AgentPickerLegacyModelsToggle
+                  key="legacy-toggle"
+                  total={legacyChoices.length}
+                  expanded={legacyExpanded}
+                  selection="palette"
+                  onToggle={toggleLegacy}
+                />
+              ]}
+            </CommandGroup>
           )}
         </NativeChatSessionOptionWriteGroup>
       </CommandList>

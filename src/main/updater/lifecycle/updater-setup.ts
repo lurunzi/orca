@@ -1,17 +1,17 @@
 import { app, powerMonitor } from 'electron'
 import type { BrowserWindow } from 'electron'
-import type { ReleaseBuild, ReleaseChannel } from '../../../shared/release-channel'
+import type { ReleaseBuild, ReleaseChannel } from '../../../shared/updater/release-channel'
 import type { ReleaseBuildListOptions } from '../releases/updater-release-build-cache'
 import type {
   LinuxPackageInstallInstructions,
   UpdateCheckOptions,
   UpdateStatus
-} from '../../../shared/update-status-types'
+} from '../../../shared/updater/update-status-types'
 import type {
   RemoteServerUpdateInstallResult,
   RemoteServerUpdaterSnapshot,
   RemoteServerUpdateSupport
-} from '../../../shared/remote-server-update'
+} from '../../../shared/remote-runtime/host-catalog/remote-server-update'
 import { getLinuxPackageType } from '../linux-package/linux-update-package-type'
 import { createUpdaterDiagnosticLogger } from '../linux-package/linux-package-install-diagnostic'
 import { registerAutoUpdaterHandlers } from '../updater-events'
@@ -22,6 +22,7 @@ import { UpdaterDownloadInstall } from './updater-download-install'
 import { configureMacShipItScheduling } from '../mac-install/macos-shipit-scheduling'
 import { handleElectronUpdaterProxyLogin } from './electron-updater-proxy-session'
 import { resolveWindowsUpdateInstallDirectory } from './windows-update-install-directory'
+import { PRODUCT_RELEASE_REPO_SLUG } from '../../../shared/product-identity'
 import type { PreQuitCleanupFailureMode, UpdateInstallMode } from './updater-state'
 
 export type UpdaterSetupOptions = {
@@ -171,7 +172,7 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     if (this.activeUpdateSource === 'release') {
       autoUpdater.setFeedURL({
         provider: 'generic',
-        url: 'https://github.com/stablyai/orca/releases/latest/download'
+        url: `https://github.com/${PRODUCT_RELEASE_REPO_SLUG}/releases/latest/download`
       })
     }
     if (this.autoUpdaterInitialized) {

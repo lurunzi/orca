@@ -2,7 +2,7 @@
 // (https://github.com/petekp/inbox @ a8ee58e, MIT, Copyright (c) 2026 Pete Petrash);
 // license: resources/licenses/petekp-inbox/LICENSE.
 
-import { stripAnsiEscapeSequences } from './ansi-escape-sequences'
+import { stripAnsiEscapeSequences } from './terminal/protocol/escape/ansi-escape-sequences'
 import type { SessionInboxCheckOutcome } from './session-inbox-check-types'
 import { stripBoundedTextMarker } from './agent-session/view/structured-agent-session-projection'
 

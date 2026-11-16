@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { PRODUCT_IDENTITY } from '../../../../../shared/product-identity'
 import os from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setAppEnvironment } from '../../../../../shared/app-environment'
+import { setAppEnvironment } from '../../../../../shared/app-lifecycle/app-environment'
 import { daemonHostStagingName } from '../daemon-host-reclaim'
 import { buildInstallFixture } from './daemon-host-relocation.test-fixture'
 import {
@@ -127,7 +128,7 @@ describe('daemon-host profile isolation under a shared LOCALAPPDATA', () => {
   })
 
   it('keeps legacy unscoped mirrors that older daemons may still run from', () => {
-    const legacyRoot = join(localAppData, 'Orca', 'daemon-host')
+    const legacyRoot = join(localAppData, PRODUCT_IDENTITY.productName, 'daemon-host')
     const legacyCurrent = seedDir(join(legacyRoot, '9.9.9', 'build-legacy-000000000000'), 'cur')
     const legacyStaging = seedDir(
       join(legacyRoot, '9.9.9', daemonHostStagingName(DEAD_WRITER_PID, '000000000000')),

@@ -1,17 +1,17 @@
 import { afterEach, expect, it } from 'vitest'
-import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
-import { claudeProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
+import { claudeProviderHandle } from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import {
   HOST_TEST_SESSION as SESSION,
   hostTestAttachParams,
   hostTestCatalogReadOperation,
   hostTestOperationId
-} from './host/testing/structured-agent-session-host-test-data'
+} from './host/testing/structured-agent-session-host-test-data.test-fixture'
 import {
   createRestTestRig,
   REST_TEST_CALLER as CALLER,
   type RestTestRig
-} from './host/testing/structured-agent-session-rest-test-rig'
+} from './host/testing/structured-agent-session-rest-test-rig.test-fixture'
 
 function catalogListing(modelSupported: boolean) {
   return {

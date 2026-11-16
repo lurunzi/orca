@@ -17,8 +17,7 @@ import { NativeChatMessageTimestamp } from './NativeChatMessageTimestamp'
 import { NativeChatAgentMessageCard } from './NativeChatAgentMessageCard'
 import { NativeChatDetailsDisclosure } from '../diagnostics/NativeChatProviderDetails'
 import { NativeChatImageAttachments } from '../../media/images/NativeChatImageAttachments'
-import type { deriveNativeChatRowContent } from '../../../../../../shared/native-chat/transcript/native-chat-row-content'
-import { stripLeadingSentImagePromptMarkers } from '../../../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
+import type { deriveNativeChatRowContent } from '../../../../../../shared/native-chat/transcript/row-content/native-chat-row-content'
 
 const USER_META_REVEAL =
   'transition-opacity can-hover:pointer-events-none can-hover:opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 [.group:has(:focus-visible)_&]:pointer-events-auto [.group:has(:focus-visible)_&]:opacity-100'
@@ -64,7 +63,7 @@ function UserMessageMeta({
 
 export function NativeChatUserMessageRow({
   message,
-  markdown: originalMarkdown,
+  markdown,
   prose,
   rowRef,
   onRefolded,
@@ -87,10 +86,6 @@ export function NativeChatUserMessageRow({
   // Agent-authored input belongs to the turn but uses a left-aligned sender row instead of the person’s bubble.
   const from = message.from
   const sending = deliveryNotice?.sending === true
-  const markdown = stripLeadingSentImagePromptMarkers(
-    originalMarkdown,
-    prose.filter((block) => block.type === 'image-ref').length
-  )
   return (
     <div
       ref={rowRef}

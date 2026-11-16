@@ -12,6 +12,7 @@ import {
 } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { PRODUCT_IDENTITY } from '../../../../shared/product-identity'
 import {
   clearCopiedResourceMarker,
   markCopiedResource,
@@ -77,12 +78,18 @@ export function getOrcaUserDataPath(): string {
   }
   // Offline CLI hooks run outside Electron and must resolve the same userData path.
   if (process.platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'orca')
+    return join(homedir(), 'Library', 'Application Support', PRODUCT_IDENTITY.dataDirName)
   }
   if (process.platform === 'win32') {
-    return join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'orca')
+    return join(
+      process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'),
+      PRODUCT_IDENTITY.dataDirName
+    )
   }
-  return join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'orca')
+  return join(
+    process.env.XDG_CONFIG_HOME || join(homedir(), '.config'),
+    PRODUCT_IDENTITY.dataDirName
+  )
 }
 
 export function syncSystemCodexResourcesIntoManagedHome(managedHomePath?: string): void {

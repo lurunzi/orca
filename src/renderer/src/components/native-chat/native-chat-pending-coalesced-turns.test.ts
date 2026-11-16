@@ -4,7 +4,7 @@ import {
   pendingSendsAsMessages,
   prunePendingSends,
   type NativeChatPendingSend
-} from '../../../../shared/native-chat/transcript/native-chat-pending-sends'
+} from '../../../../shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 
 function userMessage(id: string, text: string, timestamp = 1): NativeChatMessage {
   return {

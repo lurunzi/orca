@@ -6,9 +6,11 @@ import { NativeChatInboxButton } from './NativeChatInboxButton'
 import { useNativeChatInbox } from './use-native-chat-inbox'
 import { nativeChatInboxScopeKey } from './native-chat-inbox-marks'
 import type { NativeChatJumpRequest } from './use-native-chat-jump-request'
+import { usePublishNativeChatInboxJump } from './native-chat-inbox-jump-requests'
+import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import type { useStructuredAgentSession } from './session/structured/use-structured-agent-session'
 
-/** A structured chat's inbox: its header button, and the jumps it asks the transcript to make. */
+/** A structured chat's inbox: its header button; the jumps it asks for reach the pane's transcript. */
 export type StructuredNativeChatInboxController = Pick<
   ReturnType<typeof useStructuredAgentSession>,
   'epoch' | 'journalItems' | 'hasOlder' | 'isWorking' | 'send'
@@ -19,7 +21,7 @@ export function useStructuredNativeChatInbox(
   controller: StructuredNativeChatInboxController,
   composerRef: RefObject<NativeChatComposerHandle | null>,
   root: string | null
-): { button: React.JSX.Element | null; jumpRequest: NativeChatJumpRequest | null } {
+): { button: React.JSX.Element | null } {
   const key = nativeChatInboxScopeKey(props.target, props.sessionId, controller.epoch)
   const [jump, setJump] = useState<{ key: string; request: NativeChatJumpRequest } | null>(null)
   const jumpToMessage = useCallback(
@@ -49,10 +51,13 @@ export function useStructuredNativeChatInbox(
     },
     jumpToMessage
   })
+  usePublishNativeChatInboxJump(
+    structuredAgentSessionPaneKey(props.tabId, props.sessionId),
+    jump?.key === key ? jump.request : null
+  )
   return {
     button: enabled ? (
       <NativeChatInboxButton inbox={inbox} agentLabel={structuredAgentLabel('claude')} />
-    ) : null,
-    jumpRequest: jump?.key === key ? jump.request : null
+    ) : null
   }
 }

@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import {
   CredentialDecryptionError,
@@ -10,7 +9,8 @@ import {
 } from '../credentials/integration-credential-file'
 import type { BitbucketAuthMode } from '../../shared/bitbucket-credentials'
 import { readCredentialFileProtection } from '../credentials/credential-file-protection'
-import type { SecretAtRestProtection } from '../../shared/secret-at-rest-protection'
+import type { SecretAtRestProtection } from '../../shared/secure-storage/secret-at-rest-protection'
+import { orcaHomeDir } from '../../shared/product-identity-home'
 
 // Plaintext display metadata lets status reads avoid keychain prompts.
 export type BitbucketStoredMetadata = {
@@ -46,7 +46,7 @@ let cachedSecret: BitbucketStoredSecret | null = null
 let credentialError: string | null = null
 
 function getOrcaDir(): string {
-  return join(homedir(), '.orca')
+  return orcaHomeDir()
 }
 
 function getMetadataPath(): string {

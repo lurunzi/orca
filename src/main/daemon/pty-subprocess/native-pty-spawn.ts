@@ -8,8 +8,8 @@ import { normalizeWindowsNativeShellEnvironment } from '../../pty/windows-native
 import {
   hostReportsChildExitStatus,
   wrapShellSpawnForMacosTccAttribution
-} from '../../providers/macos-tcc-login-shell'
-import type { WindowsShellSpawnAttempt } from '../../providers/windows-shell-fallback-chain'
+} from '../../providers/shell-launch/macos/tcc-login-shell'
+import type { WindowsShellSpawnAttempt } from '../../providers/shell-launch/windows/shell-fallback-chain'
 import { assignHostProcessToKillOnCloseJob } from '../../windows/windows-pty-job'
 import { wrapPtySpawnInTerminalScope } from '../process-scopes/terminal-scopes-runtime'
 import { spawnConptyWithInputReader, type ConptyStartupEvents } from './conpty-startup-input-reader'

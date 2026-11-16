@@ -3,9 +3,9 @@ import {
   pendingSendsAsMessages,
   prunePendingSends,
   type NativeChatPendingSend
-} from '../../src/shared/native-chat/transcript/native-chat-pending-sends'
-import { decodeClaudeTranscriptLine } from '../../src/main/native-chat/transcript-line-decoders-claude'
-import { decodeClaudeTurnLifecycle } from '../../src/main/native-chat/transcript-turn-lifecycle'
+} from '../../src/shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
+import { decodeClaudeTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-claude'
+import { decodeClaudeTurnLifecycle } from '../../src/main/native-chat/transcript-decoding/transcript-turn-lifecycle'
 
 // Observed in Claude Code 2.1.278 after absorbed_mid_turn; text and identifiers are anonymized.
 const queuedCommand = {

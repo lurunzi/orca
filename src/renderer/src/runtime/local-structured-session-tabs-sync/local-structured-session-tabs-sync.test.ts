@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import '../../../../shared/constants'
-import type { RuntimeMobileSessionTabsResult } from '../../../../shared/runtime-session-contracts'
+import type { RuntimeMobileSessionTabsResult } from '../../../../shared/remote-runtime/session-graph/runtime-session-contracts'
 import type { Tab } from '../../../../shared/tab-types'
 
 import { applyLocalStructuredSessionTabSnapshots } from './snapshot-apply'
@@ -10,6 +10,7 @@ import { resetLocalStructuredSessionVersionForTests } from './inventory-generati
 import './subscription'
 import { resetWebSessionTabsSnapshotFreshnessForTests } from '../web-session-tabs-sync/tracking-lifecycle'
 import type { WebSessionTabsSyncState } from '../web-session-tabs-sync/state'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 import { resetWebSessionFocusIntentForTests } from '../web-session-tabs-sync/navigation/web-session-focus-intent'
 
 const mocks = vi.hoisted(() => ({ recheckUnconfirmedLaunches: vi.fn() }))
@@ -77,7 +78,7 @@ function createSnapshot(): WebSessionTabsSyncState {
     activeTabType: 'agent-session',
     activeTabTypeByWorktree: { [WORKTREE_ID]: 'agent-session' },
     activeWorktreeId: WORKTREE_ID,
-    agentStatusByPaneKey: {},
+    agentStatusByPaneKey: acceptedAgentStatuses(),
     agentStatusEpoch: 0,
     browserCertificateFailuresByPageId: {},
     browserPagesByWorkspace: {},

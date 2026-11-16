@@ -5,7 +5,7 @@ import {
   type AgentSessionHistoryResult
 } from '../../../../shared/agent-session/agent-session-wire'
 import { sessionInboxHistoryItem } from '../../../../shared/session-inbox-journal-items'
-import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { callStructuredAgentSession } from '@/runtime/native-chat/requests/structured-agent-session-call'
 import { nativeChatInboxScopeKey } from './native-chat-inbox-marks'
 

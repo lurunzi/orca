@@ -4,7 +4,7 @@ import type * as NodeOs from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OrcaRuntimeService } from '../../../orca-runtime'
-import { setSecretStore } from '../../../../../shared/secret-store'
+import { setSecretStore } from '../../../../../shared/secure-storage/secret-store'
 import type { RpcRequest } from '../../core'
 import { RpcDispatcher } from '../../dispatcher'
 import { USAGE_CREDENTIAL_METHODS } from './usage-credentials'
@@ -83,8 +83,8 @@ describe('usage credential RPC methods', () => {
   }
 
   function writeKeyFile(fileName: string, contents: string): string {
-    mkdirSync(join(home.dir, '.orca'), { recursive: true })
-    const keyPath = join(home.dir, '.orca', fileName)
+    mkdirSync(join(home.dir, '.uda-orca'), { recursive: true })
+    const keyPath = join(home.dir, '.uda-orca', fileName)
     writeFileSync(keyPath, contents)
     return keyPath
   }

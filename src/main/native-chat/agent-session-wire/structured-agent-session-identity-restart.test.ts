@@ -5,12 +5,15 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import type { AgentSessionOwnerProbe } from '../../../shared/agent-session/lifecycle/agent-session-lease-adjudication'
+import type { AgentSessionOwnerProbe } from '../../../shared/agent-session/lifecycle/leases/agent-session-lease-adjudication'
 import type { AgentSessionRecord } from '../../../shared/agent-session/lifecycle/agent-session-record'
-import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/agent-session-mutation-envelope'
+import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session/lifecycle/operations/agent-session-mutation-envelope'
 import type { AgentSessionMutationEnvelope } from '../../../shared/agent-session/agent-session-wire'
 import type { AgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store'
-import { openTestAgentSessionRecordStore } from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
+import {
+  openTestAgentSessionDatabase,
+  openTestAgentSessionRecordStore
+} from '../../runtime/agent-session/records/agent-session-record-store-test-harness'
 import type { StructuredAgentSessionAdapter } from './providers/structured-agent-session-adapter'
 import { StructuredAgentSessionHost } from './host/structured-agent-session-host'
 import type { StructuredAgentSessionStatusSink } from './observations/structured-agent-session-status-ownership'
@@ -22,19 +25,17 @@ import {
   hostTestMessage,
   hostTestOperationId,
   resetHostTestOperationIds
-} from './host/testing/structured-agent-session-host-test-data'
+} from './host/testing/structured-agent-session-host-test-data.test-fixture'
 import { agentSessionFailureFact } from '../../../shared/agent-session/failures/agent-session-failure'
 import { agentSessionFailureWords } from '../../../shared/agent-session/failures/agent-session-failure-words'
-import {
-  closeTestJournalHostDatabase,
-  openTestJournalHostDatabase
-} from '../agent-session-journal/store-lifecycle/journal-host-database-test-support'
-import { codexProviderHandle } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+import { closeTestJournalHostDatabases } from '../agent-session-journal/store-lifecycle/journal-host-database-test-support'
+import { readTestHostJournal } from '../agent-session-journal/journal-observation.test-support'
+import { codexProviderHandle } from '../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import {
   NO_STRUCTURED_AGENTS,
   claudeAndCodexRouter
-} from './providers/testing/structured-agent-session-adapter-router-test-support'
-import { startsWhenPublished } from './host/testing/structured-agent-session-instant-start.test-support'
+} from './providers/testing/structured-agent-session-adapter-router.test-fixture'
+import { startsWhenPublished } from './host/testing/structured-agent-session-instant-start.test-fixture'
 
 const REQUESTED_CLOSE_END = { type: 'ended', reason: 'closed', cause: 'requested-close' } as const
 
@@ -71,9 +72,9 @@ function adapter(): StructuredAgentSessionAdapter {
   return claudeAndCodexRouter({ claude: provider, codex: provider }, async () => {})
 }
 
-function openHost(
+async function openHost(
   probeOwner?: (record: AgentSessionRecord) => Promise<AgentSessionOwnerProbe>
-): void {
+): Promise<void> {
   host = new StructuredAgentSessionHost({
     agents: NO_STRUCTURED_AGENTS,
     logger: {
@@ -82,7 +83,7 @@ function openHost(
     },
     store,
     adapter: adapter(),
-    journalDatabase: openTestJournalHostDatabase(root),
+    journalDatabase: await openTestAgentSessionDatabase(root),
     claimKeyId: 'key-1',
     mintSpawnToken: () => `spawn-${acquire.mock.calls.length}`,
     idleSweep: { intervalMs: SWEEP_MS, idleMs: () => IDLE_MS },
@@ -162,17 +163,17 @@ beforeEach(async () => {
     })
   }))
   store = await openTestAgentSessionRecordStore(root)
-  openHost()
+  await openHost()
 })
 
 afterEach(async () => {
   await host.flushAllStreamedEvents()
-  await closeTestJournalHostDatabase(root)
+  await closeTestJournalHostDatabases()
   await rm(root, { recursive: true, force: true })
 })
 
 async function submissionState(clientMessageId: string): Promise<string | undefined> {
-  return (await host.journalSnapshot(SESSION)).submissions.find(
+  return (await readTestHostJournal(host, SESSION)).submissions.find(
     (entry) => entry.clientMessageId === clientMessageId
   )?.dispatchState
 }
@@ -184,15 +185,19 @@ describe('a provider child restarted for a new identity', () => {
     suggestion = 'Review the changes'
     const emit = vi.fn()
     await host.subscribe({ id: 'composer', sessionId: SESSION, emit })
-    expect(emit.mock.calls.some(([frame]) => frame.promptSuggestion === suggestion)).toBe(true)
+    await vi.waitFor(() =>
+      expect(emit.mock.calls.some(([frame]) => frame.promptSuggestion === suggestion)).toBe(true)
+    )
     emit.mockClear()
     expect(await host.eventRecovery.restartProviderChild(SESSION, 'identity granted')).toBe(true)
     await host.flushStreamedEvents(SESSION)
     const reconnect = vi.fn()
     await host.subscribe({ id: 'reconnected-composer', sessionId: SESSION, emit: reconnect })
-    expect(
-      reconnect.mock.calls.some(([frame]) => frame.promptSuggestion === 'Review the changes')
-    ).toBe(true)
+    await vi.waitFor(() =>
+      expect(
+        reconnect.mock.calls.some(([frame]) => frame.promptSuggestion === 'Review the changes')
+      ).toBe(true)
+    )
     expect(emit.mock.calls.some(([frame]) => frame.promptSuggestion === null)).toBe(false)
   })
 

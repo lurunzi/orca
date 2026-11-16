@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, Clock3, Network, Slash } from 'lucide-react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { StructuredSessionOrchestrationIdentityStatus } from '../../../../shared/structured-session-orchestration-identity'
@@ -63,6 +64,7 @@ export function NativeChatCoordinatorToggle({
   unavailableReason?: CoordinatorUnavailableReason
   isWorking: boolean
 }): React.JSX.Element | null {
+  const t = useTranslate()
   const api = window.api?.orchestrationIdentity
   const [status, setStatus] = useState<StructuredSessionOrchestrationIdentityStatus | null>(null)
   const [pending, setPending] = useState(false)
@@ -139,7 +141,7 @@ export function NativeChatCoordinatorToggle({
   const ready = reason === null
   const enabled = typeof queuedValue === 'boolean' ? queuedValue : status?.state === 'enabled'
   const hasQueuedChange = queuedValue !== undefined && queuedValue !== (status?.state === 'enabled')
-  const label = translate('components.native-chat.coordinator.toggle', 'Coordinator mode')
+  const label = t('components.native-chat.coordinator.toggle', 'Coordinator mode')
   const onPressedChange = (next: boolean): void => {
     if (isWorking) {
       queue(COORDINATOR_KEY, next)
@@ -186,10 +188,7 @@ export function NativeChatCoordinatorToggle({
         {reason ? <div>{reason}</div> : null}
         {hasQueuedChange ? (
           <div>
-            {translate(
-              'components.native-chat.composer.appliesNextTurn',
-              'Applies after this turn'
-            )}
+            {t('components.native-chat.composer.appliesNextTurn', 'Applies after this turn')}
           </div>
         ) : null}
       </TooltipContent>

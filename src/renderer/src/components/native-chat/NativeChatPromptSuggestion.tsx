@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { ShortcutKeyCombo } from '@/components/ShortcutKeyCombo'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 
 export function NativeChatPromptSuggestion({
   text,
@@ -9,6 +9,7 @@ export function NativeChatPromptSuggestion({
   text: string
   onAccept?: () => void
 }): React.JSX.Element {
+  const t = useTranslate()
   return (
     <div className="pointer-events-none absolute inset-x-2 top-1 flex items-start gap-2">
       <span
@@ -22,7 +23,7 @@ export function NativeChatPromptSuggestion({
         variant="ghost"
         size="xs"
         className="pointer-events-auto"
-        aria-label={translate(
+        aria-label={t(
           'components.native-chat.composer.acceptPromptSuggestion',
           'Use suggested prompt'
         )}
