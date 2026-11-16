@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import {
   NativeChatInboxCheckRow,
   NativeChatInboxFindingRow,
@@ -19,6 +19,7 @@ function SectionLabel({ children }: { children: React.ReactNode }): React.JSX.El
 
 /** Whether the inbox covers the whole conversation, and a retry when it could not. */
 function HistoryStatus({ inbox }: { inbox: NativeChatInbox }): React.JSX.Element | null {
+  const t = useTranslate()
   const { state, load } = inbox.history
   if (state === 'loading') {
     return (
@@ -27,14 +28,14 @@ function HistoryStatus({ inbox }: { inbox: NativeChatInbox }): React.JSX.Element
         role="status"
       >
         <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-        {translate('components.native-chat.inbox.history.loading', 'Reading earlier turns…')}
+        {t('components.native-chat.inbox.history.loading', 'Reading earlier turns…')}
       </p>
     )
   }
   if (state === 'partial') {
     return (
       <p className="px-3 py-2 text-xs text-muted-foreground">
-        {translate('components.native-chat.inbox.history.partial', 'Older turns are not included.')}
+        {t('components.native-chat.inbox.history.partial', 'Older turns are not included.')}
       </p>
     )
   }
@@ -42,13 +43,10 @@ function HistoryStatus({ inbox }: { inbox: NativeChatInbox }): React.JSX.Element
     return (
       <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
         <span>
-          {translate(
-            'components.native-chat.inbox.history.failed',
-            'Earlier turns could not be read.'
-          )}
+          {t('components.native-chat.inbox.history.failed', 'Earlier turns could not be read.')}
         </span>
         <Button type="button" variant="ghost" size="xs" onClick={load}>
-          {translate('components.native-chat.inbox.history.retry', 'Retry')}
+          {t('components.native-chat.inbox.history.retry', 'Retry')}
         </Button>
       </div>
     )
@@ -67,6 +65,7 @@ export function NativeChatInboxPanel({
   now: number
   onLeave: () => void
 }): React.JSX.Element {
+  const t = useTranslate()
   const context: NativeChatInboxRowContext = { inbox, agentLabel, now, onLeave }
   const needsYou = inbox.questions.length + inbox.checks.length
   const isEmpty = needsYou === 0 && inbox.findings.length === 0
@@ -74,20 +73,20 @@ export function NativeChatInboxPanel({
     <div className="flex flex-col" data-native-chat-inbox-panel="true">
       <div className="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2">
         <h2 className="text-sm font-semibold">
-          {translate('components.native-chat.inbox.title', 'Inbox')}
+          {t('components.native-chat.inbox.title', 'Inbox')}
         </h2>
         <span className="text-xs text-muted-foreground tabular-nums">
           {inbox.attentionCount > 0
-            ? translate('components.native-chat.inbox.waitingCount', '{{count}} waiting on you', {
+            ? t('components.native-chat.inbox.waitingCount', '{{count}} waiting on you', {
                 count: inbox.attentionCount
               })
-            : translate('components.native-chat.inbox.nothingWaiting', 'Nothing waiting on you')}
+            : t('components.native-chat.inbox.nothingWaiting', 'Nothing waiting on you')}
         </span>
       </div>
       <div className="scrollbar-sleek max-h-[min(28rem,65vh)] overflow-y-auto pb-1">
         {isEmpty && inbox.history.state !== 'loading' ? (
           <p className="px-3 py-4 text-xs leading-relaxed text-muted-foreground">
-            {translate(
+            {t(
               'components.native-chat.inbox.empty',
               'Questions {{agent}} leaves to you, findings it records, and checks still failing when a turn ends show up here.',
               { agent: agentLabel }
@@ -97,7 +96,7 @@ export function NativeChatInboxPanel({
         {needsYou > 0 ? (
           <section>
             <SectionLabel>
-              {translate('components.native-chat.inbox.section.needsYou', 'Needs you')}
+              {t('components.native-chat.inbox.section.needsYou', 'Needs you')}
             </SectionLabel>
             <ul>
               {inbox.questions.map((question) => (
@@ -116,7 +115,7 @@ export function NativeChatInboxPanel({
         {inbox.findings.length > 0 ? (
           <section>
             <SectionLabel>
-              {translate('components.native-chat.inbox.section.findings', 'Findings')}
+              {t('components.native-chat.inbox.section.findings', 'Findings')}
             </SectionLabel>
             <ul>
               {inbox.findings.map((finding) => (

@@ -1,6 +1,6 @@
 import { MessagesSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
 import { activateAndRevealWorktree } from '@/lib/workspace/activation/worktree-activation'
 import type { AiVaultSession } from '../../../../shared/ai-vault/contracts/ai-vault-types'
@@ -24,6 +24,7 @@ export function AiVaultOpenTranscriptButton({
   session: AiVaultSession
   worktreeId: string | null | undefined
 }): React.JSX.Element | null {
+  const t = useTranslate()
   const worktreeId = cursorTranscriptWorktreeId(session, candidateWorktreeId)
   if (!worktreeId) {
     return null
@@ -39,7 +40,7 @@ export function AiVaultOpenTranscriptButton({
       }}
     >
       <MessagesSquare className="size-3.5" />
-      {translate('components.native-chat.openTranscript', 'Open conversation')}
+      {t('components.native-chat.openTranscript', 'Open conversation')}
     </Button>
   )
 }

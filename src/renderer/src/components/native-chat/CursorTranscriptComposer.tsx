@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { useImeEnterGestureOwnership } from '@/lib/text-input/ime/ime-composition-keyboard-event'
 import { NativeChatPromptEditor } from './composer/editor/NativeChatPromptEditor'
 import type { NativeChatComposerInput } from './composer/editor/native-chat-composer-input'
@@ -18,6 +18,7 @@ export function CursorTranscriptComposer({
   resume: (prompt: string) => Promise<boolean>
   onSendingChange?: (sending: boolean) => void
 }): React.JSX.Element {
+  const t = useTranslate()
   const input = useRef<NativeChatComposerInput | null>(null)
   const ime = useImeEnterGestureOwnership()
   const { draft, setDraft, flushDraftAppends } = useNativeChatDraft(scopeKey, ime.isComposing)
@@ -42,16 +43,12 @@ export function CursorTranscriptComposer({
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
-    } finally {
-      pending.current = false
-      setSending(false)
-      onSendingChange?.(false)
     }
+    pending.current = false
+    setSending(false)
+    onSendingChange?.(false)
   }
-  const label = translate(
-    'components.native-chat.cursorTranscript.resumeAndSend',
-    'Resume and send'
-  )
+  const label = t('components.native-chat.cursorTranscript.resumeAndSend', 'Resume and send')
   return (
     <div className="shrink-0 px-4 pb-3 pt-2">
       <div className="mx-auto w-full max-w-(--chat-content-max-width)">
@@ -66,7 +63,7 @@ export function CursorTranscriptComposer({
             inputRef={input}
             initialValue={draft}
             disabled={sending}
-            placeholder={translate(
+            placeholder={t(
               'components.native-chat.cursorTranscript.placeholder',
               'Continue this conversation in Orca'
             )}

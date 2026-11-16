@@ -1,7 +1,7 @@
 import { Bug, CircleHelp, CircleX, Lightbulb, LocateFixed, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { formatUiRelativeTime } from '@/i18n/relative-time-format'
 import { failureList } from '../../../../shared/session-inbox-check-output'
 import type {
@@ -57,11 +57,12 @@ function TrailingActions({
   source: SessionInboxSource
   onDismiss: () => void
 }): React.JSX.Element {
+  const t = useTranslate()
   return (
     <div className="ml-auto flex items-center">
       {source.turnUserItemId ? (
         <IconAction
-          label={translate('components.native-chat.inbox.action.jump', 'Go to turn')}
+          label={t('components.native-chat.inbox.action.jump', 'Go to turn')}
           onClick={() => {
             if (context.inbox.jump(source)) {
               context.onLeave()
@@ -72,7 +73,7 @@ function TrailingActions({
         </IconAction>
       ) : null}
       <IconAction
-        label={translate('components.native-chat.inbox.action.dismiss', 'Dismiss')}
+        label={t('components.native-chat.inbox.action.dismiss', 'Dismiss')}
         onClick={onDismiss}
       >
         <X />
@@ -88,6 +89,7 @@ export function NativeChatInboxQuestionRow({
   context: RowContext
   question: SessionInboxQuestion
 }): React.JSX.Element {
+  const t = useTranslate()
   const { inbox } = context
   return (
     <li className="flex gap-2 px-3 py-2" data-native-chat-inbox-entry="question">
@@ -96,7 +98,7 @@ export function NativeChatInboxQuestionRow({
         <p className="text-sm leading-snug break-words">{question.question}</p>
         {question.recommended ? (
           <p className="text-xs text-muted-foreground">
-            {translate(
+            {t(
               'components.native-chat.inbox.question.recommended',
               '{{agent}} recommends: {{option}}',
               { agent: context.agentLabel, option: question.recommended }
@@ -112,7 +114,7 @@ export function NativeChatInboxQuestionRow({
                 variant="outline"
                 size="xs"
                 className="max-w-full"
-                aria-label={translate(
+                aria-label={t(
                   'components.native-chat.inbox.question.answerWith',
                   'Answer: {{option}}',
                   { option }
@@ -135,7 +137,7 @@ export function NativeChatInboxQuestionRow({
               }
             }}
           >
-            {translate('components.native-chat.inbox.question.reply', 'Reply…')}
+            {t('components.native-chat.inbox.question.reply', 'Reply…')}
           </Button>
           <TrailingActions
             context={context}
@@ -155,6 +157,7 @@ export function NativeChatInboxCheckRow({
   context: RowContext
   check: NativeChatInboxCheckEntry
 }): React.JSX.Element {
+  const t = useTranslate()
   const { inbox } = context
   const failures = failureList(check.failures)
   const ranAgo = formatUiRelativeTime(check.at - context.now)
@@ -168,7 +171,7 @@ export function NativeChatInboxCheckRow({
         </p>
         <p className="text-xs text-muted-foreground">
           {check.isStale
-            ? translate(
+            ? t(
                 'components.native-chat.inbox.check.ranBeforeEdit',
                 '{{ago}}, before the last edit',
                 { ago: ranAgo }
@@ -189,11 +192,11 @@ export function NativeChatInboxCheckRow({
         <div className="flex items-center gap-1">
           {check.fixSent ? (
             <span className="text-xs text-muted-foreground">
-              {translate('components.native-chat.inbox.check.fixSent', 'Fix requested')}
+              {t('components.native-chat.inbox.check.fixSent', 'Fix requested')}
             </span>
           ) : (
             <Button type="button" variant="outline" size="xs" onClick={() => inbox.fix(check)}>
-              {translate('components.native-chat.inbox.check.fix', 'Ask to fix')}
+              {t('components.native-chat.inbox.check.fix', 'Ask to fix')}
             </Button>
           )}
           <TrailingActions
@@ -214,11 +217,12 @@ export function NativeChatInboxFindingRow({
   context: RowContext
   finding: NativeChatInboxFindingEntry
 }): React.JSX.Element {
+  const t = useTranslate()
   const { inbox } = context
   const kindLabel =
     finding.kind === 'issue'
-      ? translate('components.native-chat.inbox.finding.issue', 'Issue')
-      : translate('components.native-chat.inbox.finding.opportunity', 'Opportunity')
+      ? t('components.native-chat.inbox.finding.issue', 'Issue')
+      : t('components.native-chat.inbox.finding.opportunity', 'Opportunity')
   return (
     <li className="flex gap-2 px-3 py-2" data-native-chat-inbox-entry="finding">
       {finding.kind === 'issue' ? (
@@ -238,7 +242,7 @@ export function NativeChatInboxFindingRow({
         <div className="flex items-center gap-1">
           {finding.sent ? (
             <span className="text-xs text-muted-foreground">
-              {translate('components.native-chat.inbox.finding.sent', 'Sent to {{agent}}', {
+              {t('components.native-chat.inbox.finding.sent', 'Sent to {{agent}}', {
                 agent: context.agentLabel
               })}
             </span>
@@ -250,7 +254,7 @@ export function NativeChatInboxFindingRow({
                 size="xs"
                 onClick={() => inbox.sendFinding(finding, 'address')}
               >
-                {translate('components.native-chat.inbox.finding.address', 'Address')}
+                {t('components.native-chat.inbox.finding.address', 'Address')}
               </Button>
               <Button
                 type="button"
@@ -258,7 +262,7 @@ export function NativeChatInboxFindingRow({
                 size="xs"
                 onClick={() => inbox.sendFinding(finding, 'discuss')}
               >
-                {translate('components.native-chat.inbox.finding.discuss', 'Discuss')}
+                {t('components.native-chat.inbox.finding.discuss', 'Discuss')}
               </Button>
             </>
           )}

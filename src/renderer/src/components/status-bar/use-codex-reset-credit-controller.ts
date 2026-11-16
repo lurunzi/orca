@@ -25,10 +25,9 @@ export function useCodexResetCreditController(
       await consumeCodexRateLimitResetCredit()
     } catch (error) {
       console.error('Failed to redeem Codex rate-limit reset from status bar:', error)
-    } finally {
-      if (mountedRef.current) {
-        setIsRedeemingReset(false)
-      }
+    }
+    if (mountedRef.current) {
+      setIsRedeemingReset(false)
     }
   }
 

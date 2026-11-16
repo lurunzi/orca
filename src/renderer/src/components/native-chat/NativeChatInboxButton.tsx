@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import { NativeChatInboxPanel } from './NativeChatInboxPanel'
 import type { NativeChatInbox } from './use-native-chat-inbox'
 
@@ -15,25 +15,22 @@ export function NativeChatInboxButton({
   inbox: NativeChatInbox
   agentLabel: string
 }): React.JSX.Element {
+  const t = useTranslate()
   const [open, setOpen] = useState(false)
   const [openedAt, setOpenedAt] = useState(0)
   const panelRef = useRef<HTMLDivElement>(null)
   const count = inbox.attentionCount
   const label =
     count > 0
-      ? translate(
-          'components.native-chat.inbox.triggerWaiting',
-          'Inbox, {{count}} waiting on you',
-          {
-            count
-          }
-        )
+      ? t('components.native-chat.inbox.triggerWaiting', 'Inbox, {{count}} waiting on you', {
+          count
+        })
       : inbox.findings.length > 0
-        ? translate('components.native-chat.inbox.triggerFindings', 'Inbox, {{count}} findings', {
+        ? t('components.native-chat.inbox.triggerFindings', 'Inbox, {{count}} findings', {
             count: inbox.findings.length,
             defaultValue_one: 'Inbox, {{count}} finding'
           })
-        : translate('components.native-chat.inbox.title', 'Inbox')
+        : t('components.native-chat.inbox.title', 'Inbox')
   const changeOpen = (next: boolean): void => {
     setOpen(next)
     if (next) {
@@ -69,7 +66,7 @@ export function NativeChatInboxButton({
         sideOffset={4}
         wheelScroll
         className="w-96"
-        aria-label={translate('components.native-chat.inbox.title', 'Inbox')}
+        aria-label={t('components.native-chat.inbox.title', 'Inbox')}
         // A list, not a form: focus the panel so Esc closes it and Tab reaches the actions.
         onOpenAutoFocus={(event) => {
           event.preventDefault()

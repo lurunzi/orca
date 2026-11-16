@@ -2,7 +2,7 @@ import { MessageSquarePlus, SquareSplitVertical } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { translate } from '@/i18n/i18n'
+import { useTranslate } from '@/i18n/use-translate'
 import {
   canMoveTabToNewPaneColumnFromState,
   moveTabToNewPaneColumn
@@ -25,7 +25,8 @@ export function StructuredAgentSessionTitleActions({
 }: Pick<Props, 'onContinueInNewSession' | 'inbox'> & {
   variant?: 'ghost' | 'pane-title'
 }): React.JSX.Element {
-  const continueLabel = translate(
+  const t = useTranslate()
+  const continueLabel = t(
     'components.agentSessionContinuation.continueInNewSession',
     'Continue in New Session…'
   )
@@ -66,10 +67,11 @@ export function StructuredAgentSessionHeaderActions({
   onContinueInNewSession,
   inbox
 }: Props): React.JSX.Element {
+  const t = useTranslate()
   const canSplit = useAppStore((state) =>
     groupId ? canMoveTabToNewPaneColumnFromState(state, tabId, groupId) : false
   )
-  const splitLabel = translate(
+  const splitLabel = t(
     'auto.components.tab.bar.TabWorkspaceLayoutMenuSection.moveToPaneColumn',
     'Move Tab to Split'
   )
