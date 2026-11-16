@@ -2,12 +2,12 @@
  * UDA Orca fork identity: every name that keeps this app apart from the official Orca on one
  * machine lives here, so upstream merges touch call sites only. Renderer-safe (no Node imports);
  * orcaHomeDir() is in product-identity-home.ts. config/electron-builder.config.cjs (CJS, cannot
- * import TS) and native/windows-cli-launcher repeat some literals; product-identity.test.ts
+ * import TS) repeats some literals; product-identity.test.ts
  * keeps them equal.
  */
 export const PRODUCT_IDENTITY = {
   appId: 'com.ultramarine.uda-orca',
-  /** Shortcuts, uninstall entry, AUMID display name, Windows executable and LOCALAPPDATA root. */
+  /** Shortcuts, uninstall entry, AUMID display name and LOCALAPPDATA root (the Windows executable stays Orca.exe). */
   productName: 'UDA Orca',
   /** userData folder under %APPDATA%, ~/Library/Application Support and $XDG_CONFIG_HOME. */
   dataDirName: 'uda-orca',

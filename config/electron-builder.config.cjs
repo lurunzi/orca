@@ -567,8 +567,7 @@ module.exports = {
     }
   },
   win: {
-    // Keep equal to ELECTRON_EXECUTABLE_NAME in native/windows-cli-launcher/src/main.rs.
-    executableName: UDA_ORCA_IDENTITY.productName,
+    executableName: 'Orca',
     // SignPath signs Windows installers after packaging, so set release publisherName explicitly.
     // Unsigned dev channels omit it or updater signature checks reject dev updates and return to stable.
     // Sign hook signs nothing: it relays transient NSIS uninstaller files to CI SignPath; unset relay env leaves local/dev builds inert.
@@ -610,7 +609,7 @@ module.exports = {
     ]
   },
   nsis: {
-    artifactName: 'uda-orca-windows-setup.${ext}',
+    artifactName: 'orca-windows-setup.${ext}',
     shortcutName: '${productName}',
     uninstallDisplayName: '${productName}',
     createDesktopShortcut: 'always',

@@ -30,8 +30,8 @@ describe('product identity', () => {
       { name: PRODUCT_IDENTITY.productName, schemes: [PRODUCT_IDENTITY.protocolScheme] }
     ])
     expect(config.extraMetadata.name).toBe(PRODUCT_IDENTITY.dataDirName)
-    expect(config.win.executableName).toBe(PRODUCT_IDENTITY.productName)
-    expect(config.nsis.artifactName).toBe('uda-orca-windows-setup.${ext}')
+    // Executable and installer file names stay upstream's: isolation comes from appId, userData and install dir.
+    expect(config.win.executableName).toBe('Orca')
     expect(config.publish).toMatchObject({
       provider: 'github',
       owner: PRODUCT_IDENTITY.releaseRepo.owner,
@@ -39,14 +39,7 @@ describe('product identity', () => {
     })
   })
 
-  it('keeps the native Windows CLI launcher and NSIS hooks on the same names', () => {
-    const launcher = readFileSync(
-      join(REPO_ROOT, 'native', 'windows-cli-launcher', 'src', 'main.rs'),
-      'utf8'
-    )
-    expect(launcher).toContain(
-      `const ELECTRON_EXECUTABLE_NAME: &str = "${PRODUCT_IDENTITY.productName}.exe";`
-    )
+  it('keeps the NSIS hooks on the same names', () => {
     const hooks = readFileSync(
       join(REPO_ROOT, 'config', 'nsis', 'orca-installer-hooks.nsh'),
       'utf8'

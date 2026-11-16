@@ -46,7 +46,7 @@ const INSTALLED_LAYOUT = [
   'libGLESv2.dll',
   'LICENSE.electron.txt',
   'LICENSES.chromium.html',
-  'UDA Orca.exe',
+  'Orca.exe',
   'resources.pak',
   'snapshot_blob.bin',
   'Uninstall UDA Orca.exe',
@@ -65,10 +65,7 @@ afterEach(() => {
 describe('resolveWindowsUpdateInstallDirectory', () => {
   it('installs a Windows update into the folder the installed app was moved to', () => {
     const folder = makeFolder(INSTALLED_LAYOUT, ['locales', 'resources'])
-    const installDirectory = resolveWindowsUpdateInstallDirectory(
-      'win32',
-      join(folder, 'UDA Orca.exe')
-    )
+    const installDirectory = resolveWindowsUpdateInstallDirectory('win32', join(folder, 'Orca.exe'))
 
     expect(runNsisInstall(installDirectory)).toEqual([
       '--updated',
@@ -79,7 +76,7 @@ describe('resolveWindowsUpdateInstallDirectory', () => {
   })
 
   it.each<[string, string[], string[]]>([
-    ['an unpacked copy without the uninstaller', ['UDA Orca.exe', 'ffmpeg.dll'], []],
+    ['an unpacked copy without the uninstaller', ['Orca.exe', 'ffmpeg.dll'], []],
     ['a folder shared with other programs', INSTALLED_LAYOUT, ['OtherApp']],
     ['a folder holding user files', [...INSTALLED_LAYOUT, 'notes.docx'], []],
     ['a folder holding a user text file', [...INSTALLED_LAYOUT, 'notes.txt'], []],
@@ -89,10 +86,7 @@ describe('resolveWindowsUpdateInstallDirectory', () => {
     ['a folder holding a user data file', [...INSTALLED_LAYOUT, 'save.bin'], []]
   ])('keeps the default install location for %s', (_label, files, directories) => {
     const folder = makeFolder(files, directories)
-    const installDirectory = resolveWindowsUpdateInstallDirectory(
-      'win32',
-      join(folder, 'UDA Orca.exe')
-    )
+    const installDirectory = resolveWindowsUpdateInstallDirectory('win32', join(folder, 'Orca.exe'))
 
     expect(runNsisInstall(installDirectory)).toEqual(['--updated', '/S', '--force-run'])
   })
@@ -104,10 +98,7 @@ describe('resolveWindowsUpdateInstallDirectory', () => {
     for (const file of INSTALLED_LAYOUT) {
       writeFileSync(join(folder, file), '')
     }
-    const installDirectory = resolveWindowsUpdateInstallDirectory(
-      'win32',
-      join(folder, 'UDA Orca.exe')
-    )
+    const installDirectory = resolveWindowsUpdateInstallDirectory('win32', join(folder, 'Orca.exe'))
 
     expect(runNsisInstall(installDirectory)).toEqual(['--updated', '/S', '--force-run'])
   })
