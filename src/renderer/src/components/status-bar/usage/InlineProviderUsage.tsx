@@ -16,6 +16,8 @@ import { formatResetDuration } from '../../../../../shared/agent-usage/rate-limi
 import { formatBareUsagePercentage, formatUsagePercentageLabel } from './usage-percentage-label'
 import { getUsageRosterRowState } from './usage-roster-row-state'
 import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '@/components/unavailable-entry'
+import { signInRunsOnThisComputerLabel } from '../accounts/ProviderAccountChatButton'
 import { uiNumberFormat } from '@/i18n/ui-intl-formatters'
 import { formatUiNarrowDuration } from '@/i18n/relative-time-format'
 
@@ -158,36 +160,51 @@ export function InlineUsageSignInAction({
   isSigningIn,
   disabled,
   accountLabel,
-  onSignIn
+  onSignIn,
+  signInUnavailable = false
 }: {
   isSigningIn: boolean
   disabled: boolean
   accountLabel: string
   onSignIn: () => void
+  /** The account's host cannot run this computer's sign-in. */
+  signInUnavailable?: boolean
 }): React.JSX.Element {
   const t = useTranslate()
-  return (
+  const signInLabel = t('auto.components.status.bar.StatusBar.c35af53b73', 'Sign in')
+  const item = (
     <DropdownMenuItem
       asChild
-      disabled={disabled}
+      disabled={disabled || signInUnavailable}
       onSelect={(event) => {
         event.preventDefault()
-        onSignIn()
+        if (!signInUnavailable) {
+          onSignIn()
+        }
       }}
     >
       <Button
         type="button"
         variant="outline"
         size="xs"
-        disabled={disabled}
-        aria-label={`${t('auto.components.status.bar.StatusBar.c35af53b73', 'Sign in')}: ${accountLabel}`}
+        disabled={disabled || signInUnavailable}
+        aria-label={`${signInLabel}: ${accountLabel}`}
       >
         {isSigningIn ? (
           <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
         ) : null}
-        {t('auto.components.status.bar.StatusBar.c35af53b73', 'Sign in')}
+        <UnavailableEntryLabel unavailable={signInUnavailable}>{signInLabel}</UnavailableEntryLabel>
       </Button>
     </DropdownMenuItem>
+  )
+  if (!signInUnavailable) {
+    return item
+  }
+  return (
+    <span className="flex items-center gap-1.5">
+      <UnavailableEntryReason>{signInRunsOnThisComputerLabel(t)}</UnavailableEntryReason>
+      {item}
+    </span>
   )
 }
 

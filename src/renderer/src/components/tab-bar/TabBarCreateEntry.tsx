@@ -198,10 +198,11 @@ function TabBarCreateEntrySession({
       : getTabEntryOmniboxPlaceholder(t)
 
   const submitOption = (option?: ActiveOption) => {
-    if (disabled || pending) {
+    const target = option ?? selectedActiveOption
+    if (disabled || pending || (target?.kind === 'entry' && target.option.unavailableReason)) {
       return false
     }
-    const selectedOption = option ?? selectedActiveOption ?? null
+    const selectedOption = target ?? null
     if (!selectedOption) {
       if (!hasQuery && onOpenDefaultTerminal) {
         onOpenDefaultTerminal()

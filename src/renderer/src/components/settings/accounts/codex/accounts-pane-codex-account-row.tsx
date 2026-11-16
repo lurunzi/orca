@@ -13,6 +13,7 @@ import {
 } from '../../../provider-accounts/provider-account-visibility'
 import { formatAccountTimestamp, getCodexAccountRuntimeLabel } from '../scope/accounts-pane-runtime'
 import type { AccountsPaneSectionModel } from '../accounts-pane-types'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '../../../unavailable-entry'
 
 export function renderCodexAccountRow(
   account: CodexRateLimitAccountsState['accounts'][number],
@@ -138,6 +139,14 @@ export function renderCodexAccountRow(
 
         <div className="flex shrink-0 items-center justify-end gap-1 max-md:w-full max-md:flex-wrap">
           {/* Keep maintenance actions lighter so account selection remains primary in dense lists. */}
+          {isRemoteAccountScope ? (
+            <UnavailableEntryReason>
+              {t(
+                'settings.remoteUnavailable.signInRunsOnThisComputer',
+                'Sign-in runs on this computer'
+              )}
+            </UnavailableEntryReason>
+          ) : null}
           <Button
             variant="ghost"
             size="xs"
@@ -153,6 +162,7 @@ export function renderCodexAccountRow(
               )
             }}
             disabled={isRemoteAccountScope || isBusy}
+            aria-disabled={isRemoteAccountScope || undefined}
             className="h-6 px-2 text-muted-foreground hover:text-foreground"
           >
             {isReauthing ? (
@@ -160,7 +170,9 @@ export function renderCodexAccountRow(
             ) : (
               <RefreshCw className="size-3" />
             )}
-            {t('auto.components.settings.AccountsPane.8a0f870153', 'Re-authenticate')}
+            <UnavailableEntryLabel unavailable={isRemoteAccountScope}>
+              {t('auto.components.settings.AccountsPane.8a0f870153', 'Re-authenticate')}
+            </UnavailableEntryLabel>
           </Button>
           <Button
             variant="ghost"

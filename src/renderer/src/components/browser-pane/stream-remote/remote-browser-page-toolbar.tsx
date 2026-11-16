@@ -1,7 +1,8 @@
-import { MessageSquarePlus, RefreshCw } from 'lucide-react'
+import { MessageSquarePlus, RefreshCw, SquareCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslate } from '@/i18n/use-translate'
+import { UnavailableEntryIcon } from '@/components/unavailable-entry'
 import { BrowserNavigationControlRow } from '../assemble-chrome/toolbar/browser-navigation-control-row'
 import BrowserAddressBar from '../assemble-chrome/address-bar/BrowserAddressBar'
 import type { BrowserAddressBarEditSessionBinding } from '../assemble-chrome/address-bar/use-browser-address-bar-edit-session'
@@ -100,31 +101,18 @@ export function RemoteBrowserPageToolbar({
         </Tooltip>
       }
     >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 opacity-50"
-            aria-disabled="true"
-            aria-label={t(
-              'auto.components.browser.pane.BrowserPane.deb5293610',
-              'Browser annotations unavailable in remote runtime'
-            )}
-            onClick={(event) => {
-              event.preventDefault()
-            }}
-          >
-            <MessageSquarePlus className="size-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={4}>
-          {t(
-            'auto.components.browser.pane.BrowserPane.8b7e6d1f5a',
-            'Browser annotations are only available in local browser tabs.'
-          )}
-        </TooltipContent>
-      </Tooltip>
+      <LocalTabOnlyButton
+        name={t(
+          'auto.components.browser.pane.BrowserPane.deb5293610',
+          'Browser annotations unavailable in remote runtime'
+        )}
+        reason={t(
+          'auto.components.browser.pane.BrowserPane.8b7e6d1f5a',
+          'Browser annotations are only available in local browser tabs.'
+        )}
+      >
+        <MessageSquarePlus className="size-4" />
+      </LocalTabOnlyButton>
       <MarkupDrawButton
         onClick={() => (markup.isActive ? markup.cancel() : void markup.start())}
         disabled={!frameUrl}
@@ -132,6 +120,47 @@ export function RemoteBrowserPageToolbar({
         surfaceActive={isActive}
         className="h-7 w-7"
       />
+      <LocalTabOnlyButton
+        reason={t(
+          'auto.components.browser.pane.BrowserPane.devToolsLocalOnly',
+          'DevTools are only available in local browser tabs.'
+        )}
+      >
+        <SquareCode className="size-4" />
+      </LocalTabOnlyButton>
     </BrowserNavigationControlRow>
+  )
+}
+
+function LocalTabOnlyButton({
+  name,
+  reason,
+  children
+}: {
+  /** Accessible name; defaults to the reason. */
+  name?: string
+  reason: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          aria-disabled="true"
+          aria-label={name ?? reason}
+          onClick={(event) => {
+            event.preventDefault()
+          }}
+        >
+          <UnavailableEntryIcon>{children}</UnavailableEntryIcon>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={4}>
+        {reason}
+      </TooltipContent>
+    </Tooltip>
   )
 }

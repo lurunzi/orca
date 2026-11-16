@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/context-menu'
 import { useTranslate } from '@/i18n/use-translate'
 import { LocalOnlyMenuHint } from '@/components/local-only-menu-hint'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import {
   getRevealInFileManagerLabel,
   getWorkspaceFileRevealOwner,
@@ -134,7 +135,9 @@ export function SourceControlEntryContextMenu({
           disabled={!absolutePath || !hasWorkingTreeFile || revealBlocked}
         >
           <ExternalLink className="size-3.5" />
-          {getRevealInFileManagerLabel(t)}
+          <UnavailableEntryLabel unavailable={revealBlocked}>
+            {getRevealInFileManagerLabel(t)}
+          </UnavailableEntryLabel>
           {revealBlocked ? <LocalOnlyMenuHint /> : null}
         </ContextMenuItem>
         <ContextMenuSeparator />

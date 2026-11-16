@@ -12,6 +12,11 @@ import { SearchableSetting } from '../../section-layout/SearchableSetting'
 import { openAppHttpLinkFromAnchor } from '@/lib/browser/navigation/app-http-link-open'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
 import { ACCOUNTS_SECTION_IDS } from '../accounts-search'
+import {
+  UnavailableEntryIcon,
+  UnavailableEntryLabel,
+  UnavailableEntryReason
+} from '../../../unavailable-entry'
 
 const CURSOR_USAGE_DASHBOARD_URL = 'https://cursor.com/dashboard/spending'
 const SEARCH_KEYWORDS = ['cursor', 'usage', 'plan', 'spend', 'billing', 'rate limit']
@@ -35,7 +40,11 @@ function credentialSourceLabel(
   return null
 }
 
-export function CursorAccountsSection(): React.JSX.Element {
+export function CursorAccountsSection({
+  unavailable = false
+}: {
+  unavailable?: boolean
+}): React.JSX.Element {
   const t = useTranslate()
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
   const cursorUsage = useAppStore((s) => s.rateLimits.cursor)
@@ -74,8 +83,11 @@ export function CursorAccountsSection(): React.JSX.Element {
 
   // Background usage updates can change sign-in state; reload status on arrival.
   useEffect(() => {
+    if (unavailable) {
+      return
+    }
     void loadStatus()
-  }, [loadStatus, cursorUsage?.updatedAt])
+  }, [loadStatus, cursorUsage?.updatedAt, unavailable])
 
   // Let the snapshot effect reload status once; each extra read touches an externally owned keychain item.
   const handleRefreshUsage = async (): Promise<void> => {
@@ -87,11 +99,11 @@ export function CursorAccountsSection(): React.JSX.Element {
     }
   }
 
-  const signedIn = status?.signedIn === true
+  const signedIn = !unavailable && status?.signedIn === true
   const tokenFresh = status?.tokenFresh === true
   const sourceLabel = credentialSourceLabel(status?.credentialSource ?? null, t)
-  const pools = cursorUsage?.buckets ?? []
-  const monthly = cursorUsage?.monthly ?? null
+  const pools = unavailable ? [] : (cursorUsage?.buckets ?? [])
+  const monthly = unavailable ? null : (cursorUsage?.monthly ?? null)
   // Explain unknown/failed usage rather than hiding the signed-in account or implying healthy allowance.
   const unavailableReason =
     signedIn && pools.length === 0 && !monthly
@@ -110,8 +122,12 @@ export function CursorAccountsSection(): React.JSX.Element {
       <SettingsGroup
         title={
           <span className="flex items-center gap-2">
-            <AgentIcon agent="cursor" size={16} />
-            {t('auto.components.settings.CursorAccountsSection.title', 'Cursor')}
+            <UnavailableEntryIcon unavailable={unavailable}>
+              <AgentIcon agent="cursor" size={16} />
+            </UnavailableEntryIcon>
+            <UnavailableEntryLabel unavailable={unavailable}>
+              {t('auto.components.settings.CursorAccountsSection.title', 'Cursor')}
+            </UnavailableEntryLabel>
           </span>
         }
         description={t(
@@ -139,7 +155,14 @@ export function CursorAccountsSection(): React.JSX.Element {
             )}
           />
           <div className="min-w-0 flex-1 space-y-1">
-            {loading ? (
+            {unavailable ? (
+              <UnavailableEntryReason className="block">
+                {t(
+                  'settings.remoteUnavailable.shownForThisComputerOnly',
+                  'Shown for this computer only'
+                )}
+              </UnavailableEntryReason>
+            ) : loading ? (
               <p className="text-xs text-muted-foreground">
                 {t('auto.components.settings.CursorAccountsSection.loading', 'Loading…')}
               </p>
@@ -184,12 +207,15 @@ export function CursorAccountsSection(): React.JSX.Element {
                 </p>
               </>
             )}
-            {status?.error ? <p className="text-xs text-destructive">{status.error}</p> : null}
+            {!unavailable && status?.error ? (
+              <p className="text-xs text-destructive">{status.error}</p>
+            ) : null}
           </div>
           <Button
             variant="outline"
             size="xs"
-            disabled={refreshing}
+            disabled={unavailable || refreshing}
+            aria-disabled={unavailable || undefined}
             onClick={() => void handleRefreshUsage()}
             className="shrink-0"
           >
@@ -198,7 +224,9 @@ export function CursorAccountsSection(): React.JSX.Element {
             ) : (
               <RefreshCw className="size-3" />
             )}
-            {t('auto.components.settings.CursorAccountsSection.refreshUsage', 'Refresh usage')}
+            <UnavailableEntryLabel unavailable={unavailable}>
+              {t('auto.components.settings.CursorAccountsSection.refreshUsage', 'Refresh usage')}
+            </UnavailableEntryLabel>
           </Button>
         </div>
 

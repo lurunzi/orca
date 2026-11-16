@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '@/components/unavailable-entry'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIntlLocale, useTranslate } from '@/i18n/use-translate'
 import { formatClipboardFilePath } from '@/lib/clipboard/clipboard-file-path'
@@ -57,6 +58,7 @@ export function SkillDetailDialog({
   skill,
   agentByRootPath,
   shareable,
+  shareUnavailableReason,
   deletable,
   deleteDisabledReason,
   onOpenChange,
@@ -68,6 +70,8 @@ export function SkillDetailDialog({
   skill: DiscoveredSkill | null
   agentByRootPath: ReadonlyMap<string, string>
   shareable: boolean
+  /** Set when the skill's host cannot share it from this computer. */
+  shareUnavailableReason: string | null
   deletable: boolean
   /** Remote deletion is supported, so disabled actions need a specific cause. */
   deleteDisabledReason: string | null
@@ -175,9 +179,22 @@ export function SkillDetailDialog({
               </TooltipContent>
             ) : null}
           </Tooltip>
-          <Button type="button" size="sm" disabled={!shareable} onClick={onShare}>
+          {shareUnavailableReason ? (
+            <UnavailableEntryReason className="self-center">
+              {shareUnavailableReason}
+            </UnavailableEntryReason>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            disabled={!shareable}
+            aria-disabled={shareUnavailableReason ? true : undefined}
+            onClick={onShare}
+          >
             <Share2 className="size-3.5" />
-            {t('auto.components.skills.SkillCard.d25a1b8ae6', 'Share skill')}
+            <UnavailableEntryLabel unavailable={Boolean(shareUnavailableReason)}>
+              {t('auto.components.skills.SkillCard.d25a1b8ae6', 'Share skill')}
+            </UnavailableEntryLabel>
           </Button>
         </DialogFooter>
       </DialogContent>

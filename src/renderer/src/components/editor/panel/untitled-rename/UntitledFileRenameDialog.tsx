@@ -82,6 +82,13 @@ export function UntitledFileRenameDialog({
   }
   const { extension } = splitUntitledFileName(seededOpenState.currentName)
 
+  const browseLabel = disableBrowse
+    ? t(
+        'auto.components.editor.UntitledFileRenameDialog.5e7f0d8a80',
+        'Folder picker unavailable for remote files'
+      )
+    : t('auto.components.editor.UntitledFileRenameDialog.725868c75d', 'Browse folders')
+
   const handleBrowse = useCallback(async () => {
     const picked = await window.api.shell.pickDirectory({ defaultPath: dir || worktreePath })
     if (!picked) {
@@ -220,27 +227,20 @@ export function UntitledFileRenameDialog({
                 }}
                 className="h-8 text-xs"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                disabled={disableBrowse}
-                onClick={() => void handleBrowse()}
-                title={
-                  disableBrowse
-                    ? t(
-                        'auto.components.editor.UntitledFileRenameDialog.5e7f0d8a80',
-                        'Folder picker unavailable for remote files'
-                      )
-                    : t(
-                        'auto.components.editor.UntitledFileRenameDialog.725868c75d',
-                        'Browse folders'
-                      )
-                }
-              >
-                <FolderOpen className="size-3.5" />
-              </Button>
+              <span className="shrink-0" title={browseLabel}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={disableBrowse}
+                  aria-disabled={disableBrowse || undefined}
+                  aria-label={browseLabel}
+                  onClick={() => void handleBrowse()}
+                >
+                  <FolderOpen className="size-3.5" />
+                </Button>
+              </span>
             </div>
           </div>
         </div>

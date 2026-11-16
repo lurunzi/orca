@@ -11,12 +11,14 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { useTranslate } from '@/i18n/use-translate'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '@/components/unavailable-entry'
 import { STATUS_BAR_CONTEXT_MENU_EXEMPT_PROPS } from '../composition/status-bar-context-menu-policy'
 
 export function CodexResetCredits({
   resetCreditCount,
   resetCreditExpiry,
   canRedeemReset,
+  redeemResetUnavailable = false,
   isRedeemingReset,
   onReset,
   renderAction
@@ -24,6 +26,8 @@ export function CodexResetCredits({
   resetCreditCount: number
   resetCreditExpiry: string | null
   canRedeemReset: boolean
+  /** Credits exist but redeem against this computer's Codex login, not the account's host. */
+  redeemResetUnavailable?: boolean
   isRedeemingReset: boolean
   onReset: () => void
   renderAction?: (action: React.ReactNode) => React.ReactNode
@@ -51,6 +55,21 @@ export function CodexResetCredits({
         {resetCreditExpiry ? <div>{resetCreditExpiry}</div> : null}
       </div>
       {canRedeemReset ? (renderAction ? renderAction(action) : action) : null}
+      {!canRedeemReset && redeemResetUnavailable ? (
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <Button variant="outline" size="xs" disabled aria-disabled="true">
+            <UnavailableEntryLabel>
+              {t('auto.components.status.bar.StatusBar.e159fc1fd7', 'Reset now')}
+            </UnavailableEntryLabel>
+          </Button>
+          <UnavailableEntryReason>
+            {t(
+              'auto.components.status.bar.StatusBar.resetRedeemsHere',
+              "Redeems against this computer's Codex login"
+            )}
+          </UnavailableEntryReason>
+        </div>
+      ) : null}
     </div>
   )
 }

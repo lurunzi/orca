@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { DropdownMenuCheckboxItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { useTranslate } from '@/i18n/use-translate'
+import { UnavailableEntryLabel, UnavailableEntryMenuHint } from '@/components/unavailable-entry'
 import type { RuntimeClientTarget } from '../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import type { StructuredSessionOrchestrationIdentityStatus } from '../../../../shared/structured-session-orchestration-identity'
 
@@ -48,6 +49,24 @@ export function NativeChatOrchestrationIdentityMenuItem({
       })
   }, [api, offered, sessionId])
 
+  if (api !== undefined && target.kind !== 'local') {
+    return (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem checked={false} disabled>
+          <UnavailableEntryLabel>
+            {t('components.native-chat.orchestrationIdentity.label', 'Orchestration identity')}
+          </UnavailableEntryLabel>
+          <UnavailableEntryMenuHint>
+            {t(
+              'components.native-chat.orchestrationIdentity.remote',
+              'Only chats on this computer can hold an identity'
+            )}
+          </UnavailableEntryMenuHint>
+        </DropdownMenuCheckboxItem>
+      </>
+    )
+  }
   if (!offered || status?.state === 'worker') {
     return null
   }

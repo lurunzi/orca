@@ -23,6 +23,7 @@ import { AGENT_DEFAULT_SURFACE_SECTION_ID, AGENTS_INSTALLED_SECTION_ID } from '.
 import { SettingsRow } from '../../form-controls/SettingsFormControls'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
 import { Button } from '../../../ui/button'
+import { UnavailableEntryLabel, UnavailableEntryReason } from '../../../unavailable-entry'
 import {
   agentsKeepingOwnSurface,
   followAgentDefaultSurface,
@@ -107,6 +108,7 @@ function SurfaceTile({
   name,
   checked,
   pending,
+  unavailable,
   title,
   description,
   preview,
@@ -115,6 +117,7 @@ function SurfaceTile({
   name: string
   checked: boolean
   pending: boolean
+  unavailable: boolean
   title: string
   description: string
   preview: ReactNode
@@ -134,7 +137,8 @@ function SurfaceTile({
         type="radio"
         name={name}
         checked={checked}
-        disabled={pending}
+        disabled={pending || unavailable}
+        aria-disabled={unavailable || undefined}
         onChange={onSelect}
         className="sr-only"
       />
@@ -156,7 +160,9 @@ function SurfaceTile({
             <Check className="size-3" strokeWidth={3} />
           ) : null}
         </span>
-        <span className="text-[15px] font-semibold">{title}</span>
+        <UnavailableEntryLabel unavailable={unavailable} className="text-[15px] font-semibold">
+          {title}
+        </UnavailableEntryLabel>
       </div>
       <p className="mt-0.5 pr-1 pl-[34px] text-[12.5px] leading-[18px] text-muted-foreground">
         {description}
@@ -168,10 +174,12 @@ function SurfaceTile({
 /** This computer's default surface; agents set on their own Installed row keep their choice. */
 export function AgentDefaultSurfaceSection({
   settings,
-  presentation = 'tiles'
+  presentation = 'tiles',
+  unavailable = false
 }: {
   settings: GlobalSettings
   presentation?: 'tiles' | 'switch'
+  unavailable?: boolean
 }): JSX.Element {
   const t = useTranslate()
   const name = useId()
@@ -249,7 +257,7 @@ export function AgentDefaultSurfaceSection({
   return (
     <div id={AGENT_DEFAULT_SURFACE_SECTION_ID} className="@container scroll-mt-8">
       <SettingsGroup
-        title={title}
+        title={<UnavailableEntryLabel unavailable={unavailable}>{title}</UnavailableEntryLabel>}
         description={t(
           'settings.agents.defaultSurfaceDescription',
           'The default for agents on this computer.'
@@ -265,6 +273,7 @@ export function AgentDefaultSurfaceSection({
           <SurfaceTile
             name={name}
             pending={pending}
+            unavailable={unavailable}
             checked={surface === 'chat'}
             title={t('settings.agents.defaultOpensAsChat', 'Chat')}
             description={t(
@@ -277,6 +286,7 @@ export function AgentDefaultSurfaceSection({
           <SurfaceTile
             name={name}
             pending={pending}
+            unavailable={unavailable}
             checked={surface === 'terminal'}
             title={t('settings.agents.defaultSurfaceTerminal', 'Terminal')}
             description={t(
@@ -287,6 +297,14 @@ export function AgentDefaultSurfaceSection({
             onSelect={() => choose('terminal')}
           />
         </div>
+        {unavailable ? (
+          <UnavailableEntryReason className="mt-3 block">
+            {t(
+              'settings.remoteUnavailable.appliesToThisComputerOnly',
+              'Applies to this computer only'
+            )}
+          </UnavailableEntryReason>
+        ) : null}
         <div className="mt-3 flex justify-end">
           <button
             type="button"

@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/class-names'
+import { UnavailableEntryLabel } from '@/components/unavailable-entry'
 import { useTranslate } from '@/i18n/use-translate'
 import { selectedCountLabel } from '../presentation/skill-display-labels'
 import { SKILLS_PAGE_COLUMN } from './skills-page-column'
@@ -15,6 +16,7 @@ export function SkillsSelectionHeader({
   actionLabel,
   destructive = false,
   busy = false,
+  unavailable = false,
   selectedCount,
   eligibleCount,
   onSelectAll,
@@ -30,6 +32,8 @@ export function SkillsSelectionHeader({
   destructive?: boolean
   /** Keeps a slow remote submit from being fired twice. */
   busy?: boolean
+  /** The skills' host cannot run this action from this computer; the page notice says why. */
+  unavailable?: boolean
   selectedCount: number
   eligibleCount: number
   onSelectAll: () => void
@@ -70,14 +74,17 @@ export function SkillsSelectionHeader({
               type="button"
               variant="link"
               className={SKILLS_SUBTITLE_ACTION_CLASS}
-              disabled={eligibleCount === 0}
+              disabled={eligibleCount === 0 || unavailable}
+              aria-disabled={unavailable ? true : undefined}
               onClick={onSelectAll}
             >
-              {t(
-                'auto.components.skills.SkillsSelectionHeader.selectAll',
-                'Select all {{count}} eligible',
-                { count: eligibleCount }
-              )}
+              <UnavailableEntryLabel unavailable={unavailable}>
+                {t(
+                  'auto.components.skills.SkillsSelectionHeader.selectAll',
+                  'Select all {{count}} eligible',
+                  { count: eligibleCount }
+                )}
+              </UnavailableEntryLabel>
             </Button>
             <span aria-hidden>·</span>
             <Button
@@ -95,11 +102,12 @@ export function SkillsSelectionHeader({
           type="button"
           size="sm"
           variant={destructive ? 'destructive' : 'default'}
-          disabled={selectedCount === 0 || busy}
+          disabled={selectedCount === 0 || busy || unavailable}
+          aria-disabled={unavailable ? true : undefined}
           onClick={onSubmit}
         >
           {actionIcon}
-          {actionLabel}
+          <UnavailableEntryLabel unavailable={unavailable}>{actionLabel}</UnavailableEntryLabel>
         </Button>
       </div>
     </header>

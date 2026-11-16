@@ -998,6 +998,12 @@
       "include": "包含的 glob（每行一個）",
       "includeHelp": "比對相對於工作區根目錄的路徑。沒有相符的 glob 時不會格式化。* 和 ** 會略過以點開頭的名稱；請明確列出，例如 .github/**/*.yml。若要使用此指令，請在一般 > 編輯器中啟用「儲存時格式化」。",
       "710343e374": "格式化工具指令"
+    },
+    "remoteUnavailable": {
+      "signInRunsOnThisComputer": "登入在本機執行",
+      "appliesToThisComputerOnly": "僅適用於本機",
+      "shownForThisComputerOnly": "僅顯示本機的狀態",
+      "defaultHost": "預設主機"
     }
   },
   "menu": {
@@ -4594,7 +4600,8 @@
             "hiddenUsageProviders": "另有：{{value0}}",
             "zcodeUsageMenu": "ZCode 用量",
             "rateLimitResetsAvailable_other": "可重設速率限制 {{count}} 次",
-            "staleCodexSessions_other": "{{count}} 個 Codex 工作階段仍在使用舊帳戶。"
+            "staleCodexSessions_other": "{{count}} 個 Codex 工作階段仍在使用舊帳戶。",
+            "resetRedeemsHere": "針對本機的 Codex 登入兌換"
           },
           "StatusBarUsageEmptyCta": {
             "828c764a79": "連結帳戶",
@@ -17180,7 +17187,8 @@
             "devToolsDockRight": "停駐於右側",
             "devToolsDockBottom": "停駐於底部",
             "devToolsUndock": "在獨立視窗中開啟",
-            "devToolsClose": "關閉 DevTools"
+            "devToolsClose": "關閉 DevTools",
+            "devToolsLocalOnly": "DevTools 僅在本機瀏覽器分頁中可用。"
           },
           "BrowserToolbarMenu": {
             "429ef481f9": "取消",

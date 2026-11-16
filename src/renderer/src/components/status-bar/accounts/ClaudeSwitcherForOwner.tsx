@@ -235,16 +235,17 @@ export function ClaudeSwitcherForOwner({
     isSwitching
   )
   if (accountControl?.add) {
-    return runtimeTarget.kind === 'local' ? accountControl.button : null
+    return accountControl.button
   }
 
   const rows = (selectedGroup?.targets ?? []).map((target) => ({
     target,
     inactiveUsage: target.id ? inactiveClaudeAccounts.find((a) => a.accountId === target.id) : null,
+    signedOut: target.needsSignIn === true && target.id !== null,
     // Why local only: the hidden sign-in runs on this device, not a remote server.
     signInId: target.needsSignIn && !hasActiveRuntimeEnvironment ? target.id : null
   }))
-  const signedOutRows = rows.filter((row) => row.signInId)
+  const signedOutRows = rows.filter((row) => row.signedOut)
   // Why not the hook: this runs after an early return, so it must stay a plain call.
   const notCheckedDescription = t(
     'auto.components.status.bar.tooltip.claude.waiting.label',
@@ -283,6 +284,7 @@ export function ClaudeSwitcherForOwner({
   const renderRow = ({
     target,
     inactiveUsage,
+    signedOut,
     signInId
   }: (typeof rows)[number]): React.JSX.Element => (
     <AccountSwitchRowItem
@@ -314,17 +316,22 @@ export function ClaudeSwitcherForOwner({
         }
       }}
       action={
-        signInId ? (
+        signedOut ? (
           <InlineUsageSignInAction
             accountLabel={target.label}
-            isSigningIn={signingInId === signInId}
+            isSigningIn={signInId !== null && signingInId === signInId}
             disabled={isSwitching || signingInId !== null}
-            onSignIn={() => void handleSignIn(signInId)}
+            signInUnavailable={signInId === null}
+            onSignIn={() => {
+              if (signInId) {
+                void handleSignIn(signInId)
+              }
+            }}
           />
         ) : undefined
       }
     >
-      {signInId ? null : rowUsage(target, inactiveUsage)}
+      {signedOut ? null : rowUsage(target, inactiveUsage)}
     </AccountSwitchRowItem>
   )
 
@@ -374,7 +381,7 @@ export function ClaudeSwitcherForOwner({
           openSettingsPage()
         }}
       >
-        {rows.filter((row) => !row.signInId).map(renderRow)}
+        {rows.filter((row) => !row.signedOut).map(renderRow)}
         {signedOutRows.length > 0 ? (
           <>
             <AccountSwitchSignedOutHeading />

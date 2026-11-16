@@ -9,6 +9,7 @@ import {
   DropdownMenuSubTrigger
 } from '@/components/ui/dropdown-menu'
 import { useAppStore } from '@/store'
+import { UnavailableEntryLabel, UnavailableEntryMenuHint } from '@/components/unavailable-entry'
 import {
   getLocalPathOpenOwnerForRoute,
   isRevealOrEditorOpenBlocked,
@@ -267,13 +268,11 @@ export function WorktreeOpenInMenuItems({
             ) : (
               <ExternalLink className="size-3.5" />
             )}
-            <span className="min-w-0 truncate">
+            <UnavailableEntryLabel unavailable={availability.disabled} className="min-w-0 truncate">
               {formatLabel ? formatLabel(entry.label) : entry.label}
-            </span>
+            </UnavailableEntryLabel>
             {availability.metadata ? (
-              <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                {availability.metadata}
-              </span>
+              <UnavailableEntryMenuHint>{availability.metadata}</UnavailableEntryMenuHint>
             ) : null}
           </DropdownMenuItem>
         )

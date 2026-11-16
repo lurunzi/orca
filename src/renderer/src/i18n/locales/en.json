@@ -1482,6 +1482,12 @@
       "supportedKeys": "Define only the supported keys: `scripts` and `setup`.",
       "supportedArchiveKeys": "Define only the supported keys: `scripts`, `setup`, and `archive`.",
       "invalidArchive": "The file is present, but Orca could not find a valid setup or archive script."
+    },
+    "remoteUnavailable": {
+      "signInRunsOnThisComputer": "Sign-in runs on this computer",
+      "appliesToThisComputerOnly": "Applies to this computer only",
+      "shownForThisComputerOnly": "Shown for this computer only",
+      "defaultHost": "Default host"
     }
   },
   "menu": {
@@ -5344,7 +5350,8 @@
             "staleCodexSessions_one": "{{count}} Codex session is still on the old account.",
             "staleCodexSessions_other": "{{count}} Codex sessions are still on the old account.",
             "windowWeeks": "{{value0}}wk",
-            "museUsageMenu": "Muse Usage"
+            "museUsageMenu": "Muse Usage",
+            "resetRedeemsHere": "Redeems against this computer's Codex login"
           },
           "StatusBarUsageEmptyCta": {
             "828c764a79": "Connect an account",
@@ -18448,7 +18455,8 @@
             "devToolsDockRight": "Dock to right",
             "devToolsDockBottom": "Dock to bottom",
             "devToolsUndock": "Open in separate window",
-            "devToolsClose": "Close DevTools"
+            "devToolsClose": "Close DevTools",
+            "devToolsLocalOnly": "DevTools are only available in local browser tabs."
           },
           "BrowserToolbarMenu": {
             "429ef481f9": "Cancel",
@@ -21436,7 +21444,8 @@
         "updateFailed": "Could not change orchestration identity",
         "busy": "Busy — try after the turn",
         "unavailable": "Unavailable",
-        "label": "Orchestration identity"
+        "label": "Orchestration identity",
+        "remote": "Only chats on this computer can hold an identity"
       },
       "coordinator": {
         "toggle": "Coordinator mode",

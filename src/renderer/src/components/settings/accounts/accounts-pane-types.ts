@@ -23,6 +23,8 @@ export type AccountsPaneProps = {
   nativeAccounts?: boolean
   onAccountLocationChange?: () => void
   wslSupportedPlatform?: boolean
+  /** Whether this computer offers WSL, for the local-only Account location row under a remote scope. */
+  localWslSupportedPlatform?: boolean
   wslAvailable?: boolean
   wslDistros?: string[]
   wslCapabilitiesLoading?: boolean

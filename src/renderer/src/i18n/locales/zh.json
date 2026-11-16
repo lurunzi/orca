@@ -891,6 +891,12 @@
       "cleanup": {
         "recipeDescription": "在听写文本插入前进行整理"
       }
+    },
+    "remoteUnavailable": {
+      "signInRunsOnThisComputer": "登录在本机执行",
+      "appliesToThisComputerOnly": "仅适用于本机",
+      "shownForThisComputerOnly": "仅显示本机的状态",
+      "defaultHost": "默认主机"
     }
   },
   "menu": {
@@ -4683,7 +4689,8 @@
             "windowWeeks": "{{value0}} 周",
             "signedOutAccounts": "已退出登录",
             "addAnotherAccount": "添加其他账户…",
-            "museUsageMenu": "Muse 使用情况"
+            "museUsageMenu": "Muse 使用情况",
+            "resetRedeemsHere": "针对本机的 Codex 登录兑换"
           },
           "StatusBarUsageEmptyCta": {
             "828c764a79": "连接账户",
@@ -17604,7 +17611,8 @@
             "devToolsDockRight": "停靠到右侧",
             "devToolsDockBottom": "停靠到底部",
             "devToolsUndock": "在单独窗口中打开",
-            "devToolsClose": "关闭 DevTools"
+            "devToolsClose": "关闭 DevTools",
+            "devToolsLocalOnly": "DevTools 仅在本地浏览器选项卡中可用"
           },
           "BrowserToolbarMenu": {
             "429ef481f9": "取消",
@@ -20341,7 +20349,8 @@
         "updateFailed": "无法更改编排身份",
         "busy": "忙碌中，本轮结束后再试",
         "unavailable": "不可用",
-        "label": "编排身份"
+        "label": "编排身份",
+        "remote": "仅本机对话可以持有身份"
       },
       "coordinator": {
         "toggle": "协调者模式",

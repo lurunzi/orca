@@ -2,6 +2,7 @@ import { BookOpen, Download, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/class-names'
 import { useTranslate } from '@/i18n/use-translate'
+import { UnavailableEntryReason } from '@/components/unavailable-entry'
 import { SKILLS_PAGE_COLUMN } from './skills-page-column'
 
 const SKELETON_ROWS = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -125,12 +126,14 @@ export function SkillsScanErrorBand({
 export function SkillsRemoteShareNotice({ hostLabel }: { hostLabel: string }): React.JSX.Element {
   const t = useTranslate()
   return (
-    <p className="border-b border-border/50 px-2 py-2 text-xs text-muted-foreground">
-      {t(
-        'auto.components.skills.SkillsPage.remoteShareNotice',
-        'These skills live on {{host}}. Open Skills on that machine to share them.',
-        { host: hostLabel }
-      )}
+    <p className="border-b border-border/50 px-2 py-2">
+      <UnavailableEntryReason>
+        {t(
+          'auto.components.skills.SkillsPage.remoteShareNotice',
+          'These skills live on {{host}}. Open Skills on that machine to share them.',
+          { host: hostLabel }
+        )}
+      </UnavailableEntryReason>
     </p>
   )
 }

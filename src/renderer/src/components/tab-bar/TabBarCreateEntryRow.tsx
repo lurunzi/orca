@@ -15,6 +15,7 @@ import {
 import { AgentIcon } from '@/components/agent/icons/AgentIcon'
 import { PluginContributionIcon } from '../plugins/PluginContributionIcon'
 import { cn } from '@/lib/class-names'
+import { UnavailableEntryLabel, UnavailableEntryMenuHint } from '@/components/unavailable-entry'
 import { FilePathCursorTooltip, FilenameFirstPath } from '@/components/file-path-cursor-tooltip'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
@@ -113,7 +114,11 @@ export function EntryActionRow({
   const t = useTranslate()
   const presentation = getActionPresentation(option, labelOverride, t)
   const agentOption = option.kind === 'agent' ? option.option : null
-  const launchDisabled = rowDisabled || (!!agentOption && tabAgentLaunchOptionDisabled(agentOption))
+  const unavailableReason = option.kind === 'entry' ? option.option.unavailableReason : undefined
+  const launchDisabled =
+    rowDisabled ||
+    !!unavailableReason ||
+    (!!agentOption && tabAgentLaunchOptionDisabled(agentOption))
   const setupEntry = onUseAgent ? agentOption?.pickerEntry : undefined
   const buttonRef = useRef<HTMLButtonElement>(null)
   const focusSearchInput = () =>
@@ -127,6 +132,7 @@ export function EntryActionRow({
       role="option"
       aria-selected={selected}
       disabled={launchDisabled}
+      aria-disabled={unavailableReason ? true : undefined}
       className={cn(
         // Why min-w-0: a long agent setup must truncate so the row's › stays inside the menu.
         'flex h-6 w-full min-w-0 items-center gap-1.5 rounded-[7px] px-1 text-left text-[11px] leading-5 font-normal outline-none disabled:cursor-not-allowed',
@@ -154,9 +160,12 @@ export function EntryActionRow({
       ) : (
         presentation.icon
       )}
-      <span className={cn('min-w-0 truncate font-medium', presentation.showDetail && 'shrink-0')}>
+      <UnavailableEntryLabel
+        unavailable={!!unavailableReason}
+        className={cn('min-w-0 truncate font-medium', presentation.showDetail && 'shrink-0')}
+      >
         {presentation.label}
-      </span>
+      </UnavailableEntryLabel>
       {presentation.showDetail ? (
         <>
           <span className="shrink-0 text-muted-foreground/70" aria-hidden="true">
@@ -168,6 +177,9 @@ export function EntryActionRow({
             <span className="min-w-0 flex-1 truncate">{presentation.detail}</span>
           )}
         </>
+      ) : null}
+      {unavailableReason ? (
+        <UnavailableEntryMenuHint>{unavailableReason}</UnavailableEntryMenuHint>
       ) : null}
     </button>
   )

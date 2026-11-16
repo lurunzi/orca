@@ -31,9 +31,10 @@ export function renderAgentsSettingsSection(
     >
       {view.isSectionMounted('agents') ? (
         <div className="space-y-8">
-          {model.settingsHostScope.target.kind === 'local' ? (
-            <AgentDefaultSurfaceSection settings={model.settings} />
-          ) : null}
+          <AgentDefaultSurfaceSection
+            settings={model.settings}
+            unavailable={model.settingsHostScope.target.kind !== 'local'}
+          />
           <AgentsPane
             settings={model.settings}
             updateSettings={model.updateSettings}
@@ -96,6 +97,7 @@ export function renderAccountsSettingsSection(
           updateSettingsOrThrow={model.updateSettingsOrThrow}
           hostScope={model.settingsHostScope}
           wslSupportedPlatform={terminal.runtimeWslSupportedPlatform}
+          localWslSupportedPlatform={terminal.localWslSupportedPlatform}
           wslAvailable={terminal.windowsTerminalCapabilities.wslAvailable}
           wslDistros={terminal.windowsTerminalCapabilities.wslDistros}
           wslCapabilitiesLoading={terminal.windowsTerminalCapabilities.isLoading}
