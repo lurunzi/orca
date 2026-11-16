@@ -1,5 +1,6 @@
 import { pluginInstallLinkFromArguments } from '../../../shared/plugins/catalog/plugin-install-link'
 import { pairingLinkFromArguments } from '../../../shared/remote-runtime/pairing/pairing-deep-link'
+import { toOrcaDeepLink } from '../../../shared/product-identity'
 import { skillShareIdFromArguments } from '../../../shared/skill-share-link'
 
 const REPEAT_WINDOW_MS = 3_000
@@ -16,7 +17,8 @@ export class PendingDeepLinkState {
   ) {}
 
   capture(argv: readonly string[], publish?: (value: string) => void): boolean {
-    const value = this.fromArguments(argv)
+    // UDA Orca: uda-orca:// links route like orca:// ones.
+    const value = this.fromArguments(argv.map(toOrcaDeepLink))
     if (!value) {
       return false
     }

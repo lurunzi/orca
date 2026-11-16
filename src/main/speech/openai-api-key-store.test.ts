@@ -40,7 +40,7 @@ function mkdtempLike(prefix: string): string {
 }
 
 function writeStoredOpenAiKey(value: string): void {
-  const orcaDir = join(tempHome, '.orca')
+  const orcaDir = join(tempHome, '.uda-orca')
   mkdirSync(orcaDir, { recursive: true })
   writeFileSync(join(orcaDir, 'openai-speech-token.enc'), value)
 }

@@ -123,7 +123,23 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-const appId = 'com.stablyai.orca'
+// UDA Orca fork identity: keep equal to src/shared/product-identity.ts (CJS cannot import TS;
+// src/shared/product-identity.test.ts compares them).
+const UDA_ORCA_IDENTITY = {
+  appId: 'com.ultramarine.uda-orca',
+  productName: 'UDA Orca',
+  packageName: 'uda-orca',
+  protocolScheme: 'uda-orca',
+  releaseOwner: 'lurunzi',
+  releaseRepo: 'orca'
+}
+const appId = UDA_ORCA_IDENTITY.appId
+// Electron's packaged app.getName() is package.json `name`, which picks the userData folder.
+const extraMetadataVersion = devChannelBuildVersion
+  ? { version: devChannelBuildVersion }
+  : localBuildVersion
+    ? { version: localBuildVersion }
+    : {}
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -251,14 +267,10 @@ const ORCA_MAC_TEAM_ID = '6CX3WHS9HZ'
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: 'Orca',
-  protocols: [{ name: 'Orca', schemes: ['orca'] }],
+  productName: UDA_ORCA_IDENTITY.productName,
+  protocols: [{ name: UDA_ORCA_IDENTITY.productName, schemes: [UDA_ORCA_IDENTITY.protocolScheme] }],
   toolsets: { appimage: '1.0.3' },
-  ...(devChannelBuildVersion
-    ? { extraMetadata: { version: devChannelBuildVersion } }
-    : localBuildVersion
-      ? { extraMetadata: { version: localBuildVersion } }
-      : {}),
+  extraMetadata: { name: UDA_ORCA_IDENTITY.packageName, ...extraMetadataVersion },
   directories: {
     buildResources: 'resources/build'
   },
@@ -782,8 +794,8 @@ module.exports = {
   npmRebuild: true,
   publish: {
     provider: 'github',
-    owner: 'stablyai',
-    repo: devChannelRepo ?? 'orca',
+    owner: UDA_ORCA_IDENTITY.releaseOwner,
+    repo: devChannelRepo ?? UDA_ORCA_IDENTITY.releaseRepo,
     // Keep main-repo releases draft until release-cut verifies all assets; early --publish always would expose missing Windows installers.
     releaseType: devChannelRepo ? 'prerelease' : 'draft'
   }

@@ -13,11 +13,13 @@ import {
   type AppImageExtractionOptions
 } from '../appimage/appimage-extracted-root'
 import { resolveGenerationStableLauncherPath } from '../appimage/appimage-generation-stable-launcher'
+import { getBundledLauncherPath } from '../packaged-assets/bundled-cli-launcher-path'
 import {
-  getBundledLauncherPath,
-  LINUX_CLI_COMMAND_NAME
-} from '../packaged-assets/bundled-cli-launcher-path'
-import { DEFAULT_MAC_COMMAND_PATH, DEV_COMMAND_NAME } from './cli-install-constants'
+  DEFAULT_MAC_COMMAND_PATH,
+  DEV_COMMAND_NAME,
+  WINDOWS_PACKAGED_COMMAND_DIR
+} from './cli-install-constants'
+import { PRODUCT_IDENTITY } from '../../../shared/product-identity'
 import { ensureDevLauncher } from '../launchers/cli-dev-launcher'
 import type { CliInstallerOptions, InstallSpec } from './cli-installer-contracts'
 import {
@@ -70,7 +72,8 @@ export abstract class CliInstallLocation {
       // Why: development builds must not claim the production shell command.
       return DEV_COMMAND_NAME
     }
-    return this.platform === 'linux' ? LINUX_CLI_COMMAND_NAME : 'orca'
+    // UDA Orca: the user-PATH command must not claim the official Orca's `orca`/`orca-ide`.
+    return PRODUCT_IDENTITY.cliCommandName
   }
 
   constructor(options: CliInstallerOptions = {}) {
@@ -92,7 +95,7 @@ export abstract class CliInstallLocation {
     const candidateMacPath = options.defaultMacCommandPath ?? DEFAULT_MAC_COMMAND_PATH
     this.macCommandPath = existsSync(dirname(candidateMacPath))
       ? candidateMacPath
-      : join(this.homePath, '.local', 'bin', 'orca')
+      : join(this.homePath, '.local', 'bin', PRODUCT_IDENTITY.cliCommandName)
     this.privilegedRunner = options.privilegedRunner ?? runMacPrivilegedCommand
     this.userPathReader = options.userPathReader ?? readWindowsUserPathRegistry
     this.userPathMutationReader =
@@ -233,12 +236,16 @@ export abstract class CliInstallLocation {
 
     if (this.platform === 'linux') {
       // Linux registration stays user-scoped; it has no privileged global install flow.
-      return join(this.homePath, '.local', 'bin', LINUX_CLI_COMMAND_NAME)
+      return join(this.homePath, '.local', 'bin', PRODUCT_IDENTITY.cliCommandName)
     }
 
     if (this.platform === 'win32') {
-      // Why: NSIS /D installs can live outside LOCALAPPDATA, so use the packaged resources dir as authoritative.
-      return getBundledLauncherPath(this.platform, this.resourcesPath)
+      // UDA Orca: a forwarder outside resources\bin, whose `orca` would shadow the official Orca's.
+      return join(
+        this.localAppDataPath,
+        ...WINDOWS_PACKAGED_COMMAND_DIR,
+        `${PRODUCT_IDENTITY.cliCommandName}.cmd`
+      )
     }
 
     return null

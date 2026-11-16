@@ -1,4 +1,5 @@
 import { compareAppVersions, isValidAppVersion } from './app-version'
+import { PRODUCT_IDENTITY, PRODUCT_RELEASE_REPO_SLUG } from './product-identity'
 
 export type ReleaseChannel = 'stable' | 'rc' | 'hourly' | 'daily' | 'adhoc'
 
@@ -19,10 +20,12 @@ export const RELEASE_CHANNEL_LABELS: Readonly<Record<ReleaseChannel, string>> = 
 }
 
 /** Keep dev tags out of the 10-entry main releases feed, where hourlies would evict stable/RC updates. */
-export const HOURLY_RELEASE_REPO = 'stablyai/orca-hourly'
-export const DAILY_RELEASE_REPO = 'stablyai/orca-daily'
-export const ADHOC_RELEASE_REPO = 'stablyai/orca-adhoc'
-export const MAIN_RELEASE_REPO = 'stablyai/orca'
+// UDA Orca: the fork's own releases (owner from product-identity), never the official Orca's.
+const RELEASE_OWNER = PRODUCT_IDENTITY.releaseRepo.owner
+export const HOURLY_RELEASE_REPO = `${RELEASE_OWNER}/orca-hourly`
+export const DAILY_RELEASE_REPO = `${RELEASE_OWNER}/orca-daily`
+export const ADHOC_RELEASE_REPO = `${RELEASE_OWNER}/orca-adhoc`
+export const MAIN_RELEASE_REPO = PRODUCT_RELEASE_REPO_SLUG
 
 /** The dev channels, each published to its own repo rather than the main one. */
 const DEDICATED_REPO_CHANNELS = ['hourly', 'daily', 'adhoc'] as const

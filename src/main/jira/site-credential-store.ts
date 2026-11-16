@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { writeEncryptedCredential } from '../credentials/integration-credential-file'
 import { readCredentialFileProtection } from '../credentials/credential-file-protection'
@@ -8,6 +7,7 @@ import type { JiraSite, JiraSiteSelection } from '../../shared/jira/jira-types'
 import { createIntegrationStateFileCache } from '../credentials/integration-state-file-cache'
 import { isJiraGatewayBaseUrl } from './gateway-base-url'
 import { createIntegrationTokenFileCache } from '../credentials/integration-token-file-cache'
+import { orcaHomeDir } from '../../shared/product-identity-home'
 
 export type JiraSiteFile = {
   version: 1
@@ -27,7 +27,7 @@ export function getCredentialError(siteId: string): string | undefined {
 }
 
 function getOrcaDir(): string {
-  return join(homedir(), '.orca')
+  return orcaHomeDir()
 }
 
 function getSiteFilePath(): string {

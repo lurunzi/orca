@@ -54,8 +54,8 @@ let keyPath: string
 
 beforeEach(async () => {
   mocks.home = realFs.mkdtempSync(join(os.tmpdir(), 'orca-glm-plaintext-rollback-'))
-  keyPath = join(mocks.home, '.orca', 'zcode-plan-api-key.enc')
-  realFs.mkdirSync(join(mocks.home, '.orca'))
+  keyPath = join(mocks.home, '.uda-orca', 'zcode-plan-api-key.enc')
+  realFs.mkdirSync(join(mocks.home, '.uda-orca'))
   mocks.write.mockReset().mockImplementation(realFs.writeFileSync)
   mocks.rename.mockReset().mockImplementation(realFs.renameSync)
   mocks.restrict.mockReset().mockReturnValue(false)
@@ -145,7 +145,7 @@ describe('conditional rollback publication through the real writer', () => {
 
     expect(realFs.existsSync(keyPath)).toBe(false)
     expect(store.readZcodePlanApiKey()).toBeNull()
-    expect(realFs.readdirSync(join(mocks.home, '.orca'))).toEqual([])
+    expect(realFs.readdirSync(join(mocks.home, '.uda-orca'))).toEqual([])
   })
 
   it('cleans staged bytes when the publication predicate throws', () => {
@@ -161,7 +161,7 @@ describe('conditional rollback publication through the real writer', () => {
 
     expect(mocks.rename).not.toHaveBeenCalled()
     expect(realFs.readFileSync(keyPath, 'utf8')).toBe(envelope('previous-key'))
-    expect(realFs.readdirSync(join(mocks.home, '.orca'))).toEqual(['zcode-plan-api-key.enc'])
+    expect(realFs.readdirSync(join(mocks.home, '.uda-orca'))).toEqual(['zcode-plan-api-key.enc'])
   })
 
   it('cleans guarded staging bytes if rename throws without deleting the original target', () => {
@@ -177,6 +177,6 @@ describe('conditional rollback publication through the real writer', () => {
     ).toThrow('Synthetic guarded rename failure')
 
     expect(realFs.readFileSync(keyPath, 'utf8')).toBe(envelope('previous-key'))
-    expect(realFs.readdirSync(join(mocks.home, '.orca'))).toEqual(['zcode-plan-api-key.enc'])
+    expect(realFs.readdirSync(join(mocks.home, '.uda-orca'))).toEqual(['zcode-plan-api-key.enc'])
   })
 })

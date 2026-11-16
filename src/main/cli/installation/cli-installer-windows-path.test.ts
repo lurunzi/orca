@@ -17,6 +17,7 @@ import {
   type WindowsUserPathReadResult
 } from '../command-paths/windows-user-path-registry'
 import { makeFixture } from './cli-installer-test-fixtures'
+import { buildWindowsForwarder } from '../launchers/cli-dev-launcher'
 
 function userPathRead(value: string | null, expandable = false): WindowsUserPathReadResult {
   return { state: 'success', value, expandable }
@@ -67,7 +68,7 @@ describe('CliInstaller', () => {
     )
   })
 
-  it('does not overwrite the packaged Windows launcher while registering PATH', async () => {
+  it('registers a uda-orca forwarder outside resources/bin and leaves the launcher alone', async () => {
     const fixture = await makeFixture()
     const localAppDataPath = join(fixture.root, 'AppData', 'Local')
     const resourcesPath = join(fixture.root, 'D Custom Orca', 'resources')
@@ -95,8 +96,12 @@ describe('CliInstaller', () => {
 
     expect(installed.state).toBe('installed')
     expect(installed.pathConfigured).toBe(true)
-    expect(installed.commandPath).toBe(bundledLauncher)
-    expect(userPath).toBe(dirname(bundledLauncher))
+    // UDA Orca: resources\bin holds `orca`, which would shadow the official Orca's command.
+    const forwarder = join(localAppDataPath, 'UDA Orca', 'bin', 'uda-orca.cmd')
+    expect(installed.commandName).toBe('uda-orca')
+    expect(installed.commandPath).toBe(forwarder)
+    expect(userPath).toBe(dirname(forwarder))
+    await expect(readFile(forwarder, 'utf8')).resolves.toBe(buildWindowsForwarder(bundledLauncher))
     await expect(readFile(bundledLauncher, 'utf8')).resolves.toBe(bundledContent)
 
     const removed = await installer.remove()

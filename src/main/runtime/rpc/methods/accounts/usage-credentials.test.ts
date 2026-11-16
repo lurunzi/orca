@@ -83,8 +83,8 @@ describe('usage credential RPC methods', () => {
   }
 
   function writeKeyFile(fileName: string, contents: string): string {
-    mkdirSync(join(home.dir, '.orca'), { recursive: true })
-    const keyPath = join(home.dir, '.orca', fileName)
+    mkdirSync(join(home.dir, '.uda-orca'), { recursive: true })
+    const keyPath = join(home.dir, '.uda-orca', fileName)
     writeFileSync(keyPath, contents)
     return keyPath
   }

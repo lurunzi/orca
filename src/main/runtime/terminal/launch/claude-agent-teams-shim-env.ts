@@ -1,6 +1,5 @@
 import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { accessSync, constants, existsSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { delimiter, dirname, isAbsolute, join } from 'node:path'
 import {
   addClaudeTeammateModeAuto,
@@ -12,6 +11,7 @@ import { getAppEnvironment, hasAppEnvironment } from '../../../../shared/app-env
 import { getOrcaCliCommandNameForPlatform } from '../../../../shared/orca-cli-command-name'
 import { getBundledLauncherPath } from '../../../cli/packaged-assets/bundled-cli-launcher-path'
 import { resolvePathEnvKey } from '../../../pty/environment/windows-path-segment-merge'
+import { orcaHomeDir } from '../../../../shared/product-identity-home'
 
 export type ClaudeAgentTeamsLaunchPlan = {
   command: string
@@ -99,7 +99,7 @@ export function resolveClaudeAgentTeamsShimBin(
 }
 
 function defaultShimRoot(): string {
-  return join(homedir(), '.orca', 'claude-agent-teams-bin')
+  return join(orcaHomeDir(), 'claude-agent-teams-bin')
 }
 
 function findExecutableOnPath(command: string, pathValue: string | undefined): string | null {

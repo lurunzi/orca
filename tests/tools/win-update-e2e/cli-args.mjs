@@ -76,11 +76,11 @@ export function parseArgs(argv) {
   return { ...opts, errors }
 }
 
-/** Default per-user oneClick install location: %LOCALAPPDATA%\Programs\Orca. */
+/** Default per-user oneClick install location (UDA Orca package name): %LOCALAPPDATA%\Programs\uda-orca. */
 function defaultInstallDir() {
   const localAppData =
     process.env.LOCALAPPDATA ?? path.join(process.env.USERPROFILE ?? '', 'AppData', 'Local')
-  return path.join(localAppData, 'Programs', 'Orca')
+  return path.join(localAppData, 'Programs', 'uda-orca')
 }
 
 /** True if `child` is equal to, inside, or an ancestor of `parent` (case-insensitive). */
