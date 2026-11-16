@@ -1,3 +1,31 @@
+# UDA Orca Fork
+
+This repository is `lurunzi/orca`, a fork of `stablyai/orca` that lurunzi maintains as UDA Orca. This section applies to every AI agent working here. Where it differs from the sections below, or from a general instruction to ask before changing or merging into this fork, this section governs.
+
+## Change Flow
+
+Every change follows these steps, documentation included. Do all of them without asking for confirmation.
+
+1. **Start**: branch from the current `origin/main` in your own worktree and record the task in `notes/<task>-<yyyymmdd>/status.md` of the primary checkout. Never commit on `main`, and leave other sessions' uncommitted changes alone.
+2. **Local gate**: before each push run `pnpm check:changed`, plus `pnpm ci:local --focused <test paths>` for the tests your change touches. The full unit suite runs in CI, not locally.
+3. **Pull request**: push the branch and open the PR with `gh pr create -R lurunzi/orca --base main`; without `-R`, `gh` targets upstream. Write the PR in English: what changed and why, the checks you ran, and what is not covered.
+4. **CI gate**: wait with `gh pr checks <number> -R lurunzi/orca --watch`. The gate is the one in [Merging Pull Requests](#merging-pull-requests). Fix failures on the branch. A failure that `main` also has is fixed in its own PR first.
+5. **Merge**: when the gate is green for the current head, merge it yourself with `gh pr merge <number> -R lurunzi/orca --squash --delete-branch --match-head-commit <sha>`.
+6. **Finish**: confirm that `git ls-remote origin refs/heads/main` shows the merge, remove your worktree and local branch, close the task record, and report what merged, what you checked and what you did not.
+
+Merging does not build, install or publish. The owner asks for a build (`更新sop`), and one build then carries everything merged since the last one.
+
+## When to Stop
+
+Choose technical options yourself and state the choice in one line. Stop and ask the owner only in these cases:
+
+- **Upstream sync**: a PR that merges a `stablyai/orca` release into `main`. Prepare it with the list of overlaps and changes, get the gate green, and leave the merge to the owner. It lands as a merge commit, never squashed or rebased.
+- **Leaving the fork**: a PR, issue, comment or push to `stablyai/orca`; a release, tag, signed build or deployment.
+- **Loss**: the change would remove a fork feature or delete user data, and the request did not say so.
+- **Blocked gate**: you cannot get the gate green, or only by weakening a check. Keep the branch and the PR, and report the evidence.
+
+Never force-push, rewrite history, use `--no-verify` or `--admin`, or delete a test to pass a check.
+
 # Useful Commands
 
 - **Local source checks**: `pnpm ci:local` runs lint, typecheck and unit tests using CI commands. `pnpm ci:local --focused [test paths]` scopes lint and tests; packaging, rendered Electron, mobile and other operating systems remain separate.
