@@ -18454,7 +18454,8 @@
             "devToolsDockRight": "Dock to right",
             "devToolsDockBottom": "Dock to bottom",
             "devToolsUndock": "Open in separate window",
-            "devToolsClose": "Close DevTools"
+            "devToolsClose": "Close DevTools",
+            "devToolsLocalOnly": "DevTools are only available in local browser tabs."
           },
           "BrowserToolbarMenu": {
             "429ef481f9": "Cancel",
