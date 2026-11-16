@@ -5586,7 +5586,15 @@
             "ariaLabel": "{{title}}, {{status}}",
             "onDescription": "Keep this computer awake continuously",
             "autoDescription": "Stay awake while an agent is working",
-            "offDescription": "Allow normal system sleep behavior"
+            "offDescription": "Allow normal system sleep behavior",
+            "notSupported": "Not supported",
+            "unreachable": "Unreachable",
+            "ariaLabelMachine": "{{title}}, {{machine}}, {{status}}",
+            "setFailed": "Couldn't change the setting on {{host}}.",
+            "thisComputer": "This computer",
+            "switchMachine": "{{title}}: {{machine}}, {{status}}. Switch machine",
+            "remoteOnDescription": "Keep {{host}} awake continuously",
+            "remoteAutoDescription": "Keep {{host}} awake while an agent is working on it"
           },
           "RuntimeHostStatusRow": {
             "previous_connection_closed": "The previous connection closed",

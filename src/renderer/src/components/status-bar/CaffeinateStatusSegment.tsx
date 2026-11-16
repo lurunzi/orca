@@ -1,12 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Coffee } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -14,6 +11,7 @@ import { useAppStore } from '@/store/index'
 import { isPairedWebClientWindow } from '@/app-shell/chrome/desktop-window-chrome'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
+import { runtimeHostConnectionStateForEntry } from '@/runtime/hosts/connections/runtime-host-connection-state'
 import {
   getAgentAwakeLidNote,
   getAgentAwakeModeLabel,
@@ -24,7 +22,18 @@ import {
   normalizeComputerAwakeMode,
   type ComputerAwakeStatus
 } from '../../../../shared/computer-awake-mode'
+import { toRuntimeExecutionHostId } from '../../../../shared/execution-host'
+import { getHostDisplayLabelOverrides } from '../../../../shared/host-setting-overrides'
+import { isListedRemoteServer } from '../../../../shared/remote-runtime/host-catalog/runtime-environments'
+import { ComputerAwakeMenu } from './ComputerAwakeMenu'
+import {
+  nextComputerAwakeTargetId,
+  readStoredComputerAwakeTargetId,
+  storeComputerAwakeTargetId,
+  type RemoteComputerAwake
+} from './remote-computer-awake'
 import { STATUS_BAR_CONTEXT_MENU_EXEMPT_PROPS } from './status-bar-context-menu-policy'
+import { useRemoteComputerAwake } from './use-remote-computer-awake'
 
 const INACTIVE_STATUS: ComputerAwakeStatus = {
   mode: 'off',
@@ -37,6 +46,18 @@ function activityLabel(active: boolean, t: Translate = translate): string {
     : t('auto.components.status.bar.CaffeinateStatusSegment.inactive', 'Inactive')
 }
 
+function remoteUnavailableLabel(
+  kind: Exclude<RemoteComputerAwake['kind'], 'ready'>,
+  t: Translate = translate
+): string {
+  if (kind === 'loading') {
+    return t('auto.components.status.bar.SshStatusSegment.runtime_checking', 'Checking')
+  }
+  return kind === 'unsupported'
+    ? t('auto.components.status.bar.CaffeinateStatusSegment.notSupported', 'Not supported')
+    : t('auto.components.status.bar.CaffeinateStatusSegment.unreachable', 'Unreachable')
+}
+
 export function CaffeinateStatusSegment({
   iconOnly
 }: {
@@ -45,11 +66,16 @@ export function CaffeinateStatusSegment({
   const t = useTranslate()
   const settings = useAppStore((state) => state.settings)
   const updateSettings = useAppStore((state) => state.updateSettings)
+  const runtimeEnvironments = useAppStore((state) => state.runtimeEnvironments)
+  const runtimeStatusByEnvironmentId = useAppStore((state) => state.runtimeStatusByEnvironmentId)
   const configuredMode = normalizeComputerAwakeMode(
     settings?.computerAwakeMode,
     settings?.keepComputerAwakeWhileAgentsRun
   )
   const [serviceStatus, setServiceStatus] = useState<ComputerAwakeStatus>(INACTIVE_STATUS)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [storedTargetId, setStoredTargetId] = useState(readStoredComputerAwakeTargetId)
+  const webClient = isPairedWebClientWindow()
 
   useEffect(() => {
     let mounted = true
@@ -72,27 +98,91 @@ export function CaffeinateStatusSegment({
     }
   }, [])
 
-  if (isPairedWebClientWindow()) {
+  const hostSettingOverrides = settings?.hostSettingOverrides
+  // Only hosts that answer now: a mode cannot be read from or sent to one that is still connecting.
+  const remoteHosts = useMemo(() => {
+    const labelOverrides = getHostDisplayLabelOverrides({ hostSettingOverrides })
+    return runtimeEnvironments.filter(isListedRemoteServer).flatMap((environment) => {
+      const state = runtimeHostConnectionStateForEntry(
+        runtimeStatusByEnvironmentId.get(environment.id)
+      )
+      return state === 'connected' || state === 'workspace-window-closed'
+        ? [
+            {
+              id: environment.id,
+              label:
+                labelOverrides.get(toRuntimeExecutionHostId(environment.id)) ||
+                environment.name ||
+                environment.id
+            }
+          ]
+        : []
+    })
+  }, [hostSettingOverrides, runtimeEnvironments, runtimeStatusByEnvironmentId])
+  // Why not cleared on disconnect: the choice returns with the host instead of moving here for good.
+  const target = webClient ? null : (remoteHosts.find((host) => host.id === storedTargetId) ?? null)
+  const { remote, setMode: setRemoteMode } = useRemoteComputerAwake(target?.id ?? null, menuOpen)
+
+  if (webClient) {
     return null
   }
 
-  const mode = serviceStatus.mode === configuredMode ? serviceStatus.mode : configuredMode
-  const active =
+  const localMode = serviceStatus.mode === configuredMode ? serviceStatus.mode : configuredMode
+  const localActive =
     serviceStatus.mode === configuredMode ? serviceStatus.active : configuredMode === 'on'
+  const shown = target
+    ? remote.kind === 'ready'
+      ? remote.status
+      : null
+    : { mode: localMode, active: localActive }
+  const active = shown?.active === true
   const title = getAgentAwakeTitle(t)
-  const statusText = `${getAgentAwakeModeLabel(mode, t)} · ${activityLabel(active, t)}`
-  const ariaLabel = t(
-    'auto.components.status.bar.CaffeinateStatusSegment.ariaLabel',
-    '{{title}}, {{status}}',
-    { title, status: statusText }
-  )
+  const modeLabel = shown ? getAgentAwakeModeLabel(shown.mode, t) : '–'
+  const statusText =
+    shown || remote.kind === 'ready'
+      ? `${modeLabel} · ${activityLabel(active, t)}`
+      : remoteUnavailableLabel(remote.kind, t)
+  const ariaLabel = target
+    ? t(
+        'auto.components.status.bar.CaffeinateStatusSegment.ariaLabelMachine',
+        '{{title}}, {{machine}}, {{status}}',
+        { title, machine: target.label, status: statusText }
+      )
+    : t('auto.components.status.bar.CaffeinateStatusSegment.ariaLabel', '{{title}}, {{status}}', {
+        title,
+        status: statusText
+      })
 
   const setMode = (nextMode: string): void => {
-    void updateSettings(computerAwakeSettingsForMode(normalizeComputerAwakeMode(nextMode)))
+    const mode = normalizeComputerAwakeMode(nextMode)
+    if (!target) {
+      void updateSettings(computerAwakeSettingsForMode(mode))
+      return
+    }
+    void setRemoteMode(mode).then((accepted) => {
+      if (!accepted) {
+        toast.error(
+          t(
+            'auto.components.status.bar.CaffeinateStatusSegment.setFailed',
+            "Couldn't change the setting on {{host}}.",
+            { host: target.label }
+          )
+        )
+      }
+    })
+  }
+
+  const switchMachine = (): void => {
+    const nextId = nextComputerAwakeTargetId(
+      target?.id ?? null,
+      remoteHosts.map((host) => host.id)
+    )
+    setStoredTargetId(nextId)
+    storeComputerAwakeTargetId(nextId)
   }
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
@@ -103,9 +193,7 @@ export function CaffeinateStatusSegment({
               aria-label={ariaLabel}
             >
               <Coffee className={`size-3 ${active ? 'text-foreground' : ''}`} />
-              {!iconOnly ? (
-                <span className="text-[11px] font-medium">{getAgentAwakeModeLabel(mode, t)}</span>
-              ) : null}
+              {!iconOnly ? <span className="text-[11px] font-medium">{modeLabel}</span> : null}
               <span
                 aria-hidden
                 className={`size-1.5 rounded-full ${
@@ -116,7 +204,8 @@ export function CaffeinateStatusSegment({
           </DropdownMenuTrigger>
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={6}>
-          {ariaLabel}. {getAgentAwakeLidNote(undefined, t)}
+          {/* The lid note describes this computer's platform, which says nothing about a remote host. */}
+          {target ? ariaLabel : `${ariaLabel}. ${getAgentAwakeLidNote(undefined, t)}`}
         </TooltipContent>
       </Tooltip>
       <DropdownMenuContent
@@ -126,46 +215,17 @@ export function CaffeinateStatusSegment({
         sideOffset={8}
         className="w-64"
       >
-        <DropdownMenuLabel className="flex items-center justify-between gap-3">
-          <span>{title}</span>
-          <span className="font-normal text-muted-foreground">{statusText}</span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={mode} onValueChange={setMode}>
-          <DropdownMenuRadioItem value="on" className="py-1.5">
-            <span className="flex flex-col">
-              <span>{getAgentAwakeModeLabel('on', t)}</span>
-              <span className="text-[11px] font-normal text-muted-foreground">
-                {t(
-                  'auto.components.status.bar.CaffeinateStatusSegment.onDescription',
-                  'Keep this computer awake continuously'
-                )}
-              </span>
-            </span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="auto" className="py-1.5">
-            <span className="flex flex-col">
-              <span>{getAgentAwakeModeLabel('auto', t)}</span>
-              <span className="text-[11px] font-normal text-muted-foreground">
-                {t(
-                  'auto.components.status.bar.CaffeinateStatusSegment.autoDescription',
-                  'Stay awake while an agent is working'
-                )}
-              </span>
-            </span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="off" className="py-1.5">
-            <span className="flex flex-col">
-              <span>{getAgentAwakeModeLabel('off', t)}</span>
-              <span className="text-[11px] font-normal text-muted-foreground">
-                {t(
-                  'auto.components.status.bar.CaffeinateStatusSegment.offDescription',
-                  'Allow normal system sleep behavior'
-                )}
-              </span>
-            </span>
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        <ComputerAwakeMenu
+          title={title}
+          statusText={statusText}
+          machine={
+            remoteHosts.length > 0
+              ? { remoteHostLabel: target?.label ?? null, onSwitch: switchMachine }
+              : null
+          }
+          mode={shown?.mode ?? null}
+          onModeChange={setMode}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   )

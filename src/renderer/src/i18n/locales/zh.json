@@ -4254,7 +4254,15 @@
             "ariaLabel": "{{title}}，{{status}}",
             "onDescription": "始终防止此电脑进入睡眠状态",
             "autoDescription": "代理工作时防止电脑进入睡眠状态",
-            "offDescription": "允许系统正常进入睡眠状态"
+            "offDescription": "允许系统正常进入睡眠状态",
+            "notSupported": "不支持",
+            "unreachable": "无法连接",
+            "ariaLabelMachine": "{{title}}，{{machine}}，{{status}}",
+            "setFailed": "未能更改 {{host}} 上的设置。",
+            "thisComputer": "本机",
+            "switchMachine": "{{title}}：{{machine}}，{{status}}。切换机器",
+            "remoteOnDescription": "始终防止 {{host}} 进入睡眠状态",
+            "remoteAutoDescription": "{{host}} 上有代理工作时防止它进入睡眠状态"
           },
           "StatusBar": {
             "9659e38343": "端口",

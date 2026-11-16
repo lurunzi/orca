@@ -24,6 +24,7 @@ import type {
 } from '../../../shared/agent-status/presentation/agent-list-status'
 import type { FeatureInteractionId } from '../../../shared/feature-interaction-catalog'
 import type { RuntimeClientSettingsUpdate } from './settings/runtime-client-settings-shape'
+import type { ComputerAwakeHostControl } from '../../../shared/computer-awake-mode'
 import type { AgentLaunchSettingsMutation } from '../../../shared/agent-launch/choices/agent-launch-settings'
 import type { TerminalQuickCommand } from '../../../shared/terminal/quick-commands/terminal-quick-command-types'
 import type { TerminalQuickCommandMutation } from '../../../shared/terminal/quick-commands/terminal-quick-commands'
@@ -231,6 +232,11 @@ export abstract class OrcaRuntimeWithPtyForegroundProcessReads extends OrcaRunti
 
   async updateClientSettings(updates: RuntimeClientSettingsUpdate) {
     return await this.clientSettings.update(updates)
+  }
+
+  /** Lets paired clients read and set this host's own awake mode. */
+  attachComputerAwakeControl(control: ComputerAwakeHostControl): void {
+    this.clientSettings.attachComputerAwake(control)
   }
 
   getClientTerminalQuickCommands(): TerminalQuickCommand[] {

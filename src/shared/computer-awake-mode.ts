@@ -7,6 +7,12 @@ export type ComputerAwakeStatus = {
   active: boolean
 }
 
+/** How a paired client reads and sets this host's own awake mode. */
+export type ComputerAwakeHostControl = {
+  getStatus: () => ComputerAwakeStatus
+  setMode: (mode: ComputerAwakeMode) => void
+}
+
 export function normalizeComputerAwakeMode(
   mode: unknown,
   legacyAutoEnabled?: boolean

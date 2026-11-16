@@ -21,6 +21,10 @@ import { getDefaultWorkspaceCleanupRules } from '../../../../shared/workspace-cl
 import { nativeChatQueueFollowUps } from '../../../../shared/native-chat/input/native-chat-follow-up-behavior'
 import { nativeChatShowsCiResultLines } from '../../../../shared/native-chat/native-chat-appearance-settings'
 import type { TerminalQuickCommand } from '../../../../shared/terminal/quick-commands/terminal-quick-command-types'
+import {
+  computerAwakeSettingsForMode,
+  type ComputerAwakeHostControl
+} from '../../../../shared/computer-awake-mode'
 import { recordManagedHookInstallFailure } from '../../../agent-hooks/installation/install-telemetry'
 import { applyAgentStatusHooksEnabled } from '../../../agent-hooks/installation/managed-agent-hook-controls'
 import { isWslHostOrcadProcess } from '../../../ipc/wsl-guest-windows-drive-path'
@@ -51,6 +55,7 @@ export type RuntimeSharingServicePresence = {
 export class RuntimeClientSettingsController {
   private reconciliationGeneration = 0
   private reconciliationTail: Promise<void> = Promise.resolve()
+  private computerAwake: ComputerAwakeHostControl | undefined
 
   constructor(
     private readonly store: Pick<
@@ -60,6 +65,11 @@ export class RuntimeClientSettingsController {
     private readonly notifyReposChanged: (() => void) | undefined = undefined,
     private readonly sharingServices: RuntimeSharingServicePresence | undefined = undefined
   ) {}
+
+  /** Only hosts that own an OS sleep assertion attach one; a plain Node daemon has none. */
+  attachComputerAwake(control: ComputerAwakeHostControl): void {
+    this.computerAwake = control
+  }
 
   get(): RuntimeClientSettings {
     if (!this.store?.getSettings) {
@@ -130,7 +140,8 @@ export class RuntimeClientSettingsController {
         [
           ...getHostDisplayLabelOverrides({ hostSettingOverrides: settings.hostSettingOverrides })
         ].map(([hostId, displayLabel]) => [hostId, { displayLabel }])
-      ) as RuntimeHostDisplayLabelOverrides
+      ) as RuntimeHostDisplayLabelOverrides,
+      ...(this.computerAwake ? { computerAwake: this.computerAwake.getStatus() } : {})
     }
   }
 
@@ -140,11 +151,15 @@ export class RuntimeClientSettingsController {
     }
     const beforeSettings = this.store.getSettings()
     const before = beforeSettings.agentStatusHooksEnabled !== false
-    const { agentDefaultArgs, agentDefaultEnv, ...otherUpdates } = updates
+    const { agentDefaultArgs, agentDefaultEnv, computerAwakeMode, ...otherUpdates } = updates
+    if (computerAwakeMode !== undefined && !this.computerAwake) {
+      throw new Error('computer_awake_unsupported')
+    }
     // Legacy clients can select an agent or a shell, but cannot select None.
     this.store.updateSettings(
       {
         ...otherUpdates,
+        ...(computerAwakeMode !== undefined ? computerAwakeSettingsForMode(computerAwakeMode) : {}),
         // An older client writes Arguments as it reads them, flag included.
         ...(agentDefaultArgs !== undefined || agentDefaultEnv !== undefined
           ? legacyLaunchTextUpdates(
@@ -158,6 +173,9 @@ export class RuntimeClientSettingsController {
       { notifyListeners: true }
     )
     const settings = this.store.getSettings()
+    if (computerAwakeMode !== undefined) {
+      this.computerAwake?.setMode(computerAwakeMode)
+    }
     await getClaudeAgentViewService().reconcile(settings)
     if (updates.worktreeVisibilityDefaults !== undefined) {
       this.notifyReposChanged?.()
