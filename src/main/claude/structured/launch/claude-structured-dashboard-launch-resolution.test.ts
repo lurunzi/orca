@@ -8,12 +8,17 @@ import {
 } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { createClaudeStructuredLaunchResolver } from '../../../runtime/agent-session/launch/structured-agent-launch-composition.test-support'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
+import type { AgentSessionJournalIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 
 const SESSION_ID = 'orca-session-1'
-const IDENTITY = { sessionId: SESSION_ID } as Parameters<
-  ReturnType<typeof createClaudeStructuredLaunchResolver>
->[0]['identity']
+const IDENTITY: AgentSessionJournalIdentity = {
+  sessionId: SESSION_ID,
+  workspaceId: 'workspace-1',
+  hostId: LOCAL_EXECUTION_HOST_ID,
+  agent: 'claude',
+  providerHandle: null
+}
 
 function record(): AgentSessionRecord {
   return agentSessionRecordFixture({
