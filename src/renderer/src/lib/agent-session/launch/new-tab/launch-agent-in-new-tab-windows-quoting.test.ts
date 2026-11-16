@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type * as LaunchAgentKindModule from '../../../../../../shared/agent-kind'
+import type * as LaunchAgentKindModule from '../../../../../../shared/agent-status/identity/agent-kind'
 
 const mockIsWebRuntimeSessionActive = vi.fn(() => false)
 const mockCreateTab = vi.fn()
@@ -97,7 +97,7 @@ vi.mock('@/lib/agent-session/messaging/paste/agent-paste-draft', () => ({
 
 vi.mock('@/diagnostics/telemetry/telemetry', () => ({ track: vi.fn() }))
 const mockLaunchAgentKind = vi.hoisted(() => (agent: string) => agent)
-vi.mock('../../../../../../shared/agent-kind', async (importOriginal) => ({
+vi.mock('../../../../../../shared/agent-status/identity/agent-kind', async (importOriginal) => ({
   ...(await importOriginal<typeof LaunchAgentKindModule>()),
   tuiAgentToAgentKind: mockLaunchAgentKind
 }))

@@ -8,7 +8,7 @@ import {
 import { useAppStore } from '@/store'
 import { formatShortcutLabel } from '@/hooks/useShortcutLabel'
 import { getShortcutPlatform } from '@/lib/keyboard/shortcut-platform'
-import { isOrcaSessionId } from '../../../../../../shared/orca-session-address'
+import { isOrcaSessionId } from '../../../../../../shared/agent-session/identity/orca-session-address'
 import { resolveStructuredSessionOrcaSessionId } from '../../../../runtime/native-chat/orchestration/structured-session-orca-session-id'
 import type { NativeChatStructuredViewProps } from '../../native-chat-view-types'
 import type { NativeChatHandOff } from './use-native-chat-hand-off'
@@ -30,6 +30,7 @@ import {
   type StructuredNativeChatInboxController
 } from '../../use-structured-native-chat-inbox'
 import type { NativeChatMessage } from '../../../../../../shared/native-chat/native-chat-types'
+import { structuredAgentSessionPaneKey } from '../../../../../../shared/agent-session/view/structured-agent-session-projection'
 
 export function useStructuredNativeChatPaneCommands({
   pane,
@@ -40,37 +41,30 @@ export function useStructuredNativeChatPaneCommands({
   questionAnswerInputRef,
   sessionContext,
   sessionMenuItems,
-  chat,
   ...menuTargets
 }: {
   pane: Omit<NativeChatStructuredViewProps, 'mode'>
   handOff: NativeChatHandOff
-  sessionContext: { messages: readonly NativeChatMessage[]; epoch: string | null }
+  /** Fork: also the chat behind the header cluster's session menu items and Inbox. */
+  sessionContext: StructuredNativeChatInboxController & { messages: readonly NativeChatMessage[] }
   ownerWorktreeId: string | null
   rootRef: RefObject<HTMLDivElement | null>
   composerRef: RefObject<NativeChatComposerHandle | null>
   questionAnswerInputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>
   sessionMenuItems?: ReactNode
-  /** Fork: the chat behind the header cluster, its session menu items and Inbox. */
-  chat: Pick<Parameters<typeof useStructuredChatSessionActions>[0], 'agent' | 'paneKey'> & {
-    controller: StructuredNativeChatInboxController & {
-      messages: readonly NativeChatMessage[]
-    }
-  }
 } & NativeChatContextMenuTargetArgs) {
   const { tabId, groupId, isVisible, sessionId, target } = pane
   const terminalPaneActions = pane.contextMenuActions
-  const { controller } = chat
   const inbox = useStructuredNativeChatInbox(
-    { agent: chat.agent, sessionId, tabId, target },
-    controller,
+    { agent: pane.agent, sessionId, tabId, target },
+    sessionContext,
     composerRef,
     menuTargets.fileLinkContext?.worktreePath ?? null
   )
   const sessionActions = useStructuredChatSessionActions({
-    agent: chat.agent,
-    paneKey: chat.paneKey,
-    messages: controller.messages,
+    agent: pane.agent,
+    paneKey: structuredAgentSessionPaneKey(tabId, sessionId),
+    messages: sessionContext.messages,
     fileLinkContext: menuTargets.fileLinkContext ?? null,
     inbox: inbox.button,
     tabId,

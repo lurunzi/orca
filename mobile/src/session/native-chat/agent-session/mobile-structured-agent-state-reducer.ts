@@ -3,7 +3,7 @@ import type {
   StructuredAgentSessionState
 } from '../../../../../src/shared/agent-session/structured-agent-session-reducer'
 import { withPromptSuggestion } from '../../../../../src/shared/structured-agent-session-prompt-suggestion-reducer'
-import { reduceStructuredChatState } from '../transcript/mobile-native-chat-transcript-writer'
+import { reduceStructuredChatState } from '../transcript/persistence/mobile-native-chat-transcript-writer'
 
 /** The stored-copy session reducer plus the host's prompt suggestion, which the shared reducer does not carry. */
 export function reduceMobileStructuredAgentState(

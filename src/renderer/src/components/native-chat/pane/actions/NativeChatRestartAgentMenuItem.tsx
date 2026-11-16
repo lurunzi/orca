@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useTranslate } from '@/i18n/use-translate'
 import { callStructuredAgentSession } from '@/runtime/native-chat/requests/structured-agent-session-call'
 import type { AgentSessionRestartAgentResult } from '../../../../../../shared/agent-session/agent-session-restart-agent'
-import type { RuntimeClientTarget } from '../../../../../../shared/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 
 /** Stops the chat's agent; the next send starts it on the selected account, login and settings. */
 export function NativeChatRestartAgentMenuItem({

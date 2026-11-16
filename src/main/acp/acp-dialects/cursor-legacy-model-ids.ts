@@ -1,4 +1,4 @@
-import type { AgentSessionExecutionOptions } from '../../../shared/agent-session/options/agent-session-execution-options'
+import type { AgentSessionExecutionOptions } from '../../../shared/agent-session/options/protocol/agent-session-execution-options'
 
 /** `cursor-agent --list-models` ids fold effort and Fast into the name (`composer-2.5-fast`);
  *  the parameterized ACP picker lists only base ids, so map such an id to its listed base and Fast. */

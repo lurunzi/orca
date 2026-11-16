@@ -4,12 +4,12 @@ import type {
   NativeChatBlock,
   NativeChatMessage
 } from '../../../shared/native-chat/native-chat-types'
-import { formatNativeChatFileReference } from '../../../shared/agent-image-paste'
+import { formatNativeChatFileReference } from '../../../shared/native-chat/input/composer/agent-image-paste'
 import { isWindowsAbsolutePathLike } from '../../../shared/cross-platform-path'
 import { IMAGE_FILE_EXTENSIONS } from '../../../shared/file-preview/image-mime-types'
-import { IMAGE_PASTE_FOLLOWING_TEXT_SEPARATOR } from '../../../shared/image-paste-following-text'
+import { IMAGE_PASTE_FOLLOWING_TEXT_SEPARATOR } from '../../../shared/terminal/input/image-paste-following-text'
 import { asRecord } from '../../ai-vault/parsing/session-record-fields'
-import { extractString } from '../../../shared/trimmed-string'
+import { extractString } from '../../../shared/text/trimmed-string'
 import { parseJsonObject } from '../../ai-vault/parsing/session-json-object'
 import { timestampMs } from '../../ai-vault/parsing/session-record-time'
 import { extractAntigravityUserRequest } from '../../ai-vault/scanners/antigravity/session-scanner-antigravity-parser'

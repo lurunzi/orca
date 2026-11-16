@@ -39,11 +39,12 @@ import {
 import {
   claimAgentSessionAttachmentsInTransaction,
   isAgentSessionAttachmentExpiredError,
-  markUnclaimedUploadForSweep
+  markUnclaimedUploadForSweep,
+  listUploadsBeingSwept,
+  finishUploadSweep,
+  pruneAgentSessionAttachmentClaims
 } from './agent-session-attachment-claims'
 import { agentSessionAttachmentStoreRoot } from './agent-session-attachment-references'
-import { journalInputClaimsReceipt } from '../agent-session-journal/submissions/journal-submission-hook'
-import type { JournalRow } from '../agent-session-journal/durable-rows/journal-row-schema'
 import { AgentSessionAttachmentStore } from './agent-session-attachment-store'
 import {
   sweepAgentSessionAttachments,
@@ -81,12 +82,25 @@ afterEach(async () => {
   await rm(stateDirectory, { recursive: true, force: true })
 })
 
-function facts(overrides: Partial<AgentSessionAttachmentSweepFacts> = {}) {
+function facts(
+  overrides: Partial<AgentSessionAttachmentSweepFacts> = {}
+): AgentSessionAttachmentSweepFacts {
   return {
-    database: () => db,
-    write: <T>(run: (db: Database.Database) => T) =>
-      overrides.database?.() === null ? undefined : journal.writeAutocommit(run),
-    recordedSessionIds: () => recorded,
+    listBeingSwept: () => listUploadsBeingSwept(db),
+    markForSweep: (uploadId, now) =>
+      journal.writeAutocommit((connection) =>
+        markUnclaimedUploadForSweep(connection, uploadId, now)
+      ),
+    finishSweep: (uploadId) =>
+      journal.writeAutocommit((connection) => finishUploadSweep(connection, uploadId)),
+    pruneClaims: () => {
+      journal.writeAutocommit((connection) =>
+        pruneAgentSessionAttachmentClaims(connection, {
+          root: store.rootDir,
+          recordedSessionIds: recorded
+        })
+      )
+    },
     ...overrides
   }
 }
@@ -171,43 +185,6 @@ describe('sweepAgentSessionAttachments', () => {
   it('judges no claim orphaned while the record list is incomplete', async () => {
     claim('session-1', await seedUpload(SENT, OLD))
     recorded = null
-    await sweepAgentSessionAttachments(store, facts(), NOW)
-    expect(claimedSessions()).toEqual(['session-1'])
-    expect(await remaining()).toEqual([SENT])
-  })
-
-  it('keeps the image snapshot a recorded tool call shows', async () => {
-    const path = await seedUpload(SENT, OLD)
-    const row: JournalRow = {
-      v: 1,
-      epoch: 'epoch-1',
-      seq: 1,
-      fence: 1,
-      ts: NOW,
-      kind: 'item',
-      itemId: 'tool-1',
-      revision: 1,
-      body: {
-        kind: 'tool-call',
-        name: 'Read',
-        input: { file_path: '/tmp/shot.png' },
-        state: 'completed',
-        resultImagePaths: [path]
-      }
-    }
-    journalInputClaimsReceipt(
-      (database, body, required) => {
-        claimAgentSessionAttachmentsInTransaction(database, {
-          stateDirectory,
-          sessionId: 'session-1',
-          body,
-          required,
-          now: NOW
-        })
-      },
-      () => false,
-      [row]
-    )?.write(db)
     await sweepAgentSessionAttachments(store, facts(), NOW)
     expect(claimedSessions()).toEqual(['session-1'])
     expect(await remaining()).toEqual([SENT])

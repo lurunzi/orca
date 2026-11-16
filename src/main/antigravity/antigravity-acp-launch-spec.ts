@@ -8,8 +8,8 @@ import type { StructuredAgentSessionHistory } from '../native-chat/conversation-
 import {
   AntigravityChatAuthConfigSchema,
   resolveAntigravityChatAuthConfig
-} from '../../shared/antigravity-chat-auth-config'
-import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/agent-session-setup-commands'
+} from '../../shared/agent-accounts/antigravity/antigravity-chat-auth-config'
+import { agentSessionSetupFor } from '../../shared/agent-session/lifecycle/launch/agent-session-setup-commands'
 import { resolveAntigravityChatFullAccessApprovals } from '../../shared/antigravity-chat-full-access-approvals'
 import { ANTIGRAVITY_ACP_COMMAND, ANTIGRAVITY_ACP_RUNTIME } from './antigravity-acp-runtime'
 import { ANTIGRAVITY_ACP_ENV, scrubAntigravityAcpEnvironment } from './antigravity-acp-environment'
@@ -74,6 +74,10 @@ const ANTIGRAVITY_MANAGED_LAUNCH_SPEC = {
   transcriptImport: null,
   sessionHistory: ANTIGRAVITY_SESSION_HISTORY,
   privateTempDirectory: true,
+  // The Windows 1.4.5 server otherwise writes its workflow tool into every chat workspace.
+  ...(process.platform === 'win32'
+    ? { sessionMeta: { antigravity: { disabledTools: ['run_workflow'] } } }
+    : {}),
   // `session/load` replays the whole conversation, which the chat already holds.
   resumePreference: 'resume',
   resolveSessionMeta: antigravityChatRulesMeta,
@@ -81,8 +85,11 @@ const ANTIGRAVITY_MANAGED_LAUNCH_SPEC = {
 } satisfies AcpLaunchSpec
 
 // An inherited Gemini API key switches agy to key auth, which its models reject (401).
-function scrubAgyHostApiKeys(env: Record<string, string>): string[] {
-  const removed = ['GEMINI_API_KEY', 'GOOGLE_API_KEY']
+function scrubAgyHostApiKeys(env: Record<string, string>, inherited: NodeJS.ProcessEnv): string[] {
+  const removed = [...new Set([...Object.keys(env), ...Object.keys(inherited)])].filter((key) => {
+    const normalized = process.platform === 'win32' ? key.toUpperCase() : key
+    return normalized === 'GEMINI_API_KEY' || normalized === 'GOOGLE_API_KEY'
+  })
   for (const key of removed) {
     delete env[key]
   }
@@ -127,7 +134,8 @@ const ANTIGRAVITY_HOST_LAUNCH_SPEC: AcpLaunchSpec = {
     values: { ask: 'default', 'accept-edits': 'accept-edits', 'full-access': 'default' },
     fullAccessAtLaunch: true
   },
-  keepsEverySession: true
+  keepsEverySession: true,
+  sessionMeta: undefined
 }
 
 // The default Full access approvals: agy asks and Orca answers, except plans, questions and warned

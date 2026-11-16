@@ -1,7 +1,7 @@
 import {
   agentSessionAccountHome,
   agentSessionAccountHomePath
-} from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
+} from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import { ACP_LAUNCH_SPECS } from '../../../acp/launch/acp-launch-registry'
 import type { AcpLaunchSpec } from '../../../acp/launch/acp-launch-contract'
@@ -61,7 +61,8 @@ function acpChatProgram(spec: AcpLaunchSpec): StructuredAgentChatProgram {
       ? {
           hostAlternative: async (shellEnv, settings) =>
             (await selectAcpHostAccountHome(spec, shellEnv, getProfileUserDataPath(), settings)) !==
-            null
+            null,
+          ...(managedRuntime ? { onlyHostAlternative: () => managedRuntime.pin() === null } : {})
         }
       : {})
   }
@@ -95,8 +96,7 @@ function acpMetadata(spec: AcpLaunchSpec): StructuredAgentRuntimeMetadata {
               })
               return { ...invocation, env }
             },
-            minimumVersions,
-            ...(spec.readVersion ? { readVersion: spec.readVersion } : {})
+            minimumVersions
           }
         }
       : {}),

@@ -1,5 +1,5 @@
 import type { PreloadApi } from '../../../../preload/api-types'
-import { omitPairingLocalUiFields } from '../../../../shared/pairing-local-ui-fields'
+import { omitPairingLocalUiFields } from '../../../../shared/remote-runtime/pairing/pairing-local-ui-fields'
 import type { createWebExplorerRootSync } from './web-explorer-root-sync'
 import { requireActiveEnvironmentOrNull } from './web-runtime-session'
 import { prepareHostUiUpdates } from './web-status-bar-host-updates'

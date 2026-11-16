@@ -21,7 +21,7 @@ import type {
   SessionFileCandidate
 } from '../session-scanner-types'
 import { asRecord } from '../parsing/session-record-fields'
-import { extractString } from '../../../shared/trimmed-string'
+import { extractString } from '../../../shared/text/trimmed-string'
 import { parseJsonObject } from '../parsing/session-json-object'
 import { readJsonObjectIfExists } from '../discovery/session-json-file'
 import { clineManifestCwd } from '../scanners/cline/session-scanner-cline-parser'

@@ -3,7 +3,7 @@ import type {
   ClaudeSession,
   ClaudeStructuredSessionAdapterDeps
 } from './structured/claude-structured-session-state'
-import { publishClaudeSessionAttempt } from './structured/claude-structured-session-publication'
+import type { publishClaudeSessionAttempt } from './structured/claude-structured-session-publication'
 import { restoreClaudePromptSuggestion } from './claude-prompt-suggestion'
 
 export function configureClaudeSessionAccountContext(
@@ -18,20 +18,23 @@ export function configureClaudeSessionAccountContext(
   }
 }
 
-/** Fork: publishes an acquired session with its account context and restored prompt suggestion. */
-export async function publishClaudeSessionWithAccountContext(
-  publication: Parameters<typeof publishClaudeSessionAttempt>[0],
+/** Fork: wraps the upstream publisher so an acquired session gets its account context and
+ *  restored prompt suggestion. */
+export function withClaudeAccountContext(
+  publish: typeof publishClaudeSessionAttempt,
   launch: ClaudeStructuredLaunch,
   deps: Pick<
     ClaudeStructuredSessionAdapterDeps,
     'readFastModeAccountSupport' | 'promptSuggestionStore'
   >
-): Promise<void> {
-  configureClaudeSessionAccountContext(publication.session, launch, deps)
-  await publishClaudeSessionAttempt(publication)
-  // After the pre-publish frames, which are not a new turn and must not retire it.
-  restoreClaudePromptSuggestion(
-    publication.session,
-    deps.promptSuggestionStore?.memory(publication.sessionId)
-  )
+) {
+  return async (publication: Parameters<typeof publishClaudeSessionAttempt>[0]): Promise<void> => {
+    configureClaudeSessionAccountContext(publication.session, launch, deps)
+    await publish(publication)
+    // After the pre-publish frames, which are not a new turn and must not retire it.
+    restoreClaudePromptSuggestion(
+      publication.session,
+      deps.promptSuggestionStore?.memory(publication.sessionId)
+    )
+  }
 }

@@ -29,7 +29,7 @@ export async function checkAcpLaunchVersion(
       operation: launch.operation
     },
     spec.minimumVersions ?? [],
-    read ?? spec.readVersion
+    read
   )
   noteAcpForkVersion(spec.agent, result.version)
   return result

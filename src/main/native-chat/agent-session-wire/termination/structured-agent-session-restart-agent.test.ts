@@ -38,8 +38,8 @@ function rig(options: {
       : {
           child: options.child ?? { phase: 'running' },
           journal: {
-            inputOrder: {
-              recoverableSubmissions: () => (options.queued ? [{ kind: 'queued' }] : [])
+            reads: {
+              input: async () => ({ submissions: options.queued ? [{ kind: 'queued' }] : [] })
             }
           }
         }

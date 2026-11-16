@@ -15,7 +15,7 @@ describe('OrcaRuntimeService', () => {
         settings = { ...settings, ...updates }
       }
     })
-    controller.attachComputerAwake({ getStatus: () => ({ mode: 'on', active: true }), setMode })
+    controller.computerAwake.attach({ getStatus: () => ({ mode: 'on', active: true }), setMode })
 
     const result = await controller.update({ computerAwakeMode: 'on' })
 

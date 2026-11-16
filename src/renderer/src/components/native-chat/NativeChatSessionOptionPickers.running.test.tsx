@@ -4,12 +4,12 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { CODEX_SESSION_OPTION_CATALOG } from '../../../../shared/agent-session/options/agent-session-option-catalog-claude-codex'
+import { CODEX_SESSION_OPTION_CATALOG } from '../../../../shared/agent-session/options/catalog-providers/agent-session-option-catalog-claude-codex'
 import {
   applyStructuredAgentSessionOptions,
   createStructuredAgentSessionOptionState
 } from '../../../../shared/agent-session/options/structured-agent-session-options'
-import { structuredAgentSessionOptionSnapshot } from '../../../../shared/agent-session/options/structured-agent-session-option-snapshot'
+import { structuredAgentSessionOptionSnapshot } from '../../../../shared/agent-session/options/view/structured-agent-session-option-snapshot'
 import { NativeChatSessionOptionPickers } from './session/options/controls/NativeChatSessionOptionPickers'
 
 vi.mock('@/i18n/i18n', () => ({

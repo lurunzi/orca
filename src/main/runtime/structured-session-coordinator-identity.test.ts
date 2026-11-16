@@ -3,7 +3,7 @@ import type { AgentSessionRecord } from '../../shared/agent-session/lifecycle/ag
 import {
   agentSessionConversationView,
   type AgentSessionConversationView
-} from '../../shared/agent-session/lifecycle/agent-session-conversation-view'
+} from '../../shared/agent-session/lifecycle/leases/agent-session-conversation-view'
 import type { AgentSessionStatusEvent } from '../../shared/agent-session/agent-session-wire'
 
 const hostRef: { current: unknown } = { current: null }

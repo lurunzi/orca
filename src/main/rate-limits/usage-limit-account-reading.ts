@@ -2,7 +2,7 @@ import type {
   ExtraUsageBalance,
   ProviderRateLimits,
   RateLimitWindow
-} from '../../shared/rate-limit-types'
+} from '../../shared/agent-usage/rate-limits/rate-limit-types'
 import type { AgentSessionUsageLimit } from '../../shared/agent-session/failures/agent-session-usage-limit'
 
 /** Providers round a drained pool's remaining fraction; this close to full is used up. */

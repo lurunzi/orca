@@ -1,6 +1,6 @@
 // Adapted from stablyai/orca PR #20469 (MIT), with prior work from #18119.
-import { omitPairingLocalUiFields } from '../../../../shared/pairing-local-ui-fields'
-import type { PairedUiState } from '../../../../shared/pairing-local-ui-fields'
+import { omitPairingLocalUiFields } from '../../../../shared/remote-runtime/pairing/pairing-local-ui-fields'
+import type { PairedUiState } from '../../../../shared/remote-runtime/pairing/pairing-local-ui-fields'
 import type { PersistedUIState } from '../../../../shared/persisted-ui-state-types'
 import { STATUS_BAR_CURSOR_ITEM_RUNTIME_CAPABILITY } from '../../../../shared/agent-provider-runtime-capabilities'
 import { getRemoteRuntimeStatus } from './web-runtime-calls'

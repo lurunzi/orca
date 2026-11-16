@@ -3,6 +3,7 @@ import type { AiVaultSessionTitlesResult } from '../../../shared/ai-vault/contra
 import type { Tab } from '../../../shared/tab-types'
 import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
 import { createTestStore } from '@/store/testing/app-store-test-fixture'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 import { makeUnifiedTab } from '@/store/slices/tabs/tab-group.test-fixture'
 import { collectAiVaultTitleRequests } from './agent-session/history/title-sync/ai-vault-tab-title-requests'
 import { aiVaultTitleSyncInputsChanged } from './agent-session/history/title-sync/ai-vault-tab-title-sync-inputs'
@@ -40,20 +41,23 @@ function fixture(
         })
       ]
     },
-    agentStatusByPaneKey: {
-      [PANE]: {
-        paneKey: PANE,
-        tabId: TAB_ID,
-        worktreeId: WORKSPACE,
-        agentType: agent,
-        providerSession: { key: 'session_id', id: 'provider-1' },
-        state: 'done',
-        prompt: 'Fix the title',
-        updatedAt: 1,
-        stateStartedAt: 1,
-        stateHistory: []
-      }
-    }
+    agentStatusByPaneKey: acceptedAgentStatuses([
+      [
+        PANE,
+        {
+          paneKey: PANE,
+          tabId: TAB_ID,
+          worktreeId: WORKSPACE,
+          agentType: agent,
+          providerSession: { key: 'session_id', id: 'provider-1' },
+          state: 'done',
+          prompt: 'Fix the title',
+          updatedAt: 1,
+          stateStartedAt: 1,
+          stateHistory: []
+        }
+      ]
+    ])
   })
   const tab = () => store.getState().unifiedTabsByWorktree[WORKSPACE][0]
   const patchTab = (patch: Partial<Tab>) =>
@@ -109,11 +113,11 @@ describe('structured chat conversation titles', () => {
     stops.push(startAiVaultTabTitleSync({ ...store, resolveSessionTitles }))
     await vi.advanceTimersByTimeAsync(0)
     expect(resolveSessionTitles).toHaveBeenCalledTimes(1)
-    const entry = store.getState().agentStatusByPaneKey[PANE]
+    const entry = store.getState().agentStatusByPaneKey.get(PANE)!
     store.setState({
-      agentStatusByPaneKey: {
-        [PANE]: { ...entry, providerSession: { key: 'session_id', id: 'provider-2' } }
-      }
+      agentStatusByPaneKey: acceptedAgentStatuses([
+        [PANE, { ...entry, providerSession: { key: 'session_id', id: 'provider-2' } }]
+      ])
     })
     finish({ titles: [{ agent: 'claude', sessionId: 'provider-1', title: 'Old conversation' }] })
     await vi.advanceTimersByTimeAsync(0)

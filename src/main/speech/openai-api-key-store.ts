@@ -1,9 +1,9 @@
-import { getSecretStore } from '../../shared/secret-store'
+import { getSecretStore } from '../../shared/secure-storage/secret-store'
 import { readCredentialFileProtection } from '../credentials/credential-file-protection'
 import {
   classifyUnenvelopedCredential,
   type SecretAtRestProtection
-} from '../../shared/secret-at-rest-protection'
+} from '../../shared/secure-storage/secret-at-rest-protection'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { orcaHomeDir } from '../../shared/product-identity-home'

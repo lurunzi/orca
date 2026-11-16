@@ -34,11 +34,13 @@ export function promptSuggestionChanged(
   return composerMetadataChanged(subscriber, { readPromptSuggestion: hooks.readPromptSuggestion })
 }
 
+/** False when the subscriber went inactive before every frame was sent. */
 export function emitComposerMetadataFrames(
   subscriber: AgentSessionComposerMetadata & { emit: (event: AgentSessionSubscribeEvent) => void },
   frames: readonly AgentSessionSubscribeEvent[],
-  hooks: AgentSessionComposerMetadataHooks
-): void {
+  hooks: AgentSessionComposerMetadataHooks,
+  isActive?: () => boolean
+): boolean {
   const promptSuggestion = hooks.readPromptSuggestion?.(subscriber.sessionId) ?? null
   const [first, ...rest] = frames
   // Bounded side-list frames follow the single frame carrying the suggestion.
@@ -48,9 +50,13 @@ export function emitComposerMetadataFrames(
     hooks.readPromptSuggestion !== undefined &&
     (first.type !== 'batch' || promptSuggestion !== subscriber.promptSuggestion)
   for (const frame of includeSuggestion ? [{ ...first, promptSuggestion }, ...rest] : frames) {
+    if (isActive && !isActive()) {
+      return false
+    }
     subscriber.emit(frame)
   }
   if (includeSuggestion) {
     subscriber.promptSuggestion = promptSuggestion
   }
+  return true
 }

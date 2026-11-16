@@ -1,8 +1,8 @@
 import type {
   AskAnswerKeyGroup,
   AskAnswerSelection
-} from './native-chat/input/native-chat-ask-answer'
-import type { AskPrompt } from './native-chat/input/native-chat-ask-types'
+} from './native-chat/input/questions/native-chat-ask-answer'
+import type { AskPrompt } from './native-chat/input/questions/native-chat-ask-types'
 
 /** Matches captured agy selectors: arrows navigate, Space toggles, Enter advances. */
 export function buildAntigravityAskAnswerKeys(

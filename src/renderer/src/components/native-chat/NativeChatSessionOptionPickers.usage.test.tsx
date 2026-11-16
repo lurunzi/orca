@@ -60,7 +60,9 @@ describe('Model picker labels', () => {
       render(
         <NativeChatSessionOptionPickers surface={surface} snapshot={[model]} isWorking={false} />
       )
-      const picker = screen.getByRole('button', { name: 'Model Gemini Flash, Effort High' })
+      const picker = screen.getByRole('button', {
+        name: 'Model Gemini Flash · High, Effort High'
+      })
       fireEvent.click(picker)
       expect(screen.getByRole('option', { name: 'Gemini Flash' })).toBeTruthy()
       expect(screen.getByRole('option', { name: 'Claude Opus' })).toBeTruthy()

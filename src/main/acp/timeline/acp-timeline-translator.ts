@@ -1,5 +1,4 @@
-import type { AcpOwnershipReader } from '../journal/acp-ownership-reader'
-import { BoundedMap } from '../../../shared/bounded-map'
+import { BoundedMap } from '../../../shared/collections/bounded-map'
 import type { ProviderTimelineEvent } from '../../native-chat/agent-session-timeline/provider-timeline-event'
 import {
   acpNotificationEnvelopeSchema,
@@ -17,6 +16,7 @@ import type { AcpAgentError } from '../transport/acp-errors'
 import { acpTurnEndEvents, AcpPromptTurns } from './acp-prompt-turns'
 
 import { translateAcpRequest } from '../requests/acp-timeline-requests'
+import { AcpUrlElicitations } from '../requests/acp-url-elicitation'
 import { ACP_SUBSTANTIVE_UPDATES, acpSessionUpdate } from './acp-session-update'
 import { AcpSubagents } from './acp-subagents'
 import { AcpChildSessions } from './acp-child-sessions'
@@ -31,7 +31,6 @@ export type AcpTimelineTranslatorOptions = {
   sessionId: string
   dialect?: AcpDialect
   agentName?: string
-  ownership?: AcpOwnershipReader
   onTextDropped?: (drop: AcpTextDrop) => void
 }
 
@@ -47,6 +46,7 @@ export class AcpTimelineTranslator {
   readonly children: AcpChildSessions
   private readonly ownership: AcpTimelineOwnership
   private readonly started = new BoundedMap<string, true>({ maxEntries: 128 })
+  readonly elicitations = new AcpUrlElicitations()
   /** Turns rewrite a failure row once account usage explains it. */
   readonly failures: AcpTurnFailures
   private loading = false
@@ -54,7 +54,7 @@ export class AcpTimelineTranslator {
   protected activeTurn?: string
 
   constructor(private readonly options: AcpTimelineTranslatorOptions) {
-    this.ownership = new AcpTimelineOwnership(options.ownership)
+    this.ownership = new AcpTimelineOwnership()
     this.dialect = options.dialect ?? GENERIC_ACP_DIALECT
     this.providerSessionId = options.sessionId
     this.injectsPromptIdentity = this.dialect.injectedPromptIdentity === true
@@ -166,6 +166,9 @@ export class AcpTimelineTranslator {
     if (this.ownership.disposed) {
       return []
     }
+    if (this.elicitations.completes(method, this.dialect)) {
+      return this.elicitations.complete(params, at)
+    }
     const extension = this.dialect.notification?.(method, params, at)
     const open = this.prompts.current?.opened ? this.prompts.current.turn : this.activeTurn
     const child = this.children.notification(method, params, extension, this.loading, open, at)
@@ -214,8 +217,7 @@ export class AcpTimelineTranslator {
     this.ownership.messages.observe(owner.turn, update)
     const join = {
       thread: this.options.sessionId,
-      ...(turn === undefined ? {} : { turn }),
-      ...(owner.scope ? { scope: owner.scope } : {})
+      ...(turn === undefined ? {} : { turn })
     }
     if (extension?.backgroundTasks) {
       const tasks = extension.backgroundTasks.filter((task) => !this.subagents.has(task.taskId))
@@ -257,8 +259,7 @@ export class AcpTimelineTranslator {
           dialect: this.dialect,
           backgroundTasks: this.backgroundTasks,
           subagents: this.subagents,
-          messageKey,
-          scope: owner.scope
+          messageKey
         })
       ]
     }
@@ -273,11 +274,13 @@ export class AcpTimelineTranslator {
     params: unknown,
     id: string | number
   ): ReturnType<typeof translateAcpRequest> {
-    return translateAcpRequest(method, params, id, {
-      sessionId: this.options.sessionId,
-      dialect: this.dialect,
-      tools: this.ownership.tools
-    })
+    return this.elicitations.track(
+      translateAcpRequest(method, params, id, {
+        sessionId: this.options.sessionId,
+        dialect: this.dialect,
+        tools: this.ownership.tools
+      })
+    )
   }
 
   // Write failure reasons before ending the turn so their rows join it.

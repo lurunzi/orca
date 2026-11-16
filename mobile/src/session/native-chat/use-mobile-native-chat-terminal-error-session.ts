@@ -4,7 +4,7 @@ import {
   withNativeChatTerminalError
 } from '../../../../src/shared/native-chat/native-chat-terminal-error'
 import type { NativeChatMessage } from '../../../../src/shared/native-chat/native-chat-types'
-import type { MobileNativeChatTab } from './mobile-native-chat-eligibility'
+import type { MobileNativeChatTab } from './conversation/mobile-native-chat-eligibility'
 
 export function useMobileNativeChatTerminalErrorSession<
   TSession extends { messages: NativeChatMessage[] }

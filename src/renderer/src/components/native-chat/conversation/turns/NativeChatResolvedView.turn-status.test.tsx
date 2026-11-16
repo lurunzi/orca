@@ -21,6 +21,8 @@ vi.mock('../../composer/NativeChatComposer', () => ({ NativeChatComposer: () => 
 const { NativeChatResolvedView } = await import('../../NativeChatResolvedView')
 const { TooltipProvider } = await import('@/components/ui/tooltip')
 const { useAppStore } = await import('../../../../store/index')
+const { acceptedAgentStatuses } =
+  await import('../../../../store/slices/agent-status/accepted-agent-statuses')
 const { installNativeChatMessageListTestViewport } =
   await import('../../viewport/virtualization/native-chat-message-list-test-viewport')
 
@@ -59,24 +61,16 @@ function setStatus(payload: Omit<AgentStatusPayload, 'prompt' | 'agentType'>, ag
   useAppStore
     .getState()
     .setAgentStatus(paneKey, { prompt: 'Rename the module', agentType: 'claude', ...payload })
-  const live = useAppStore.getState().agentStatusByPaneKey[paneKey]
+  patchStatus({ stateStartedAt: NOW - age })
+}
+
+function patchStatus(fields: Partial<AgentStatusEntry>): void {
+  const live = useAppStore.getState().agentStatusByPaneKey.get(paneKey)
   if (!live) {
     throw new Error('the store dropped the status row this test depends on')
   }
   useAppStore.setState((store) => ({
-    agentStatusByPaneKey: {
-      ...store.agentStatusByPaneKey,
-      [paneKey]: { ...live, stateStartedAt: NOW - age }
-    }
-  }))
-}
-
-function patchStatus(fields: Partial<AgentStatusEntry>): void {
-  useAppStore.setState((store) => ({
-    agentStatusByPaneKey: {
-      ...store.agentStatusByPaneKey,
-      [paneKey]: { ...store.agentStatusByPaneKey[paneKey]!, ...fields }
-    }
+    agentStatusByPaneKey: store.agentStatusByPaneKey.replace([[paneKey, { ...live, ...fields }]])
   }))
 }
 
@@ -111,14 +105,20 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
   restoreViewport = installNativeChatMessageListTestViewport()
-  useAppStore.setState({ agentStatusByPaneKey: {}, nativeChatLaunchPromptByTabId: {} })
+  useAppStore.setState({
+    agentStatusByPaneKey: acceptedAgentStatuses(),
+    nativeChatLaunchPromptByTabId: {}
+  })
 })
 
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
   restoreViewport()
-  useAppStore.setState({ agentStatusByPaneKey: {}, nativeChatLaunchPromptByTabId: {} })
+  useAppStore.setState({
+    agentStatusByPaneKey: acceptedAgentStatuses(),
+    nativeChatLaunchPromptByTabId: {}
+  })
 })
 
 // Fork: an Antigravity prose question is answered in chat, not through the terminal preview.

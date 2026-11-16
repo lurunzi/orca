@@ -3,7 +3,7 @@ import {
   AGENT_MODEL_CATALOG_FAILURE_TTL_MS,
   AGENT_MODEL_CATALOG_FRESH_MS
 } from '../../../../shared/agent-model-catalog-refresh-policy'
-import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
+import type { CatalogModel } from '../../../../shared/agent-session/options/catalog-providers/agent-session-option-catalog-types'
 import { parseAntigravityModels } from '../../../../shared/source-control/ai/generation/commit-message-model-parsers'
 import { buildModelPickerRows } from './native-chat-model-tier-groups'
 import {

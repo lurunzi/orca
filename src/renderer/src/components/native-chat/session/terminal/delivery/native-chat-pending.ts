@@ -4,16 +4,16 @@ import {
   NATIVE_CHAT_PENDING_SEND_LIMIT,
   transcriptTimestampAtOrAfterLocal,
   type NativeChatPendingSend
-} from '../../../../../../../shared/native-chat/transcript/native-chat-pending-sends'
+} from '../../../../../../../shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 import type { NativeChatLaunchPrompt } from '@/components/native-chat/drafts/native-chat-launch-prompt'
-import { normalizedNativeChatUserMessageText } from '../../../../../../../shared/native-chat/transcript/native-chat-image-transcript-markers'
+import { normalizedNativeChatUserMessageText } from '../../../../../../../shared/native-chat/transcript/images/native-chat-image-transcript-markers'
 import { matchesCursorLaunchPromptEcho } from '../../../cursor-launch-prompt-echo'
 import {
   advancedNativeChatUserContentCounts,
   assignNativeChatPendingOccurrence,
   matchingNativeChatUserContentCounts,
   nativeChatPendingContentKey
-} from '../../../../../../../shared/native-chat/transcript/native-chat-pending-occurrence'
+} from '../../../../../../../shared/native-chat/transcript/pending-sends/native-chat-pending-occurrence'
 
 export type NativeChatPendingSendScope = {
   paneKey: string

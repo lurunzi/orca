@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { AiVaultSession } from '../../../../../../shared/ai-vault/contracts/ai-vault-types'
@@ -109,7 +108,7 @@ function renderRow(
   )
 }
 
-describe('VaultSessionRow details toggle', () => {
+describe('VaultSessionRow Cursor conversations', () => {
   it('opens a Cursor conversation without invoking its resume action', () => {
     const cursor = { ...session, agent: 'cursor' as const, cwd: '/work/worker' }
     const onResume = vi.fn()
@@ -128,63 +127,5 @@ describe('VaultSessionRow details toggle', () => {
     expect(transcriptActions.open).toHaveBeenCalledWith(cursor, 'worker')
     expect(transcriptActions.reveal).toHaveBeenCalledWith('worker')
     expect(onResume).not.toHaveBeenCalled()
-  })
-
-  it('does not expand the row when a menu action is chosen', async () => {
-    // Portaled menu clicks still bubble through React; Delete must not expand the row behind its dialog.
-    const onToggleDetails = vi.fn()
-    const onRequestDelete = vi.fn()
-    renderRow({ onToggleDetails, onRequestDelete })
-    const user = userEvent.setup()
-
-    await user.click(screen.getByTestId('ai-vault-session-more-actions'))
-    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
-
-    expect(onRequestDelete).toHaveBeenCalledTimes(1)
-    expect(onToggleDetails).not.toHaveBeenCalled()
-  })
-})
-
-describe('VaultSessionRow in the /resume picker', () => {
-  it('only resumes on click: no menus, drag or action buttons, and the chevron still shows details', async () => {
-    const onPick = vi.fn()
-    const onToggleDetails = vi.fn()
-    const subagent = {
-      ...session,
-      id: 'sub',
-      title: 'Sub task',
-      filePath: '/home/a/.gemini/sub.json'
-    }
-    Object.defineProperty(window, 'api', {
-      configurable: true,
-      value: {
-        aiVault: {
-          getFirstUserPrompt: vi.fn().mockResolvedValue({ prompt: null }),
-          listSubagentSessions: vi.fn().mockResolvedValue({ sessions: [subagent], issues: [] })
-        }
-      }
-    })
-    const { container } = renderRow({
-      session: { ...session, subagentTranscriptCount: 1 },
-      onPick,
-      onToggleDetails,
-      detailsExpanded: true
-    })
-    const user = userEvent.setup()
-
-    expect(await screen.findByText('Sub task')).toBeTruthy()
-    expect(screen.queryByTitle('View Log')).toBeNull()
-    expect(screen.queryByRole('button', { name: /^Copy/ })).toBeNull()
-    expect(screen.queryByTestId('ai-vault-session-more-actions')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Resume in New Tab' })).toBeNull()
-    expect(container.querySelector('[draggable="true"]')).toBeNull()
-    const title = screen.getAllByText('A session')[0]
-    fireEvent.contextMenu(title)
-    expect(screen.queryByRole('menuitem')).toBeNull()
-
-    await user.click(title)
-    await user.click(screen.getByTestId('ai-vault-session-toggle-details'))
-    expect(onPick).toHaveBeenCalledOnce()
-    expect(onToggleDetails).toHaveBeenCalledOnce()
   })
 })

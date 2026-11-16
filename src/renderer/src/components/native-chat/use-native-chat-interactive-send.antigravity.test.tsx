@@ -10,15 +10,15 @@ const mocks = vi.hoisted(() => ({
   sendRuntimePtyInputVerified: vi.fn((..._args: unknown[]) => Promise.resolve(true)),
   sendNativeChatAskAnswer: vi.fn(),
   sendNativeChatMessage: vi.fn(),
-  storeState: { agentStatusByPaneKey: {} as Record<string, unknown> }
+  storeState: { agentStatusByPaneKey: new Map<string, unknown>() }
 }))
 
 const PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
 const waitingQuestion = {
   state: 'waiting' as const,
   prompt: 'pick one',
-  updatedAt: Date.now(),
-  stateStartedAt: Date.now(),
+  updatedAt: 0,
+  stateStartedAt: 0,
   agentType: 'claude' as const,
   paneKey: PANE_KEY,
   stateHistory: [],
@@ -44,7 +44,7 @@ vi.mock('./session/terminal/send/native-chat-runtime-send', () => ({
 }))
 
 import { useNativeChatInteractiveSend } from './session/terminal/send/use-native-chat-interactive-send'
-import type { AskPrompt } from '../../../../shared/native-chat/input/native-chat-ask-types'
+import type { AskPrompt } from '../../../../shared/native-chat/input/questions/native-chat-ask-types'
 
 const PROMPT: AskPrompt = {
   questions: [{ question: 'q', multiSelect: false, options: [{ label: 'A' }, { label: 'B' }] }]
@@ -53,7 +53,7 @@ const PROMPT: AskPrompt = {
 describe('useNativeChatInteractiveSend prose and Antigravity answers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.storeState = { agentStatusByPaneKey: { [PANE_KEY]: waitingQuestion } }
+    mocks.storeState = { agentStatusByPaneKey: new Map([[PANE_KEY, waitingQuestion]]) }
     Object.defineProperty(window, 'api', {
       configurable: true,
       value: { agentStatus: { inferQuestionAnswered: mocks.inferQuestionAnswered } }

@@ -3,7 +3,7 @@ import type {
   RuntimeTerminalResolvePane,
   RuntimeTerminalShow,
   RuntimeTerminalWait
-} from '../../../../../../shared/runtime-types'
+} from '../../../../../../shared/terminal/runtime/runtime-terminal-contracts'
 import { makePaneKey } from '../../../../../../shared/workspace-layout/stable-pane-id'
 import { toHostSessionTabId } from '../../../../../../shared/workspace-layout/terminal-surface-id'
 import { useAppStore } from '@/store'
@@ -11,7 +11,7 @@ import { ensureLocalRuntimeCapabilities } from '@/runtime/hosts/capabilities/loc
 import { callRuntimeRpc } from '@/runtime/rpc/calls/runtime-rpc-call'
 import { runtimeEnvironmentSupportsCapability } from '@/runtime/rpc/compatibility/runtime-capability-proof'
 import { parseRemoteRuntimePtyId } from '../../../../../../shared/remote-runtime/remote-runtime-pty-id'
-import { hasRuntimeRpcErrorCode } from '../../../../../../shared/runtime-rpc-error-code'
+import { hasRuntimeRpcErrorCode } from '../../../../../../shared/remote-runtime/rpc/runtime-rpc-error-code'
 
 /** The host's recorded-screen classifier owns readiness; shell paste mode is not agent input. */
 export async function waitForAntigravityDraftReady(

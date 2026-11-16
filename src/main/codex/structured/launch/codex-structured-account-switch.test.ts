@@ -6,7 +6,7 @@ import type * as NodeFsPromises from 'node:fs/promises'
 import { agentSessionRecordFixture } from '../../../native-chat/testing/agent-session-record-test-fixture'
 import { createCodexStructuredLaunchResolver } from '../../../runtime/agent-session/launch/structured-agent-launch-composition.test-support'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
-import { codexProviderHandle } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
+import { codexProviderHandle } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import {
   configureHostReadableTranscriptPathSources,
   resetHostReadableTranscriptPathCacheForTests

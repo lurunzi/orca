@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTranslate } from '@/i18n/use-translate'
 import { getAgentAwakeModeLabel } from '../settings/agents/behavior/agent-awake-copy'
-import type { ComputerAwakeMode } from '../../../../shared/computer-awake-mode'
+import type { ComputerAwakeMode } from '../../../../shared/app-lifecycle/computer-awake-mode'
 
 /** The machine the menu controls, shown only once a remote host gives a choice. */
 export type ComputerAwakeMenuMachine = {

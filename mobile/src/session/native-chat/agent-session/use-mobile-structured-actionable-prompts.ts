@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import {
   actionableStructuredApproval,
   actionableStructuredQuestion
-} from '../input/mobile-structured-actionable-prompt'
+} from '../input/prompts/mobile-structured-actionable-prompt'
 
 /** The approval and question still awaiting an answer, and what currently refuses a command. */
 export function useMobileStructuredActionablePrompts(

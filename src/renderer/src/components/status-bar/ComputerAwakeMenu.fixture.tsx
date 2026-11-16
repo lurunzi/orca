@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { ComputerAwakeMenu, type ComputerAwakeMenuMachine } from './ComputerAwakeMenu'
-import type { ComputerAwakeMode } from '../../../../shared/computer-awake-mode'
+import type { ComputerAwakeMode } from '../../../../shared/app-lifecycle/computer-awake-mode'
 
 function menu(
   statusText: string,

@@ -1,9 +1,28 @@
 import { expect, it } from 'vitest'
 import { findCursorTranscriptTerminal } from './cursor-transcript-terminal'
 import { makePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
+import type { AgentStatusEntry } from '../../../shared/agent-status/contracts/agent-status-types'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
 
 const leaf = '11111111-1111-4111-8111-111111111111'
 const paneKey = makePaneKey('tab', leaf)
+const liveCursor: AgentStatusEntry = {
+  paneKey,
+  agentType: 'cursor',
+  providerSession: { key: 'session_id', id: 'external' },
+  state: 'done',
+  prompt: '',
+  updatedAt: 0,
+  stateStartedAt: 0,
+  stateHistory: []
+}
+
+function live(
+  entry: AgentStatusEntry
+): Parameters<typeof findCursorTranscriptTerminal>[0]['agentStatusByPaneKey'] {
+  return acceptedAgentStatuses([[paneKey, entry]])
+}
+
 function fixture(): Parameters<typeof findCursorTranscriptTerminal>[0] {
   return {
     tabsByWorktree: {
@@ -20,18 +39,7 @@ function fixture(): Parameters<typeof findCursorTranscriptTerminal>[0] {
         }
       ]
     },
-    agentStatusByPaneKey: {
-      [paneKey]: {
-        paneKey,
-        agentType: 'cursor',
-        providerSession: { key: 'session_id', id: 'external' },
-        state: 'done',
-        prompt: '',
-        updatedAt: 0,
-        stateStartedAt: 0,
-        stateHistory: []
-      }
-    },
+    agentStatusByPaneKey: live(liveCursor),
     sleepingAgentSessionsByPaneKey: {
       [paneKey]: {
         paneKey,
@@ -64,7 +72,7 @@ it('retains the exact pane after idle and a missing status publication', () => {
     paneKey,
     ptyId: 'cursor-pty'
   })
-  state.agentStatusByPaneKey = {}
+  state.agentStatusByPaneKey = acceptedAgentStatuses()
   expect(findCursorTranscriptTerminal(state, 'wt', 'external')?.ptyId).toBe('cursor-pty')
 })
 
@@ -72,10 +80,12 @@ it('rejects another workspace, another session and a replaced agent', () => {
   const state = fixture()
   expect(findCursorTranscriptTerminal(state, 'other-workspace', 'external')).toBeNull()
   expect(findCursorTranscriptTerminal(state, 'wt', 'other-session')).toBeNull()
-  state.agentStatusByPaneKey[paneKey].agentType = 'claude'
+  state.agentStatusByPaneKey = live({ ...liveCursor, agentType: 'claude' })
   expect(findCursorTranscriptTerminal(state, 'wt', 'external')).toBeNull()
-  state.agentStatusByPaneKey[paneKey].agentType = 'cursor'
-  state.agentStatusByPaneKey[paneKey].providerSession = { key: 'session_id', id: 'replacement' }
+  state.agentStatusByPaneKey = live({
+    ...liveCursor,
+    providerSession: { key: 'session_id', id: 'replacement' }
+  })
   expect(findCursorTranscriptTerminal(state, 'wt', 'external')).toBeNull()
 })
 
@@ -99,6 +109,7 @@ it('does not attach a reader to a leaf that was removed from a surviving split',
 
 it('does not borrow a previous session while a live replacement has no provider identity', () => {
   const state = fixture()
-  delete state.agentStatusByPaneKey[paneKey].providerSession
+  const { providerSession: _providerSession, ...withoutIdentity } = liveCursor
+  state.agentStatusByPaneKey = live(withoutIdentity)
   expect(findCursorTranscriptTerminal(state, 'wt', 'external')).toBeNull()
 })

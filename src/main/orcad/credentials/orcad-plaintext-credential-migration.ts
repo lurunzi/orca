@@ -1,8 +1,8 @@
 // Seal legacy integration credentials after key loading; gh/glab own their tokens separately.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { SecretStore } from '../../../shared/secret-store'
-import { classifyUnenvelopedCredential } from '../../../shared/secret-at-rest-protection'
+import type { SecretStore } from '../../../shared/secure-storage/secret-store'
+import { classifyUnenvelopedCredential } from '../../../shared/secure-storage/secret-at-rest-protection'
 import {
   hardenExistingSecureFile,
   writeSecureFile

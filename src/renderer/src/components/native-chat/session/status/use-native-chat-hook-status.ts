@@ -1,4 +1,4 @@
-import { useAppStore } from '../../../../store/index'
+import { useAgentStatusSelector } from '@/runtime/agent-status/use-agent-status'
 import type {
   AgentStatusState,
   AgentType
@@ -15,20 +15,14 @@ export function useNativeChatHookStatus(
   sessionId: string | null = null
 ): readonly [AgentStatusState | null, number | null, boolean, string | null, number | null] {
   // Primitive selectors avoid rerenders for unrelated status changes.
-  const state = useAppStore((store) =>
-    resolveNativeChatHookState(store.agentStatusByPaneKey[paneKey])
+  const state = useAgentStatusSelector(paneKey, resolveNativeChatHookState)
+  const stateStartedAt = useAgentStatusSelector(paneKey, (entry) => entry?.stateStartedAt ?? null)
+  const hasWorkingSubagents = useAgentStatusSelector(paneKey, nativeChatHookHasWorkingSubagents)
+  const errorText = useAgentStatusSelector(paneKey, (entry) =>
+    nativeChatTerminalErrorText(entry, agent, sessionId)
   )
-  const stateStartedAt = useAppStore(
-    (store) => store.agentStatusByPaneKey[paneKey]?.stateStartedAt ?? null
-  )
-  const hasWorkingSubagents = useAppStore((store) =>
-    nativeChatHookHasWorkingSubagents(store.agentStatusByPaneKey[paneKey])
-  )
-  const errorText = useAppStore((store) =>
-    nativeChatTerminalErrorText(store.agentStatusByPaneKey[paneKey], agent, sessionId)
-  )
-  const errorAt = useAppStore((store) =>
-    errorText ? (store.agentStatusByPaneKey[paneKey]?.mainAgent?.stateStartedAt ?? null) : null
+  const errorAt = useAgentStatusSelector(paneKey, (entry) =>
+    errorText ? (entry?.mainAgent?.stateStartedAt ?? null) : null
   )
   return [state, stateStartedAt, hasWorkingSubagents, errorText, errorAt]
 }

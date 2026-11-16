@@ -214,20 +214,15 @@ test('external Cursor input survives tab switches and failed continuation', asyn
       throw new Error('Fixture terminal has no bound leaf')
     }
     const paneKey = `${terminal.id}:${leaf}`
+    state.setAgentStatus(
+      paneKey,
+      { agentType: 'cursor', state: 'done', prompt: '' },
+      undefined,
+      { updatedAt: 0, stateStartedAt: 0 },
+      undefined,
+      { providerSession: { key: 'session_id', id: 'external' } }
+    )
     store.setState({
-      agentStatusByPaneKey: {
-        ...state.agentStatusByPaneKey,
-        [paneKey]: {
-          paneKey,
-          agentType: 'cursor',
-          providerSession: { key: 'session_id', id: 'external' },
-          state: 'done',
-          prompt: '',
-          updatedAt: 0,
-          stateStartedAt: 0,
-          stateHistory: []
-        }
-      },
       sleepingAgentSessionsByPaneKey: {
         ...state.sleepingAgentSessionsByPaneKey,
         [paneKey]: {
@@ -248,7 +243,12 @@ test('external Cursor input survives tab switches and failed continuation', asyn
   await expect(surface.getByRole('button', { name: 'Resume and send' })).toHaveCount(0)
   await expect(editor).toBeEditable()
   await expect(editor).toHaveText('继续这个任务')
-  await orcaPage.evaluate(() => window.__store!.setState({ agentStatusByPaneKey: {} }))
+  await orcaPage.evaluate(() => {
+    const state = window.__store!.getState()
+    for (const paneKey of Array.from(state.agentStatusByPaneKey.keys())) {
+      state.removeAgentStatus(paneKey)
+    }
+  })
   await expect(editor).toBeEditable()
   await expect(editor).toHaveText('继续这个任务')
   const windows = await electronApp.evaluate(({ BrowserWindow }) =>

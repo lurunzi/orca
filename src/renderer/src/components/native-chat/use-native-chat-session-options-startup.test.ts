@@ -2,7 +2,7 @@
 
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CatalogModel } from '../../../../shared/agent-session/options/agent-session-option-catalog-types'
+import type { CatalogModel } from '../../../../shared/agent-session/options/catalog-providers/agent-session-option-catalog-types'
 import { clearNativeChatModelEnrichmentForTests } from './session/options/catalog/native-chat-session-option-enrichment'
 import { useNativeChatSessionOptions } from './session/options/terminal/use-native-chat-session-options'
 
@@ -14,8 +14,13 @@ vi.mock('./session/options/catalog/native-chat-session-option-discovery', () => 
 }))
 
 vi.mock('../../store', () => ({
-  useAppStore: (selector: (state: { agentStatusByPaneKey: Record<string, never> }) => unknown) =>
-    selector({ agentStatusByPaneKey: {} })
+  useAppStore: (
+    selector: (state: { agentStatusByPaneKey: ReadonlyMap<string, never> }) => unknown
+  ) => selector({ agentStatusByPaneKey: new Map<string, never>() })
+}))
+vi.mock('@/runtime/agent-status/use-agent-status', () => ({
+  useAgentStatus: () => undefined,
+  useAgentStatusSelector: (_key: string, select: (entry: undefined) => unknown) => select(undefined)
 }))
 
 vi.mock('./session/options/native-chat-session-option-settings-write', () => ({
