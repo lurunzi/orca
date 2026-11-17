@@ -4,6 +4,7 @@ import { connect as connectTcp, createServer, type Server, type Socket } from 'n
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TLSSocket } from 'node:tls'
 import type WebSocket from 'ws'
+import type { ClientOptions } from 'ws'
 import { WebSocketServer } from 'ws'
 import {
   LOCAL_HTTPS_TEST_CERTIFICATE,
@@ -60,9 +61,9 @@ function listen(
 
 async function startRuntimeServer(
   options: { tls?: boolean } = {}
-): Promise<{ port: number; paths: string[]; serverNames: (string | false)[] }> {
+): Promise<{ port: number; paths: string[]; serverNames: (string | false | null)[] }> {
   const paths: string[] = []
-  const serverNames: (string | false)[] = []
+  const serverNames: (string | false | null)[] = []
   const server = options.tls
     ? createHttpsServer({ key: LOCAL_HTTPS_TEST_PRIVATE_KEY, cert: LOCAL_HTTPS_TEST_CERTIFICATE })
     : createHttpServer()
@@ -177,15 +178,16 @@ describe('remote runtime WebSocket dial through a proxy', () => {
     const proxy = await startConnectProxy(runtime.port)
     vi.stubEnv('HTTPS_PROXY', `http://127.0.0.1:${proxy.port}`)
     const checkedHosts: string[] = []
+    const recordHost = (host: string): undefined => {
+      checkedHosts.push(host)
+    }
 
     await waitForOpen(
       createRemoteRuntimeWebSocket('wss://runtime.example.invalid/prefix/24004', {
         ca: LOCAL_HTTPS_TEST_CERTIFICATE,
         // The fixture certificate names 127.0.0.1, so only the proxy's host would pass a real check.
-        checkServerIdentity: (host) => {
-          checkedHosts.push(host)
-          return undefined
-        }
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: ws hands this to tls.connect, where undefined means a match; ws's typings model an older boolean form.
+        checkServerIdentity: recordHost as unknown as ClientOptions['checkServerIdentity']
       })
     )
 
