@@ -12,10 +12,11 @@ import {
   type RemoteRuntimeClientHandshake
 } from '../remote-runtime-client-framing'
 import { RemoteRuntimeClientError } from '../remote-runtime-client-error'
+import { remoteRuntimeConnectFailureMessage } from '../remote-runtime-connect-bound'
 import {
-  remoteRuntimeConnectFailureMessage,
-  remoteRuntimeConnectOptions
-} from '../remote-runtime-connect-bound'
+  createRemoteRuntimeWebSocket,
+  remoteRuntimeDialProxy
+} from '../remote-runtime-websocket-dial'
 import { REMOTE_RUNTIME_MAX_WEBSOCKET_FRAME_BYTES } from '../remote-runtime-memory-limits'
 import {
   releaseRemoteRuntimePreparedRequest,
@@ -216,10 +217,9 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
           return
         }
         try {
-          const connectOptions = remoteRuntimeConnectOptions({
+          ws = createRemoteRuntimeWebSocket(connection.endpoint, {
             maxPayload: REMOTE_RUNTIME_MAX_WEBSOCKET_FRAME_BYTES
           })
-          ws = new WebSocket(connection.endpoint, connectOptions)
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           finishError(
@@ -257,7 +257,11 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
         finishError(
           new RemoteRuntimeClientError(
             'remote_runtime_unavailable',
-            remoteRuntimeConnectFailureMessage(error, connection.endpoint),
+            remoteRuntimeConnectFailureMessage(
+              error,
+              connection.endpoint,
+              remoteRuntimeDialProxy(ws)
+            ),
             { pairingStage: router.pairingStage }
           )
         )
