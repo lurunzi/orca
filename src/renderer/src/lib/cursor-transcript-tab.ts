@@ -1,6 +1,9 @@
 import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
 import { normalizeRuntimePathForComparison } from '../../../shared/file-access/cross-platform-path'
-import { parseExecutionHostId, type ExecutionHostId } from '../../../shared/execution-host/execution-host'
+import {
+  parseExecutionHostId,
+  type ExecutionHostId
+} from '../../../shared/execution-host/execution-host'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import { getKnownExecutionHostIdForWorktree } from './workspace/ownership/worktree-runtime-owner'

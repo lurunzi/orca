@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { waitForPromiseWithSignal } from '../../../../shared/concurrency/abort-signal-reason'
 import { isDefinitiveAbsence } from '../../../../shared/errors/definitive-filesystem-absence'
-import { resolveHiddenProbeCwd } from '../../../lib/hidden-probe-cwd'
+import { resolveHiddenProbeCwdAsync } from '../../../lib/hidden-probe-cwd'
 import { agentSessionPinnedLaunchDirectory } from '../../../runtime/agent-session/records/agent-session-record-launch-directory'
 import { requireLegacyAgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
 import type { CodexPoolIdentity } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-pool-account'
@@ -53,7 +53,7 @@ export async function codexPoolProviderProbeCwd(
     }
   }
   signal?.throwIfAborted()
-  return resolveHiddenProbeCwd()
+  return await waitForPromiseWithSignal(resolveHiddenProbeCwdAsync(), signal)
 }
 
 /** Mirrors runCodexProviderAppServer's launch so the owner can authenticate before spawning it. */

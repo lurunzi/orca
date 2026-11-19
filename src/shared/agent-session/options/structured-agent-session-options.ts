@@ -3,7 +3,6 @@ import type {
   CatalogModel
 } from './catalog-providers/agent-session-option-catalog-types'
 import { discoveredModel } from './model-catalog/structured-agent-session-discovered-model'
-import { catalogOffersFastMode } from './structured-agent-fast-mode-snapshot'
 import {
   createStructuredAgentSessionOptionRecord,
   replaceStructuredAgentSessionAnsweredValues,
@@ -139,9 +138,7 @@ export function applyStructuredAgentSessionModelCatalog(
   const models =
     catalog.origin === 'unknown'
       ? []
-      : catalog.models.map((model) =>
-          discoveredModel(model, catalogOffersFastMode(catalog), state.record.agent)
-        )
+      : catalog.models.map((model) => discoveredModel(model, catalog, state.record.agent))
   if (catalog.origin === 'unknown' || (!installed && models.length === 0)) {
     return settleStructuredAgentSessionBuiltinCatalog(state)
   }

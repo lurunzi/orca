@@ -37,15 +37,6 @@ import {
   removeInstalledConfig
 } from './hooks-json-bundle'
 
-// Sync by design (main-sync-fs baseline): getStatus is synchronous across hook services and stats only a few managed scripts.
-function isManagedScriptFile(scriptPath: string): boolean {
-  try {
-    return statSync(scriptPath).isFile()
-  } catch {
-    return false
-  }
-}
-
 function getConfigPath(): string {
   return join(homedir(), '.gemini', 'config', 'hooks.json')
 }
@@ -166,9 +157,14 @@ export class AntigravityHookService {
           ? ANTIGRAVITY_EVENTS.map((event) => event.windowsWrapperFileName)
           : [])
       ]
-      const unavailable = scriptNames.filter(
-        (name) => !isManagedScriptFile(getSharedManagedScriptPath(name))
-      )
+      // Sync by design (main-sync-fs baseline): getStatus is synchronous across hook services and stats only a few managed scripts.
+      const unavailable = scriptNames.filter((name) => {
+        try {
+          return !statSync(getSharedManagedScriptPath(name)).isFile()
+        } catch {
+          return true
+        }
+      })
       if (unavailable.length > 0) {
         state = 'partial'
         detail = [detail, `Managed scripts unavailable: ${unavailable.join(', ')}`]

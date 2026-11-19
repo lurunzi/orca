@@ -1,8 +1,10 @@
 import type {
   AskOption,
   AskPrompt,
-  AskQuestion
+  AskQuestion,
+  InteractiveQuestionParser
 } from './native-chat/input/questions/native-chat-ask-types'
+import { CODEX_ASYNC_QUESTION_TOOL } from './native-chat/input/questions/codex-async-question-input'
 
 function parseOption(option: unknown): AskOption | null {
   if (typeof option === 'string') {
@@ -63,4 +65,12 @@ export function parseAntigravityAskInput(input: unknown): AskPrompt | null {
     })
   }
   return { questions: parsed }
+}
+
+export const ANTIGRAVITY_QUESTION_TOOLS: readonly (readonly [string, InteractiveQuestionParser])[] =
+  [['ask_question', parseAntigravityAskInput]]
+
+// Invalid selectors or message-reply questions cannot fall back to different terminal keys.
+export function isExactQuestionTool(toolName: string | undefined): boolean {
+  return toolName === 'ask_question' || toolName === CODEX_ASYNC_QUESTION_TOOL
 }

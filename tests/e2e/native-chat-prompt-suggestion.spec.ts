@@ -1,9 +1,15 @@
 import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/orca-app'
-import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
-import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
+import { test } from './desktop/electron-fixtures/orca-app'
+import { expect } from '@stablyai/playwright-test'
+import {
+  ensureTerminalVisible,
+  waitForActiveWorktree,
+  waitForSessionReady
+} from './desktop/renderer-probes/store'
+import { waitForActivePaneHookDescriptor } from './terminal/input/terminal-active-pane'
+import { waitForActiveTerminalManager } from './terminal/layout/terminal-pane-operations'
 
 test('shows a Claude terminal suggestion and accepts it without sending', async ({
   orcaPage,

@@ -4856,7 +4856,6 @@
             "bf2e739f18": "登录不可用",
             "f8b8dbed85": "用量不可用",
             "3d3c9c0c1f": "实时 Claude 终端轮换凭据后，Claude 用量会刷新",
-            "42fdd4da1d": "正在刷新 Claude 登录，代理会话可能仍处于登录状态",
             "c06c1d215d": "由于网络请求失败，无法刷新 Claude 用量",
             "cabdc2a9e0": "无法读取 Claude 登录凭据",
             "a7517cccb6": "Claude 用量目前不可用",
@@ -19864,7 +19863,6 @@
         "sessionAttachmentsFailed": "{{agent}} 聊天无法打开，请在聊天中点击重试，然后重新附加文件",
         "sessionAttachmentsStarting": "{{agent}} 聊天仍在打开中，请等待其打开后再重新附加文件",
         "appliesNextTurn": "本轮结束后生效",
-        "acceptPromptSuggestion": "使用建议的提示词",
         "moreControls": "更多聊天控件",
         "exitPlanMode": "退出计划模式"
       },

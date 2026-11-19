@@ -48,6 +48,8 @@
 5 src/main/ai-vault/scan-service/session-scanner-background.ts
 3 src/main/ai-vault/scan-service/session-scanner-service-entry-path.ts
 12 src/main/ai-vault/scan-service/session-scanner-service-spawn.ts
+1 src/main/ai-vault/scanners/cursor/cursor-acp-session-store.ts # fork Cursor ACP history: reads Cursor's SQLite store like upstream's devin/opencode scanners (owner sign-off, 2026-11-19 sync)
+1 src/main/ai-vault/scanners/cursor/session-scanner-cursor-acp-parser.ts # fork Cursor ACP history: same SQLite store read as cursor-acp-session-store.ts (owner sign-off, 2026-11-19 sync)
 2 src/main/ai-vault/scanners/devin/session-scanner-devin-db.ts
 2 src/main/ai-vault/scanners/hermes/hermes-state-db-conversations.ts
 3 src/main/ai-vault/scanners/hermes/hermes-state-db-schema.ts
@@ -195,7 +197,8 @@
 1 src/main/claude/agent-view/agent-view-service.ts
 1 src/main/claude/child-process/claude-agent-sdk-process-spawn.ts
 1 src/main/claude/claude-cli-conversations.ts
-1 src/main/claude/claude-stream-json-connection.ts
+1 src/main/claude/claude-fast-mode-account-availability.ts # fork Claude Fast account check: reads the keychain credential once per confirmation via upstream's strict keychain reader (owner sign-off, 2026-11-19 sync)
+1 src/main/claude/claude-stream-json-child-env.ts # moved from claude-stream-json-connection.ts (fork extracted the child env; same withoutRejectedClaudeApiKey call)
 1 src/main/claude/configuration/claude-diff-panel-auto-open.ts
 13 src/main/claude/configuration/claude-folder-trust-file.ts
 1 src/main/claude/configuration/claude-in-chrome-default.ts
@@ -328,10 +331,10 @@
 1 src/main/codex/structured/catalog/codex-model-catalog-probe.ts
 1 src/main/codex/structured/launch/codex-structured-launch-resolution.ts
 1 src/main/codex/structured/launch/codex-structured-orca-hooks-off.ts
+1 src/main/codex/structured/session-lifecycle/codex-pool-provider-session-rename.ts # moved from codex-structured-session-adapter.ts (fork pool wrapper now holds the renameCodexProviderSession reference)
 3 src/main/codex/structured/session-lifecycle/codex-provider-session-rename.ts
 1 src/main/codex/structured/session-lifecycle/codex-session-account-usage.ts
 1 src/main/codex/structured/session-lifecycle/codex-session-mcp.ts
-1 src/main/codex/structured/session-lifecycle/codex-structured-session-adapter.ts
 5 src/main/codex/trust/grants/codex-hook-trust-grant.ts
 4 src/main/codex/trust/grants/codex-managed-trust-grant-plan.ts
 11 src/main/codex/trust/grants/codex-managed-trust-reconciliation.ts
@@ -546,7 +549,7 @@
 2 src/main/host/deferred-secret-protection-report.ts
 1 src/main/host/electron-speech-services.ts
 1 src/main/host/secret-protection-report.ts
-14 src/main/index.ts
+13 src/main/index.ts
 2 src/main/ipc/accounts/codex-accounts.ts
 1 src/main/ipc/accounts/codex-config-sync.ts
 1 src/main/ipc/accounts/cursor-accounts.ts
@@ -1410,7 +1413,7 @@
 8 src/main/startup/main-process-ready-runtime.ts
 4 src/main/startup/main-process-ready.ts
 1 src/main/startup/main-window/main-process-i18n-menu.ts
-15 src/main/startup/main-window/main-window-controller.ts
+16 src/main/startup/main-window/main-window-controller.ts # +1 moved from src/main/index.ts: fork window-reuse wrapper references openNewMainWindow (upstream openMainWindow body)
 4 src/main/startup/main-window/main-window-core-services.ts
 3 src/main/startup/network-compatibility/http1-compatibility-marker.ts
 9 src/main/startup/network-compatibility/http1-compatibility-profile-state.ts

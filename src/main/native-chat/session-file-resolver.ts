@@ -26,6 +26,7 @@ import {
   wslAgentSessionsDirs
 } from './transcript-discovery/host-readable-transcript-path'
 import { resolveCursorSessionFileFromRoot } from './transcript-discovery/cursor-session-file-resolver'
+import { resolveAntigravitySessionFile } from './transcript-discovery/antigravity-session-file-resolver'
 import {
   SESSION_FILE_ID_LAYOUTS,
   type SessionIdLookupAgent
@@ -184,20 +185,7 @@ async function resolveSessionFileById(
     return resolveCursorSessionFileFromRoot(trimmedId, options.cursorProjectsDir, signal)
   }
   if (transcriptAgent === 'antigravity') {
-    // A conversation id is one directory segment, never a caller-supplied path.
-    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedId)) {
-      return null
-    }
-    return toHostReadableTranscriptPath(
-      join(
-        options.antigravityBrainDir ?? join(homedir(), '.gemini', 'antigravity-cli', 'brain'),
-        trimmedId,
-        '.system_generated',
-        'logs',
-        'transcript.jsonl'
-      ),
-      { signal }
-    )
+    return resolveAntigravitySessionFile(trimmedId, options.antigravityBrainDir, signal)
   }
   if (transcriptAgent === 'grok') {
     const override = options.grokSessionsDir

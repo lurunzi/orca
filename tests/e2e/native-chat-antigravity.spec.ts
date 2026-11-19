@@ -2,20 +2,25 @@ import { randomUUID } from 'node:crypto'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/orca-app'
-import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
+import { test } from './desktop/electron-fixtures/orca-app'
+import { expect } from '@stablyai/playwright-test'
 import {
-  waitForActivePaneHookDescriptor,
-  waitForActivePanePtyId,
-  waitForActiveTerminalManager,
+  ensureTerminalVisible,
+  waitForActiveWorktree,
+  waitForSessionReady
+} from './desktop/renderer-probes/store'
+import { waitForActivePanePtyId } from './terminal/input/terminal'
+import { waitForActivePaneHookDescriptor } from './terminal/input/terminal-active-pane'
+import {
   splitActiveTerminalPane,
+  waitForActiveTerminalManager,
   waitForPaneCount
-} from './helpers/terminal'
+} from './terminal/layout/terminal-pane-operations'
 import {
   clearTerminalPtyWriteLog,
   installTerminalPtyWriteSpy,
   readTerminalPtyWriteEntries
-} from './helpers/terminal-pty-write-spy'
+} from './terminal/input/terminal-pty-write-spy'
 
 async function enableNativeChat(page: Page): Promise<void> {
   await page.evaluate(async () => {
