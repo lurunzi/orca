@@ -12,6 +12,7 @@ import type { Translate } from '@/i18n/use-translate'
 import { formatRateLimitWindowChipLabel } from '../../../../../shared/agent-usage/rate-limits/rate-limit-window-label'
 import { getUsageHeadlineSection } from '../usage/usage-headline-sections'
 import { withStatusBarHeadlineCountdown } from '../usage/usage-headline-preferences'
+import { isGroupedUsagePool } from '../../../../../shared/agent-usage/display/grouped-usage-pool'
 
 export type StatusBarUsageSection = {
   key: string
@@ -37,9 +38,11 @@ export function getStatusBarUsageSections(
     if (!headline) {
       return []
     }
-    // Why: named pools read "Cursor Models 64%" in Detailed, so Compact keeps that order; Cursor shows its countdown.
+    // Why: Compact keeps Detailed's order: named pools read "Cursor Models 64%", grouped pools "5% wk"; Cursor shows its countdown.
     const isNamedBucket =
-      p.provider !== 'cursor' && (p.buckets?.some((bucket) => bucket === headline.window) ?? false)
+      p.provider !== 'cursor' &&
+      !isGroupedUsagePool(headline.window) &&
+      (p.buckets?.some((bucket) => bucket === headline.window) ?? false)
     const section = isNamedBucket ? headline : withStatusBarHeadlineCountdown(p, headline, now)
     return [{ key: 'headline', ...section, labelFirst: isNamedBucket }]
   }

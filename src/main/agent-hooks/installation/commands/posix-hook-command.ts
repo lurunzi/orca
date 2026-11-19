@@ -42,7 +42,7 @@ export function wrapPosixHookCommand(
 export function wrapPosixHookCommandForExec(
   scriptPath: string,
   env: Record<string, string> = {},
-  options: { fallbackStdout?: string; requiredEnvVar?: string } = {}
+  options: { fallbackStdout?: string } = {}
 ): string {
   return `/bin/sh -c ${quotePosixShell(wrapPosixHookCommand(scriptPath, env, options))}`
 }

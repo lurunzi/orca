@@ -18,7 +18,7 @@ vi.mock('@/store', () => {
   useAppStore.getState = () => mocks.state
   return { useAppStore }
 })
-vi.mock('@/components/tab-bar/tab-move-to-pane-column', () => ({
+vi.mock('@/components/tab-bar/pane-actions/tab-move-to-pane-column', () => ({
   canMoveTabToNewPaneColumnFromState: () => false,
   moveTabToNewPaneColumn: vi.fn()
 }))

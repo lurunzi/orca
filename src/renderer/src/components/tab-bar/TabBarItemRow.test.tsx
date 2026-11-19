@@ -29,20 +29,25 @@ type TabProps = {
 
 const tabRenders: { id: string; props: TabProps }[] = []
 
-vi.mock('./SortableTab', () => ({
+vi.mock('./terminal-tabs/SortableTab', () => ({
   default: (props: TabProps) => {
     tabRenders.push({ id: props.tab!.id, props })
     return null
   }
 }))
-vi.mock('./BrowserTab', () => ({
+vi.mock('./terminal-tabs/TerminalSortableTab', () => ({
   default: (props: TabProps) => {
     tabRenders.push({ id: props.tab!.id, props })
     return null
-  },
-  getBrowserTabLabel: () => ''
+  }
 }))
-vi.mock('./EditorFileTab', () => ({
+vi.mock('./browser-tabs/BrowserTab', () => ({
+  default: (props: TabProps) => {
+    tabRenders.push({ id: props.tab!.id, props })
+    return null
+  }
+}))
+vi.mock('./editor-tabs/EditorFileTab', () => ({
   default: (props: TabProps & { file: { id: string } }) => {
     tabRenders.push({ id: props.file.id, props })
     return null

@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/store', () => ({
   useAppStore: (selector: (state: unknown) => unknown) => selector({})
 }))
-vi.mock('@/components/tab-bar/tab-move-to-pane-column', () => ({
+vi.mock('@/components/tab-bar/pane-actions/tab-move-to-pane-column', () => ({
   canMoveTabToNewPaneColumnFromState: () => mocks.canMove,
   moveTabToNewPaneColumn: mocks.moveTab
 }))

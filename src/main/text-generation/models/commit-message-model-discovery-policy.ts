@@ -7,7 +7,6 @@ import { planAgentBinary } from '../../../shared/agent-launch/startup/agent-comm
 import type { AgentModelProbeSpec } from '../../../shared/agent-session/options/model-catalog/agent-model-probe-spec'
 import { formatAgentCliFailureMessage } from '../failures/source-control-agent-failure'
 import type { DiscoverCommitMessageModelsResult } from '../source-control-text-generation-types'
-import { withAgentAutoUpdateSuppression } from '../../../shared/agent-launch/startup/agent-auto-update-suppression-env'
 
 export function staticModelDiscoveryResult(
   spec: AgentModelProbeSpec,
@@ -113,7 +112,7 @@ export function planModelDiscovery(
       args: [...command.prefixArgs, ...args],
       stdinPayload: 'stdinPayload' in modelDiscovery ? (modelDiscovery.stdinPayload ?? null) : null,
       label: spec.label,
-      ...withAgentAutoUpdateSuppression(spec.id, command.env)
+      ...(command.env ? { env: command.env } : {})
     }
   }
 }
