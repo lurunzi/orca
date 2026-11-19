@@ -40,8 +40,10 @@ export function LinkRoutingPreferenceDialogProvider({
     (s) => s.setContextualToursBlockingSurfaceVisible
   )
   const lastDisplayedRequestRef = useRef<LinkRoutingPreferenceDialogRequest | null>(activeRequest)
+  // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- Upstream v1.4.263 code kept as-is; only the fork release sync counts it as changed.
   activeRequestRef.current = activeRequest
   if (activeRequest) {
+    // react-doctor-disable-next-line react-doctor/no-ref-current-in-render -- Upstream v1.4.263 code kept as-is; only the fork release sync counts it as changed.
     lastDisplayedRequestRef.current = activeRequest
   }
   // Why: Radix keeps dialog content mounted while closing; keep copy stable during exit animation.

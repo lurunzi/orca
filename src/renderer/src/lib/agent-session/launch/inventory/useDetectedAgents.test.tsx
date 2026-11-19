@@ -36,6 +36,7 @@ function HookProbe({
   inventory?: 'enabled' | 'all'
 }): null {
   latestHookResult = useDetectedAgents(target, inventory)
+  // react-doctor-disable-next-line react-doctor/no-prop-callback-in-render -- Upstream v1.4.263 code kept as-is; only the fork release sync counts it as changed.
   onResult?.(latestHookResult)
   return null
 }
