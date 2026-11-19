@@ -28,10 +28,9 @@ import { CURSOR_MODELS_BUCKET_NAME } from '../../../../../shared/agent-usage/rat
 import { recomputeOn } from '@/lib/recompute-on'
 import { ProviderExtraUsageSection } from './provider-extra-usage-section'
 import { formatWindowLabel } from './rate-limit-window-localized-label'
-import { formatPoolCardLabel } from './usage-pool-label'
+import { formatPoolCardLabel, formatStatusBarSectionLabel } from './usage-pool-label'
 import { formatResetsInCaption } from './usage-reset-caption'
 import { UsageBar, UsageValue } from './usage-meter'
-import { formatStatusBarSectionLabel } from './usage-pool-label'
 
 export function formatTimeAgo(ts: number, t: Translate = translate): string {
   const diff = Date.now() - ts
