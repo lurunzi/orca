@@ -91,4 +91,19 @@ describe('discoverCommitMessageModelsLocal on the Windows direct-child path', ()
       vi.useRealTimers()
     }
   })
+
+  it('keeps the Antigravity CLI from starting its detached updater, which flashes a console', async () => {
+    const child = createMockDiscoveryChild()
+    spawnMock.mockReturnValueOnce(child as never)
+
+    const listing = discoverCommitMessageModelsLocal('antigravity', {})
+    await vi.waitFor(() => expect(spawnMock).toHaveBeenCalledTimes(1))
+    const [, , options] = spawnMock.mock.calls[0]
+    expect(options?.env?.AGY_CLI_DISABLE_AUTO_UPDATE).toBe('true')
+
+    child.stdout.end('gemini-4-neon-high\tGemini 4 Neon (High)\n')
+    child.emit('exit', 0, null)
+    child.emit('close', 0, null)
+    await listing
+  })
 })
