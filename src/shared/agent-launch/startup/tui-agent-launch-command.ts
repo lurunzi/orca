@@ -22,25 +22,13 @@ import {
   type AgentStartupShell
 } from './tui-agent-startup-shell'
 import type { TuiAgent } from '../catalog/tui-agent'
+import { agentAutoUpdateSuppressionEnv } from './agent-auto-update-suppression-env'
 
 // Why: Enter on Codex's "Update available" screen picks "Update now", which installs and exits.
 const STARTUP_UPDATE_PROMPT_SUPPRESSION_ARGS: Partial<Record<TuiAgent, readonly string[]>> = {
   codex: ['-c', 'check_for_update_on_startup=false'],
   aider: ['--no-check-update', '--no-show-release-notes'],
   cursor: ['--disable-auto-update']
-}
-
-const STARTUP_UPDATE_PROMPT_SUPPRESSION_ENV: Partial<
-  Record<TuiAgent, Readonly<Record<string, string>>>
-> = {
-  claude: { DISABLE_AUTOUPDATER: '1' },
-  'claude-agent-teams': { DISABLE_AUTOUPDATER: '1' },
-  opencode: { OPENCODE_DISABLE_AUTOUPDATE: 'true' },
-  opencode2: { OPENCODE_DISABLE_AUTOUPDATE: 'true' },
-  antigravity: { AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },
-  grok: { GROK_DISABLE_AUTOUPDATER: '1' },
-  pi: { PI_SKIP_VERSION_CHECK: '1' },
-  kimi: { KIMI_CODE_NO_AUTO_UPDATE: '1', KIMI_CLI_NO_AUTO_UPDATE: '1' }
 }
 
 // Why not win32: Codex there reads console input records and needs its burst for pastes (windowsInputRecordPasteNewline).
@@ -200,8 +188,8 @@ export function resolveAgentLaunchCommand(args: {
         : {})
     },
     appliedSessionOptions: resolvedOptions.appliedValues,
-    ...(args.suppressStartupUpdatePrompt && STARTUP_UPDATE_PROMPT_SUPPRESSION_ENV[args.agent]
-      ? { startupEnv: STARTUP_UPDATE_PROMPT_SUPPRESSION_ENV[args.agent] }
+    ...(args.suppressStartupUpdatePrompt && agentAutoUpdateSuppressionEnv(args.agent)
+      ? { startupEnv: agentAutoUpdateSuppressionEnv(args.agent) }
       : {})
   }
 }

@@ -41,6 +41,7 @@ import {
   hasManagedAntigravityChatSignIn,
   isAntigravityHostAccountHome
 } from './antigravity-host-acp'
+import { agentAutoUpdateSuppressionEnv } from '../../shared/agent-launch/startup/agent-auto-update-suppression-env'
 
 // Chats cannot adopt agy's terminal conversations.
 const ANTIGRAVITY_SESSION_HISTORY: StructuredAgentSessionHistory = {
@@ -120,7 +121,7 @@ const ANTIGRAVITY_HOST_LAUNCH_SPEC: AcpLaunchSpec = {
   ...ANTIGRAVITY_MANAGED_LAUNCH_SPEC,
   command: 'agy',
   args: ({ fullAccess }) => ['acp', ...(fullAccess ? [AGY_SKIP_PERMISSIONS_FLAG] : [])],
-  env: {},
+  env: { ...agentAutoUpdateSuppressionEnv('antigravity') },
   scrubEnvironment: scrubAgyHostApiKeys,
   authMethod: undefined,
   authMethodUnavailableMessage: undefined,

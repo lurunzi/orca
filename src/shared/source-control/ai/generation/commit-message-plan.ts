@@ -35,6 +35,7 @@ import {
   mergeOpenCodeGenerationArgs
 } from '../../../text-generation/launch/opencode-generation-command'
 import { buildAntigravityGenerationInput } from '../../../text-generation/output/antigravity-generation-stream'
+import { withAgentAutoUpdateSuppression } from '../../../agent-launch/startup/agent-auto-update-suppression-env'
 
 // Share pure request/prompt-to-spawn validation and argv planning between local main and SSH JSON-RPC generators.
 
@@ -315,7 +316,7 @@ export function planCommitMessageGeneration(
       ...(input.agentId === 'antigravity'
         ? { outputFormat: 'antigravity-stream-json' as const }
         : {}),
-      ...(command.env ? { env: command.env } : {})
+      ...withAgentAutoUpdateSuppression(input.agentId, command.env)
     }
   }
 }
