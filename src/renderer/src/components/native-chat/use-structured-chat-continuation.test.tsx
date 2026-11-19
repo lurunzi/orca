@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import type { AgentSessionContinuationRequest } from '@/lib/agent-session/context/agent-session-continuation'
 import type { AgentStatusEntry } from '../../../../shared/agent-status/contracts/agent-status-types'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'
-import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
 
 const mocks = vi.hoisted(() => {
   const dialogRequests: AgentSessionContinuationRequest[] = []
@@ -18,7 +18,7 @@ vi.mock('@/store', () => {
   useAppStore.getState = () => mocks.state
   return { useAppStore }
 })
-vi.mock('@/components/tab-bar/tab-move-to-pane-column', () => ({
+vi.mock('@/components/tab-bar/pane-actions/tab-move-to-pane-column', () => ({
   canMoveTabToNewPaneColumnFromState: () => false,
   moveTabToNewPaneColumn: vi.fn()
 }))

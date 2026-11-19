@@ -7,7 +7,7 @@ import {
   createTranscriptPane,
   TRANSCRIPT_PANE_PTY_ID,
   waitForTranscriptIdle
-} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+} from './terminal/wait/agent-transcript-pane-test-harness'
 import { extractLastOscTitle } from '../../shared/agent-status/title/osc-title-extraction'
 import {
   finalReplayFrame,

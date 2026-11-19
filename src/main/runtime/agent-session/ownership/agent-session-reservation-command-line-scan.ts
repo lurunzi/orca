@@ -10,8 +10,8 @@
 
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import { agentSessionProviderHandleBelongsTo } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
-import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
-import { claudeSessionIdForOrcaSession } from '../../../claude/structured/claude-structured-session-id'
+import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host/execution-host'
+import { claudeSessionIdForOrcaSession } from '../../../claude/structured/lifecycle/claude-structured-session-id'
 import {
   readWindowsProcessTableFresh,
   type WindowsProcessRow

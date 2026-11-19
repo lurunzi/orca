@@ -3,7 +3,7 @@ import type { AgentSessionProcessIdentity } from '../../../../shared/agent-sessi
 import type { DashboardCodexBinding } from '../../../dashboard-accounts/dashboard-codex-adoption-protocol'
 import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { DashboardCodexRefreshSource } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
-import type { AgentSessionAccountKind } from '../../../../shared/agent-session/agent-session-availability'
+import type { AgentSessionAccountKind } from '../../../../shared/agent-session/failures/agent-session-availability'
 import {
   throwIfSignalAborted,
   waitForPromiseWithSignal
@@ -243,7 +243,9 @@ export async function openCodexStructuredSession(
     ...(start.unbindReadingControl ? { unbindReadingControl: start.unbindReadingControl } : {})
   }
   // Fork: the composer's next-prompt suggestion, restored on a resumed thread.
-  session.promptSuggestion = new CodexPromptSuggestion(session, () => input.events?.publish())
+  session.promptSuggestion = new CodexPromptSuggestion(session, (suggestion) =>
+    input.events?.setPromptSuggestion?.(suggestion)
+  )
   current()
   const poolAuthentication = start.dashboardAuthentication
     ? {

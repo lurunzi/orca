@@ -1,41 +1,52 @@
+import { useState } from 'react'
 import type { ComponentProps } from 'react'
+import { ArrowLeftRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
-import { UnavailableEntryLabel, UnavailableEntryReason } from '@/components/unavailable-entry'
+import { UnavailableEntryIcon, UnavailableEntryReason } from '@/components/unavailable-entry'
 import { useAppStore } from '@/store/index'
 import type { RuntimeClientTarget } from '../../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 
 export type ChatAccountAction = { target: RuntimeClientTarget; canSwitch: () => Promise<boolean> }
 
+/** A chat's account icon button: a menu trigger (slotted props/ref) or, with `add`, Settings. */
 export function ProviderAccountChatButton({
   provider,
   add = false,
   disabled,
+  busy = false,
   target,
   signInUnavailable = false,
+  onClick,
+  onPointerDown,
+  onKeyDown,
   ...buttonProps
 }: ComponentProps<typeof Button> & {
   provider: 'claude' | 'codex'
   target: RuntimeClientTarget
   add?: boolean
   disabled: boolean
+  /** Still learning whether the chat can switch; announced as busy. */
+  busy?: boolean
   /** The chat's host cannot run this computer's sign-in. */
   signInUnavailable?: boolean
 }): React.JSX.Element {
   const t = useTranslate()
   const openSettingsTarget = useAppStore((state) => state.openSettingsTarget)
   const openSettingsPage = useAppStore((state) => state.openSettingsPage)
-  const button = (
-    <Button
-      {...buttonProps}
-      type="button"
-      variant="outline"
-      size="xs"
-      className="w-full"
-      disabled={disabled || signInUnavailable}
-      aria-disabled={signInUnavailable ? true : buttonProps['aria-disabled']}
-      onClick={
-        add
+  const label = add
+    ? t('components.native-chat.usageLimitActions.addAccount', 'Add account…')
+    : t('components.native-chat.usageLimitActions.switchAccount', 'Switch account')
+  const inactive = disabled || signInUnavailable
+  // Why aria-disabled: a natively disabled button drops focus and can't show its tooltip; drop
+  // the menu's slotted handlers instead so it can't open or act.
+  const activation = inactive
+    ? {}
+    : {
+        onPointerDown,
+        onKeyDown,
+        onClick: add
           ? () => {
               openSettingsTarget({
                 pane: 'accounts',
@@ -46,24 +57,40 @@ export function ProviderAccountChatButton({
               })
               openSettingsPage()
             }
-          : buttonProps.onClick
+          : onClick
       }
-    >
-      <UnavailableEntryLabel unavailable={signInUnavailable}>
-        {add
-          ? t('components.native-chat.usageLimitActions.addAccount', 'Add Account…')
-          : t('components.native-chat.usageLimitActions.switchAccount', 'Switch Account')}
-      </UnavailableEntryLabel>
-    </Button>
-  )
-  if (!signInUnavailable) {
-    return button
-  }
+  // The slotted menu marks itself open; its label would sit over the open menu.
+  const [tooltipOpen, setTooltipOpen] = useState(false)
+  const menuOpen = buttonProps['aria-expanded'] === true || buttonProps['aria-expanded'] === 'true'
   return (
-    <div className="flex w-full flex-col gap-1">
-      {button}
-      <UnavailableEntryReason>{signInRunsOnThisComputerLabel(t)}</UnavailableEntryReason>
-    </div>
+    <Tooltip open={tooltipOpen && !menuOpen} onOpenChange={setTooltipOpen}>
+      <TooltipTrigger asChild>
+        <Button
+          {...buttonProps}
+          {...activation}
+          type="button"
+          variant="chat-tool"
+          size="icon-xs"
+          aria-label={label}
+          aria-disabled={inactive || undefined}
+          aria-busy={busy || undefined}
+        >
+          <UnavailableEntryIcon unavailable={signInUnavailable}>
+            <ArrowLeftRight className="size-3.5" />
+          </UnavailableEntryIcon>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {signInUnavailable ? (
+          <span className="flex flex-col">
+            <span className="line-through">{label}</span>
+            <UnavailableEntryReason>{signInRunsOnThisComputerLabel(t)}</UnavailableEntryReason>
+          </span>
+        ) : (
+          label
+        )}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

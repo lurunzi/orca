@@ -1,5 +1,5 @@
 import { readOpenCodeNativeChatTranscriptFull } from './transcript-history/opencode/transcript-opencode'
-import { isENOENT } from '../ipc/filesystem/access/filesystem-path-containment'
+import { isENOENT } from '../filesystem/local-file-io/filesystem-path-containment'
 import type { AgentType } from '../../shared/agent-status/contracts/agent-status-types'
 import type {
   NativeChatMessage,
@@ -11,7 +11,7 @@ import { resolveSessionFilePath, type ResolveSessionFileOptions } from './sessio
 import { openTranscriptReadStream } from './transcript-filesystem/wsl-transcript-fs-access'
 import { wslTranscriptFsRefusal } from './transcript-filesystem/wsl-transcript-fs-error'
 import { decodeAntigravityTranscriptLine } from './transcript-decoding/transcript-line-decoders-antigravity'
-import { decodeClaudeTranscriptLine } from './transcript-decoding/transcript-line-decoders-claude'
+import { decodeClaudeChatTranscriptLine } from './transcript-decoding/transcript-line-decoders-claude'
 import { decodeCodexTranscriptLine } from './transcript-decoding/transcript-line-decoders-codex'
 import { decodeCursorTranscriptLine } from './transcript-decoding/transcript-line-decoders-cursor'
 import { decodeGrokTranscriptLine } from './transcript-decoding/transcript-line-decoders-grok'
@@ -64,7 +64,11 @@ export async function readNativeChatTranscript(
     }
     if (transcriptAgent === 'claude') {
       return {
-        messages: await readTranscript(filePath, decodeClaudeTranscriptLine, options.sourceOrder)
+        messages: await readTranscript(
+          filePath,
+          decodeClaudeChatTranscriptLine,
+          options.sourceOrder
+        )
       }
     }
     if (transcriptAgent === 'codex') {

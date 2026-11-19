@@ -2,10 +2,14 @@ import type {
   CatalogModel,
   CatalogOption
 } from '../catalog-providers/agent-session-option-catalog-types'
-import type { AgentSessionOptionChoice } from '../../agent-session-wire'
+import type {
+  AgentSessionModelCatalogResult,
+  AgentSessionOptionChoice
+} from '../../agent-session-wire'
 import type { AgentSessionOptionsResult } from '../protocol/agent-session-options-result'
 import type { AgentType } from '../../../agent-status/contracts/agent-status-types'
 import { usesModelSpecificAcpEfforts } from './agent-model-catalog-ownership'
+import { catalogOffersFastMode } from '../structured-agent-fast-mode-snapshot'
 
 export function structuredModelEfforts(
   model: AgentSessionOptionsResult['models'][number]
@@ -69,9 +73,12 @@ export function serviceTierOption(tiers: readonly AgentSessionOptionChoice[]): C
 
 export function discoveredModel(
   model: AgentSessionOptionsResult['models'][number],
-  sessionSupportsFastMode: boolean,
+  // Fork: a whole catalog decides Fast with its unconfirmed-account rule.
+  fastModeSource: boolean | AgentSessionModelCatalogResult,
   agent: AgentType
 ): CatalogModel {
+  const sessionSupportsFastMode =
+    typeof fastModeSource === 'boolean' ? fastModeSource : catalogOffersFastMode(fastModeSource)
   const effort = effortOption(model, agent)
   const serviceTier = model.serviceTiers?.length ? serviceTierOption(model.serviceTiers) : null
   return {

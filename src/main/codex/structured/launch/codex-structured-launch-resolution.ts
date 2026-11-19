@@ -37,9 +37,14 @@ import {
   NATIVE_CHAT_SCRATCH_DIR_ENV,
   withNativeChatVisualsEnv
 } from '../../../native-chat/conversation-files/native-chat-visuals-delivery'
+import {
+  nothingExchangedOn,
+  type SavedProviderTurnReads
+} from '../../../native-chat/agent-session-journal/journal-provider-turn-saved'
 
 export type CodexStructuredLaunchPartDeps = {
   resolveLaunchArgs: () => Promise<string[]> | string[]
+  savedSession: SavedProviderTurnReads
   /** The selected account's home, prepared for this start in `launchDirectory`; null keeps the record's. */
   prepareLaunchAccountHome?: (
     record: AgentSessionRecord,
@@ -165,6 +170,17 @@ export function codexStructuredLaunchPart(
         throw new Error(CODEX_ACCOUNT_SWITCH_FAILED)
       }
     }
+    // Codex saves a thread at its first turn; one that exchanged a turn lost its history, not nothing.
+    // Turns written since this thread's creation fence ran on it, even before Codex echoed the send.
+    const supersedeIfUnsaved =
+      resumeThreadId !== null &&
+      head?.origin === 'created' &&
+      (await nothingExchangedOn(
+        deps.savedSession,
+        record.sessionId,
+        resumeThreadId,
+        head.mintedAtFence
+      ))
     return {
       launch: {
         command,
@@ -180,8 +196,7 @@ export function codexStructuredLaunchPart(
         ],
         codexHome: accountHome.path,
         resumeThreadId,
-        // Only created threads may be unsaved; resumed, forked and adopted threads were persisted.
-        ...(resumeThreadId && head?.origin === 'created' ? { supersedeIfUnsaved: true } : {}),
+        ...(supersedeIfUnsaved ? { supersedeIfUnsaved } : {}),
         // Own settings leaves a new thread to config and a resumed thread to its saved policy.
         ...(basis.permissionMode === 'own'
           ? {}

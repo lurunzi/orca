@@ -49,6 +49,7 @@ export function useNativeChatPtyComposerSend(args: {
   onOptimisticSend?: (text: string, imagePaths?: string[], recovery?: boolean) => string | undefined
   optimisticSendOutcome?: NativeChatOptimisticSendOutcome
   onSlashCommand?: (command: string, output?: string) => void
+  onCommandSent?: (command: string, delivery: NativeChatSendHandle) => void
   answerCommandLocally?: NativeChatLocalCommandAnswer
   onSubmitted?: () => void
   sessionOptionsSurface: NativeChatPtySessionOptionsSurface | null
@@ -153,6 +154,9 @@ export function useNativeChatPtyComposerSend(args: {
         if (classification === 'command') {
           args.onSlashCommand?.(text.trim())
           args.sessionOptionsSurface?.recordOutgoingCommand(text.trim())
+          if (pendingHandle) {
+            args.onCommandSent?.(text.trim(), pendingHandle)
+          }
         }
       } else {
         pendingId = args.onOptimisticSend?.(text, imagePaths, retry !== undefined)

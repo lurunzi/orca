@@ -10,6 +10,7 @@ import { wslAwareSpawn } from '../../git/command-runner/host-routing/wsl-aware-s
 import { AGENT_PANE_HOOK_ENV_KEYS } from '../../ipc/pty/host-env/spawn-env-keys'
 import { processEnvWithoutAgentSession } from '../../../shared/agent-launch/startup/parent-agent-session-env'
 import { spawnSupervisedAgent } from './source-control-supervised-agent-spawn'
+import { ANY_AGENT_AUTO_UPDATE_SUPPRESSION_ENV } from '../../../shared/agent-launch/startup/agent-auto-update-suppression-env'
 import type {
   SourceControlAgentSpawnInput,
   SpawnedSourceControlAgentProcess,
@@ -77,6 +78,9 @@ export const spawnSourceControlAgent: SpawnSourceControlAgent = (input) => {
         windowsHide: true,
         wslDistro,
         useWslLoginShell: true,
+        literalArgIndices: input.literalArgIndices?.map(
+          (index) => index + (assignments.length ? assignments.length + 1 : 0)
+        ),
         // Profiles may restore pane identity; clear it in the guest before invoking the agent.
         wslShellCommand: [
           `command unset ${AGENT_PANE_HOOK_ENV_KEYS.join(' ')}`,
@@ -109,7 +113,11 @@ function spawnWindowsAgent(
   return spawnProcess({
     program: resolvedBinary,
     args: input.args,
-    env: withCliRuntimeOnPath(resolvedBinary, spawnEnv),
+    // A detached updater opens a visible console on Windows; WSL guests keep their own commands.
+    env: withCliRuntimeOnPath(resolvedBinary, {
+      ...ANY_AGENT_AUTO_UPDATE_SUPPRESSION_ENV,
+      ...spawnEnv
+    }),
     ...(input.useCwdForNative ? { cwd: input.cwd } : {})
   })
 }

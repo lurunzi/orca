@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../shared/constants'
+import { getDefaultSettings } from '../../shared/orca-profiles/constants'
 import type { AgentLaunchSurface } from '../../shared/agent-launch/contracts/agent-launch-surface'
 import { executeAgentLaunch, type AgentLaunchExecution } from './agent-launch-executor'
 

@@ -1,5 +1,5 @@
 import type { AiVaultSessionTitle } from '../../../../shared/ai-vault/contracts/ai-vault-session-title'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 
 // Adapted from stablyai/orca#19941: structured chats keep their title on the unified tab.
 export function applyAgentSessionAiVaultTitle(

@@ -22,7 +22,7 @@ import { foldSubagentItems } from '../../../../../../shared/native-chat/transcri
 import {
   isDeliveryNoiseMessage,
   stripNoiseMessages
-} from '../../../../../../shared/native-chat/native-chat-noise'
+} from '../../../../../../shared/native-chat/transcript/messages/native-chat-noise'
 import { agentJournalItemSubagentId } from '../../../../../../shared/agent-session/journal/agent-session-journal-producer'
 import { reuseUnits } from './native-chat-message-list-reuse'
 import { subagentTurnKeys } from './native-chat-message-list-turns'

@@ -4,18 +4,22 @@ import { Terminal } from '@xterm/headless'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const sendRuntimePtyInput = vi.fn()
+const sendRuntimePtyInputVerified = vi.fn(async (..._args: unknown[]) => true)
 vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-input-send', () => ({
   sendRuntimePtyInput: (...args: unknown[]) => sendRuntimePtyInput(...args)
 }))
 vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
-  sendRuntimePtyInputVerified: vi.fn()
+  sendRuntimePtyInputVerified: (...args: unknown[]) => sendRuntimePtyInputVerified(...args)
 }))
 
 import {
   antigravityComposerHoldsDraft,
   withAntigravitySubmitConfirmation
 } from './antigravity-submit-confirmation'
-import { NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT } from './session/terminal/send/native-chat-input-clear'
+import {
+  NATIVE_CHAT_CLEAR_CONFIRM_MS,
+  NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT
+} from './session/terminal/send/native-chat-input-clear'
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/questions/native-chat-answer-stepping'
 import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
@@ -116,6 +120,7 @@ describe('Antigravity chat send confirmation', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     sendRuntimePtyInput.mockClear()
+    sendRuntimePtyInputVerified.mockClear()
     resetNativeChatPtySendQueuesForTests()
   })
   afterEach(() => {
@@ -124,7 +129,11 @@ describe('Antigravity chat send confirmation', () => {
   })
 
   const enters = (): number =>
-    sendRuntimePtyInput.mock.calls.filter((call) => call[1] === NATIVE_CHAT_SUBMIT).length
+    [...sendRuntimePtyInput.mock.calls, ...sendRuntimePtyInputVerified.mock.calls].filter(
+      (call: unknown[]) => call[1] === NATIVE_CHAT_SUBMIT
+    ).length
+  // The pre-send clear is acknowledged before the body, so its gap precedes Enter's delay.
+  const FIRST_ENTER_MS = NATIVE_CHAT_CLEAR_CONFIRM_MS + NATIVE_CHAT_SUBMIT_DELAY_MS + 45
 
   it('leaves other agents on the plain delayed Enter', () => {
     const options = withAntigravitySubmitConfirmation('claude', 'hi', () => '', undefined)
@@ -135,12 +144,12 @@ describe('Antigravity chat send confirmation', () => {
     let current = screen(['> hi'])
     const options = withAntigravitySubmitConfirmation('antigravity', 'hi', () => current, undefined)
     const handle = sendNativeChatMessage(PTY, 'hi', options)
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS + 45)
+    await vi.advanceTimersByTimeAsync(FIRST_ENTER_MS)
     expect(enters()).toBe(1)
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CONFIRM_MS)
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_SUBMIT_CONFIRM_MS)
     expect(enters()).toBe(2)
     current = screen(['>'], ['> hi'])
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CONFIRM_MS)
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_SUBMIT_CONFIRM_MS)
     expect(enters()).toBe(2)
     await handle.settled
   })
@@ -153,12 +162,12 @@ describe('Antigravity chat send confirmation', () => {
       undefined
     )
     const handle = sendNativeChatMessage(PTY, 'hi', options)
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS + 45 + NATIVE_CHAT_SUBMIT_CONFIRM_MS * 10)
+    await vi.advanceTimersByTimeAsync(FIRST_ENTER_MS + NATIVE_CHAT_SUBMIT_CONFIRM_MS * 10)
     expect(enters()).toBe(1 + NATIVE_CHAT_SUBMIT_RETRY_MAX)
     await handle.settled
   })
 
-  it('does not Ctrl+U the line when cancelled after Enter was written', () => {
+  it('does not Ctrl+U the line when cancelled after Enter was written', async () => {
     const options = withAntigravitySubmitConfirmation(
       'antigravity',
       'hi',
@@ -166,10 +175,11 @@ describe('Antigravity chat send confirmation', () => {
       undefined
     )
     const handle = sendNativeChatMessage(PTY, 'hi', options)
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS + 45)
+    await vi.advanceTimersByTimeAsync(FIRST_ENTER_MS)
     sendRuntimePtyInput.mockClear()
+    sendRuntimePtyInputVerified.mockClear()
     handle.cancel()
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CONFIRM_MS * 10)
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_SUBMIT_CONFIRM_MS * 10)
     expect(sendRuntimePtyInput.mock.calls.map((call) => call[1])).not.toContain(
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT
     )

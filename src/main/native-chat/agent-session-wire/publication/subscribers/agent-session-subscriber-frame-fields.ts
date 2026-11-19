@@ -7,13 +7,9 @@ import type {
   AgentSessionSlashCommand,
   AgentSessionSubscribeEvent
 } from '../../../../../shared/agent-session/agent-session-wire'
-import type { AgentSessionBackgroundTaskState } from '../../../../../shared/agent-session/agent-session-background-task-wire'
+import type { AgentSessionBackgroundTaskState } from '../../../../../shared/agent-session/background-tasks/agent-session-background-task-wire'
 import type { QueuePublication } from '../../delivery/structured-agent-session-queued-publication'
 import { boundedFrames } from '../history/agent-session-bounded-frames'
-import {
-  emitComposerMetadataFrames,
-  type AgentSessionComposerMetadataHooks
-} from '../../structured-agent-session-composer-metadata'
 // Deduplicate against last sent values only; withheld fields must not suppress final replacements.
 
 export type SubscriberFieldState = {
@@ -31,7 +27,6 @@ export type SubscriberFieldState = {
     work?: AgentSessionPublishedWork
   ) => AgentSessionSubscribeEvent | Promise<AgentSessionSubscribeEvent>
   commands?: AgentSessionSlashCommand[] | null
-  promptSuggestion?: string | null
   /** Deduplicate canonical state before reader-specific projection. */
   queuePublication?: QueuePublication
   backgroundTasks?: string
@@ -50,7 +45,6 @@ export type SubscriberFieldHooks = {
   ) => QueuePublication | null | undefined | Promise<QueuePublication | null | undefined>
   /** Read expensive child-derived rosters only when a frame owes them. */
   readBackgroundTasks?: (sessionId: string) => AgentSessionBackgroundTaskState | null
-  readPromptSuggestion?: AgentSessionComposerMetadataHooks['readPromptSuggestion']
 }
 
 type SubscriberFrame = {
@@ -174,7 +168,7 @@ export function subscriberCommandsChanged(
 
 /** Publication contains only a version; read completion supplies payload delivery credit. */
 export async function emitSubscriberFrame(
-  hooks: SubscriberFieldHooks & AgentSessionComposerMetadataHooks,
+  hooks: SubscriberFieldHooks,
   subscriber: Subscriber,
   event: AgentSessionSubscribeEvent,
   options?: {
@@ -203,8 +197,11 @@ export async function emitSubscriberFrame(
   if (options?.isActive && !options.isActive()) {
     return
   }
-  if (!emitComposerMetadataFrames(subscriber, built.frames, hooks, options?.isActive)) {
-    return
+  for (const outgoing of built.frames) {
+    if (options?.isActive && !options.isActive()) {
+      return
+    }
+    subscriber.emit(outgoing)
   }
   if (includeMarker) {
     subscriber.requestVersion = marker.version

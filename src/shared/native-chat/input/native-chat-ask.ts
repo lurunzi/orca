@@ -11,7 +11,7 @@ import {
   CODEX_ASYNC_QUESTION_TOOL,
   parseCodexAsyncQuestionsInput
 } from './questions/codex-async-question-input'
-import { parseAntigravityAskInput } from '../../native-chat-antigravity-ask'
+import { ANTIGRAVITY_QUESTION_TOOLS, isExactQuestionTool } from '../../native-chat-antigravity-ask'
 import {
   isDeliveredNativeChatUserMessage,
   isPendingNativeChatUserMessage,
@@ -19,7 +19,7 @@ import {
   withoutPendingQueuedAnswers
 } from './questions/native-chat-ask-answer'
 
-const QUESTION_TOOL_PARSERS = new Map<string, InteractiveQuestionParser>()
+const QUESTION_TOOL_PARSERS = new Map<string, InteractiveQuestionParser>(ANTIGRAVITY_QUESTION_TOOLS)
 
 export function registerQuestionTool(toolName: string, parser: InteractiveQuestionParser): void {
   QUESTION_TOOL_PARSERS.set(toolName, parser)
@@ -96,14 +96,12 @@ function parseOptions(raw: unknown, multiSelect: boolean): AskOption[] {
 for (const name of ['AskUserQuestion', 'ask_user_question', 'askUserQuestion']) {
   QUESTION_TOOL_PARSERS.set(name, parseCanonicalQuestionsInput)
 }
+
 QUESTION_TOOL_PARSERS.set(CODEX_ASYNC_QUESTION_TOOL, parseCodexAsyncQuestionsInput)
-QUESTION_TOOL_PARSERS.set('ask_question', parseAntigravityAskInput)
 
 function parseToolInput(toolName: string | undefined, input: unknown): AskPrompt | null {
   const parsed = (toolName ? QUESTION_TOOL_PARSERS.get(toolName)?.(input) : null) ?? null
-  // Invalid selectors or message-reply questions cannot fall back to different terminal keys.
-  const exact = toolName === 'ask_question' || toolName === CODEX_ASYNC_QUESTION_TOOL
-  return parsed || exact ? parsed : parseCanonicalQuestionsInput(input)
+  return parsed || isExactQuestionTool(toolName) ? parsed : parseCanonicalQuestionsInput(input)
 }
 
 export function parseAskFromStatus(
@@ -180,6 +178,18 @@ export function asyncQuestionOccurrenceId(
     contributor.sourceRowId,
     contributor.callSlot
   ])
+}
+
+/** The newest row a shown async prompt draws from: Skip saves through it, never past what it showed. */
+export function newestShownAsyncQuestionRow(
+  contributors: readonly AsyncQuestionContributor[],
+  sourceScope: string,
+  prompt: AskPrompt | null
+): string | undefined {
+  const shown = new Set(prompt?.occurrenceIds)
+  return contributors.findLast((contributor) =>
+    shown.has(asyncQuestionOccurrenceId(sourceScope, contributor))
+  )?.sourceRowId
 }
 
 /** Queued texts hide questions an answer waiting in the queue already quotes; deleting that card brings them back. */

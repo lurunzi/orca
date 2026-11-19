@@ -2,7 +2,7 @@ import { expect, it } from 'vitest'
 import { findCursorTranscriptTerminal } from './cursor-transcript-terminal'
 import { makePaneKey } from '../../../shared/workspace-layout/stable-pane-id'
 import type { AgentStatusEntry } from '../../../shared/agent-status/contracts/agent-status-types'
-import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
 
 const leaf = '11111111-1111-4111-8111-111111111111'
 const paneKey = makePaneKey('tab', leaf)

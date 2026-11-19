@@ -11,9 +11,9 @@ import type { ClaudeSession } from '../claude-structured-session-state'
 import { ClaudeBackgroundTaskTracker } from '../../background-tasks/claude-background-task-tracker'
 import { ClaudeChildWorkDecoder } from '../../child-work/claude-child-work-decoder'
 import { ClaudeSlashCommandCatalog } from '../../command-catalog/claude-slash-command-catalog'
-import { createClaudeInitProof } from '../claude-structured-init-proof'
-import { createClaudeStartupOutcome } from '../claude-structured-startup-outcome'
-import { claudeProviderHandleLink } from '../claude-structured-owner-identity'
+import { createClaudeInitProof } from '../startup/claude-structured-init-proof'
+import { createClaudeStartupOutcome } from '../startup/claude-structured-startup-outcome'
+import { claudeProviderHandleLink } from '../lifecycle/claude-structured-owner-identity'
 
 vi.mock('@orca/process-host', () => ({ runProcess: vi.fn() }))
 

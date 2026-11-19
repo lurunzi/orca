@@ -1,5 +1,5 @@
 import { Lexer, type Token } from 'marked'
-import { isNoiseMessage } from './native-chat/native-chat-noise'
+import { isNoiseMessage } from './native-chat/transcript/messages/native-chat-noise'
 import { nativeChatProseToMarkdown } from './native-chat/transcript/row-content/native-chat-prose'
 import type { AskPrompt } from './native-chat/input/questions/native-chat-ask-types'
 import type { NativeChatMessage } from './native-chat/native-chat-types'

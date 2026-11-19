@@ -1,7 +1,7 @@
-import { COMMAND_TOKEN_SCAN_MAX_CHARS } from './command-token-scanner'
+import { COMMAND_TOKEN_SCAN_MAX_CHARS } from './shell/command-resolution/command-token-scanner'
 import { recognizeAgentLaunchCommand } from './agent-launch/startup/agent-command-line-intent'
 import { GENERIC_PROCESS_NAME_AGENTS } from './agent-status/process/agent-process-recognition'
-import { splitUnquotedSegments } from './orca-cli-invocations'
+import { splitUnquotedSegments } from './cli/orca-cli-invocations'
 import type { TerminalAgent } from './agent-status/identity/terminal-agent'
 
 const LEADING_ENV_ASSIGNMENTS = /^\s*(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)*/

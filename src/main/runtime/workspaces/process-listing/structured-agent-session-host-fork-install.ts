@@ -1,4 +1,4 @@
-import { ensureStructuredAgentSessionHost } from '../../agent-session/structured-agent-session-runtime'
+import { ensureStructuredAgentSessionHost } from '../../agent-session/installation/structured-agent-session-runtime'
 import type { StructuredAgentSessionRuntimeDeps } from '../../agent-session/installation/structured-agent-session-runtime-contract'
 import type { RuntimeStore } from '../../construction/runtime-store-contract'
 import * as sessionIdentity from '../../structured-session-coordinator-identity'

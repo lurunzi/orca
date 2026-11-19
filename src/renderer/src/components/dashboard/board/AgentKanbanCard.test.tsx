@@ -3,7 +3,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DashboardCard } from '../../../../../shared/dashboard-snapshot'
+import type { DashboardCard } from '../../../../../shared/agent-status/presentation/dashboard-snapshot'
 import type { RepoIcon } from '../../../../../shared/repository/appearance/repo-icon'
 import { i18n } from '@/i18n/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'

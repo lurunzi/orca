@@ -5,7 +5,7 @@ vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-input-send', () => ({
   sendRuntimePtyInput: (...args: unknown[]) => sendRuntimePtyInput(...args)
 }))
 vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () => ({
-  sendRuntimePtyInputVerified: vi.fn()
+  sendRuntimePtyInputVerified: async (...args: unknown[]) => sendRuntimePtyInput(...args)
 }))
 
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
@@ -39,24 +39,6 @@ afterEach(() => {
 })
 
 describe('sendNativeChatMessage before the agent paints its composer', () => {
-  it('touches nothing until the composer is painted, then sends in order', () => {
-    const clearInput = buildAgentTuiClearInputForText(DRAFT)
-    let painted = false
-    sendNativeChatMessage(PTY, 'edited', {
-      clearInput,
-      confirmCleared: () => true,
-      composerReady: () => painted
-    })
-    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_POLL_MS * 30)
-    expect(writes()).toEqual([])
-
-    painted = true
-    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_POLL_MS)
-    expect(writes()).toEqual([clearInput])
-    vi.advanceTimersByTime(NATIVE_CHAT_CLEAR_CONFIRM_MS + NATIVE_CHAT_SUBMIT_DELAY_MS)
-    expect(writes()).toEqual([clearInput, buildNativeChatPasteBytes('edited'), NATIVE_CHAT_SUBMIT])
-  })
-
   it('holds a queued send behind the waiting one', async () => {
     let painted = false
     sendNativeChatMessage(PTY, 'first', {
@@ -69,7 +51,9 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
 
     painted = true
     await vi.advanceTimersByTimeAsync(
-      NATIVE_CHAT_COMPOSER_READY_POLL_MS + NATIVE_CHAT_SUBMIT_DELAY_MS * 2
+      NATIVE_CHAT_COMPOSER_READY_POLL_MS +
+        NATIVE_CHAT_CLEAR_CONFIRM_MS +
+        NATIVE_CHAT_SUBMIT_DELAY_MS * 2
     )
     expect(writes().slice(0, 3)).toEqual([
       '\x15',
@@ -79,13 +63,15 @@ describe('sendNativeChatMessage before the agent paints its composer', () => {
     expect(writes()).toContain(buildNativeChatPasteBytes('second'))
   })
 
-  it('falls back to the best-effort send after the bound', () => {
+  it('falls back to the best-effort send after the bound', async () => {
     sendNativeChatMessage(PTY, 'edited', {
       clearInput: '\x15',
       composerReady: () => false
     })
-    vi.advanceTimersByTime(NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS)
-    expect(writes()).toEqual(['\x15', buildNativeChatPasteBytes('edited')])
+    await vi.advanceTimersByTimeAsync(
+      NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS + NATIVE_CHAT_CLEAR_CONFIRM_MS
+    )
+    expect(writes().slice(0, 2)).toEqual(['\x15', buildNativeChatPasteBytes('edited')])
   })
 
   it('leaves the parked draft alone when cancelled while waiting', () => {

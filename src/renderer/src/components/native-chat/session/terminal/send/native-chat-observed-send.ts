@@ -12,10 +12,18 @@ import {
   type NativeChatSubmitConfirmation
 } from '../../../native-chat-submit-confirmation'
 import { NATIVE_CHAT_SUBMIT } from '../../../../../../../shared/native-chat/input/composer/native-chat-paste-bytes'
+import { afterNativeChatPasteLands, readNativeChatInputLine } from './native-chat-paste-landed'
+
+/** `afterPasteOf`: hold this write (Enter) until the input line shows that pasted message. */
+export type NativeChatObservedWrite = {
+  data: string
+  delayBeforeMs: number
+  afterPasteOf?: string
+}
 
 export function sendNativeChatObservedWrites(
   ptyId: string,
-  writes: readonly { data: string; delayBeforeMs: number }[],
+  writes: readonly NativeChatObservedWrite[],
   options: NativeChatSendOptions & {
     stopOnUnconfirmed?: boolean
     settleDelayMs?: number
@@ -36,6 +44,17 @@ export function sendNativeChatObservedWrites(
     ({ isCancelled, delay, markSubmitted, markSubmitWritten, markWriteStarted }) => {
       let reportedUnconfirmed = false
       let acknowledged = true
+      let lineWasEmpty = false
+      const whenReady = (write: NativeChatObservedWrite, send: () => void): void =>
+        write.afterPasteOf !== undefined
+          ? afterNativeChatPasteLands({
+              readInputLine: options.readInputLine,
+              lineWasEmpty,
+              text: write.afterPasteOf,
+              delay,
+              submit: send
+            })
+          : send()
       const writeAt = (index: number): void => {
         if (isCancelled()) {
           return
@@ -101,17 +120,20 @@ export function sendNativeChatObservedWrites(
             })
         }
         if (write.delayBeforeMs > 0) {
-          delay(write.delayBeforeMs, send)
+          delay(write.delayBeforeMs, () => whenReady(write, send))
         } else {
-          send()
+          whenReady(write, send)
         }
       }
       clearThenWrite(
         ptyId,
         options,
         delay,
-        () => writeAt(0),
-        markSubmitted,
+        () => {
+          lineWasEmpty = readNativeChatInputLine(options.readInputLine) === ''
+          writeAt(0)
+        },
+        () => markSubmitted('not-submitted'),
         () => {
           lineTouched = true
         }

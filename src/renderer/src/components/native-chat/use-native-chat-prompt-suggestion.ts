@@ -6,7 +6,6 @@ export function useNativeChatPromptSuggestion({
   scopeKey,
   enabled,
   draft,
-  suggestion,
   readTerminalSuggestion,
   inputRef,
   insertTypedText
@@ -14,7 +13,6 @@ export function useNativeChatPromptSuggestion({
   scopeKey: string
   enabled: boolean
   draft: string
-  suggestion?: string | null
   readTerminalSuggestion?: () => string | null
   inputRef: RefObject<NativeChatComposerInput | null>
   insertTypedText: (text: string) => boolean
@@ -35,7 +33,7 @@ export function useNativeChatPromptSuggestion({
     }
     return installWindowVisibilityInterval({ run: read, intervalMs: 500 })
   }, [enabled, readTerminalSuggestion, scopeKey])
-  const candidate = suggestion ?? (terminal?.scope === scopeKey ? terminal.text : null)
+  const candidate = terminal?.scope === scopeKey ? terminal.text : null
   // Only Escape or acceptance retires a suggestion; typing just hides it until the draft is empty again.
   const [dismissed, setDismissed] = useState<{ scope: string; text: string } | null>(null)
   const promptSuggestion =

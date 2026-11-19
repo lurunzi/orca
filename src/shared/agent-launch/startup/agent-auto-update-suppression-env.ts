@@ -20,11 +20,8 @@ export function agentAutoUpdateSuppressionEnv(agent: string): AgentEnv | undefin
     : undefined
 }
 
-/** Adds the agent's suppression under any command-provided assignments. */
-export function withAgentAutoUpdateSuppression(
-  agent: string,
-  env: Record<string, string> | undefined
-): { env?: Record<string, string> } {
-  const suppression = agentAutoUpdateSuppressionEnv(agent)
-  return suppression || env ? { env: { ...suppression, ...env } } : {}
-}
+/** Every agent's suppression, for background launches that do not know which agent they run. */
+export const ANY_AGENT_AUTO_UPDATE_SUPPRESSION_ENV: AgentEnv = Object.assign(
+  {},
+  ...Object.values(AGENT_AUTO_UPDATE_SUPPRESSION_ENV)
+)

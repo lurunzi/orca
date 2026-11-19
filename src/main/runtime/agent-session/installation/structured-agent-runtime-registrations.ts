@@ -16,7 +16,7 @@ import { createStructuredClaudeRuntimeAdapter } from './structured-claude-runtim
 import { acpListingNeedsChatFolder } from '../../../acp/discovery/acp-model-discovery-policy'
 import type { AcpLaunchSpec } from '../../../acp/launch/acp-launch-contract'
 import { acpStructuredAgentDefinition } from '../../../acp/session/acp-structured-agent-definitions'
-import type { AcpSavedSessionReads } from '../../../acp/session/acp-structured-resume-history'
+import type { SavedProviderTurnReads } from '../../../native-chat/agent-session-journal/journal-provider-turn-saved'
 import { createAcpAgentConnection } from '../../../acp/process/acp-agent-connection'
 import { createOpenCodeAcpConnection } from '../../../opencode/acp/opencode-acp-connection'
 import { acpStructuredLaunchPart } from '../../../acp/launch/acp-structured-launch-resolution'
@@ -41,6 +41,14 @@ import type {
   StructuredAgentRuntimeAdapter,
   StructuredAgentRuntimeRegistration
 } from './structured-agent-runtime-registration-types'
+
+function savedProviderTurns(context: StructuredAgentAdapterContext): SavedProviderTurnReads {
+  const { readers } = context.journalDatabase
+  return {
+    hasProviderTurn: (sessionId, nativeId, sinceFence) =>
+      journalSqlReads(readers, sessionId).hasProviderTurn(nativeId, sinceFence)
+  }
+}
 
 function createCodexAdapter(context: StructuredAgentAdapterContext): StructuredAgentRuntimeAdapter {
   const { deps, followUps, host } = context
@@ -67,6 +75,7 @@ function createCodexAdapter(context: StructuredAgentAdapterContext): StructuredA
         structuredAgentLaunchSources(context),
         codexStructuredLaunchPart({
           resolveLaunchArgs: () => deps.resolveLaunchArgs('codex'),
+          savedSession: savedProviderTurns(context),
           ...(deps.prepareLaunchAccountHome
             ? { prepareLaunchAccountHome: deps.prepareLaunchAccountHome }
             : {}),
@@ -125,7 +134,10 @@ function createClaudeAdapter(
         ...(deps.resolveClaudeCommand ? { resolveCommand: deps.resolveClaudeCommand } : {}),
         resolveAuthPolicy: deps.resolveClaudeAuthPolicy,
         attachmentDirectory: agentSessionAttachmentStoreRoot(deps.stateDirectory),
-        ...(deps.claudeCliFlags ? { cliFlags: deps.claudeCliFlags } : {})
+        ...(deps.claudeCliFlags ? { cliFlags: deps.claudeCliFlags } : {}),
+        ...(deps.nativeChatPromptSuggestions
+          ? { promptSuggestions: deps.nativeChatPromptSuggestions }
+          : {})
       })
     ),
     ...(deps.resolveClaudeCommand ? { resolveClaudeCommand: deps.resolveClaudeCommand } : {}),
@@ -139,10 +151,7 @@ function createClaudeAdapter(
       host()?.publishChildWorkEvidence(sessionId, evidence, producer),
     onDispatchSettledLate: followUps.onDispatchSettledLate,
     ...(deps.openClaudeConnection ? { openClaudeConnection: deps.openClaudeConnection } : {}),
-    ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
-    ...(context.claudePromptSuggestionStore
-      ? { promptSuggestionStore: context.claudePromptSuggestionStore }
-      : {})
+    ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {})
   })
 }
 
@@ -151,11 +160,7 @@ function createAcpAdapter(
 ): StructuredAgentRuntimeRegistration['createAdapter'] {
   return (context) => {
     const { deps, followUps } = context
-    const { readers } = context.journalDatabase
-    const savedSession: AcpSavedSessionReads = {
-      hasProviderTurn: (sessionId, nativeId) =>
-        journalSqlReads(readers, sessionId).hasProviderTurn(nativeId)
-    }
+    const savedSession = savedProviderTurns(context)
     const definition = acpStructuredAgentDefinition(spec)
     const sources = structuredAgentLaunchSources(context)
     const part = acpStructuredLaunchPart(spec, {

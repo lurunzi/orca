@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDefaultSettings } from '../../../../../../shared/constants'
+import { getDefaultSettings } from '../../../../../../shared/orca-profiles/constants'
 import { createTestStore, seedStore } from '../../../../store/testing/app-store-test-fixture'
 import { makeWorktree } from '../../../../store/slices/worktrees/worktree.test-fixture'
 import { createStoreCascadesMockApi } from '../../../../store/testing/app-store-cascade-api.test-fixture'

@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { MobileNativeChatDraftComposer } from './composer/MobileNativeChatComposer'
+import { MobileNativeChatDraftComposer } from './composer/MobileNativeChatDraftComposer'
 import {
   MobileNativeChatPromptSuggestionContext,
   type MobileNativeChatFieldSuggestion

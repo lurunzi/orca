@@ -1,4 +1,3 @@
-import { RestingPromptSuggestions } from '../resting-prompt-suggestions'
 import type { StructuredAgentSessionAtRestCommands } from '../options/structured-agent-session-at-rest-commands'
 import type { AgentChatPermissionChoice } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import type { AgentSessionJournalIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
@@ -16,10 +15,8 @@ import {
   stopSessionRoute,
   type SessionRoute
 } from './structured-agent-session-acquisition-route'
-import { routeStructuredAgentSessionAtRestCommands } from './structured-agent-session-at-rest-command-routing'
 
 export class StructuredAgentSessionAdapterRouter implements Adapter {
-  private readonly restingSuggestions = new RestingPromptSuggestions()
   private readonly routes = new Map<string, SessionRoute>()
   private allAdaptersClosed = false
   private closePromise: Promise<void> | null = null
@@ -43,7 +40,6 @@ export class StructuredAgentSessionAdapterRouter implements Adapter {
       throw new Error('structured session adapter router is closed')
     }
     const registration = this.requireAgent(input.identity)
-    this.restingSuggestions.drop(input.identity.sessionId)
     return acquireSessionRoute(input, registration, this.routes, () => this.allAdaptersClosed)
   }
 
@@ -60,6 +56,13 @@ export class StructuredAgentSessionAdapterRouter implements Adapter {
     mode: AgentChatPermissionChoice
   ): boolean | undefined =>
     this.liveOwnerOrNull(sessionId)?.permissionModeRequiresAcquisition?.(sessionId, mode)
+
+  applyPermissionMode: NonNullable<Adapter['applyPermissionMode']> = async (input) => {
+    await this.liveOwnerOrNull(input.sessionId)?.applyPermissionMode?.(input)
+  }
+
+  runningPermissionMode: NonNullable<Adapter['runningPermissionMode']> = (sessionId) =>
+    this.liveOwnerOrNull(sessionId)?.runningPermissionMode?.(sessionId)
 
   settlePermissionTransition: NonNullable<Adapter['settlePermissionTransition']> = (input) =>
     this.liveOwnerOrNull(input.sessionId)?.settlePermissionTransition?.(input) ??
@@ -97,6 +100,13 @@ export class StructuredAgentSessionAdapterRouter implements Adapter {
   stopProviderNaming = (): void => {
     for (const adapter of this.adapters()) {
       adapter.stopProviderNaming?.()
+    }
+  }
+
+  // Every adapter, so a session still starting hears it; only one that holds the session acts.
+  promptSuggestionInterestChanged = (sessionId: string, wanted: boolean): void => {
+    for (const adapter of this.adapters()) {
+      adapter.promptSuggestionInterestChanged?.(sessionId, wanted)
     }
   }
 
@@ -179,15 +189,25 @@ export class StructuredAgentSessionAdapterRouter implements Adapter {
 
   readCommands: NonNullable<Adapter['readCommands']> = (sessionId) =>
     this.liveOwnerOrNull(sessionId)?.readCommands?.(sessionId)
-  readPromptSuggestion = (sessionId: string): string | null =>
-    this.restingSuggestions.read(sessionId) ??
-    this.liveOwnerOrNull(sessionId)?.readPromptSuggestion?.(sessionId) ??
-    null
 
-  atRestCommands: StructuredAgentSessionAtRestCommands = routeStructuredAgentSessionAtRestCommands(
-    () => this.agents,
-    () => this.adapters()
-  )
+  atRestCommands: StructuredAgentSessionAtRestCommands = {
+    read: (record) =>
+      this.agents.registration(record.provider)?.adapter.atRestCommands?.read(record),
+    snapshot: (record) =>
+      this.agents.registration(record.provider)?.adapter.atRestCommands?.snapshot?.(record) ?? {
+        commandsPending: false
+      },
+    settled: async (record, budgetMs, independent) => {
+      const source = this.agents.registration(record.provider)?.adapter.atRestCommands
+      return source?.settled ? source.settled(record, budgetMs, independent) : source?.read(record)
+    },
+    onChange: (listener) => {
+      const stops = this.adapters().flatMap((adapter) =>
+        adapter.atRestCommands ? [adapter.atRestCommands.onChange(listener)] : []
+      )
+      return () => stops.forEach((stop) => stop())
+    }
+  }
 
   answerPrompt: Adapter['answerPrompt'] = (input) => this.owner(input.sessionId).answerPrompt(input)
 
@@ -231,18 +251,14 @@ export class StructuredAgentSessionAdapterRouter implements Adapter {
     this.stopSession(args[0], (adapter) => adapter.closeSession?.(...args))
 
   forceCloseSession = (sessionId: string): Promise<boolean> =>
-    this.restingSuggestions.preserve(sessionId, this.readPromptSuggestion(sessionId), () =>
-      this.stopSession(sessionId, (adapter) =>
-        (adapter.forceCloseSession ?? adapter.closeSession)?.call(adapter, sessionId)
-      )
+    this.stopSession(sessionId, (adapter) =>
+      (adapter.forceCloseSession ?? adapter.closeSession)?.call(adapter, sessionId)
     )
 
-  disposeSession: NonNullable<Adapter['disposeSession']> = (...args) => {
-    this.restingSuggestions.drop(args[0])
-    return this.stopSession(args[0], (adapter) =>
+  disposeSession: NonNullable<Adapter['disposeSession']> = (...args) =>
+    this.stopSession(args[0], (adapter) =>
       (adapter.disposeSession ?? adapter.closeSession)?.call(adapter, ...args)
     )
-  }
 
   private async stopSession(
     sessionId: string,

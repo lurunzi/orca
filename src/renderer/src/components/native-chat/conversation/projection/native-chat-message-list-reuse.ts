@@ -19,7 +19,7 @@ import { subagentItemBlock } from '../../../../../../shared/native-chat/transcri
 import {
   isNoiseMessage,
   stripNoiseMessages
-} from '../../../../../../shared/native-chat/native-chat-noise'
+} from '../../../../../../shared/native-chat/transcript/messages/native-chat-noise'
 import { agentJournalItemSubagentId } from '../../../../../../shared/agent-session/journal/agent-session-journal-producer'
 import { appendedSubagentTurnKey, appendedTurnNeutralItems } from './native-chat-message-list-turns'
 import {

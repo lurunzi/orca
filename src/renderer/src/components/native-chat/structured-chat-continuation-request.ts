@@ -3,7 +3,7 @@ import {
   type AgentSessionContinuationRequest
 } from '@/lib/agent-session/context/agent-session-continuation'
 import type { AgentStatusEntry } from '../../../../shared/agent-status/contracts/agent-status-types'
-import { isNoiseMessage } from '../../../../shared/native-chat/native-chat-noise'
+import { isNoiseMessage } from '../../../../shared/native-chat/transcript/messages/native-chat-noise'
 import {
   isTextBlock,
   type NativeChatMessage

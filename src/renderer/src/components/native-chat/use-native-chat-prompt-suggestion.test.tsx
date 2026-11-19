@@ -10,15 +10,15 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+const readAddTests = (): string | null => 'Add tests'
+
 function Composer({
   scope = 'one',
-  suggestion = 'Add tests',
   enabled = true,
-  read,
+  read = readAddTests,
   sent
 }: {
   scope?: string
-  suggestion?: string | null
   enabled?: boolean
   read?: () => string | null
   sent: (text: string) => void
@@ -30,7 +30,6 @@ function Composer({
     scopeKey: scope,
     enabled,
     draft,
-    suggestion,
     readTerminalSuggestion: read,
     inputRef,
     insertTypedText: (text) => {
@@ -144,7 +143,7 @@ it('rechecks terminal evidence on acceptance and drops it when the PTY changes',
   let text: string | null = 'Add tests'
   const read = () => text
   const sent = vi.fn()
-  const view = render(<Composer suggestion={null} read={read} sent={sent} />)
+  const view = render(<Composer read={read} sent={sent} />)
   const input = screen.getByRole('textbox')
   expect(input.getAttribute('placeholder')).toBe('Add tests')
   text = null
@@ -154,6 +153,6 @@ it('rechecks terminal evidence on acceptance and drops it when the PTY changes',
     vi.advanceTimersByTime(500)
   })
   expect(input.getAttribute('placeholder')).toBe('')
-  view.rerender(<Composer scope="new-pty" suggestion={null} read={read} sent={sent} />)
+  view.rerender(<Composer scope="new-pty" read={read} sent={sent} />)
   expect(input.getAttribute('placeholder')).toBe('')
 })

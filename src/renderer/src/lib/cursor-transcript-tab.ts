@@ -1,6 +1,9 @@
 import type { AiVaultSession } from '../../../shared/ai-vault/contracts/ai-vault-types'
-import { normalizeRuntimePathForComparison } from '../../../shared/cross-platform-path'
-import { parseExecutionHostId, type ExecutionHostId } from '../../../shared/execution-host'
+import { normalizeRuntimePathForComparison } from '../../../shared/file-access/cross-platform-path'
+import {
+  parseExecutionHostId,
+  type ExecutionHostId
+} from '../../../shared/execution-host/execution-host'
 import { useAppStore } from '@/store'
 import { translate } from '@/i18n/i18n'
 import { getKnownExecutionHostIdForWorktree } from './workspace/ownership/worktree-runtime-owner'
@@ -10,7 +13,7 @@ import { nativeChatComposerHasUserContent } from '@/components/native-chat/attac
 import { readNativeChatComposerDraft } from '@/components/native-chat/drafts/native-chat-composer-draft-store'
 import { isStructuredTab } from '../../../shared/agent-session/view/structured-agent-session-tab'
 import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
-import type { Tab } from '../../../shared/tab-types'
+import type { Tab } from '../../../shared/workspace-layout/tab-groups/tab-types'
 import { activateStructuredAgentSessionTab } from './agent-session/structured-agent-session-tab-activation'
 
 function cursorTerminalTab(worktreeId: string, sessionId: string) {

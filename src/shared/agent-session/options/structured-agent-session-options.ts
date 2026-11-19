@@ -3,7 +3,6 @@ import type {
   CatalogModel
 } from './catalog-providers/agent-session-option-catalog-types'
 import { discoveredModel } from './model-catalog/structured-agent-session-discovered-model'
-import { catalogOffersFastMode } from './structured-agent-fast-mode-snapshot'
 import {
   createStructuredAgentSessionOptionRecord,
   replaceStructuredAgentSessionAnsweredValues,
@@ -30,6 +29,7 @@ import type {
   AgentSessionOptionsResult
 } from './protocol/agent-session-options-result'
 import { labelFromModelId } from './model-catalog/model-id-label'
+import type { AgentSessionChildPermissionFields } from './permissions/agent-session-status-permission-fields'
 import type { AgentSessionModelCatalogResult } from '../agent-session-wire'
 import { listingVerifiedModelIds } from './model-catalog/structured-agent-session-listing-verified-ids'
 import {
@@ -56,7 +56,8 @@ export function structuredAgentSessionOptionCatalog(
   return { ...seed, models, defaultModelIsCliDefault: true }
 }
 
-export type StructuredAgentSessionOptionState = {
+/** Child permission choices are live-host reports, absent on older hosts. */
+export type StructuredAgentSessionOptionState = AgentSessionChildPermissionFields & {
   catalog: AgentSessionOptionCatalog | null
   /** Catalog provenance, independent of known input: seed offers no replacement models;
    * builtin enables static rows only after unavailable discovery. */
@@ -137,9 +138,7 @@ export function applyStructuredAgentSessionModelCatalog(
   const models =
     catalog.origin === 'unknown'
       ? []
-      : catalog.models.map((model) =>
-          discoveredModel(model, catalogOffersFastMode(catalog), state.record.agent)
-        )
+      : catalog.models.map((model) => discoveredModel(model, catalog, state.record.agent))
   if (catalog.origin === 'unknown' || (!installed && models.length === 0)) {
     return settleStructuredAgentSessionBuiltinCatalog(state)
   }

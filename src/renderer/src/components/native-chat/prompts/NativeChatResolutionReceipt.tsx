@@ -6,7 +6,7 @@ import { NativeChatMessageTimestamp } from '../messages/rows/NativeChatMessageTi
 import { NativeChatAwaitingInputRow } from './NativeChatAwaitingInputRow'
 import { useNativeChatDisclosure } from '../messages/disclosure/native-chat-disclosure-store'
 import { NativeChatUrlRequestReceipt } from './NativeChatUrlRequest'
-import { urlApprovalProgress } from '../../../../../shared/agent-session/agent-session-approval-subject'
+import { urlApprovalProgress } from '../../../../../shared/agent-session/requests/prompts/agent-session-approval-subject'
 import {
   NATIVE_CHAT_RECEIPT_COPY,
   nativeChatReceiptAnswerHeading,
@@ -15,7 +15,7 @@ import {
   nativeChatReceiptSubject,
   type NativeChatReceiptAnswer,
   type NativeChatResolvedPrompt
-} from '../../../../../shared/native-chat/native-chat-resolution-receipt'
+} from '../../../../../shared/native-chat/input/questions/native-chat-resolution-receipt'
 
 /** The answer opens onto every option that was offered, so long option lists stay readable after resolution. */
 function NativeChatReceiptAnswerRow({

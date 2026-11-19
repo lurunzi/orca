@@ -1,10 +1,21 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runCodexAppServerSession } from './codex-app-server-session'
 import type { CodexAppServerSessionRpc } from './codex-app-server-session-hooks'
 import {
   spawnCodexAppServerProcess,
   type CodexAppServerSpawn
 } from './codex-app-server-process-tree-kill'
+import type * as ProviderOwnershipJournal from '../../provider-process/provider-ownership-journal'
+
+const ownership = vi.hoisted(() => ({ native: true }))
+// The lifecycle cases spy on the CLI's own stdin pipe, which the native POSIX bootstrap replaces with its input fd.
+vi.mock('../../provider-process/provider-ownership-journal', async (importOriginal) => {
+  const actual = await importOriginal<typeof ProviderOwnershipJournal>()
+  return {
+    ...actual,
+    providerOwnershipBootId: () => (ownership.native ? actual.providerOwnershipBootId() : null)
+  }
+})
 
 const originalCodexHome = process.env.CODEX_HOME
 
@@ -127,6 +138,13 @@ function controlledInvocation(signal?: AbortSignal) {
 }
 
 describe('runCodexAppServerSession lifecycle', () => {
+  beforeEach(() => {
+    ownership.native = false
+  })
+  afterEach(() => {
+    ownership.native = true
+  })
+
   it('handles same-id server requests and notifications during initialize before awaiting its hook', async () => {
     const server = String.raw`
       const send = (message) => process.stdout.write(JSON.stringify(message) + '\n')

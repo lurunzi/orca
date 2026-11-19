@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises'
 import { waitForPromiseWithSignal } from '../../../../shared/concurrency/abort-signal-reason'
-import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host'
+import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host/execution-host'
 import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import { DashboardCodexRefreshOperation } from '../../../dashboard-accounts/dashboard-codex-refresh-protocol'
 import { agentDrivesSession } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-provider-support'

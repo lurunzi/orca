@@ -5,6 +5,7 @@ import { agentJournalItemKey } from '../../../../shared/agent-session/journal/ag
 import type { StructuredAgentSessionConversationCopyInput } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-conversation-copy-input'
 import { readCodexLocalHistory } from '../../../native-chat/transcript-history/codex/codex-local-history'
 import type * as LocalHistory from '../../../native-chat/transcript-history/codex/codex-local-history'
+import type * as ProviderOwnershipJournal from '../../../provider-process/provider-ownership-journal'
 import { codexPoolProviderProbeCwd } from './codex-pool-provider-invocation'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -46,6 +47,12 @@ import {
   CodexShortLivedOperations,
   type CodexPreparedShortLivedInvocation
 } from './codex-short-lived-operations'
+
+// These suites spy on the CLI's own stdin pipe, which the native POSIX bootstrap replaces with its input fd.
+vi.mock('../../../provider-process/provider-ownership-journal', async (importOriginal) => ({
+  ...(await importOriginal<typeof ProviderOwnershipJournal>()),
+  providerOwnershipBootId: () => null
+}))
 
 vi.mock('../../../dashboard-accounts/dashboard-allocation-reader', () => ({
   readDashboardCodexAllocation: vi.fn(),

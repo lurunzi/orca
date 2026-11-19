@@ -5,7 +5,7 @@ import { manageCodexSessionMcp } from './codex-session-mcp'
 import * as permission from '../turns/codex-structured-turn-permission'
 import * as Suggestion from '../../codex-prompt-suggestion-session'
 import { projectCodexSessionOptions } from '../catalog/codex-structured-service-tier'
-import type { AgentSessionBackgroundTaskState } from '../../../../shared/agent-session/agent-session-background-task-wire'
+import type { AgentSessionBackgroundTaskState } from '../../../../shared/agent-session/background-tasks/agent-session-background-task-wire'
 import type {
   AgentSessionAcquisition,
   AgentSessionDispatchOutcome,
@@ -13,11 +13,10 @@ import type {
   StructuredAgentSessionAdapter as SessionAdapter,
   StructuredAgentSessionSetOptionInput
 } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
-import type { StructuredAgentSessionProviderOpenInput } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
 import type { CodexJournalTranslationAdmission } from '../journal/codex-structured-journal-contracts'
 import { dispatchCodexTurn } from '../turns/codex-structured-turn-start'
 import { isCodexTurnOptionKey } from '../turns/codex-turn-option-keys'
-import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host'
+import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host/execution-host'
 import { CodexStructuredSessionTeardown } from './codex-structured-session-teardown'
 import {
   applyCodexStructuredSessionOption,
@@ -50,6 +49,7 @@ import {
 } from '../prompts/codex-structured-prompt-ownership'
 import { renameCodexProviderSessionForAccount } from './codex-pool-provider-session-rename'
 import { DashboardCodexRefreshMailbox } from '../../../dashboard-accounts/dashboard-codex-refresh-mailbox'
+import { approveCodexAutoReviewDenial } from './codex-auto-review-approval'
 import * as codexRewind from '../threads/codex-structured-rewind'
 import * as turnEnd from '../turns/codex-structured-turn-end-settlement'
 import { codexAcquireFailure } from '../../app-server/codex-startup-outcome'
@@ -99,6 +99,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
     copyCodexConversationForAccount(input, this.deps.providerInvocation, this.shortLived)
   readAccountUsage: NonNullable<SessionAdapter['readAccountUsage']>
   manageMcp = manageCodexSessionMcp(this.sessions, () => this.deps.providerInvocation)
+  approveAutoReviewDenial = approveCodexAutoReviewDenial(this.sessions)
 
   supportsLocation = supportsCodexStructuredLocation
 
@@ -120,6 +121,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
     })
 
   permissionModeRequiresAcquisition = permission.codexNativeResumeRequirement(this.sessions)
+  runningPermissionMode = permission.codexRunningPermissionMode(this.sessions)
 
   settlePermissionTransition = permission.createCodexPermissionTransition(this.sessions, this)
 
@@ -142,8 +144,7 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
       throw codexAcquireFailure(error)
     })
 
-  open = (input: StructuredAgentSessionProviderOpenInput) =>
-    openCodexStart(this.acquisitions, input)
+  open: SessionAdapter['open'] = (input) => openCodexStart(this.acquisitions, input)
 
   /** Journal first so observers never see an event ahead of its durable row. */
   private emit(
@@ -202,7 +203,6 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   backgroundTaskState = (sessionId: string): AgentSessionBackgroundTaskState | null | undefined =>
     this.sessions.get(sessionId)?.backgroundTasks.state
 
-  readPromptSuggestion = (id: string) => Suggestion.readCodexPromptSuggestion(this.sessions, id)
   heldSends = (sessionId: string): ReadonlySet<string> | undefined =>
     this.sessions.get(sessionId)?.dispatchEchoes.heldSends()
 
@@ -341,6 +341,5 @@ export class CodexStructuredSessionAdapter implements SessionAdapter {
   hasOwnedAcquisition = (sessionId: string): boolean =>
     this.acquisitions.get(sessionId) !== undefined || this.sessions.has(sessionId)
 
-  private session = (sessionId: string): CodexSession =>
-    requireLiveCodexSession(this.sessions, sessionId)
+  private session = (id: string): CodexSession => requireLiveCodexSession(this.sessions, id)
 }

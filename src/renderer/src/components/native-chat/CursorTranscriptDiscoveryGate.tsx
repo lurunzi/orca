@@ -9,7 +9,7 @@ import {
   openCursorTranscriptTab,
   reconcileCursorTranscriptTabs
 } from '@/lib/cursor-transcript-tab'
-import { parseExecutionHostId } from '../../../../shared/execution-host'
+import { parseExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import { isAiVaultScanCancelledError } from '../../../../shared/ai-vault/contracts/ai-vault-types'
 import {
   cursorTranscriptOfferKey,

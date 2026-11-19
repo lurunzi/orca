@@ -13,8 +13,13 @@ vi.mock('@/store', async () => {
   const { create } = await import('zustand')
   return {
     useAppStore: create<AppState>(
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: only layout actions and the chat projection read this store.
-      () => ({ terminalLayoutsByTabId: {}, tabsByWorktree: {} }) as AppState
+      () =>
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: only layout actions, the chat projection and restart readiness read this store.
+        ({
+          terminalLayoutsByTabId: {},
+          tabsByWorktree: {},
+          pendingPaneAccountRestarts: {}
+        }) as AppState
     )
   }
 })

@@ -14,10 +14,3 @@ export function cancelDroppingCodexPromptSuggestion<T extends { sessionId: strin
   dropCodexPromptSuggestion(sessions.get(request.sessionId))
   return request
 }
-
-export function readCodexPromptSuggestion(
-  sessions: ReadonlyMap<string, CodexSession>,
-  sessionId: string
-): string | null {
-  return sessions.get(sessionId)?.promptSuggestion?.read() ?? null
-}

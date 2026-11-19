@@ -4,15 +4,15 @@ import { act, Suspense, use } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearClientHostedBrowserRowSelection } from '@/runtime/browser/client-hosting/client-hosted-browser-row-state'
-import { getTabDragLabel, type TabBarItem } from './tab-bar-item-model'
-import type { WorkspaceVisibleTabType } from '../../../../shared/tab-types'
+import { getTabDragLabel, type TabBarItem } from './model/tab-bar-item-model'
+import type { WorkspaceVisibleTabType } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import {
   renderTabBarItems,
   type TabBarItemSurfaceProps,
   type TabBarItemSurfaceRuntime
-} from './tab-bar-item-surface'
-import { useTabBarItemActions } from './use-tab-bar-item-actions'
+} from './model/tab-bar-item-surface'
+import { useTabBarItemActions } from './model/use-tab-bar-item-actions'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -29,20 +29,25 @@ type TabProps = {
 
 const tabRenders: { id: string; props: TabProps }[] = []
 
-vi.mock('./SortableTab', () => ({
+vi.mock('./terminal-tabs/SortableTab', () => ({
   default: (props: TabProps) => {
     tabRenders.push({ id: props.tab!.id, props })
     return null
   }
 }))
-vi.mock('./BrowserTab', () => ({
+vi.mock('./terminal-tabs/TerminalSortableTab', () => ({
   default: (props: TabProps) => {
     tabRenders.push({ id: props.tab!.id, props })
     return null
-  },
-  getBrowserTabLabel: () => ''
+  }
 }))
-vi.mock('./EditorFileTab', () => ({
+vi.mock('./browser-tabs/BrowserTab', () => ({
+  default: (props: TabProps) => {
+    tabRenders.push({ id: props.tab!.id, props })
+    return null
+  }
+}))
+vi.mock('./editor-tabs/EditorFileTab', () => ({
   default: (props: TabProps & { file: { id: string } }) => {
     tabRenders.push({ id: props.file.id, props })
     return null

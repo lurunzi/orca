@@ -4,7 +4,7 @@ import { observeAntigravityErrorTerminalStatus } from './antigravity-error-termi
 import {
   createTranscriptPane,
   TRANSCRIPT_PANE_PTY_ID
-} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+} from './terminal/wait/agent-transcript-pane-test-harness'
 
 const TEXT = 'Individual quota reached. Resets in 4h56m48s.'
 const ID = '00000000-0000-4000-8000-000000000001-10'

@@ -22,7 +22,7 @@ import {
   normalizeComputerAwakeMode,
   type ComputerAwakeStatus
 } from '../../../../shared/app-lifecycle/computer-awake-mode'
-import { toRuntimeExecutionHostId } from '../../../../shared/execution-host'
+import { toRuntimeExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import { getHostDisplayLabelOverrides } from '../../../../shared/execution-host/host-setting-overrides'
 import { isListedRemoteServer } from '../../../../shared/remote-runtime/host-catalog/runtime-environments'
 import { ComputerAwakeMenu } from './ComputerAwakeMenu'

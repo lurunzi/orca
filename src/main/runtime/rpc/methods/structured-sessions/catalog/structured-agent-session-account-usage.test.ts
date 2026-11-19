@@ -1,7 +1,7 @@
 import '../../../dispatch/testing/unused-default-rpc-methods.test-fixture'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { agentSessionRecordFixture } from '../../../../../../shared/agent-session/lifecycle/records/agent-session-record.test-fixture'
-import { createGlobalSettingsFixture } from '../../../../../../shared/global-settings-test-fixture'
+import { createGlobalSettingsFixture } from '../../../../../../shared/settings/global-settings-test-fixture'
 import { setStructuredAgentSessionHost } from '../../../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import {
   createResetCreditLimits,

@@ -1,5 +1,6 @@
 import type {
   ProviderRateLimits,
+  RateLimitBucket,
   RateLimitWindow
 } from '../../../../../shared/agent-usage/rate-limits/rate-limit-types'
 import { formatResetDuration } from '../../../../../shared/agent-usage/rate-limits/rate-limit-reset-format'
@@ -19,16 +20,17 @@ import {
   getUsageWindowSections,
   type UsageWindowSection
 } from '../../../../../shared/agent-usage/display/usage-provider-windows'
+import { isGroupedUsagePool } from '../../../../../shared/agent-usage/display/grouped-usage-pool'
 import { getProviderUsageErrorMessage, getProviderUsageStatusLabel } from './usage-error-copy'
 import type { UsagePercentageDisplay } from '../../../../../shared/agent-usage/display/usage-percentage-display'
-import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
+import { useResetCountdownClock } from '@/components/status-bar/usage/useResetCountdownClock'
 import { CURSOR_MODELS_BUCKET_NAME } from '../../../../../shared/agent-usage/rate-limits/cursor-usage-buckets'
 import { recomputeOn } from '@/lib/recompute-on'
 import { ProviderExtraUsageSection } from './provider-extra-usage-section'
 import { formatWindowLabel } from './rate-limit-window-localized-label'
+import { formatPoolCardLabel, formatStatusBarSectionLabel } from './usage-pool-label'
 import { formatResetsInCaption } from './usage-reset-caption'
 import { UsageBar, UsageValue } from './usage-meter'
-import { formatStatusBarSectionLabel } from './usage-pool-label'
 
 export function formatTimeAgo(ts: number, t: Translate = translate): string {
   const diff = Date.now() - ts
@@ -139,22 +141,29 @@ export function getWindowSections(
   p: ProviderRateLimits,
   t?: Translate
 ): { label: string; window: RateLimitWindow | null }[] {
+  const buckets = p.buckets ?? []
   const sections = getUsageWindowSections(p)
   // Fork: Antigravity's session/weekly summaries are derived from these same pools.
   const shown =
-    p.provider === 'antigravity' && p.buckets?.length
+    p.provider === 'antigravity' && buckets.length
       ? sections.filter((section) => section.kind === 'bucket')
       : sections
   return shown.map((section) => ({
-    label: getWindowSectionLabel(section, t),
+    label: getWindowSectionLabel(section, buckets, t),
     window: section.window
   }))
 }
 
-function getWindowSectionLabel(section: UsageWindowSection, t: Translate = translate): string {
+function getWindowSectionLabel(
+  section: UsageWindowSection,
+  buckets: readonly RateLimitBucket[],
+  t: Translate = translate
+): string {
   switch (section.kind) {
     case 'bucket':
-      return section.name
+      return isGroupedUsagePool(section.window)
+        ? formatPoolCardLabel(section.window, buckets, t)
+        : section.name
     case 'session':
       // Why: name the window by its length ("5h") when known, matching the roster and status bar.
       return section.window && section.window.windowMinutes > 0

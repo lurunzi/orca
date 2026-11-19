@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type { AgentSessionJournalIdentity } from '../../shared/agent-session/journal/agent-session-journal-identity'
 import { claudeProviderHandle } from '../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
-import { claudeStartupSettled } from './structured/claude-structured-startup-settled-test-support'
+import { claudeStartupSettled } from './structured/startup/claude-structured-startup-settled-test-support'
 import { sessionInboxItemId, sessionInboxToolName } from '../../shared/session-inbox-tool-contract'
 import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './structured/launch/claude-structured-launch-resolution'
 import {
@@ -13,7 +13,7 @@ import {
   realClaudeLaunchHome
 } from './claude-real-cli-availability-test-support'
 import { ClaudeStructuredSessionAdapter } from './structured/claude-structured-session-adapter'
-import type { ClaudeStructuredSessionEvent } from './structured/claude-structured-session-state'
+import type { ClaudeStructuredSessionEvent } from './structured/lifecycle/claude-structured-session-event'
 
 const suiteTitle = `Claude inbox tools on the real CLI${realClaudeCliGate.skipReason ? ` (skipped: ${realClaudeCliGate.skipReason})` : ''}`
 const SESSION_ID = 'real-cli-inbox'

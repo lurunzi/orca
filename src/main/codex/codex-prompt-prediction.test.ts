@@ -4,8 +4,11 @@ import { CodexAppServerUnsupportedError } from './app-server/codex-app-server-se
 import type { CodexStructuredSessionEvent } from './structured/session-lifecycle/codex-structured-session-state'
 import { supportsCodexPredictionFork } from './codex-prompt-prediction'
 import {
+  acquireReadyCodexForTest,
   acquired,
+  adapterFor,
   fakeCodex,
+  identityFor,
   THREAD_ID,
   USER_MESSAGE
 } from './structured/session-lifecycle/codex-structured-session-adapter-fixture'
@@ -21,7 +24,21 @@ async function setup(version = '0.162.0-alpha.17.2') {
     'turn/start': () => ({ turn: { id: 'prediction-turn' } })
   })
   const events: CodexStructuredSessionEvent[] = []
-  const adapter = await acquired(codex, {}, events)
+  let suggestion: string | null = null
+  const adapter = adapterFor(codex, {}, events)
+  await acquireReadyCodexForTest(adapter, {
+    identity: identityFor('session-1'),
+    fence: 7,
+    spawnToken: 'spawn-9',
+    events: {
+      appendItem: () => {},
+      appendTombstone: () => {},
+      publish: () => {},
+      setPromptSuggestion: (next) => {
+        suggestion = next?.text ?? null
+      }
+    }
+  })
   const connection = codex.connections[0]
   Object.defineProperty(connection, 'serverVersion', { value: version })
   const notify = (method: string, params: unknown) =>
@@ -50,7 +67,7 @@ async function setup(version = '0.162.0-alpha.17.2') {
     start,
     notify,
     complete,
-    read: () => adapter.readPromptSuggestion('session-1')
+    read: () => suggestion
   }
 }
 

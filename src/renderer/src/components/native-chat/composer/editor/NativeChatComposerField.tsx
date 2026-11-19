@@ -1,5 +1,4 @@
 import { NativeChatPromptEditor } from './NativeChatPromptEditor'
-import { NativeChatPromptSuggestion } from '../../NativeChatPromptSuggestion'
 import { notifyNativeChatComposerState } from '../focus/native-chat-composer-mount'
 import type { NativeChatComposerInput } from './native-chat-composer-input'
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
@@ -15,6 +14,8 @@ import { useTranslate } from '@/i18n/use-translate'
 import { useNativeChatComposerDraftUnsaved } from '../../drafts/use-native-chat-draft-unsaved'
 import { useLatestHandler } from '@/lib/use-latest-handler'
 import type { NativeChatComposerFieldProps } from '../../native-chat-composer-field-types'
+import { imeComposedSegment } from '@/lib/text-input/ime/ime-composed-segment'
+import { acceptNativeChatPromptSuggestion } from './native-chat-prompt-suggestion-accept'
 
 export type {
   NativeChatComposerFieldProps,
@@ -23,35 +24,17 @@ export type {
 
 function noop(): void {}
 
-/** After a clear suppressed by IME, preserve only the composed segment; compare both ends because the caret need not be at the end. */
-function imeComposedSegment(base: string, settled: string): string {
-  const limit = Math.min(base.length, settled.length)
-  let prefix = 0
-  while (prefix < limit && base[prefix] === settled[prefix]) {
-    prefix += 1
-  }
-  let suffix = 0
-  while (
-    suffix < limit - prefix &&
-    base[base.length - 1 - suffix] === settled[settled.length - 1 - suffix]
-  ) {
-    suffix += 1
-  }
-  return settled.slice(prefix, settled.length - suffix)
-}
-
 export function NativeChatComposerField({
   editSession,
   draftScopeKey,
   positionTarget,
   textareaRef,
   draft,
-  promptSuggestion,
-  onAcceptPromptSuggestion,
   disabled,
   hasPty,
   canSend,
   unavailableHint,
+  promptSuggestion,
   autocomplete,
   mentionFiles,
   activeSuggestion,
@@ -101,7 +84,6 @@ export function NativeChatComposerField({
   workspaceFooter
 }: NativeChatComposerFieldProps): React.JSX.Element {
   const t = useTranslate()
-  const editMessageLabel = t('components.native-chat.queuedMessages.editMessage', 'Edit message')
   const draftNotSaved = useNativeChatComposerDraftUnsaved(draftScopeKey)
   const optionCount =
     autocomplete.mode === 'slash'
@@ -131,8 +113,18 @@ export function NativeChatComposerField({
     onDraftChange(value, input)
   })
   const editorSelect = useLatestHandler(onTextareaSelect)
+  // An open picker takes Tab first, so the suggestion only shows and accepts while none is.
+  const suggestion = autocomplete.mode === 'none' ? (promptSuggestion ?? undefined) : undefined
   const editorKeyDownCapture = useLatestHandler((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!imeEnterGesture.ownsKeyDown(event)) {
+    if (
+      !imeEnterGesture.ownsKeyDown(event) &&
+      !acceptNativeChatPromptSuggestion(
+        event,
+        suggestion,
+        textareaRef.current,
+        imeEnterGesture.isComposing
+      )
+    ) {
       onKeyDown(event)
     }
   })
@@ -261,70 +253,56 @@ export function NativeChatComposerField({
                 ))}
               </div>
             ) : null}
-            <div className="relative">
-              <NativeChatPromptEditor
-                key={draftScopeKey}
-                scopeKey={draftScopeKey}
-                positionTarget={positionTarget}
-                imageRow={imageRow}
-                inputRef={textareaRef}
-                isComposing={imeEnterGesture.isComposing}
-                initialValue={draft}
-                disabled={disabled}
-                onChange={editorChange}
-                onKeyDownCapture={editorKeyDownCapture}
-                onKeyUp={editorKeyUp}
-                onBlur={editorBlur}
-                onCompositionStart={editorCompositionStart}
-                onCompositionEnd={editorCompositionEnd}
-                onPasteCapture={editorPaste}
-                onSelect={editorSelect}
-                aria-expanded={autocomplete.mode !== 'none'}
-                aria-controls={autocomplete.mode !== 'none' ? pickerListboxId : undefined}
-                aria-activedescendant={
-                  optionCount > 0
-                    ? `${pickerListboxId}-option-${Math.min(activeSuggestion, optionCount - 1)}`
-                    : undefined
-                }
-                placeholder={
-                  promptSuggestion
-                    ? ''
-                    : launchPrompt
-                      ? launchPrompt.placeholder
-                      : editSession
-                        ? editMessageLabel
-                        : goalMode?.active
-                          ? t(
-                              'components.native-chat.goal.placeholder',
-                              'Describe your goal, define measurable outcomes for best results'
-                            )
-                          : (unavailableHint ??
-                            nativeChatComposerPlaceholder(hasPty, canSend, afterStop, t))
-                }
-                aria-label={
-                  launchPrompt?.placeholder ??
-                  (editSession ? editMessageLabel : undefined) ??
-                  nativeChatComposerPlaceholder(hasPty, canSend, afterStop, t)
-                }
-                // Let layout handle wrapping and touch targets; scroll after eight lines (a launch prompt: one line growing to six) without JavaScript measurement.
-                // An empty launch prompt also grows to fit a wrapping placeholder: a paragraph-wide float that keeps its height, with a zero-width margin box so the caret line stays put.
-                className={cn(
-                  'w-full bg-transparent px-2 py-1 text-sm outline-none',
-                  launch
-                    ? 'min-h-7 max-h-[calc(6lh+0.5rem)] text-foreground placeholder:text-muted-foreground [&_p.is-editor-empty:only-child]:before:!h-auto [&_p.is-editor-empty:only-child]:before:w-full [&_p.is-editor-empty:only-child]:before:mr-[-100%]'
-                    : 'min-h-12 max-h-[calc(8lh+0.5rem)] text-chat-foreground-strong placeholder:text-chat-foreground-faint pointer-coarse:min-h-14',
-                  'overflow-y-auto scrollbar-sleek',
-                  // Why: the editor is a contenteditable, which `:disabled` never matches.
-                  '[&[contenteditable=false]]:cursor-not-allowed [&[contenteditable=false]]:opacity-50'
-                )}
-              />
-              {promptSuggestion ? (
-                <NativeChatPromptSuggestion
-                  text={promptSuggestion}
-                  onAccept={onAcceptPromptSuggestion}
-                />
-              ) : null}
-            </div>
+            <NativeChatPromptEditor
+              key={draftScopeKey}
+              scopeKey={draftScopeKey}
+              positionTarget={positionTarget}
+              imageRow={imageRow}
+              inputRef={textareaRef}
+              isComposing={imeEnterGesture.isComposing}
+              initialValue={draft}
+              disabled={disabled}
+              onChange={editorChange}
+              onKeyDownCapture={editorKeyDownCapture}
+              onKeyUp={editorKeyUp}
+              onBlur={editorBlur}
+              onCompositionStart={editorCompositionStart}
+              onCompositionEnd={editorCompositionEnd}
+              onPasteCapture={editorPaste}
+              onSelect={editorSelect}
+              aria-expanded={autocomplete.mode !== 'none'}
+              aria-controls={autocomplete.mode !== 'none' ? pickerListboxId : undefined}
+              aria-activedescendant={
+                optionCount > 0
+                  ? `${pickerListboxId}-option-${Math.min(activeSuggestion, optionCount - 1)}`
+                  : undefined
+              }
+              placeholder={
+                launchPrompt
+                  ? launchPrompt.placeholder
+                  : editSession
+                    ? t('components.native-chat.queuedMessages.editMessage', 'Edit message')
+                    : goalMode?.active
+                      ? t(
+                          'components.native-chat.goal.placeholder',
+                          'Describe your goal, define measurable outcomes for best results'
+                        )
+                      : (unavailableHint ??
+                        suggestion ??
+                        nativeChatComposerPlaceholder(hasPty, canSend, afterStop, t))
+              }
+              // Let layout handle wrapping and touch targets; scroll after eight lines (a launch prompt: one line growing to six) without JavaScript measurement.
+              // An empty launch prompt also grows to fit a wrapping placeholder: a paragraph-wide float that keeps its height, with a zero-width margin box so the caret line stays put.
+              className={cn(
+                'w-full bg-transparent px-2 py-1 text-sm outline-none',
+                launch
+                  ? 'min-h-7 max-h-[calc(6lh+0.5rem)] text-foreground placeholder:text-muted-foreground [&_p.is-editor-empty:only-child]:before:!h-auto [&_p.is-editor-empty:only-child]:before:w-full [&_p.is-editor-empty:only-child]:before:mr-[-100%]'
+                  : 'min-h-12 max-h-[calc(8lh+0.5rem)] text-chat-foreground-strong placeholder:text-chat-foreground-faint pointer-coarse:min-h-14',
+                'overflow-y-auto scrollbar-sleek',
+                // Why: the editor is a contenteditable, which `:disabled` never matches.
+                '[&[contenteditable=false]]:cursor-not-allowed [&[contenteditable=false]]:opacity-50'
+              )}
+            />
             <div
               className={cn(
                 'flex flex-wrap items-center gap-2 pt-0.5',

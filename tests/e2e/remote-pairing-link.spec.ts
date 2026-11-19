@@ -5,7 +5,7 @@
 
 import type { ElectronApplication } from '@stablyai/playwright-test'
 import { expect, test } from '@stablyai/playwright-test'
-import { createRestartSession } from './helpers/orca-restart'
+import { createRestartSession } from './desktop/electron-fixtures/orca-restart'
 
 const OFFER = {
   v: 2,

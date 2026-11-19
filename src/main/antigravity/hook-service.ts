@@ -37,15 +37,6 @@ import {
   removeInstalledConfig
 } from './hooks-json-bundle'
 
-// Sync by design (main-sync-fs baseline): getStatus is synchronous across hook services and stats only a few managed scripts.
-function isManagedScriptFile(scriptPath: string): boolean {
-  try {
-    return statSync(scriptPath).isFile()
-  } catch {
-    return false
-  }
-}
-
 function getConfigPath(): string {
   return join(homedir(), '.gemini', 'config', 'hooks.json')
 }
@@ -66,12 +57,7 @@ function getPosixManagedCommand(scriptPath: string, event: AntigravityEvent): st
   const command = wrapPosixHookCommand(
     scriptPath,
     { ORCA_ANTIGRAVITY_EVENT: event.eventName },
-    // Outside an Orca pane, skip the script's shell and python3 start on every agy event.
-    {
-      fallbackStdout: getAntigravityNoOpStdout(event.eventName),
-      requiredEnvVar: 'ORCA_PANE_KEY',
-      stdinMayStayOpen: true
-    }
+    { fallbackStdout: getAntigravityNoOpStdout(event.eventName), stdinMayStayOpen: true }
   )
   // ACP hosts tokenize the command into argv; the shell must be the executable, not `if`.
   return `/bin/sh -c ${quotePosixShell(`${HOOK_PARENT_CAPTURE}${command}`)}`
@@ -171,9 +157,14 @@ export class AntigravityHookService {
           ? ANTIGRAVITY_EVENTS.map((event) => event.windowsWrapperFileName)
           : [])
       ]
-      const unavailable = scriptNames.filter(
-        (name) => !isManagedScriptFile(getSharedManagedScriptPath(name))
-      )
+      // Sync by design (main-sync-fs baseline): getStatus is synchronous across hook services and stats only a few managed scripts.
+      const unavailable = scriptNames.filter((name) => {
+        try {
+          return !statSync(getSharedManagedScriptPath(name)).isFile()
+        } catch {
+          return true
+        }
+      })
       if (unavailable.length > 0) {
         state = 'partial'
         detail = [detail, `Managed scripts unavailable: ${unavailable.join(', ')}`]

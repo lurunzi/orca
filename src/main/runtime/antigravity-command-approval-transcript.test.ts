@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createTranscriptPane,
   TRANSCRIPT_PANE_PTY_ID
-} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+} from './terminal/wait/agent-transcript-pane-test-harness'
 import { extractLastOscTitle } from '../../shared/agent-status/title/osc-title-extraction'
 
 vi.mock('electron', () => ({

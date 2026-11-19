@@ -3,12 +3,13 @@ import type { AgentProviderSessionMetadata } from '../../../../../../../shared/a
 import { agentProviderSessionsEqual } from '../../../../../../../shared/agent-session/lifecycle/resume/agent-provider-session-equality'
 import {
   EMPTY_STRUCTURED_AGENT_SESSION,
+  reduceStructuredAgentSession,
   type StructuredAgentSessionAction
-} from '../../../../../../../shared/agent-session/structured-agent-session-reducer'
-import { reduceWithPromptSuggestion } from '../../../../../../../shared/structured-agent-session-prompt-suggestion-reducer'
+} from '../../../../../../../shared/agent-session/view/live-read/structured-agent-session-reducer'
 import type { RuntimeClientTarget } from '../../../../../../../shared/remote-runtime/host-catalog/runtime-client-target'
 import { startStructuredAgentSessionReadTransport } from './structured-agent-session-read-transport'
 import { createStructuredAgentSessionPRLinkObserver } from './structured-agent-session-pr-link-observer'
+import { nativeChatShowsPromptSuggestions } from '../../../../../../../shared/native-chat/settings/native-chat-appearance-settings'
 
 import { createStructuredAgentSessionReadActivity } from './structured-agent-session-read-activity'
 import { createStructuredAgentSessionOlderPageLoader } from './structured-agent-session-older-page-loader'
@@ -64,7 +65,7 @@ export function createReadOwner(
     emit()
   }
   const apply = (action: StructuredAgentSessionAction): void => {
-    const state = reduceWithPromptSuggestion(snapshot.state, action, Date.now())
+    const state = reduceStructuredAgentSession(snapshot.state, action, Date.now())
     if (
       state.submissions !== snapshot.state.submissions ||
       state.queuedMessages !== snapshot.state.queuedMessages
@@ -102,7 +103,7 @@ export function createReadOwner(
     if (disposed || historyReaders.size > 0) {
       return
     }
-    const state = reduceWithPromptSuggestion(snapshot.state, { type: 'trim-history' })
+    const state = reduceStructuredAgentSession(snapshot.state, { type: 'trim-history' })
     if (state === snapshot.state && !snapshot.loadingOlder) {
       return
     }
@@ -141,6 +142,7 @@ export function createReadOwner(
       apply({ type: 'loading' })
     }
     const transport = startStructuredAgentSessionReadTransport({
+      showsPromptSuggestions: nativeChatShowsPromptSuggestions(effects.getState().settings),
       subscribeRetryNow: effects.subscribeRetryNow,
       applyRequests: apply,
       applyEvent: (event, options) => {
@@ -179,9 +181,10 @@ export function createReadOwner(
   }
 
   let owner: StructuredAgentSessionReadOwner
+  let retained = 0
   const deleteIfUnused = (): void => {
     const subscriptions = activations.size + listeners.size + commandListeners.size
-    if (subscriptions === 0 && !activity.retained()) {
+    if (subscriptions === 0 && retained === 0 && !activity.retained()) {
       forgetStructuredReadOwner(key, owner)
     }
   }
@@ -197,6 +200,18 @@ export function createReadOwner(
     }
   }
   owner = {
+    retain: () => {
+      adoptStructuredReadOwner(key, owner)
+      retained++
+      let released = false
+      return () => {
+        if (!released) {
+          released = true
+          retained--
+          deleteIfUnused()
+        }
+      }
+    },
     trackSend: activity.trackSend,
     admit: activity.admit,
     publishCreated: (page) => {

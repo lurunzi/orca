@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { agentSessionRecordFixture } from '../../../native-chat/testing/agent-session-record-test-fixture'
-import { resolveHiddenProbeCwd } from '../../../lib/hidden-probe-cwd'
+import { resolveHiddenProbeCwdAsync } from '../../../lib/hidden-probe-cwd'
 import { readDashboardCodexAllocationContext } from '../../../dashboard-accounts/dashboard-allocation-reader'
 import {
   DashboardAllocationState,
@@ -24,7 +24,10 @@ vi.mock('node:fs/promises', async (importOriginal) => ({
   ...(await importOriginal<typeof FileSystem>()),
   stat: vi.fn()
 }))
-vi.mock('../../../lib/hidden-probe-cwd', () => ({ resolveHiddenProbeCwd: vi.fn() }))
+vi.mock('../../../lib/hidden-probe-cwd', () => ({
+  resolveHiddenProbeCwd: vi.fn(),
+  resolveHiddenProbeCwdAsync: vi.fn()
+}))
 vi.mock('../../../dashboard-accounts/dashboard-allocation-reader', () => ({
   readDashboardCodexAllocationContext: vi.fn()
 }))
@@ -65,7 +68,7 @@ function record() {
 
 it('does not create a hidden probe directory when cancelled during the directory check', async () => {
   const hidden = join(home, 'hidden-probe')
-  vi.mocked(resolveHiddenProbeCwd).mockImplementation(() => {
+  vi.mocked(resolveHiddenProbeCwdAsync).mockImplementation(async () => {
     mkdirSync(hidden)
     return hidden
   })

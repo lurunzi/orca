@@ -12,6 +12,7 @@ import type { Translate } from '@/i18n/use-translate'
 import { formatRateLimitWindowChipLabel } from '../../../../../shared/agent-usage/rate-limits/rate-limit-window-label'
 import { getUsageHeadlineSection } from '../usage/usage-headline-sections'
 import { withStatusBarHeadlineCountdown } from '../usage/usage-headline-preferences'
+import { isGroupedUsagePool } from '../../../../../shared/agent-usage/display/grouped-usage-pool'
 
 export type StatusBarUsageSection = {
   key: string
@@ -34,9 +35,16 @@ export function getStatusBarUsageSections(
   if (mode === 'compact') {
     // Why 'all': the status bar keeps its original headline, Fable included.
     const headline = getUsageHeadlineSection(p, t, 'all')
-    return headline
-      ? [{ key: 'headline', ...withStatusBarHeadlineCountdown(p, headline, now) }]
-      : []
+    if (!headline) {
+      return []
+    }
+    // Why: Compact keeps Detailed's order: named pools read "Cursor Models 64%", grouped pools "5% wk"; Cursor shows its countdown.
+    const isNamedBucket =
+      p.provider !== 'cursor' &&
+      !isGroupedUsagePool(headline.window) &&
+      (p.buckets?.some((bucket) => bucket === headline.window) ?? false)
+    const section = isNamedBucket ? headline : withStatusBarHeadlineCountdown(p, headline, now)
+    return [{ key: 'headline', ...section, labelFirst: isNamedBucket }]
   }
   if (p.buckets?.length) {
     // Antigravity pool names vary by account tier; Gemini's experimental pools stay hidden.

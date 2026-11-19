@@ -1,6 +1,12 @@
-import { test, expect } from './helpers/orca-app'
-import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
-import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
+import { test } from './desktop/electron-fixtures/orca-app'
+import { expect } from '@stablyai/playwright-test'
+import {
+  ensureTerminalVisible,
+  waitForActiveWorktree,
+  waitForSessionReady
+} from './desktop/renderer-probes/store'
+import { waitForActivePaneHookDescriptor } from './terminal/input/terminal-active-pane'
+import { waitForActiveTerminalManager } from './terminal/layout/terminal-pane-operations'
 
 test('late Cursor identity collapses an empty reader into the managed chat and keeps it after completion', async ({
   orcaPage: page,

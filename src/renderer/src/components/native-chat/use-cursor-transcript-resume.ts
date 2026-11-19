@@ -5,7 +5,7 @@ import {
   isAiVaultSessionResumableContent,
   type AiVaultSession
 } from '../../../../shared/ai-vault/contracts/ai-vault-types'
-import { parseExecutionHostId } from '../../../../shared/execution-host'
+import { parseExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import { useAppStore } from '@/store'
 import { createNonSecureContextUuid as createBrowserUuid } from '../../../../shared/identifiers/non-secure-context-uuid'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'

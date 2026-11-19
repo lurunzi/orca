@@ -6,7 +6,6 @@ import type {
 import {
   formatPoolShortLabel,
   formatStatusBarSectionLabel,
-  formatPoolGroupLabel,
   formatPoolWindowLabel
 } from './usage-pool-label'
 import { getTightestUsageSection } from './usage-headline-sections'
@@ -62,7 +61,6 @@ describe('pool labels', () => {
       'Other Models 5h',
       'Other Models wk'
     ])
-    expect(formatPoolGroupLabel('Claude and GPT models', TWO_GROUPS)).toBe('Other Models')
   })
 
   it('labels a single-window group by its window length', () => {

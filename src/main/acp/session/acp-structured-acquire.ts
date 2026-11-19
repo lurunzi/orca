@@ -10,6 +10,7 @@ import type {
 import { providerTimelineSink } from '../../native-chat/agent-session-timeline/provider-timeline-plan'
 import { providerSpawnedProcessIdentity } from '../../provider-process/provider-spawned-process-identity'
 import { acpPrivateTempConnect } from '../launch/acp-private-temp'
+import { acpClientInfo } from '../launch/acp-client-info'
 import * as childState from './children/acp-structured-child'
 import type { AcpSessionEvent } from '../protocol/acp-session-events'
 import type { AcpStructuredConnection } from '../process/acp-structured-connection'
@@ -18,8 +19,9 @@ import { AcpStructuredLane } from '../journal/acp-structured-lane'
 import { acpLaneChildWorkDelivery } from '../journal/acp-lane-child-work-delivery'
 import { NO_ACP_CHILD_STOPS } from '../turns/acp-structured-child-stop'
 import { prepareAcpStructuredLaunch } from '../launch/acp-structured-launch-preparation'
+import { acpProcessEnvironment } from '../launch/acp-structured-launch-resolution'
 import { AcpStructuredOptions } from '../options/acp-structured-options'
-import { acpLaunchPermissionModes } from '../launch/acp-launch-permission-modes'
+import { acpLaunchPermission, acpOrcaApprovals } from '../launch/acp-launch-permission-modes'
 import { AcpStructuredPrompts } from '../requests/acp-structured-prompts'
 import { withAcpUrlElicitation } from '../requests/acp-url-elicitation'
 import { AcpLoadHistory } from '../history/acp-history-replay'
@@ -75,7 +77,7 @@ export async function acquireAcpStructuredSession(input: {
     history: AcpLoadHistory | null
   } = { lane: null, reattaching: false, history: null }
   const options = new AcpStructuredOptions(spec.dialect)
-  const permissionModes = acpLaunchPermissionModes(spec, launch.fullAccess)
+  const launchPermission = acpLaunchPermission(spec, launch.fullAccess, acquire.permissionMode)
   const prompts = new AcpStructuredPrompts(
     () => slot.lane,
     () => childState.isAcpReadySession(session) && session.turns?.acceptsRequests === true
@@ -88,8 +90,6 @@ export async function acquireAcpStructuredSession(input: {
       early.push(deliver)
     }
   }
-  // Without a full-access mode of its own, the agent asks and Orca answers.
-  const orcaApproves = launch.fullAccess && !spec.permissionModeConfig?.values['full-access']
   // Keep the last abort check and spawn synchronous when no temp directory is needed.
   const connect = spec.privateTempDirectory
     ? await acpPrivateTempConnect(deps, closedBeforeSpawn)
@@ -99,11 +99,10 @@ export async function acquireAcpStructuredSession(input: {
       command: launch.command,
       args: launch.args,
       cwd: launch.cwd,
-      env: launch.env,
-      envToDelete: launch.envToDelete
+      ...acpProcessEnvironment(launch)
     },
     {
-      clientInfo: { name: 'orca', version: '1' },
+      clientInfo: acpClientInfo(spec, launch.version ?? null),
       // Only a chat can show a URL request's card, so other connections never advertise it.
       clientCapabilities: withAcpUrlElicitation(spec.dialect.clientCapabilities),
       retryBusyPrompts: spec.agent === 'omp',
@@ -115,8 +114,7 @@ export async function acquireAcpStructuredSession(input: {
         }
         // Do not auto-approve questions or permissions enforced by the agent's own mode.
         const claimed = spec.dialect.request?.('session/request_permission', request)
-        // A mode change, such as leaving plan mode, is the person's to approve.
-        if (orcaApproves && !claimed && request.toolCall.kind !== 'switch_mode') {
+        if (acpOrcaApprovals.answers(session, request) && !claimed) {
           const allow = request.options.find((option) => option.kind === 'allow_once')
           if (allow) {
             return { outcome: { outcome: 'selected', optionId: allow.optionId } }
@@ -158,7 +156,7 @@ export async function acquireAcpStructuredSession(input: {
       }
     }
   )
-  if (!spec.permissionModeConfig || orcaApproves) {
+  if (acpOrcaApprovals.reports(spec, launch.fullAccess)) {
     options.applied.set('permissionMode', launch.fullAccess ? 'full-access' : 'ask')
   }
   // From here, cancellation closes this connection even before exit is proven.
@@ -191,7 +189,7 @@ export async function acquireAcpStructuredSession(input: {
           sessionId,
           fence: acquire.fence,
           acquisitionGeneration: generation,
-          reportedOptions: options.observedCurrent(permissionModes),
+          reportedOptions: options.observedCurrent(launchPermission.permissionModes),
           catalogListing: { models: options.read().models }
         })
       }
@@ -264,7 +262,7 @@ export async function acquireAcpStructuredSession(input: {
     acquisitionGeneration: generation,
     spec,
     cwd: launch.cwd,
-    permissionModes,
+    ...launchPermission,
     connection,
     lane: null,
     turns: null,

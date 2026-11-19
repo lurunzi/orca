@@ -4,7 +4,7 @@ import {
   findCatalogModel,
   getAgentSessionOptionLaunchCatalog
 } from '../../agent-session/options/agent-session-option-catalog'
-import type { GlobalSettings } from '../../global-settings-types'
+import type { GlobalSettings } from '../../settings/global-settings-types'
 import { isTuiAgent } from '../../agent-launch/catalog/tui-agent-config'
 import type { TuiAgent } from '../../agent-launch/catalog/tui-agent'
 import { resolveNativeChatSessionOptionDefaults } from './session-options/native-chat-session-option-defaults'

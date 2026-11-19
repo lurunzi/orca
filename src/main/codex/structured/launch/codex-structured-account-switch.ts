@@ -2,7 +2,7 @@
 
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import { isCodexHistorySharedAcrossAccounts } from '../../../codex-accounts/runtime-home/routing/codex-history-sharing'
 import { hostAdditionalCodexHomePaths } from '../../../native-chat/transcript-discovery/host-readable-transcript-path'
 import { getSystemCodexHomePath } from '../../configuration/homes/codex-home-paths'

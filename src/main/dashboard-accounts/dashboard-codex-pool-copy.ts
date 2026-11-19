@@ -7,7 +7,7 @@ import {
 import type { AgentSessionRecord } from '../../shared/agent-session/lifecycle/agent-session-record'
 import type { StructuredAgentId } from '../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
 import { isAgentSessionProviderHandleField } from '../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
-import { activeProviderContext } from '../../shared/agent-session/agent-session-provider-context'
+import { activeProviderContext } from '../../shared/agent-session/conversation-context/agent-session-provider-context'
 import { DashboardAllocationError } from './dashboard-allocation-protocol'
 import { canUseCodexPoolIdentity } from './dashboard-codex-pool-authentication'
 

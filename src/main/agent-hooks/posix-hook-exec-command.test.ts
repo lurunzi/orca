@@ -39,7 +39,7 @@ describe.skipIf(process.platform === 'win32')('POSIX exec hook command', () => {
       const command = wrapPosixHookCommandForExec(
         script,
         { ORCA_TEST_EVENT: 'managed hook ran' },
-        { fallbackStdout: response, requiredEnvVar: 'ORCA_TEST_REQUIRED' }
+        { fallbackStdout: response }
       )
       const [program, ...args] = shlexSplit(command)
       expect(program).toBe('/bin/sh')
@@ -51,7 +51,11 @@ describe.skipIf(process.platform === 'win32')('POSIX exec hook command', () => {
           program: route === 'exec' ? program : '/bin/sh',
           args: route === 'exec' ? args : ['-c', command],
           input: '{"toolCall":{"name":"read_file"}}',
-          env: { ...process.env, ORCA_TEST_REQUIRED: state === 'missing-env' ? '' : '1' },
+          env: {
+            ...process.env,
+            ORCA_PANE_KEY: state === 'missing-env' ? '' : 'tab-1:1',
+            ORCA_AGENT_PANE: ''
+          },
           timeoutMs: 5000
         })
         expect(result).toMatchObject({
