@@ -1,3 +1,4 @@
+import type { AgentSessionPromptSuggestion } from '../../shared/agent-session/agent-session-wire'
 import { isProviderRecord as isAppServerRecord } from '../provider-process/provider-json-record'
 import { CodexPromptPrediction, supportsCodexPredictionFork } from './codex-prompt-prediction'
 import type { CodexAppServerServerRequest } from './app-server/codex-app-server-connection-types'
@@ -26,29 +27,27 @@ export class CodexPromptSuggestion {
   private requestedTurnId: string | null = null
   private unsupported = false
   private revision = 0
+  private published = 0
   private prediction: CodexPromptPrediction | null = null
   private readonly predictionThreads = new Set<string>()
 
   constructor(
     private readonly session: CodexSession,
-    private readonly publish: () => void
+    private readonly publish: (suggestion: AgentSessionPromptSuggestion | null) => void
   ) {}
 
-  read(): string | null {
-    return this.idle() ? this.text : null
-  }
-
-  invalidate(): void {
+  /** A closing session keeps the last published suggestion for the chat's next child. */
+  invalidate(announce = true): void {
     this.requestedTurnId = this.latestTurnId
-    this.clear()
+    this.clear(announce)
   }
 
-  private clear(): void {
+  private clear(announce = true): void {
     this.revision += 1
     this.prediction?.cancel()
     this.prediction = null
     this.sourceTurnId = null
-    this.setText(null)
+    this.setText(null, announce)
   }
 
   private idle(): boolean {
@@ -62,16 +61,19 @@ export class CodexPromptSuggestion {
     )
   }
 
-  private setText(text: string | null): void {
-    if (text !== this.text) {
-      this.text = text
-      this.publish()
+  private setText(text: string | null, announce = true): void {
+    if (text === this.text) {
+      return
+    }
+    this.text = text
+    if (announce) {
+      this.publish(text === null ? null : { id: `codex-${++this.published}`, text })
     }
   }
 
   observe(event: CodexStructuredSessionEvent): void {
     if (event.type === 'ended') {
-      this.invalidate()
+      this.invalidate(false)
       return
     }
     if (

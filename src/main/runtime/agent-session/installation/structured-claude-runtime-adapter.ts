@@ -3,8 +3,8 @@ import type { ClaudeEnvDeps } from '../../../claude/structured/launch/claude-str
 import { ClaudeStructuredSessionAdapter } from '../../../claude/structured/claude-structured-session-adapter'
 import { readClaudeFastModeAccountAvailability } from '../../../claude/claude-fast-mode-account-availability'
 import type { ClaudeStructuredSessionAdapterDeps } from '../../../claude/structured/claude-structured-session-state'
-import type { ClaudeStructuredSessionEvent } from '../../../claude/structured/claude-structured-session-event'
-import { claudeProviderHandleLink } from '../../../claude/structured/claude-structured-owner-identity'
+import type { ClaudeStructuredSessionEvent } from '../../../claude/structured/lifecycle/claude-structured-session-event'
+import { claudeProviderHandleLink } from '../../../claude/structured/lifecycle/claude-structured-owner-identity'
 import type { StructuredAgentSessionLifecycleEvent } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-adapter'
 
 import type { AgentSessionRecordStore } from '../records/agent-session-record-store'
@@ -34,7 +34,6 @@ export type StructuredClaudeRuntimeAdapterDeps = {
   claudeCliFlags?: ClaudeCliFlagSupport
   openClaudeConnection?: ClaudeStructuredSessionAdapterDeps['openConnection']
   readProcessStartTime?: ClaudeStructuredSessionAdapterDeps['readProcessStartTime']
-  promptSuggestionStore?: ClaudeStructuredSessionAdapterDeps['promptSuggestionStore']
   onLifecycleEvent: (event: StructuredAgentSessionLifecycleEvent) => void
   onDispatchSettledLate?: ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
   onChildWorkEvidence?: ClaudeStructuredSessionAdapterDeps['onChildWorkEvidence']
@@ -139,8 +138,7 @@ export function createStructuredClaudeRuntimeAdapter(
     ...(deps.onChildWorkEvidence ? { onChildWorkEvidence: deps.onChildWorkEvidence } : {}),
     ...(deps.logger ? { logger: deps.logger } : {}),
     ...openClaudeConnectionOf(deps),
-    ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
-    ...(deps.promptSuggestionStore ? { promptSuggestionStore: deps.promptSuggestionStore } : {})
+    ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {})
   })
 }
 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import type { AiVaultSession } from '../../../../../../shared/ai-vault/contracts/ai-vault-types'
-import { LOCAL_EXECUTION_HOST_ID } from '../../../../../../shared/execution-host'
+import { LOCAL_EXECUTION_HOST_ID } from '../../../../../../shared/execution-host/execution-host'
 import type { AiVaultSessionPromptPreview } from '../../../../../../shared/ai-vault/session-display/ai-vault-session-display'
 // Fork: re-exported so the session details reach the Cursor transcript button in one import.
 export { AiVaultOpenTranscriptButton } from '../../AiVaultOpenTranscriptButton'

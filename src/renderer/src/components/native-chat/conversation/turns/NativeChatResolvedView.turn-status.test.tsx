@@ -22,7 +22,7 @@ const { NativeChatResolvedView } = await import('../../NativeChatResolvedView')
 const { TooltipProvider } = await import('@/components/ui/tooltip')
 const { useAppStore } = await import('../../../../store/index')
 const { acceptedAgentStatuses } =
-  await import('../../../../store/slices/agent-status/accepted-agent-statuses')
+  await import('../../../../store/slices/agent-status/status-ownership/accepted-agent-statuses')
 const { installNativeChatMessageListTestViewport } =
   await import('../../viewport/virtualization/native-chat-message-list-test-viewport')
 

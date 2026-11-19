@@ -1,11 +1,11 @@
 import React from 'react'
 import { cn } from '@/lib/class-names'
-import { ShortcutKeyCombo } from '@/components/ShortcutKeyCombo'
-import { formatShortcutKeyComboDetails } from '@/hooks/useShortcutLabel'
+import { ShortcutKeyCombo } from '@/components/ui/ShortcutKeyCombo'
+import { formatShortcutKeyComboDetails } from '@/lib/keyboard/useShortcutLabel'
 import { useAppStore } from '@/store'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { TabStripScrollIndicator } from './TabStripScrollIndicator'
-import { getTabStripScrollMaskClassName } from './tab-strip-scroll-metrics'
+import { TabStripScrollIndicator } from './strip/TabStripScrollIndicator'
+import { getTabStripScrollMaskClassName } from './strip/tab-strip-scroll-metrics'
 import type { useCreateRowScroller } from './use-create-row-scroller'
 
 type CreateRowScroller = ReturnType<typeof useCreateRowScroller>

@@ -1,5 +1,5 @@
 import type { BrowserNetworkTunnelOpen } from '../browser/network/tunnels/browser-network-tunnel-protocol'
-import { getProxyUrlFromEnvironment, normalizeProxyUrl } from '../network-proxy'
+import { getProxyUrlFromEnvironment, normalizeProxyUrl } from '../network/network-proxy'
 import { readNetworkProxySettings } from '../../main/browser/network/execution-routes/browser-network-proxy-settings-source'
 import {
   selectBrowserNetworkTunnelProxy,

@@ -7,11 +7,11 @@ import {
   PROVIDER_SESSION_ID,
   USER_MESSAGE
 } from './claude-structured-session-test-support'
-import { claudeOpened } from './claude-structured-startup-settled-test-support'
+import { claudeOpened } from './startup/claude-structured-startup-settled-test-support'
 import { ClaudeStructuredSessionAdapter } from './claude-structured-session-adapter'
 import { DashboardAllocationErrorCode } from '../../dashboard-accounts/dashboard-allocation-protocol'
 import { AgentSessionAcquisitionRootExitObservedError } from '../../native-chat/agent-session-wire/acquisition/structured-agent-session-acquisition-errors'
-import type { ClaudeStructuredSessionEvent } from './claude-structured-session-state'
+import type { ClaudeStructuredSessionEvent } from './lifecycle/claude-structured-session-event'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {

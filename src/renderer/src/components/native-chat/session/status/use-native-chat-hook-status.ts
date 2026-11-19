@@ -6,7 +6,7 @@ import type {
 import {
   nativeChatHookHasWorkingSubagents,
   resolveNativeChatHookState
-} from '../../../../../../shared/native-chat/native-chat-live-status'
+} from '../../../../../../shared/native-chat/transcript/streaming/native-chat-live-status'
 import { nativeChatTerminalErrorText } from '../../../../../../shared/native-chat/native-chat-terminal-error'
 
 export function useNativeChatHookStatus(

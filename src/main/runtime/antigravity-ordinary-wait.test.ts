@@ -5,7 +5,7 @@ import {
   createTranscriptPane,
   TRANSCRIPT_PANE_PTY_ID,
   waitForTranscriptIdle
-} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+} from './terminal/wait/agent-transcript-pane-test-harness'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn(() => null) },

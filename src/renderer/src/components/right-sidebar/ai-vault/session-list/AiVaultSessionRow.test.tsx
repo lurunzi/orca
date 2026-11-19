@@ -10,7 +10,7 @@ import type { AiVaultSubagentResumeActions } from './AiVaultSessionSubagents'
 
 import { VaultSessionRow } from './AiVaultSessionRow'
 
-import type { AgentDotState } from '@/components/AgentStateDot'
+import type { AgentDotState } from '@/components/agent/status/AgentStateDot'
 
 const transcriptActions = vi.hoisted(() => ({ open: vi.fn(() => true), reveal: vi.fn() }))
 vi.mock('@/lib/cursor-transcript-tab', () => ({ openCursorTranscriptTab: transcriptActions.open }))

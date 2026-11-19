@@ -3,7 +3,7 @@ import type {
   AgentJournalMessageItem
 } from '../../../../shared/agent-session/journal/agent-session-journal-types'
 import type { AgentJournalItemIdentity } from '../../../../shared/agent-session/journal/agent-session-journal-identity'
-import { isKnownHarnessDeliveryTurnText } from '../../../../shared/harness-injected-user-turns'
+import { isKnownHarnessDeliveryTurnText } from '../../../../shared/agent-session/journal/harness-injected-user-turns'
 import type { NativeChatBlock } from '../../../../shared/native-chat/native-chat-types'
 import { journalPayload } from '../../../native-chat/agent-session-journal/item-lifecycle/journal-payload-bounds'
 import { isClaudeInjectedUserMessage } from './claude-internal-message-content'

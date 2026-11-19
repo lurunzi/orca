@@ -6,9 +6,10 @@ import {
   type NativeChatResolvedTarget
 } from '../../../composer/submit/native-chat-composer-target'
 import {
-  sendNativeChatMessageVerified,
+  sendNativeChatMessage,
   typeNativeChatCommand
 } from '../../terminal/send/native-chat-runtime-send'
+import { resolveNativeChatInputLineSend } from '../../../drafts/native-chat-launch-draft-send'
 import {
   cancelNativeChatPtySends,
   waitForNativeChatPtyIdle
@@ -28,9 +29,12 @@ export function useNativeChatSessionOptionCommand(args: {
   disabled: boolean
   onSubmitted?: () => void
   resolveTarget: () => NativeChatResolvedTarget | null
+  /** The user's text on the agent's input line: '' when empty, null when unreadable. */
+  readTerminalDraft?: () => string | null
   readTerminalScreen?: () => string | null
 }): { dispatch: NativeChatSessionOptionDispatchCommand; isDispatching: boolean } {
-  const { agent, disabled, onSubmitted, resolveTarget, readTerminalScreen } = args
+  const { agent, disabled, onSubmitted, readTerminalDraft, resolveTarget, readTerminalScreen } =
+    args
   const mountedRef = useRef(true)
   const activeObserversRef = useRef(new Set<ClaudeModelSwitchConfirmationObserver>())
   const activeSendsRef = useRef(new Set<AbortController>())
@@ -118,7 +122,12 @@ export function useNativeChatSessionOptionCommand(args: {
         const accepted =
           agent === 'codex'
             ? await typeNativeChatCommand(target.ptyId, command, sendController.signal)
-            : await sendNativeChatMessageVerified(target.ptyId, command, sendController.signal)
+            : await sendNativeChatCommandAsMessage(
+                target.ptyId,
+                command,
+                sendController.signal,
+                readTerminalDraft
+              )
         if (!accepted) {
           throw new Error(
             translate(
@@ -144,8 +153,29 @@ export function useNativeChatSessionOptionCommand(args: {
         }
       }
     },
-    [agent, disabled, onSubmitted, resolveTarget, readTerminalScreen]
+    [agent, disabled, onSubmitted, readTerminalDraft, resolveTarget, readTerminalScreen]
   )
 
   return { dispatch, isDispatching }
+}
+
+/** The chat message path, so the command clears unsent terminal text instead of joining it. */
+async function sendNativeChatCommandAsMessage(
+  ptyId: string,
+  command: string,
+  signal: AbortSignal,
+  readTerminalDraft: (() => string | null) | undefined
+): Promise<boolean> {
+  const handle = sendNativeChatMessage(ptyId, command, {
+    ...resolveNativeChatInputLineSend(() => readTerminalDraft?.() ?? null),
+    // Selects the acknowledged writer that chat messages use; the outcome carries the result.
+    onWriteRejected: () => {}
+  })
+  const abort = (): void => handle.cancel()
+  signal.addEventListener('abort', abort, { once: true })
+  try {
+    return (await handle.outcome) === 'submitted'
+  } finally {
+    signal.removeEventListener('abort', abort)
+  }
 }

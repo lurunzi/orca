@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import CommentMarkdown from './CommentMarkdown'
+import CommentMarkdown from '../comment-markdown/CommentMarkdown'
 import { MarkdownPreviewBody } from '@/components/editor/markdown-preview/render-tree/MarkdownPreviewBody'
 
 describe('CommentMarkdown CJK autolinks', () => {

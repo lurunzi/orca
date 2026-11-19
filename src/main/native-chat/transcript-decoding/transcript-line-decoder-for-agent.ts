@@ -2,7 +2,7 @@ import type { AgentType } from '../../../shared/agent-status/contracts/agent-sta
 import type { NativeChatMessage } from '../../../shared/native-chat/native-chat-types'
 import { resolveNativeChatTranscriptAgent } from '../../../shared/native-chat/native-chat-agent-support'
 import { decodeAntigravityTranscriptLine } from './transcript-line-decoders-antigravity'
-import { decodeClaudeTranscriptLine } from './transcript-line-decoders-claude'
+import { decodeClaudeChatTranscriptLine } from './transcript-line-decoders-claude'
 import { decodeCodexTranscriptLine } from './transcript-line-decoders-codex'
 import { decodeCursorTranscriptLine } from './transcript-line-decoders-cursor'
 import { decodeGrokTranscriptLine } from './transcript-line-decoders-grok'
@@ -16,7 +16,7 @@ export function nativeChatLineDecoderForAgent(agent: AgentType): NativeChatLineD
     return decodeAntigravityTranscriptLine
   }
   if (transcriptAgent === 'claude') {
-    return decodeClaudeTranscriptLine
+    return decodeClaudeChatTranscriptLine
   }
   if (transcriptAgent === 'codex') {
     return decodeCodexTranscriptLine

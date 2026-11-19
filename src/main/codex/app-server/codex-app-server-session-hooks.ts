@@ -1,4 +1,4 @@
-import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import type { ProviderChild } from '../../provider-process/provider-child'
 import type { CodexAppServerRpc } from './codex-app-server-session'
 
 export type CodexAppServerSessionRpc = CodexAppServerRpc & {
@@ -38,7 +38,7 @@ export async function initialized(
 /** Inert without hooks; with them the session also ends on exit, since a hook may await other work. */
 export function attach(
   { hooks }: CodexAppServerHookedInvocation,
-  child: ChildProcessWithoutNullStreams,
+  child: ProviderChild,
   lifetime: AbortController,
   request: CodexAppServerRpc['request'],
   exitError: () => Error

@@ -4,7 +4,7 @@
 
 import type { SessionInboxCheckKind } from './session-inbox-check-types'
 import type { SessionInboxCheck } from './session-inbox-types'
-import { isPathInsideOrEqual, normalizeRuntimePathForComparison } from './cross-platform-path'
+import { isPathInsideOrEqual, normalizeRuntimePathForComparison } from './file-access/cross-platform-path'
 
 type CheckIdentity = Pick<SessionInboxCheck, 'folder' | 'name' | 'target'>
 

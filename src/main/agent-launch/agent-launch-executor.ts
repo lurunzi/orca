@@ -3,10 +3,7 @@ import { decideAgentLaunchIntentMode } from './agent-launch-intent-mode'
 /** Structured launches create the workspace without an agent, then ask its host for chat support.
  * The host needs the created workspace to answer; a definitive refusal starts a terminal agent. */
 
-import {
-  transcriptTerminalViewMode,
-  worktreeCreateLaunchInputs
-} from './agent-launch-transcript-chat'
+import * as transcriptChat from './agent-launch-transcript-chat'
 import { assertAgentPromptRequestActive } from '../runtime/terminal/input/agent-prompt-signals'
 import { parsePaneKey } from '../../shared/workspace-layout/stable-pane-id'
 import {
@@ -36,7 +33,11 @@ import {
   warnStructuredLaunchDowngrade
 } from './agent-launch-mode'
 
-import { assertLegacyHostTarget, legacyHostCreateResult } from './agent-launch-legacy-host'
+import {
+  assertLegacyHostTarget,
+  createdWorkspaceReport,
+  legacyHostCreateResult
+} from './agent-launch-legacy-host'
 import {
   AgentLaunchStructuredSessionRefusedError,
   assertTerminalLaunchAdmissible,
@@ -118,7 +119,7 @@ export async function openAgentLaunch(
         },
         worktreeId: placed.worktreeId,
         receipt: preflight,
-        ...(placed.warning ? { warning: placed.warning } : {}),
+        ...createdWorkspaceReport(placed),
         ...promptReceipt(intent, settledAtCreation(intent, placed))
       })
       surfacePublished = true
@@ -189,7 +190,7 @@ export async function openAgentLaunch(
       outcome: created.outcome,
       worktreeId: placed.worktreeId,
       receipt: settled,
-      ...(warning ? { warning } : {}),
+      ...createdWorkspaceReport({ warning, setupTrustMismatch: placed.setupTrustMismatch }),
       ...promptReceipt(intent, settledAtCreation(intent, created))
     })
     surfacePublished = true
@@ -247,7 +248,7 @@ async function resolveWorkspace(
     ...(onWorkspaceCreated ? { onWorkspaceCreated } : {}),
     ...(preflight.mode === 'structured' ? { promisedAgentChat: true } : {}),
     startupAgent: preflight.mode === 'structured' ? undefined : intent.agent,
-    ...worktreeCreateLaunchInputs(execution, preflight.mode),
+    ...transcriptChat.worktreeCreateLaunchInputs(execution, preflight.mode),
     ...(preflight.mode === 'structured' ? {} : terminalLaunchInputs(intent))
   })
   // Without a startup terminal, no command carried the prompt; delivery is still owed.
@@ -309,7 +310,7 @@ async function createTerminalSurface(
     agent: intent.agent,
     ...(startupPrompt ? { startupPrompt } : {}),
     ...terminalLaunchInputs(intent),
-    viewMode: transcriptTerminalViewMode(execution, workspace.connectionId)
+    viewMode: transcriptChat.transcriptTerminalViewMode(execution, workspace.connectionId)
   })
   return {
     outcome: {

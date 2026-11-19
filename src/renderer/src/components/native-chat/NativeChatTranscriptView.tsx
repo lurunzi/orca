@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'

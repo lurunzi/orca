@@ -43,5 +43,7 @@ export const CLI_MAIN_ENTRY_NAMES = [
   'browser/network/tunnels/browser-network-tunnel-proxy-connect',
   'browser/network/tunnels/browser-network-tunnel-proxy-selection',
   'browser/network/tunnels/execution-route-socket-duplex',
-  'network/electron-default-proxy-session'
+  'network/electron-default-proxy-session',
+  // The CLI's own app environment, so main-process hook removers can resolve profile paths.
+  'backend/node-service-environment'
 ] as const

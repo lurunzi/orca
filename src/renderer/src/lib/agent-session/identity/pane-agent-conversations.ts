@@ -3,16 +3,16 @@ import type {
   AgentStatusEntry,
   AgentType
 } from '../../../../../shared/agent-status/contracts/agent-status-types'
-import type { ExecutionHostId } from '../../../../../shared/execution-host'
+import type { ExecutionHostId } from '../../../../../shared/execution-host/execution-host'
 import { parsePaneKey } from '../../../../../shared/workspace-layout/stable-pane-id'
 import { structuredAgentSessionPaneKey } from '../../../../../shared/agent-session/view/structured-agent-session-projection'
-import type { Tab } from '../../../../../shared/tab-types'
+import type { Tab } from '../../../../../shared/workspace-layout/tab-groups/tab-types'
 import { isAiVaultTitleAgent } from '../../../../../shared/ai-vault/contracts/ai-vault-session-title'
 import type { TerminalTab } from '../../../../../shared/workspace-layout/terminal-tab-types'
 import { getExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { structuredAgentSessionOwnerForTab } from '@/runtime/native-chat/session-ownership/structured-agent-session-owner'
 import type { AppState } from '@/store/types'
-import type { AgentPaneConversationIdentity } from '@/store/slices/agent-status/agent-pane-conversation'
+import type { AgentPaneConversationIdentity } from '@/store/slices/agent-status/conversation/agent-pane-conversation'
 import '../../../components/terminal-pane/layout/terminal-layout-leaf-traversal'
 import { collectLayoutLeafIdsInOrder } from '../../../../../shared/workspace-layout/terminal-topology/terminal-pane-tree'
 import { getIndexedRepoMap } from '@/store/repos/repository-catalog-index'
@@ -106,7 +106,9 @@ function registerCandidate<Agent extends AgentType>(
   })
 }
 
-export function structuredAgentSessionTitleTabs(state: AppState): Tab[] {
+export function structuredAgentSessionTitleTabs(
+  state: Pick<AppState, 'unifiedTabsByWorktree'>
+): Tab[] {
   return Object.values(state.unifiedTabsByWorktree ?? {})
     .flat()
     .filter(

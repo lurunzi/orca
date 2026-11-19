@@ -26,7 +26,6 @@ export type NativeChatComposerFieldProps = {
   textareaRef: RefObject<NativeChatComposerInput | null>
   draft: string
   promptSuggestion?: string | null
-  onAcceptPromptSuggestion?: () => void
   disabled: boolean
   hasPty: boolean
   canSend: boolean

@@ -6,7 +6,7 @@ import { useTranslate } from '@/i18n/use-translate'
 import {
   canMoveTabToNewPaneColumnFromState,
   moveTabToNewPaneColumn
-} from '@/components/tab-bar/tab-move-to-pane-column'
+} from '@/components/tab-bar/pane-actions/tab-move-to-pane-column'
 
 type Props = {
   tabId: string

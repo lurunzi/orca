@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import type { AgentSessionJournalIdentity } from '../../shared/agent-session/journal/agent-session-journal-identity'
 import { claudeProviderHandle } from '../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
 import { DashboardAllocationErrorCode } from '../dashboard-accounts/dashboard-allocation-protocol'
-import { claudeStartupSettled } from './structured/claude-structured-startup-settled-test-support'
+import { claudeStartupSettled } from './structured/startup/claude-structured-startup-settled-test-support'
 import { CLAUDE_STRUCTURED_BASE_OPTIONS } from './structured/launch/claude-structured-launch-resolution'
 import {
   realClaudeAvailable,

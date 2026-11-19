@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { waitForPromiseWithSignal } from '../../../../shared/concurrency/abort-signal-reason'
-import { isDefinitiveAbsence } from '../../../../shared/definitive-filesystem-absence'
+import { isDefinitiveAbsence } from '../../../../shared/errors/definitive-filesystem-absence'
 import { resolveHiddenProbeCwd } from '../../../lib/hidden-probe-cwd'
 import { agentSessionPinnedLaunchDirectory } from '../../../runtime/agent-session/records/agent-session-record-launch-directory'
 import { requireLegacyAgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'

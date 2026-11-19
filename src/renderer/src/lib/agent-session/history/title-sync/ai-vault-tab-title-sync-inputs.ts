@@ -5,10 +5,11 @@ import {
 } from '../../../../../../shared/ai-vault/contracts/ai-vault-session-title'
 import { getExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import type { AppState } from '@/store/types'
-import { readRecordChanges } from '@/store/keyed-record-change-reads'
+import { readRecordChanges } from '@/store/record-transitions/keyed-record-change-reads'
 import { collectAiVaultTitleRequests } from './ai-vault-tab-title-requests'
 import { structuredAgentSessionTitleTabs } from '../../identity/pane-agent-conversations'
 import { placedPanesEqual, titleRelevant } from './ai-vault-tab-title-placement-inputs'
+import type { AiVaultTitleRequestInputs } from './ai-vault-tab-title-request-inputs'
 import { worktreeOwnerRowsTokenOf } from '../../../workspace/ownership/worktree-owner-rows-token'
 import {
   selectDetectedWorktreesByRepo,
@@ -65,7 +66,10 @@ function relevantRecordEqual<T extends object>(
   return index === before.length
 }
 
-function agentRecordsEqual(current: AppState, previous: AppState): boolean {
+function agentRecordsEqual(
+  current: AiVaultTitleRequestInputs,
+  previous: AiVaultTitleRequestInputs
+): boolean {
   const statusEqual =
     current.agentStatusByPaneKey.sharesOwner(previous.agentStatusByPaneKey) &&
     current.agentStatusByPaneKey.titleRevision === previous.agentStatusByPaneKey.titleRevision
@@ -103,7 +107,11 @@ function agentRecordsEqual(current: AppState, previous: AppState): boolean {
   )
 }
 
-function terminalTabsEqual(current: AppState, previous: AppState): boolean {
+function terminalTabsEqual(
+  current: AiVaultTitleRequestInputs,
+  previous: AiVaultTitleRequestInputs,
+  includeStoredTitles: boolean
+): boolean {
   const currentKeys = Object.keys(current.tabsByWorktree)
   const previousKeys = Object.keys(previous.tabsByWorktree)
   if (currentKeys.length !== previousKeys.length) {
@@ -122,7 +130,7 @@ function terminalTabsEqual(current: AppState, previous: AppState): boolean {
         left.id !== right.id ||
         left.worktreeId !== right.worktreeId ||
         left.sessionTitleFromHost !== right.sessionTitleFromHost ||
-        !sameAiVaultSessionTitle(left.aiVaultTitle, right.aiVaultTitle)
+        (includeStoredTitles && !sameAiVaultSessionTitle(left.aiVaultTitle, right.aiVaultTitle))
       ) {
         return false
       }
@@ -131,7 +139,10 @@ function terminalTabsEqual(current: AppState, previous: AppState): boolean {
   return true
 }
 
-function activePanesEqual(current: AppState, previous: AppState): boolean {
+function activePanesEqual(
+  current: AiVaultTitleRequestInputs,
+  previous: AiVaultTitleRequestInputs
+): boolean {
   const currentKeys = Object.keys(current.terminalLayoutsByTabId)
   const previousKeys = Object.keys(previous.terminalLayoutsByTabId)
   if (currentKeys.length !== previousKeys.length) {
@@ -214,27 +225,11 @@ export function aiVaultTitleSyncInputsChanged(current: AppState, previous: AppSt
   return changed
 }
 
-function syncInputsChanged(current: AppState, previous: AppState): boolean {
-  if (current.unifiedTabsByWorktree !== previous.unifiedTabsByWorktree) {
-    const currentTabs = structuredAgentSessionTitleTabs(current)
-    const previousTabs = structuredAgentSessionTitleTabs(previous)
-    if (
-      currentTabs.length !== previousTabs.length ||
-      currentTabs.some((tab, index) => {
-        const before = previousTabs[index]
-        return (
-          tab.id !== before.id ||
-          tab.entityId !== before.entityId ||
-          tab.worktreeId !== before.worktreeId ||
-          tab.executionHostId !== before.executionHostId ||
-          tab.agentSessionAgent !== before.agentSessionAgent ||
-          !sameAiVaultSessionTitle(tab.aiVaultTitle, before.aiVaultTitle)
-        )
-      })
-    ) {
-      return true
-    }
-  }
+function requestFactsChanged(
+  current: AiVaultTitleRequestInputs,
+  previous: AiVaultTitleRequestInputs,
+  includeStoredTitles: boolean
+): boolean {
   const agentRecordsChanged =
     current.agentStatusByPaneKey !== previous.agentStatusByPaneKey ||
     current.agentConversationsByPaneKey !== previous.agentConversationsByPaneKey ||
@@ -242,17 +237,26 @@ function syncInputsChanged(current: AppState, previous: AppState): boolean {
   if (agentRecordsChanged && !agentRecordsEqual(current, previous)) {
     return true
   }
-  if (current.tabsByWorktree !== previous.tabsByWorktree && !terminalTabsEqual(current, previous)) {
-    return true
-  }
   if (
-    current.terminalLayoutsByTabId !== previous.terminalLayoutsByTabId &&
-    (!activePanesEqual(current, previous) || !placedPanesEqual(current, previous))
+    current.tabsByWorktree !== previous.tabsByWorktree &&
+    !terminalTabsEqual(current, previous, includeStoredTitles)
   ) {
     return true
   }
+  if (structuredTitleTabsChanged(current, previous, includeStoredTitles)) {
+    return true
+  }
+  return (
+    current.terminalLayoutsByTabId !== previous.terminalLayoutsByTabId &&
+    (!activePanesEqual(current, previous) || !placedPanesEqual(current, previous))
+  )
+}
 
-  const ownerInputsChanged =
+function ownerInputsChanged(
+  current: AiVaultTitleRequestInputs,
+  previous: AiVaultTitleRequestInputs
+): boolean {
+  return (
     current.repos !== previous.repos ||
     worktreeOwnerRowsTokenOf(selectWorktreesByRepo(current)) !==
       worktreeOwnerRowsTokenOf(selectWorktreesByRepo(previous)) ||
@@ -267,5 +271,46 @@ function syncInputsChanged(current: AppState, previous: AppState): boolean {
     current.runtimeEnvironments !== previous.runtimeEnvironments ||
     current.runtimeEnvironmentCatalogHydrated !== previous.runtimeEnvironmentCatalogHydrated ||
     current.removedRuntimeEnvironmentIds !== previous.removedRuntimeEnvironmentIds
-  return ownerInputsChanged && !requestOwnersEqual(current, previous)
+  )
+}
+
+function structuredTitleTabsChanged(
+  current: AiVaultTitleRequestInputs,
+  previous: AiVaultTitleRequestInputs,
+  includeStoredTitles: boolean
+): boolean {
+  if (current.unifiedTabsByWorktree === previous.unifiedTabsByWorktree) {
+    return false
+  }
+  const currentTabs = structuredAgentSessionTitleTabs(current)
+  const previousTabs = structuredAgentSessionTitleTabs(previous)
+  return (
+    currentTabs.length !== previousTabs.length ||
+    currentTabs.some((tab, index) => {
+      const before = previousTabs[index]
+      return (
+        tab.id !== before.id ||
+        tab.entityId !== before.entityId ||
+        tab.worktreeId !== before.worktreeId ||
+        tab.executionHostId !== before.executionHostId ||
+        tab.agentSessionAgent !== before.agentSessionAgent ||
+        (includeStoredTitles && !sameAiVaultSessionTitle(tab.aiVaultTitle, before.aiVaultTitle))
+      )
+    })
+  )
+}
+
+function syncInputsChanged(current: AppState, previous: AppState): boolean {
+  return (
+    requestFactsChanged(current, previous, true) ||
+    (ownerInputsChanged(current, previous) && !requestOwnersEqual(current, previous))
+  )
+}
+
+/** False means collectAiVaultTitleRequests returns the same requests for both states, so a pass can reuse them. */
+export function aiVaultTitleRequestInputsChanged(
+  current: AppState,
+  previous: AiVaultTitleRequestInputs
+): boolean {
+  return requestFactsChanged(current, previous, false) || ownerInputsChanged(current, previous)
 }

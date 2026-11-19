@@ -10,29 +10,27 @@ import {
 } from '../../../native-chat/agent-session-wire/providers/structured-agent-session-provider-naming'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/host/structured-agent-session-registry'
 import { scheduleNativeChatVisualsSweep } from '../../../native-chat/conversation-files/native-chat-visuals-sweep'
-import type { InstalledRuntime } from '../structured-agent-session-runtime-teardown'
+import type { InstalledRuntime } from './structured-agent-session-runtime-teardown'
 import { AgentSessionRecoveryCapsule } from '../records/agent-session-recovery-capsule'
 import type { OpenedAgentSessionRecordStore } from '../records/agent-session-record-store-slot'
-import { installAgentSessionAttachments } from '../structured-agent-session-attachment-wiring'
+import { installAgentSessionAttachments } from './structured-agent-session-attachment-wiring'
 import {
   createStructuredAgentSessionOwnerProbe,
   createStructuredAgentSessionOwnerProbes
-} from '../structured-agent-session-owner-probe'
+} from '../ownership/structured-agent-session-owner-probe'
 import type { StructuredAgentAdapterContext } from './structured-agent-runtime-registration-types'
 import { STRUCTURED_AGENT_RUNTIME_REGISTRATIONS } from './structured-agent-runtime-registrations'
-import { createStructuredAgentSessionLifecycleDelivery } from '../structured-agent-session-lifecycle-delivery'
-import { createStructuredAgentSessionDispatchFollowUps } from '../structured-agent-session-dispatch-followups'
+import { createStructuredAgentSessionLifecycleDelivery } from '../lifecycle/structured-agent-session-lifecycle-delivery'
+import { createStructuredAgentSessionDispatchFollowUps } from '../lifecycle/structured-agent-session-dispatch-followups'
 import type { CatalogOwner } from '../model-catalog/structured-agent-model-catalog-wiring'
 import type { StructuredAgentSessionRuntimeDeps } from './structured-agent-session-runtime-contract'
 import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
-import type { ClaudePromptSuggestionStore } from '../../../claude/claude-prompt-suggestion-store'
-import { observePRWatchCommittedRows } from '../pr-watch-runtime'
+import { observePRWatchCommittedRows } from '../lifecycle/pr-watch-runtime'
 
 export async function installOnJournal(
   deps: StructuredAgentSessionRuntimeDeps,
   { journalDatabase, store }: OpenedAgentSessionRecordStore,
-  catalogOwner: CatalogOwner,
-  claudePromptSuggestionStore?: ClaudePromptSuggestionStore
+  catalogOwner: CatalogOwner
 ): Promise<InstalledRuntime> {
   const envResolvers = catalogOwner.environment
   let host: StructuredAgentSessionHost | null = null
@@ -56,8 +54,7 @@ export async function installOnJournal(
       host: () => host,
       logger: deps.logger
     }),
-    host: () => host,
-    ...(claudePromptSuggestionStore ? { claudePromptSuggestionStore } : {})
+    host: () => host
   }
   const registrations = STRUCTURED_AGENT_RUNTIME_REGISTRATIONS.map(
     ({ definition, createAdapter }) => ({ definition, adapter: createAdapter(context) })

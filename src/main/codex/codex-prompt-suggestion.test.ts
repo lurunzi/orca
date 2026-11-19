@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { CodexAppServerRequestError } from './app-server/codex-app-server-request-error'
 import { CodexAppServerUnsupportedError } from './app-server/codex-app-server-session'
+import type { CodexStructuredLaunch } from './structured/session-lifecycle/codex-structured-session-state'
 import {
   acquireReadyCodexForTest,
-  acquired,
   adapterFor,
   fakeCodex,
   identityFor,
@@ -14,8 +14,32 @@ import {
 const REQUEST = 'thread/prediction/request'
 const UPDATED = 'thread/prediction/updated'
 
+/** Acquires a session whose suggestions land where the host's delivery would read them. */
+async function acquiredWithSuggestions(
+  codex: ReturnType<typeof fakeCodex>,
+  launch: Partial<CodexStructuredLaunch> = {}
+) {
+  let suggestion: string | null = null
+  const sink = {
+    appendItem: vi.fn(),
+    appendTombstone: vi.fn(),
+    publish: vi.fn(),
+    setPromptSuggestion: vi.fn((next: { text: string } | null) => {
+      suggestion = next?.text ?? null
+    })
+  }
+  const adapter = adapterFor(codex, launch)
+  await acquireReadyCodexForTest(adapter, {
+    identity: identityFor('session-1'),
+    fence: 7,
+    spawnToken: 'spawn-9',
+    events: sink
+  })
+  return { adapter, sink, read: () => suggestion }
+}
+
 async function fixture(codex = fakeCodex()) {
-  const adapter = await acquired(codex)
+  const { adapter, read } = await acquiredWithSuggestions(codex)
   const connection = codex.connections[0]
   const notify = (method: string, params: unknown) =>
     connection.handlers.onNotification?.(method, params)
@@ -31,7 +55,7 @@ async function fixture(codex = fakeCodex()) {
     notify,
     turn,
     suggest,
-    read: () => adapter.readPromptSuggestion('session-1')
+    read
   }
 }
 
@@ -110,28 +134,19 @@ describe('Codex prompt suggestions', () => {
 
   it('clears failed predictions without adding a conversation row', async () => {
     const codex = fakeCodex()
-    const adapter = adapterFor(codex)
-    const sink = { appendItem: vi.fn(), appendTombstone: vi.fn(), publish: vi.fn() }
-    await acquireReadyCodexForTest(adapter, {
-      identity: identityFor('session-1'),
-      fence: 7,
-      spawnToken: 'spawn-9',
-      events: sink
-    })
+    const { sink, read } = await acquiredWithSuggestions(codex)
     const notify = codex.connections[0].handlers.onNotification
     notify?.('turn/started', { threadId: THREAD_ID, turn: { id: 'one' } })
     notify?.('turn/completed', { threadId: THREAD_ID, turn: { id: 'one', status: 'completed' } })
     sink.appendItem.mockClear()
-    sink.publish.mockClear()
     notify?.(UPDATED, {
       threadId: THREAD_ID,
       sourceTurnId: 'one',
       result: { type: 'completed', text: 'Add tests' }
     })
-    expect(adapter.readPromptSuggestion('session-1')).toBe('Add tests')
-    expect(sink.publish).toHaveBeenCalledOnce()
+    expect(read()).toBe('Add tests')
     notify?.(UPDATED, { threadId: THREAD_ID, sourceTurnId: 'one', result: { type: 'failed' } })
-    expect(adapter.readPromptSuggestion('session-1')).toBeNull()
+    expect(read()).toBeNull()
     expect(sink.appendItem).not.toHaveBeenCalled()
   })
 
@@ -185,7 +200,7 @@ describe('Codex prompt suggestions', () => {
         thread: { id: THREAD_ID, turns: [{ id: 'saved', status: 'completed', items: [] }] }
       })
     })
-    const adapter = await acquired(codex, { resumeThreadId: THREAD_ID })
+    const { read } = await acquiredWithSuggestions(codex, { resumeThreadId: THREAD_ID })
     expect(codex.connections[0].calls.filter((call) => call.method === REQUEST)).toEqual([
       {
         method: REQUEST,
@@ -197,7 +212,7 @@ describe('Codex prompt suggestions', () => {
       sourceTurnId: 'saved',
       result: { type: 'completed', text: 'Resume work' }
     })
-    expect(adapter.readPromptSuggestion('session-1')).toBe('Resume work')
+    expect(read()).toBe('Resume work')
   })
 
   it('does not resurrect suggestions after the connection is closed', async () => {
@@ -229,7 +244,7 @@ describe('Codex prompt suggestions', () => {
             resolveHistory = resolve
           })
       })
-      const adapter = await acquired(codex, { resumeThreadId: THREAD_ID })
+      const { read } = await acquiredWithSuggestions(codex, { resumeThreadId: THREAD_ID })
       const connection = codex.connections[0]
       expect(connection.calls.filter((call) => call.method === 'thread/turns/list')).toEqual([
         {
@@ -252,7 +267,7 @@ describe('Codex prompt suggestions', () => {
         sourceTurnId: 'saved',
         result: { type: 'completed', text: 'restored' }
       })
-      expect(adapter.readPromptSuggestion('session-1')).toBe(race ? null : 'restored')
+      expect(read()).toBe(race ? null : 'restored')
     }
   )
 })

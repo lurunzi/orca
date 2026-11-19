@@ -8,9 +8,6 @@ import {
   useState
 } from 'react'
 import type { ReactNode } from 'react'
-import { MessageSquarePlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useTranslate } from '@/i18n/use-translate'
 import { useAppStore } from '@/store/index'
 import { structuredChatTabById } from '@/lib/agent-session/tab-identity/structured-chat-tab-index'
 import { useStructuredChatTabConversationName } from '@/runtime/native-chat/naming/structured-conversation-name'
@@ -31,12 +28,15 @@ import type { NativeChatMessage } from '../../../../../shared/native-chat/native
 import type { NativeChatStructuredViewProps } from '@/components/native-chat/native-chat-view-types'
 import type { NativeChatFileLinkContext } from '@/components/native-chat/links/actions/native-chat-file-link-context'
 
-type UsageLimitActions = {
+export type UsageLimitActions = {
   account: ReactNode
   handOff?: () => void
   disabled: boolean
+  /** Hand off is gathering the chat's context. */
+  preparing: boolean
 }
-const UsageLimitActionsContext = createContext<UsageLimitActions | null>(null)
+/** Exported for fixtures and tests; the provider below is the only production writer. */
+export const UsageLimitActionsContext = createContext<UsageLimitActions | null>(null)
 
 export function NativeChatUsageLimitActionsProvider({
   pane,
@@ -81,7 +81,8 @@ export function NativeChatUsageLimitActionsProvider({
       }
     }
   }, [intentKey])
-  const disabled = loading || preparing === intentKey
+  const handOffPreparing = preparing === intentKey
+  const disabled = loading || handOffPreparing
   const chatTab = useAppStore((state) =>
     directory
       ? structuredChatTabById(state.unifiedTabsByWorktree, directory.worktreeId, pane.tabId)
@@ -108,7 +109,7 @@ export function NativeChatUsageLimitActionsProvider({
   if (accountProvider && active && pane.isVisible) {
     if (canSwitchAccount === undefined) {
       account = (
-        <ProviderAccountChatButton provider={accountProvider} target={pane.target} disabled />
+        <ProviderAccountChatButton provider={accountProvider} target={pane.target} disabled busy />
       )
     } else if (canSwitchAccount) {
       const chatAction = {
@@ -203,6 +204,7 @@ export function NativeChatUsageLimitActionsProvider({
     () => ({
       account,
       disabled,
+      preparing: handOffPreparing,
       ...(canHandOff || (loading && isTuiAgent(pane.agent))
         ? {
             handOff: () => {
@@ -211,7 +213,7 @@ export function NativeChatUsageLimitActionsProvider({
           }
         : {})
     }),
-    [account, canHandOff, disabled, loading, openHandOff, pane.agent]
+    [account, canHandOff, disabled, handOffPreparing, loading, openHandOff, pane.agent]
   )
   const stopView = useMemo(
     () => ({
@@ -247,36 +249,7 @@ export function NativeChatUsageLimitActionsProvider({
   )
 }
 
-export function NativeChatUsageLimitActions(): React.JSX.Element | null {
-  const t = useTranslate()
-  const actions = useContext(UsageLimitActionsContext)
-  if (!actions || (!actions.account && !actions.handOff)) {
-    return null
-  }
-  return (
-    <div className="ml-6 flex flex-wrap items-center gap-2 text-chat-foreground-faint">
-      <p className="text-xs">
-        {t(
-          'components.native-chat.usageLimitActions.leadIn',
-          'Continue this chat without waiting:'
-        )}
-      </p>
-      {actions.account ? <div className="w-32 shrink-0 empty:hidden">{actions.account}</div> : null}
-      {actions.handOff ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          disabled={actions.disabled}
-          onClick={actions.handOff}
-        >
-          <MessageSquarePlus />
-          {t(
-            'components.agentSessionContinuation.handOffToAnotherAgent',
-            'Hand Off to Another Agent'
-          )}
-        </Button>
-      ) : null}
-    </div>
-  )
+/** The account switcher and Hand off a usage-limit row offers; null outside a structured chat. */
+export function useNativeChatUsageLimitActions(): UsageLimitActions | null {
+  return useContext(UsageLimitActionsContext)
 }

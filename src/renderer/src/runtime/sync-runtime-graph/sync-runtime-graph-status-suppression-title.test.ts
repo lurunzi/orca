@@ -1,4 +1,4 @@
-import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
 import { expect, it } from 'vitest'
 import { buildMobileSessionTabSnapshots } from './mobile-session-snapshots'
 import { registerRuntimeTerminalTab } from '../hosted-terminals/mounted-surfaces/mounted-terminal-tab-registry'

@@ -17,6 +17,7 @@ import { useTerminalWebViewReadyPromises } from './terminal-webview-ready-promis
 import { createTerminalDocumentWrites } from '../output-flow/terminal-output-ack'
 import { isTerminalGestureInput } from '../pointer-input/terminal-gesture-input'
 import { useTerminalPromptSuggestionReads } from './terminal-prompt-suggestion-reads'
+import { DEFAULT_TERMINAL_FONT_STYLE } from '../preferences/terminal-font-style'
 
 // Share readiness, queues, coalescing and imperative handles across hosts; only document command/notify transport differs.
 
@@ -36,6 +37,7 @@ export function useTerminalWebViewController(
     terminalTheme,
     interactionActive = true,
     textScale = 1,
+    fontStyle = DEFAULT_TERMINAL_FONT_STYLE,
     onWebReady,
     onEngineError,
     onSelectionMode,
@@ -101,16 +103,9 @@ export function useTerminalWebViewController(
     [coalesce, postMessage]
   )
 
-  useEffect(() => {
-    return () => {
-      writeCoalescer.clear()
-    }
-  }, [writeCoalescer])
-  const { suggestionReads, readPromptSuggestion } = useTerminalPromptSuggestionReads(
-    isWebReadyRef,
-    writeCoalescer,
-    sendToDocument
-  )
+  useEffect(() => () => writeCoalescer.clear(), [writeCoalescer])
+  const prompt = useTerminalPromptSuggestionReads(isWebReadyRef, writeCoalescer, sendToDocument)
+  const { suggestionReads, readPromptSuggestion } = prompt
 
   const confirmWebReady = useCallback(
     (notifyParent: boolean) => {
@@ -231,9 +226,11 @@ export function useTerminalWebViewController(
     postMessage({ type: 'set-theme', terminalTheme })
   }, [postMessage, terminalThemeKey, terminalTheme])
 
+  // The document ignores a repeat of what it already shows, so one effect can resend both.
   useEffect(() => {
     postMessage({ type: 'set-font-scale', fontScale: textScale })
-  }, [postMessage, textScale])
+    postMessage({ type: 'set-font-style', fontStyle })
+  }, [postMessage, textScale, fontStyle.font, fontStyle.lineHeight, fontStyle.weight])
 
   const handle = useMemo<TerminalWebViewHandle>(
     () => ({
@@ -266,6 +263,7 @@ export function useTerminalWebViewController(
           kittyKeyboardFlags: parseTerminalKittyKeyboardFlags(kittyFlags),
           terminalTheme,
           fontScale: textScale,
+          fontStyle,
           preserveScroll,
           frame
         })
@@ -285,6 +283,7 @@ export function useTerminalWebViewController(
         postMessage({ type: 'clear' })
       },
       fitDimensions,
+      measuredCellBox: () => cellBoxRef.current,
       scrollToBottom() {
         writeCoalescer.flushNow()
         postMessage({ type: 'scroll-to-bottom' })
@@ -311,6 +310,7 @@ export function useTerminalWebViewController(
       suggestionReads,
       terminalTheme,
       textScale,
+      fontStyle,
       writeCoalescer
     ]
   )

@@ -6,6 +6,7 @@ import {
   type AcpSessionEvent
 } from '../protocol/acp-session-events'
 import { AcpContextTimeline } from './acp-context-usage'
+import { AcpThreadGoalTimeline } from './acp-thread-goal-timeline'
 import { AcpBackgroundTaskTimeline } from './acp-background-task-timeline'
 import {
   GENERIC_ACP_DIALECT,
@@ -51,6 +52,7 @@ export class AcpTimelineTranslator {
   readonly failures: AcpTurnFailures
   private loading = false
   private readonly context = new AcpContextTimeline()
+  private readonly threadGoal = new AcpThreadGoalTimeline()
   protected activeTurn?: string
 
   constructor(private readonly options: AcpTimelineTranslatorOptions) {
@@ -215,10 +217,7 @@ export class AcpTimelineTranslator {
       events.push(...this.start(turn, extension?.at ?? at, operation))
     }
     this.ownership.messages.observe(owner.turn, update)
-    const join = {
-      thread: this.options.sessionId,
-      ...(turn === undefined ? {} : { turn })
-    }
+    const join = { thread: this.options.sessionId, ...(turn === undefined ? {} : { turn }) }
     if (extension?.backgroundTasks) {
       const tasks = extension.backgroundTasks.filter((task) => !this.subagents.has(task.taskId))
       events.push(...this.backgroundTasks.translate(tasks, join))
@@ -229,10 +228,14 @@ export class AcpTimelineTranslator {
     if (extension?.usage) {
       events.push(...this.context.update(extension.usage, join))
     }
+    events.push(...this.threadGoal.update(extension?.threadGoal, join, at))
     if (settledCommand || this.prompts.absorbCompaction(owner.turn, extension, update)) {
       return events
     }
     events.push(...this.failures.notification(turn, extension))
+    if (extension?.disposition === 'map' && extension.failure && standard) {
+      return events
+    }
     const end = extension?.end
     if (end && turn) {
       // Hook refusal ends immediately; normal completion waits for the prompt reply.
@@ -259,6 +262,7 @@ export class AcpTimelineTranslator {
           dialect: this.dialect,
           backgroundTasks: this.backgroundTasks,
           subagents: this.subagents,
+          failures: this.failures,
           messageKey
         })
       ]

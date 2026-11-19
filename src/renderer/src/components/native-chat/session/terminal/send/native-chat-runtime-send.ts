@@ -5,6 +5,7 @@ import {
   waitForNativeChatPtyIdle
 } from './native-chat-pty-send-queue'
 import { sendNativeChatObservedWrites } from './native-chat-observed-send'
+import { afterNativeChatPasteLands, readNativeChatInputLine } from './native-chat-paste-landed'
 import { sendRuntimePtyInput } from '@/runtime/hosted-terminals/input/runtime-terminal-input-send'
 import { sendRuntimePtyInputVerified } from '@/runtime/hosted-terminals/input/runtime-terminal-verified-input'
 import type { AskAnswerKeyGroup } from '../../../../../../../shared/native-chat/input/questions/native-chat-ask-answer'
@@ -62,7 +63,11 @@ export function sendNativeChatMessage(
       ptyId,
       [
         { data: buildNativeChatPasteBytes(text), delayBeforeMs: 0 },
-        { data: NATIVE_CHAT_SUBMIT, delayBeforeMs: nativeChatSubmitDelayMs(options) }
+        {
+          data: NATIVE_CHAT_SUBMIT,
+          delayBeforeMs: nativeChatSubmitDelayMs(options),
+          afterPasteOf: text
+        }
       ],
       options
     )
@@ -87,11 +92,20 @@ export function sendNativeChatMessage(
             return
           }
           markWriteStarted()
+          const lineWasEmpty = readNativeChatInputLine(options?.readInputLine) === ''
           sendRuntimePtyInput(ptyId, buildNativeChatPasteBytes(text), 'driving')
           // Measure the Enter delay from the actual body write so renderer stalls cannot collapse the gap.
-          delay(nativeChatSubmitDelayMs(options), () => writeNativeChatSubmit(ptyId, options, ctx))
+          delay(nativeChatSubmitDelayMs(options), () =>
+            afterNativeChatPasteLands({
+              readInputLine: options?.readInputLine,
+              lineWasEmpty,
+              text,
+              delay,
+              submit: () => writeNativeChatSubmit(ptyId, options, ctx)
+            })
+          )
         },
-        markSubmitted,
+        () => markSubmitted('not-submitted'),
         () => {
           lineTouched = true
         }
@@ -106,51 +120,6 @@ export function sendNativeChatMessage(
       }
     }
   )
-}
-
-function waitForNativeChatSubmit(signal?: AbortSignal): Promise<boolean> {
-  if (signal?.aborted) {
-    return Promise.resolve(false)
-  }
-  return new Promise((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const finish = (completed: boolean): void => {
-      if (timer === null) {
-        return
-      }
-      clearTimeout(timer)
-      timer = null
-      signal?.removeEventListener('abort', onAbort)
-      resolve(completed)
-    }
-    const onAbort = (): void => finish(false)
-    timer = setTimeout(() => finish(true), NATIVE_CHAT_SUBMIT_DELAY_MS)
-    signal?.addEventListener('abort', onAbort, { once: true })
-  })
-}
-
-/** Cancel and await chat sends before verified commands; delayed Enter or pre-clear could disrupt model confirmation. */
-export async function sendNativeChatMessageVerified(
-  ptyId: string,
-  text: string,
-  signal?: AbortSignal
-): Promise<boolean> {
-  cancelNativeChatPtySends(ptyId)
-  await waitForNativeChatPtyIdle(ptyId)
-  if (signal?.aborted) {
-    return false
-  }
-
-  // Await remote/SSH body acceptance so Enter cannot race it while model-change observers are armed.
-  const bodyAccepted = await sendRuntimePtyInputVerified(
-    ptyId,
-    buildNativeChatPasteBytes(text),
-    'driving'
-  )
-  if (!bodyAccepted || signal?.aborted || !(await waitForNativeChatSubmit(signal))) {
-    return false
-  }
-  return sendRuntimePtyInputVerified(ptyId, NATIVE_CHAT_SUBMIT, 'driving')
 }
 
 export async function typeNativeChatCommand(
@@ -173,7 +142,7 @@ export function sendNativeChatTypedCommand(
   ptyId: string,
   command: string,
   /** A seeded draft's clear, confirmed like a message send's; the command's own Ctrl+U reaches one line. */
-  options?: Pick<NativeChatSendOptions, 'clearInput' | 'confirmCleared'>
+  options?: Pick<NativeChatSendOptions, 'clearInput' | 'readInputLine'>
 ): NativeChatSendHandle {
   const controller = new AbortController()
   return enqueueNativeChatPtySend(
@@ -184,7 +153,13 @@ export function sendNativeChatTypedCommand(
         if (!isCancelled() && outcome !== 'accepted') {
           clearUnsubmittedAgentInput(ptyId)
         }
-        markSubmitted()
+        markSubmitted(
+          outcome === 'accepted'
+            ? 'submitted'
+            : outcome === 'unknown'
+              ? 'uncertain'
+              : 'not-submitted'
+        )
       }
       const typeCommand = (): void => {
         void typeAgentTuiCommand({
@@ -201,7 +176,7 @@ export function sendNativeChatTypedCommand(
         }).then(finish, () => finish('rejected'))
       }
       if (options?.clearInput !== undefined && options.clearInput !== '') {
-        clearThenWrite(ptyId, options, delay, typeCommand, markSubmitted)
+        clearThenWrite(ptyId, options, delay, typeCommand, () => markSubmitted('not-submitted'))
       } else {
         typeCommand()
       }

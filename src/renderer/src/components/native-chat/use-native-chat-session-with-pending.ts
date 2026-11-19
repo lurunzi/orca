@@ -7,7 +7,7 @@ import {
 import {
   deriveNativeChatStreamingText,
   nativeChatStreamingMessage
-} from '../../../../shared/native-chat/native-chat-streaming'
+} from '../../../../shared/native-chat/transcript/streaming/native-chat-streaming'
 import {
   commandMarkersAsMessages,
   type NativeChatCommandMarker

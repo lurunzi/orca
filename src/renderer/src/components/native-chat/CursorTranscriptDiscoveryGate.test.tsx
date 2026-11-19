@@ -6,8 +6,8 @@ import type {
   AiVaultListResult,
   AiVaultSession
 } from '../../../../shared/ai-vault/contracts/ai-vault-types'
-import type { ExecutionHostId } from '../../../../shared/execution-host'
-import type { Tab } from '../../../../shared/tab-types'
+import type { ExecutionHostId } from '../../../../shared/execution-host/execution-host'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type * as TranscriptTabModule from '@/lib/cursor-transcript-tab'
 
 const mocks = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn(() => true), reconcile: vi.fn() }))

@@ -4,7 +4,7 @@
 
 import type { SessionInboxCheckTarget } from './session-inbox-check-types'
 import { REDIRECT } from './session-inbox-shell-segments'
-import { normalizeRuntimePathForComparison } from './cross-platform-path'
+import { normalizeRuntimePathForComparison } from './file-access/cross-platform-path'
 
 /** Flags that change how a run reports or how fast it goes, not what it runs. */
 const OUTPUT_FLAGS = new Set([

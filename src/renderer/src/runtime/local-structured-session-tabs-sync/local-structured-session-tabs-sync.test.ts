@@ -1,16 +1,16 @@
 // @vitest-environment happy-dom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import '../../../../shared/constants'
+import '../../../../shared/orca-profiles/constants'
 import type { RuntimeMobileSessionTabsResult } from '../../../../shared/remote-runtime/session-graph/runtime-session-contracts'
-import type { Tab } from '../../../../shared/tab-types'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 
 import { applyLocalStructuredSessionTabSnapshots } from './snapshot-apply'
 import { resetLocalStructuredSessionVersionForTests } from './inventory-generation-fence'
 import './subscription'
-import { resetWebSessionTabsSnapshotFreshnessForTests } from '../web-session-tabs-sync/tracking-lifecycle'
+import { resetWebSessionTabsSnapshotFreshnessForTests } from '../web-session-tabs-sync/tracking/tracking-lifecycle'
 import type { WebSessionTabsSyncState } from '../web-session-tabs-sync/state'
-import { acceptedAgentStatuses } from '@/store/slices/agent-status/accepted-agent-statuses'
+import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
 import { resetWebSessionFocusIntentForTests } from '../web-session-tabs-sync/navigation/web-session-focus-intent'
 
 const mocks = vi.hoisted(() => ({ recheckUnconfirmedLaunches: vi.fn() }))

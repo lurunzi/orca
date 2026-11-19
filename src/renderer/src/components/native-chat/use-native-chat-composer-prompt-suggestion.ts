@@ -5,7 +5,7 @@ import type { NativeChatStructuredComposerTransport } from './composer/submit/na
 import { useNativeChatPromptSuggestion } from './use-native-chat-prompt-suggestion'
 import { useNativeChatTypedInsertion } from './composer/editor/use-native-chat-typed-insertion'
 
-/** The composer's ghost-text next prompt: Claude from the host or its terminal, Codex from the host. */
+/** Fork: a terminal Claude's ghost-text next prompt, read off its screen; structured chats get theirs from the host. */
 export function useNativeChatComposerPromptSuggestion(args: {
   agent: AgentType
   structuredTransport: NativeChatStructuredComposerTransport | undefined
@@ -34,11 +34,8 @@ export function useNativeChatComposerPromptSuggestion(args: {
   return useNativeChatPromptSuggestion({
     scopeKey: structuredTransport?.sessionId ?? args.targetPtyId ?? args.paneKey,
     enabled:
-      (agent === 'claude' || (agent === 'codex' && structuredTransport !== undefined)) &&
-      !args.blocked &&
-      !args.hasImages,
+      agent === 'claude' && structuredTransport === undefined && !args.blocked && !args.hasImages,
     draft: args.draft,
-    suggestion: structuredTransport?.promptSuggestion,
     readTerminalSuggestion: structuredTransport ? undefined : args.readTerminalPromptSuggestion,
     inputRef: editor.textareaRef,
     insertTypedText

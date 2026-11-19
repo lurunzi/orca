@@ -4,7 +4,7 @@ import { useTranslate } from '@/i18n/use-translate'
 import { openCursorTranscriptTab } from '@/lib/cursor-transcript-tab'
 import { activateAndRevealWorktree } from '@/lib/workspace/activation/worktree-activation'
 import type { AiVaultSession } from '../../../../shared/ai-vault/contracts/ai-vault-types'
-import { parseExecutionHostId } from '../../../../shared/execution-host'
+import { parseExecutionHostId } from '../../../../shared/execution-host/execution-host'
 
 /** The workspace a Cursor session's read-only transcript tab opens in; SSH transcripts stay remote. */
 export function cursorTranscriptWorktreeId(

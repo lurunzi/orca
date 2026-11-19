@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { motionSafeScrollBehavior } from '@/hooks/usePrefersReducedMotion'
-import { bindTabStripContentResizeObservers } from './tab-strip-content-resize-observers'
+import { motionSafeScrollBehavior } from '@/hooks/theme/usePrefersReducedMotion'
+import { bindTabStripContentResizeObservers } from './strip/tab-strip-content-resize-observers'
 import {
   EMPTY_TAB_STRIP_OVERFLOW_STATE,
   computeTabStripOverflowState,
   sameTabStripOverflowState,
   scrollStripSidewaysOnWheel
-} from './tab-strip-scroll-metrics'
+} from './strip/tab-strip-scroll-metrics'
 
 /** Horizontal scrolling for the create row's icons once they outgrow the menu width. */
 export function useCreateRowScroller() {

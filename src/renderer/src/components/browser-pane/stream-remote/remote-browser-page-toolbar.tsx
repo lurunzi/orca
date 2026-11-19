@@ -26,6 +26,7 @@ export function RemoteBrowserPageToolbar({
   markup,
   frameUrl,
   isActive,
+  history,
   onBack,
   onForward,
   onReload
@@ -45,6 +46,7 @@ export function RemoteBrowserPageToolbar({
   markup: MarkupModeController
   frameUrl: string | null
   isActive: boolean
+  history: { canGoBack: boolean; canGoForward: boolean }
   onBack: () => void
   onForward: () => void
   onReload: () => void
@@ -53,9 +55,8 @@ export function RemoteBrowserPageToolbar({
   return (
     <BrowserNavigationControlRow
       controls={{
-        // Hosts report no history depth; keep arrows enabled and let dead-end RPCs no-op.
-        canGoBack: true,
-        canGoForward: true,
+        canGoBack: history.canGoBack,
+        canGoForward: history.canGoForward,
         goBack: onBack,
         goForward: onForward,
         reload: onReload,
@@ -86,13 +87,12 @@ export function RemoteBrowserPageToolbar({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
+              size="icon-xs"
+              variant="muted-field-icon"
               aria-label={t('auto.components.browser.pane.BrowserPane.0e080d820e', 'Reload')}
               onClick={onReload}
             >
-              <RefreshCw className="size-4" />
+              <RefreshCw className="size-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={4}>
@@ -111,14 +111,13 @@ export function RemoteBrowserPageToolbar({
           'Browser annotations are only available in local browser tabs.'
         )}
       >
-        <MessageSquarePlus className="size-4" />
+        <MessageSquarePlus className="size-3.5" />
       </LocalTabOnlyButton>
       <MarkupDrawButton
         onClick={() => (markup.isActive ? markup.cancel() : void markup.start())}
         disabled={!frameUrl}
         active={markup.isActive}
         surfaceActive={isActive}
-        className="h-7 w-7"
       />
       <LocalTabOnlyButton
         reason={t(
@@ -126,7 +125,7 @@ export function RemoteBrowserPageToolbar({
           'DevTools are only available in local browser tabs.'
         )}
       >
-        <SquareCode className="size-4" />
+        <SquareCode className="size-3.5" />
       </LocalTabOnlyButton>
     </BrowserNavigationControlRow>
   )
@@ -146,9 +145,8 @@ function LocalTabOnlyButton({
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7"
+          size="icon-xs"
+          variant="muted-field-icon"
           aria-disabled="true"
           aria-label={name ?? reason}
           onClick={(event) => {

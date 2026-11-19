@@ -9,14 +9,15 @@ import { acpStructuredAgentDefinition } from '../../../acp/session/acp-structure
 import {
   acpHostBackendSpec,
   resolveAcpLaunchCommand,
-  selectAcpHostAccountHome
+  selectAcpHostAccountHome,
+  selectAcpHostAccountHomeForCatalog
 } from '../../../acp/launch/acp-launch-command'
 import { acpLaunchRunsPermissionMode } from '../../../acp/launch/acp-launch-permission-modes'
 import { CODEX_STRUCTURED_AGENT } from '../../../codex/structured/launch/codex-structured-agent-definition'
 import { CLAUDE_STRUCTURED_AGENT } from '../../../claude/structured/claude-structured-agent-definition'
 import { CLAUDE_CLI_CONVERSATIONS } from '../../../claude/claude-cli-conversations'
 import { CODEX_CLI_CONVERSATIONS } from '../../../codex/history/journal-views/codex-cli-conversations'
-import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host'
+import { isNativeLocalLocation as supportsCodexStructuredLocation } from '../../../../shared/execution-host/execution-host'
 import { supportsClaudeStructuredLocation } from '../../../claude/structured/launch/claude-structured-location-support'
 import { supportsAcpStructuredLocation } from '../../../acp/session/acp-structured-location-support'
 import { PI_RPC_RUNTIME_METADATA } from '../../../pi/rpc-runtime-metadata'
@@ -96,12 +97,13 @@ function acpMetadata(spec: AcpLaunchSpec): StructuredAgentRuntimeMetadata {
               })
               return { ...invocation, env }
             },
-            minimumVersions
+            minimumVersions,
+            ...(spec.versionArgs ? { versionArgs: spec.versionArgs } : {})
           }
         }
       : {}),
-    // New chats prefer a compatible host program, which their account home then pins; reads such
-    // as Orca's own sign-in keep the agent's account.
+    // New chats and their model catalog prefer a compatible host program, which a chat's account
+    // home then pins; reads such as Orca's own sign-in keep the agent's account.
     resolveAccountHome: async (
       { launchEnv, purpose, permissionMode },
       { stateDirectory, hostLaunchEnvironment, hostSettings }
@@ -109,7 +111,7 @@ function acpMetadata(spec: AcpLaunchSpec): StructuredAgentRuntimeMetadata {
       // A host program without the chat's permission mode never takes it; `own` sets none.
       const host =
         spec.hostBackend &&
-        purpose === 'launch' &&
+        (purpose === 'launch' || purpose === 'catalog') &&
         (permissionMode === undefined ||
           permissionMode === 'own' ||
           acpLaunchRunsPermissionMode(
@@ -117,7 +119,11 @@ function acpMetadata(spec: AcpLaunchSpec): StructuredAgentRuntimeMetadata {
             permissionMode
           ))
           ? await hostLaunchEnvironment(spec.agent)
-              .then((env) => selectAcpHostAccountHome(spec, env, stateDirectory, hostSettings()))
+              .then((env) =>
+                (purpose === 'catalog'
+                  ? selectAcpHostAccountHomeForCatalog
+                  : selectAcpHostAccountHome)(spec, env, stateDirectory, hostSettings())
+              )
               .catch(() => null)
           : null
       return host ?? spec.account.resolve({ launchEnv, stateDirectory })
@@ -196,7 +202,7 @@ export const STRUCTURED_AGENT_RUNTIME_CATALOG: readonly StructuredAgentRuntimeCa
           await resolveStructuredClaudeAccountHomePath({
             launchEnv,
             wslDistro: location?.wslDistro ?? null,
-            ...(purpose !== 'read' ? { purpose: 'identity' } : {}),
+            ...(purpose === 'launch' || purpose === 'identity' ? { purpose: 'identity' } : {}),
             getClaudeConfigDirectory: services.getClaudeConfigDirectory
           })
         )

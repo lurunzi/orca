@@ -4,15 +4,15 @@ import { act, Suspense, use } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearClientHostedBrowserRowSelection } from '@/runtime/browser/client-hosting/client-hosted-browser-row-state'
-import { getTabDragLabel, type TabBarItem } from './tab-bar-item-model'
-import type { WorkspaceVisibleTabType } from '../../../../shared/tab-types'
+import { getTabDragLabel, type TabBarItem } from './model/tab-bar-item-model'
+import type { WorkspaceVisibleTabType } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 import type { AgentType } from '../../../../shared/agent-status/contracts/agent-status-types'
 import {
   renderTabBarItems,
   type TabBarItemSurfaceProps,
   type TabBarItemSurfaceRuntime
-} from './tab-bar-item-surface'
-import { useTabBarItemActions } from './use-tab-bar-item-actions'
+} from './model/tab-bar-item-surface'
+import { useTabBarItemActions } from './model/use-tab-bar-item-actions'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 

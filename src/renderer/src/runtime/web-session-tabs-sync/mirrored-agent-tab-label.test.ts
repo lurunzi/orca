@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RuntimeMobileSessionTabsResult } from '../../../../shared/remote-runtime/session-graph/runtime-session-contracts'
-import type { Tab } from '../../../../shared/tab-types'
-import { buildMirroredAgentTabs } from './terminal-surfaces'
+import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
+import { buildMirroredAgentTabs } from './tab-projection/terminal-surfaces'
 
 const WORKTREE = 'repo-1::worktree-1'
 const GROUP = 'group-1'

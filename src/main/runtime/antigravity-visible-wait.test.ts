@@ -5,7 +5,7 @@ import { HeadlessEmulator } from '../daemon/emulation/headless-emulator'
 import {
   createTranscriptPane,
   TRANSCRIPT_PANE_PTY_ID
-} from './orca-runtime-tests/agent-transcript-pane-test-harness'
+} from './terminal/wait/agent-transcript-pane-test-harness'
 import { projectTerminalVisibleLines } from './terminal/view/orca-runtime-terminal-projection'
 
 vi.mock('electron', () => ({

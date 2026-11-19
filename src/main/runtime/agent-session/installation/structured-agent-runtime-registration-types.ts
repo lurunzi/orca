@@ -3,7 +3,7 @@ import type {
   AgentSessionRecord
 } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import type { AgentSessionAccountHome } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-account-home'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
 import type { applyStructuredCodexWorkspaceTrust } from '../../../agent-launch/trust/agent-workspace-trust-spawn'
 import type { StructuredAgentCliConversations } from '../../../native-chat/conversation-adoption/structured-agent-cli-conversations'
 import type {
@@ -17,8 +17,7 @@ import type { StructuredAgentSessionHost } from '../../../native-chat/agent-sess
 import type { JournalSqlDatabase } from '../../../native-chat/agent-session-journal/database/journal-sql-database'
 import type { AgentModelCatalogDiscovery } from '../../../native-chat/agent-model-catalog/agent-model-catalog-discovery'
 import type { AgentSessionRecordStore } from '../records/agent-session-record-store'
-import type { ClaudePromptSuggestionStore } from '../../../claude/claude-prompt-suggestion-store'
-import type { createStructuredAgentSessionDispatchFollowUps } from '../structured-agent-session-dispatch-followups'
+import type { createStructuredAgentSessionDispatchFollowUps } from '../lifecycle/structured-agent-session-dispatch-followups'
 import type { StructuredAgentSessionRuntimeDeps } from './structured-agent-session-runtime-contract'
 import type { createStructuredAgentEnvironmentResolvers } from '../environment/structured-agent-shell-environment'
 import type {
@@ -31,8 +30,6 @@ export type StructuredAgentAdapterContext = {
   deps: StructuredAgentSessionRuntimeDeps
   store: AgentSessionRecordStore
   journalDatabase: JournalSqlDatabase
-  /** Loaded with the journal so Claude chats replay their last prompt suggestion after a restart. */
-  claudePromptSuggestionStore?: ClaudePromptSuggestionStore
   environment: ReturnType<typeof createStructuredAgentEnvironmentResolvers>
   /** Hands the host an exit or other lifecycle event the agent observed. */
   deliverLifecycle: (event: StructuredAgentSessionLifecycleEvent) => void
@@ -53,8 +50,9 @@ export type StructuredAgentAccountHomeRequest = {
   /** Where the chat runs; null for a read with no workspace (the model catalog). */
   location: AgentSessionExecutionLocation | null
   /** A `read` has no side effects: it syncs no home, starts no bridge, clears no selection.
-   *  `identity` is a read that names the selected account before its folder exists. */
-  purpose: 'launch' | 'read' | 'identity'
+   *  `identity` is a read that names the selected account before its folder exists. `catalog`
+   *  is a read of the account a new chat would launch on, so its models match that chat's. */
+  purpose: 'launch' | 'read' | 'identity' | 'catalog'
   /** The launch's workspace directory on this host; a read has none. */
   workspacePath: (() => Promise<string>) | null
   /** The permission mode a new chat starts in, when it names one. */
@@ -111,6 +109,8 @@ export type StructuredAgentLaunchCheck = {
   ) => { command: string; prefixArgs: string[]; env: Record<string, string> }
   /** The ascending releases that binary's `--version` must reach; see `agentCliMinimumVersion`. */
   minimumVersions: readonly string[]
+  /** Arguments before `--version`. */
+  versionArgs?: readonly string[]
 }
 
 export type StructuredAgentChatProgram = {

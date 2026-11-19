@@ -14,7 +14,8 @@ function row(overrides: Partial<NativeChatTurnFoldRow> = {}): NativeChatTurnFold
     outlivesTurn: false,
     reportsFailure: false,
     explainsTurn: false,
-    sendsBack: false,
+    endsAnswer: false,
+    replyEnd: undefined,
     failedHook: false,
     ...overrides
   }

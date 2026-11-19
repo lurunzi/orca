@@ -7,7 +7,7 @@ import {
   writeCredentialFileAtomic,
   writeEncryptedCredential
 } from '../credentials/integration-credential-file'
-import type { BitbucketAuthMode } from '../../shared/bitbucket-credentials'
+import type { BitbucketAuthMode } from '../../shared/bitbucket/bitbucket-credentials'
 import { readCredentialFileProtection } from '../credentials/credential-file-protection'
 import type { SecretAtRestProtection } from '../../shared/secure-storage/secret-at-rest-protection'
 import { orcaHomeDir } from '../../shared/product-identity-home'
