@@ -94,7 +94,7 @@ describe('discoverCommitMessageModelsLocal on the Windows direct-child path', ()
 
   it('keeps the Antigravity CLI from starting its detached updater, which flashes a console', async () => {
     const child = createMockDiscoveryChild()
-    spawnMock.mockReturnValueOnce(child as never)
+    spawnMock.mockReturnValueOnce(child)
 
     const listing = discoverCommitMessageModelsLocal('antigravity', {})
     await vi.waitFor(() => expect(spawnMock).toHaveBeenCalledTimes(1))
