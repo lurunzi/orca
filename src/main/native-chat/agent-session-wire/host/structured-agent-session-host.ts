@@ -65,7 +65,7 @@ export class StructuredAgentSessionHost {
     // Collaborators share a logger wrapper that cannot fail the operation it reports.
     this.deps = deps = sessionLogger.withNeverThrowingLogger(deps)
     this.clientDelivery.watchAtRestCommands(deps.adapter)
-    createCollaborators(this.core, this, (part) => Object.assign(this, part))
+    Object.assign(this, createCollaborators(this.core, this))
     this.continuationContext = contextReader(deps, this.lifetime.conversation)
     this.usageLimitContinue = usageLimit.start(this.mutationContext(), this, this.clientDelivery)
     this.runtimeState.startLeaseRenewal()

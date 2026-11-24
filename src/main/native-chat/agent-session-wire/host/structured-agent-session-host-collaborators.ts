@@ -117,12 +117,11 @@ export function createStructuredAgentSessionHostPublication(core: Core) {
   return { sessions, queued, clientDelivery, subscribers: clientDelivery.subscribers }
 }
 
-/** Build collaborators in the host's original order, publishing each to the host as soon as it exists. */
+/** Build the collaborators before starting lease renewal and the idle sweep. */
 export function createStructuredAgentSessionHostCollaborators(
   core: Core,
-  host: Parameters<typeof structuredAgentSessionRestartResumeSurfaces>[0],
-  publish: (part: Partial<StructuredAgentSessionCollaborators>) => void
-): void {
+  host: Parameters<typeof structuredAgentSessionRestartResumeSurfaces>[0]
+): StructuredAgentSessionCollaborators {
   const { deps, sessions, clientDelivery, tasks, serialize, now } = core()
   // Callbacks below read these after construction, exactly as the host fields were read.
   let lifetime!: HostTypes.StructuredAgentSessionConversationLifetime
@@ -135,14 +134,12 @@ export function createStructuredAgentSessionHostCollaborators(
     clientDelivery.readChildWork,
     clientDelivery.childWorkIncomplete
   )
-  publish({ backgroundTasks })
   const runtimeState = new StructuredAgentSessionHostRuntimeState(
     deps,
     sessions,
     (id, e) => eventRecovery.recoverAfterSinkFailure(id, e),
     (expired) => lifetime.expireStartup(expired)
   )
-  publish({ runtimeState })
   const conversationDelivery = conversation.createStructuredAgentSessionConversationDelivery({
     deps,
     acquireAborts: runtimeState.acquireAborts,
@@ -160,9 +157,7 @@ export function createStructuredAgentSessionHostCollaborators(
     stopPermissionTransitionChild: (id) => lifetime.stopAgent(id, { cause: 'evict' }),
     clientDelivery
   })
-  publish({ conversationDelivery })
   const startup = createStartupRecovery(deps, runtimeState.reconcileLeases, runtimeState)
-  publish({ startup })
   eventRecovery = new StructuredAgentSessionEventRecovery({
     deps,
     store: deps.store,
@@ -177,16 +172,15 @@ export function createStructuredAgentSessionHostCollaborators(
     failStartingChild: (...args) => lifetime.failStartingChild(...args),
     trackOpen: (open) => tasks.trackAttach(open)
   })
-  publish({ eventRecovery })
   const restartResume = resume.createStructuredAgentSessionRestartResume(deps, sessions, {
     ...structuredAgentSessionRestartResumeSurfaces(host, now),
     readChildWork: clientDelivery.readChildWork,
     childWorkOpen: clientDelivery.childWorkOpen,
     publishStatus: clientDelivery.publishStatusAndSettlement
   })
-  publish({ restartResume })
   lifetime = lifetimeWiring.createStructuredAgentSessionConversationLifetime({
-    context: () => hostLifetimeContext(core()),
+    context: () =>
+      hostLifetimeContext({ ...core(), runtimeState, conversationDelivery, eventRecovery }),
     sessions,
     serialize: (sessionId, task) => serialize(sessionId, task),
     open: (sessionId) => conversationDelivery.open(sessionId),
@@ -196,5 +190,13 @@ export function createStructuredAgentSessionHostCollaborators(
     closeStatus: (sessionId, options) => clientDelivery.closeSession(sessionId, options),
     childWorkOpen: clientDelivery.childWorkOpen
   })
-  publish({ lifetime })
+  return {
+    backgroundTasks,
+    runtimeState,
+    conversationDelivery,
+    startup,
+    eventRecovery,
+    restartResume,
+    lifetime
+  }
 }
