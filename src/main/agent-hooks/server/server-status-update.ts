@@ -105,7 +105,7 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusR
       payload.payload.sessionBoundary === true &&
       !rootContext.acquired &&
       this.sameTerminalOwner(previous, payload) &&
-      this.preservesStoppingDone(previous.paneKey)
+      this.preservesStoppingAgent(previous.paneKey)
     ) {
       return previous
     }
@@ -195,6 +195,10 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusR
     }
     if (previous && stateReconciledPayload === previous) {
       return previous
+    }
+    const resumed = this.preserveAcceptedTurn(previous, stateReconciledPayload, rowBefore, origin)
+    if (resumed !== null) {
+      return resumed
     }
     // Relay restart loses root context; child hooks must not erase persisted resume/model identity.
     const rootContextPreservingPayload = retainHookRootContext(
@@ -300,7 +304,7 @@ export abstract class AgentHookServerStatusUpdate extends AgentHookServerStatusR
     if (!this.writeLegacyStatusRow(enriched)) {
       return undefined
     }
-    this.commitStatusRowMutation(rowBefore, enriched)
+    this.commitAppliedStatusRow(rowBefore, enriched, origin === 'hook' && !restated)
     // Structured rows serialize nothing; skip the persistence walk for streaming chat updates.
     if (!enriched.structuredHost) {
       this.scheduleStatusPersist()

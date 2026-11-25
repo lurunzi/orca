@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildAgentSessionContinuationPrompt } from './agent-session/context/agent-session-continuation'
+import { buildAgentSessionContinuationPrompt } from '../../../shared/agent-session/conversation-context/agent-session-continuation'
 import {
   AGENT_DRAFT_PASTE_CHUNK_MAX_BYTES,
   AGENT_DRAFT_PASTE_DIRECT_MAX_BYTES,

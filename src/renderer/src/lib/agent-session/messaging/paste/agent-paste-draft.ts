@@ -1,5 +1,9 @@
 import { waitForAntigravityDraftReady } from './antigravity-draft-readiness'
-import { waitForAgentDraftInputReadyOnTab, waitForAgentOnPty } from './agent-draft-pty-wait'
+import {
+  waitForAgentDraftInputReadyOnTab,
+  waitForAgentOnPty,
+  withDeadline
+} from './agent-draft-pty-wait'
 import type { TuiAgent } from '../../../../../../shared/agent-launch/catalog/tui-agent'
 import type { TerminalInputKind } from '../../../../../../shared/terminal/input/terminal-input-kind'
 import { TUI_AGENT_CONFIG } from '../../../../../../shared/agent-launch/catalog/tui-agent-config'
@@ -14,11 +18,14 @@ import { waitForAgentReady } from './agent-ready-wait'
 import { sendAgentDraftPasteContentNow } from './agent-draft-paste-content'
 import { agentDeliversDraftViaNativePrefill } from './agent-native-draft-prefill'
 import { waitForAgentDraftInputReady } from './agent-draft-readiness'
+import { shellReplacedAgentInPty } from './agent-exited-shell-check'
 
 // Bracketed paste keeps prompt insertion atomic; callers separately choose whether to submit with Enter.
 
 // Budget PTY creation and composer readiness separately: slow spawn must neither consume composer grace nor delay failed-launch reporting (STA-3367).
 const PTY_SPAWN_TIMEOUT_MS = 8000
+// A slower foreground read proves nothing; waiting on it would hold the prompt while the user types in the composer.
+const EXITED_AGENT_CHECK_TIMEOUT_MS = 500
 
 /** Paste after DECSET 2004 plus the agent’s composer signal/quiet window. Drafts stay editable unless submit appends Enter; false means no paste. timeoutMs controls readiness only, and onTimeout reports missing readiness. */
 export async function pasteDraftWhenAgentReady(args: {
@@ -30,6 +37,8 @@ export async function pasteDraftWhenAgentReady(args: {
   hostPlatform?: NodeJS.Platform
   timeoutMs?: number
   onTimeout?: () => void
+  /** A shell replaced the agent before submit; the prompt was not pasted. */
+  onAgentExited?: () => void
   onUnconfirmedDelivery?: () => void
   /** The launch pane's PTY once its spawn says the agent started there; null when it didn't. */
   launchPty?: Promise<string | null>
@@ -86,6 +95,13 @@ export async function pasteDraftWhenAgentReady(args: {
     }
     // Process existence does not prove composer readiness; report blind writes separately (#22479).
     onUnconfirmedDelivery?.()
+  } else if (
+    submit === true &&
+    (await withDeadline(shellReplacedAgentInPty(ptyId), EXITED_AGENT_CHECK_TIMEOUT_MS))
+  ) {
+    // Composer bytes can outlive the CLI; Enter must not reach the shell that replaced it.
+    args.onAgentExited?.()
+    return false
   }
 
   return await sendBracketedPasteToAgent({

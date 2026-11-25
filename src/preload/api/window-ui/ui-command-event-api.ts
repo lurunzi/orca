@@ -55,6 +55,7 @@ import type {
   SleepingAgentLaunchConfig
 } from '../../../shared/agent-session/lifecycle/agent-session-resume'
 import type { TerminalPaneSplitSource } from '../../../shared/feature-education/feature-education-telemetry'
+import type { RendererTerminalSplitRequest } from '../../../shared/workspace-layout/terminal-topology/renderer-terminal-split-request'
 import type { RuntimeMobileSessionTabMove } from '../../../shared/remote-runtime/session-graph/runtime-session-contracts'
 import type {
   RuntimeTerminalCreateRequestPayload,
@@ -105,7 +106,8 @@ export type UiCommandEventApi = DeepLinkEventApi & {
   onOpenCrashReport: (callback: () => void) => () => void
   onToggleLeftSidebar: (callback: () => void) => () => void
   onToggleRightSidebar: (callback: () => void) => () => void
-  onToggleWorktreePalette: (callback: () => void) => () => void
+  /** `openOnly` comes from the View menu item, which opens but never closes the palette. */
+  onToggleWorktreePalette: (callback: (options?: { openOnly?: boolean }) => void) => () => void
   onToggleFloatingTerminal: (callback: () => void) => () => void
   onTerminalShortcutCaptured: (
     callback: (data: { actionId: KeybindingActionId }) => void
@@ -226,19 +228,7 @@ export type UiCommandEventApi = DeepLinkEventApi & {
   replyTerminalPaneReveal: (reply: TerminalPaneRevealReply) => void
   onApplyAgentPaneActivity: (callback: (data: AgentPaneActivityRequest) => void) => () => void
   replyAgentPaneActivity: (reply: AgentPaneActivityReply) => void
-  onSplitTerminal: (
-    callback: (data: {
-      tabId: string
-      paneRuntimeId: number
-      direction: 'horizontal' | 'vertical'
-      command?: string
-      worktreeId?: string
-      sourceLeafId?: string
-      telemetrySource?: TerminalPaneSplitSource
-      newLeafId?: string
-      activate?: false
-    }) => void
-  ) => () => void
+  onSplitTerminal: (callback: (data: RendererTerminalSplitRequest) => void) => () => void
   onRenameTerminal: (
     callback: (data: { tabId: string; title: string | null; recordInteraction?: false }) => void
   ) => () => void

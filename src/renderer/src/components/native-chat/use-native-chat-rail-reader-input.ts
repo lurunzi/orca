@@ -22,14 +22,7 @@ export function useNativeChatRailReaderInput(
 } {
   const { onScroll, recordReaderScroll } = transcriptScroll
   const { beginNavigation, selectRailItem } = navigation
-  const { railRef, wake: wakeRail, sustain: sustainRail } = useNativeChatRailWake()
-  const onTranscriptScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      onScroll(event)
-      sustainRail()
-    },
-    [onScroll, sustainRail]
-  )
+  const { railRef, wake: wakeRail, onScroll: onTranscriptScroll } = useNativeChatRailWake(onScroll)
   useNativeChatJumpRequest(jumpRequest, rail.items, selectRailItem)
   const onReaderScroll = useCallback(() => {
     beginNavigation()

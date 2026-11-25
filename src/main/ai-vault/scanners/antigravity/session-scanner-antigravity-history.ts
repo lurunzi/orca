@@ -93,6 +93,10 @@ type AntigravityHistoryIndex = {
   byId: Map<string, string | null>
 }
 
+type AntigravityWorkspaceIndex = AntigravityHistoryIndex & {
+  workspaceUriPathById: Map<string, string | null>
+}
+
 export type AntigravityWorkspaceResolver = {
   enrich(session: AiVaultSession, historyPath: string): Promise<AiVaultSession>
 }
@@ -102,7 +106,7 @@ export function createAntigravityWorkspaceResolver(
   readSummaryWorkspaces: (historyPath: string) => Promise<ReadonlyMap<string, string>> = async () =>
     new Map()
 ): AntigravityWorkspaceResolver {
-  const indexes = new Map<string, Promise<AntigravityHistoryIndex>>()
+  const indexes = new Map<string, Promise<AntigravityWorkspaceIndex>>()
 
   return {
     async enrich(session, historyPath) {
@@ -121,7 +125,7 @@ export function createAntigravityWorkspaceResolver(
       let index = indexes.get(historyPath)
       if (!index) {
         // Evict rejected reads so a transient WSL failure does not poison later enrichment.
-        const pending: Promise<AntigravityHistoryIndex> = readHistory(historyPath)
+        const pending: Promise<AntigravityWorkspaceIndex> = readHistory(historyPath)
           .then(async (history) => {
             const index = indexAntigravityHistory(history)
             const [metadata, projects, lastConversations] = await Promise.all(
@@ -129,7 +133,7 @@ export function createAntigravityWorkspaceResolver(
                 (name) => readHistory(antigravityCachePath(historyPath, name))
               )
             )
-            const paths = antigravityMetadataWorkspaces({
+            const { paths, workspaceUriPathById } = antigravityMetadataWorkspaces({
               metadata: metadata ?? null,
               projects: projects ?? null,
               lastConversations: lastConversations ?? null
@@ -145,7 +149,7 @@ export function createAntigravityWorkspaceResolver(
             for (const [id, path] of await readSummaryWorkspaces(historyPath)) {
               index.byId.set(id, path)
             }
-            return index
+            return { ...index, workspaceUriPathById }
           })
           .catch((error: unknown) => {
             if (indexes.get(historyPath) === pending) {
@@ -195,11 +199,23 @@ function indexAntigravityHistory(content: string | null): AntigravityHistoryInde
 
 function findAntigravityWorkspace(
   session: AiVaultSession,
-  index: AntigravityHistoryIndex
+  index: AntigravityWorkspaceIndex
 ): string | null {
   if (index.byId.has(session.sessionId)) {
     return index.byId.get(session.sessionId) ?? null
   }
+  // WorkspaceURIs paths are last because they are not canonicalized (/tmp vs /private/tmp).
+  return (
+    findAntigravityOpeningPromptWorkspace(session, index) ??
+    index.workspaceUriPathById.get(session.sessionId) ??
+    null
+  )
+}
+
+function findAntigravityOpeningPromptWorkspace(
+  session: AiVaultSession,
+  index: AntigravityHistoryIndex
+): string | null {
   const opening = session.antigravityOpeningPrompt
   const promptTimestampMs = timestampMs(opening?.timestamp)
   // Titles, createdAt and rolling previews cannot identify the original prompt.

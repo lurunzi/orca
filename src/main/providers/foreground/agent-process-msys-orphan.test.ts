@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { __setWindowsProcessTreeLoaderForTests } from '../../windows/windows-process-table'
+import type { WindowsProcessRow } from '../../windows/windows-process-table'
 import { resolveAgentForegroundProcessWithAvailability } from './agent-process'
 
 type NativeProcessRow = { pid: number; ppid: number; name: string; commandLine?: string }
 
-const getAllProcessesMock = vi.fn()
-const SELF_PROCESS_ROW = { pid: process.pid, ppid: 0, name: 'vitest.exe', commandLine: 'vitest' }
+const table = vi.hoisted((): { rows: WindowsProcessRow[] } => ({ rows: [] }))
+vi.mock('../../windows/windows-process-table', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  readWindowsProcessTable: async () => table.rows,
+  readWindowsProcessTableFresh: async () => table.rows
+}))
 const CURSOR = String.raw`C:\Users\dev\AppData\Local\cursor-agent`
 const SHELL_PID = 100
 
@@ -37,26 +41,19 @@ const GIT_BASH_CURSOR_ROWS: NativeProcessRow[] = [
 const CONSOLE_PROCESS_IDS = new Set(GIT_BASH_CURSOR_ROWS.map((row) => row.pid))
 
 function mockWindowsRows(rows: NativeProcessRow[]): void {
-  getAllProcessesMock.mockImplementation((cb: (snapshot: NativeProcessRow[]) => void) => {
-    cb([SELF_PROCESS_ROW, ...rows])
-  })
+  table.rows = rows.map(({ commandLine, ...row }) => ({ ...row, command: commandLine ?? '' }))
 }
 
 describe('Windows agent foreground behind an MSYS exec', () => {
   let platform: PropertyDescriptor | undefined
 
   beforeEach(() => {
-    getAllProcessesMock.mockReset()
-    __setWindowsProcessTreeLoaderForTests(() => ({
-      ProcessDataFlag: { None: 0, Memory: 1, CommandLine: 2, CreationTime: 4 },
-      getAllProcesses: getAllProcessesMock
-    }))
+    table.rows = []
     platform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
   })
 
   afterEach(() => {
-    __setWindowsProcessTreeLoaderForTests()
     if (platform) {
       Object.defineProperty(process, 'platform', platform)
     }

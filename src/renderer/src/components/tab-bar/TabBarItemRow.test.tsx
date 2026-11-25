@@ -213,17 +213,19 @@ function Strip({
     togglePinned: NOOP,
     toggleTabViewMode: NOOP
   })
+  const items = buildItems({
+    terminalPinned,
+    browserTitle,
+    sessionLabel,
+    sessionAgent,
+    chatTitle,
+    chatCustomLabel
+  })
   return (
     <>
       {renderTabBarItems({
-        items: buildItems({
-          terminalPinned,
-          browserTitle,
-          sessionLabel,
-          sessionAgent,
-          chatTitle,
-          chatCustomLabel
-        }),
+        items,
+        segments: [{ kind: 'tabs', start: 0, end: items.length }],
         props,
         runtime,
         actions,

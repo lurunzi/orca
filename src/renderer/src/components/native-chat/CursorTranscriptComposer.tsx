@@ -71,10 +71,9 @@ export function CursorTranscriptComposer({
             onSelect={() => undefined}
             onCompositionStart={() => ime.setComposing(true)}
             onCompositionEnd={() => {
-              ime.onCompositionEnd()
+              ime.setComposing(false)
               flushDraftAppends()
             }}
-            onKeyUp={ime.onKeyUp}
             onKeyDownCapture={(event) => {
               if (!ime.ownsKeyDown(event) && event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()

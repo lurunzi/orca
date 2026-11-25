@@ -232,6 +232,9 @@ async function connectCodexAppServer(
     get pid() {
       return child.pid
     },
+    get watcherPid() {
+      return child.watcherPid
+    },
     get closed() {
       return closing || managed.rootVerdict === 'exited' || terminalError !== null
     },

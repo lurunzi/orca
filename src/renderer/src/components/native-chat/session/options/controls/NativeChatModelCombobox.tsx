@@ -10,7 +10,10 @@ import {
 } from '@/components/ui/command'
 import { nativeChatModelDescription } from './native-chat-model-description'
 import { useTranslate } from '@/i18n/use-translate'
-import type { SessionOptionSelectChoice } from '../../../../../../../shared/native-chat/input/native-chat-session-options'
+import type {
+  SessionOptionsCliUpdate,
+  SessionOptionSelectChoice
+} from '../../../../../../../shared/native-chat/input/native-chat-session-options'
 import { nativeChatSessionChoiceLabel } from '../../../../../../../shared/native-chat/input/session-options/native-chat-session-option-labels'
 import { sayNativeChatSessionOptionTranslated as say } from './native-chat-session-option-labels-text'
 import { NativeChatSessionOptionChoiceBody } from './NativeChatSessionOptionChoiceBody'
@@ -19,6 +22,7 @@ import { NativeChatCursorModelGroups } from './NativeChatCursorModelGroups'
 import { AgentPickerLegacyModelsToggle } from '../../../../agent/AgentPickerLegacyModelsToggle'
 import { useLegacyModelsExpanded } from '../../../../agent/use-legacy-models-expanded'
 import { getModelVariantSuffix, groupCursorModels } from '../../../cursor-model-groups'
+import { NativeChatModelNeedsCliUpdateRow } from './NativeChatModelNeedsCliUpdateRow'
 
 type NativeChatModelComboboxProps = {
   choices: readonly SessionOptionSelectChoice[]
@@ -34,6 +38,8 @@ type NativeChatModelComboboxProps = {
   agent?: string
   /** Explicitly enables grouped layout. */
   grouped?: boolean
+  /** The chat host's own CLI, too old for models on Orca's list. */
+  cliUpdate?: SessionOptionsCliUpdate
 }
 
 // Why not cmdk's scorer: it matches scattered letters and reorders the host's list.
@@ -51,7 +57,8 @@ export function NativeChatModelCombobox({
   busy,
   onSelect,
   agent,
-  grouped
+  grouped,
+  cliUpdate
 }: NativeChatModelComboboxProps): React.JSX.Element {
   const t = useTranslate()
   const searchLabel = t('components.native-chat.composer.searchModels', 'Search models…')
@@ -81,6 +88,19 @@ export function NativeChatModelCombobox({
   // Membership ignores the selection, so picking a model never moves rows in the open list.
   const folded = (choice: SessionOptionSelectChoice) => !searching && Boolean(choice.legacy)
   const legacyChoices = listed.filter(folded)
+  // A model the CLI already lists is pickable, whatever the list says it needs.
+  const needsUpdate = cliUpdate
+    ? cliUpdate.models.filter((model) => !choices.some((choice) => choice.value === model.id))
+    : []
+  const cliUpdateRows = cliUpdate
+    ? needsUpdate.map((model) => (
+        <NativeChatModelNeedsCliUpdateRow
+          key={`cli-update:${model.id}`}
+          model={model}
+          update={cliUpdate}
+        />
+      ))
+    : []
   const renderChoice = (choice: SessionOptionSelectChoice) => {
     const label = nativeChatSessionChoiceLabel(choice, say)
     const current = choice.value === currentValue
@@ -139,18 +159,22 @@ export function NativeChatModelCombobox({
         </CommandEmpty>
         <NativeChatSessionOptionWriteGroup busy={busy}>
           {groups ? (
-            <NativeChatCursorModelGroups
-              groups={groups}
-              legacyChoices={listed.filter((choice) => choice.legacy)}
-              searching={searching}
-              expanded={legacyExpanded}
-              onToggle={toggleLegacy}
-              renderChoice={renderChoice}
-            />
+            <>
+              {cliUpdateRows.length > 0 ? <CommandGroup>{cliUpdateRows}</CommandGroup> : null}
+              <NativeChatCursorModelGroups
+                groups={groups}
+                legacyChoices={listed.filter((choice) => choice.legacy)}
+                searching={searching}
+                expanded={legacyExpanded}
+                onToggle={toggleLegacy}
+                renderChoice={renderChoice}
+              />
+            </>
           ) : (
             <CommandGroup>
               {/* One keyed array, so a row moving between sections keeps its highlight. */}
               {[
+                ...cliUpdateRows,
                 ...listed.filter((choice) => !folded(choice)).map(renderChoice),
                 ...(legacyExpanded ? legacyChoices.map(renderChoice) : []),
                 <AgentPickerLegacyModelsToggle

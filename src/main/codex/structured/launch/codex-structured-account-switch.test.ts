@@ -7,10 +7,7 @@ import { agentSessionRecordFixture } from '../../../native-chat/testing/agent-se
 import { createCodexStructuredLaunchResolver } from '../../../runtime/agent-session/launch/structured-agent-launch-composition.test-support'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host/execution-host'
 import { codexProviderHandle } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle-encoding'
-import {
-  configureHostReadableTranscriptPathSources,
-  resetHostReadableTranscriptPathCacheForTests
-} from '../../../native-chat/transcript-discovery/host-readable-transcript-path'
+import { configureHostReadableTranscriptPathSources } from '../../../native-chat/transcript-discovery/host-readable-transcript-path'
 import { codexChatAccountSwitchable } from './codex-structured-account-switch'
 
 // Only the rollout fails to link, or one home sits on another volume, as across drives.
@@ -69,7 +66,7 @@ beforeEach(() => {
 afterEach(() => {
   fault.linkSource = null
   fault.otherVolume = null
-  resetHostReadableTranscriptPathCacheForTests()
+  configureHostReadableTranscriptPathSources({})
   vi.unstubAllEnvs()
   rmSync(root, { recursive: true, force: true })
 })

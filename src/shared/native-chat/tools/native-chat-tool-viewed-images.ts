@@ -29,21 +29,31 @@ export function nativeChatToolImageReadPath(
   return path !== null && isRuntimePathAbsolute(path) && isRasterImagePath(path) ? path : null
 }
 
-/** Images a run's tools read: the host's snapshot of what the agent saw, else the file it named. */
+/** Images a run's tools showed the agent: the host's snapshot of a successful read, else the raster
+ *  file it names, else what a call returned. */
 export function nativeChatToolRunViewedImages(
   blocks: readonly NativeChatBlock[]
 ): NativeChatImageRefBlock[] {
-  // Most runs read no images, so they skip pairing.
+  // Most runs show no images, so they skip pairing.
   if (
-    !blocks.some((block) => isToolCallBlock(block) && nativeChatToolImageReadPath(block) !== null)
+    !blocks.some(
+      (block) =>
+        isToolCallBlock(block) &&
+        (Boolean(block.outputImagePaths?.length) || nativeChatToolImageReadPath(block) !== null)
+    )
   ) {
     return NO_IMAGES
   }
   const paths = new Set<string>()
   for (const { call, result } of pairToolBlocks(blocks)) {
-    const path = call ? nativeChatToolImageReadPath(call) : null
-    // Only a read that finished without error showed the agent its image.
-    if (call && path !== null && nativeChatToolLineLabel(call, result).verb === 'read') {
+    if (!call) {
+      continue
+    }
+    const path = nativeChatToolImageReadPath(call)
+    if (path === null) {
+      call.outputImagePaths?.forEach((stored) => paths.add(stored))
+    } else if (nativeChatToolLineLabel(call, result).verb === 'read') {
+      // Only a read that finished without error showed the agent its image.
       for (const shown of call.resultImagePaths?.length ? call.resultImagePaths : [path]) {
         paths.add(shown)
       }

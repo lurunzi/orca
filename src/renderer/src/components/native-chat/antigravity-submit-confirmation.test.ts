@@ -22,7 +22,7 @@ import {
 } from './session/terminal/send/native-chat-input-clear'
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/questions/native-chat-answer-stepping'
-import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
+import { cancelNativeChatPtySends } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   NATIVE_CHAT_SUBMIT_CONFIRM_MS,
   NATIVE_CHAT_SUBMIT_RETRY_MAX
@@ -121,10 +121,10 @@ describe('Antigravity chat send confirmation', () => {
     vi.useFakeTimers()
     sendRuntimePtyInput.mockClear()
     sendRuntimePtyInputVerified.mockClear()
-    resetNativeChatPtySendQueuesForTests()
+    cancelNativeChatPtySends(PTY)
   })
   afterEach(() => {
-    resetNativeChatPtySendQueuesForTests()
+    cancelNativeChatPtySends(PTY)
     vi.useRealTimers()
   })
 

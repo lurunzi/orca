@@ -161,12 +161,15 @@ export function InlineUsageSignInAction({
   disabled,
   accountLabel,
   onSignIn,
+  showBusyLabel = false,
   signInUnavailable = false
 }: {
   isSigningIn: boolean
   disabled: boolean
   accountLabel: string
   onSignIn: () => void
+  /** Say "Signing in…" while busy instead of keeping the "Sign in" label beside the spinner. */
+  showBusyLabel?: boolean
   /** The account's host cannot run this computer's sign-in. */
   signInUnavailable?: boolean
 }): React.JSX.Element {
@@ -193,7 +196,11 @@ export function InlineUsageSignInAction({
         {isSigningIn ? (
           <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
         ) : null}
-        <UnavailableEntryLabel unavailable={signInUnavailable}>{signInLabel}</UnavailableEntryLabel>
+        <UnavailableEntryLabel unavailable={signInUnavailable}>
+          {isSigningIn && showBusyLabel
+            ? t('auto.components.OrcaSignInProgress.signingIn', 'Signing in…')
+            : signInLabel}
+        </UnavailableEntryLabel>
       </Button>
     </DropdownMenuItem>
   )

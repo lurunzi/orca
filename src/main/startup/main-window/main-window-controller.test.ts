@@ -10,7 +10,10 @@ type MainWindowStub = {
 }
 
 const mocks = vi.hoisted(() => {
-  const state: { mainWindow: MainWindowStub | null } = { mainWindow: null }
+  const state: { mainWindow: MainWindowStub | null; core: Record<string, unknown> } = {
+    mainWindow: null,
+    core: {}
+  }
   return {
     state,
     requireServices: vi.fn(),

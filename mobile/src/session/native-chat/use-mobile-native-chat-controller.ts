@@ -22,6 +22,7 @@ import { mobileNativeChatStructuredControllerFields } from './mobile-native-chat
 import { useMobileNativeChatCiResultLines } from './preferences/use-mobile-native-chat-ci-result-lines'
 
 export function useMobileNativeChatController(args: {
+  itemLink?: Parameters<typeof useMobileNativeChatSessionLane>[0]['itemLink']
   client: RpcClient | null
   /** The route's paired host; differs from `client` only when a server executes the workspace. */
   pairedHostClient: RpcClient | null
@@ -175,7 +176,6 @@ export function useMobileNativeChatController(args: {
     stop: handleNativeChatStop
   })
   const activeTurn = activeChatStructured ? structuredNativeChat : terminalTurn
-  const nativeChatAgentWorking = activeTurn.isWorking
   const workingEpoch = terminalTurn.workingEpoch
   const placedChatPending = useMemo(
     () =>
@@ -195,7 +195,6 @@ export function useMobileNativeChatController(args: {
 
   const workspaceCatalog = useMobileNativeChatWorkspaceCatalog(args, activeChatAgent)
 
-  // Break the send/options cycle through a ref so snapshot changes cannot recreate send callbacks.
   const recordSessionOptionCommandRef = useRef<(command: string) => void>(() => {})
 
   const {
@@ -218,7 +217,7 @@ export function useMobileNativeChatController(args: {
     onSendError
   })
 
-  const structuredNativeChatSend = useMobileStructuredNativeChatSendBridge({
+  const structuredSend = useMobileStructuredNativeChatSendBridge({
     agent: activeChatResolution?.agent,
     sessionCommands: nativeChatLane.sessionCommands.commands,
     sendStructured: structuredNativeChat.sendWithOutcome,
@@ -238,9 +237,8 @@ export function useMobileNativeChatController(args: {
       dispatchCommand: handleNativeChatDispatchCommand,
       hostId,
       isTabChatView,
-      isWorking: nativeChatAgentWorking,
-      reportedModel: activeSessionTab?.agentStatus?.model ?? null,
-      modelSwitchCommand: activeSessionTab?.agentStatus?.modelSwitchCommand,
+      isWorking: activeTurn.isWorking,
+      reportedStatus: activeSessionTab?.agentStatus,
       structured: {
         optionPickerRequest: structuredNativeChat.optionPickerRequest,
         optionSurface: structuredNativeChat.optionSurface,
@@ -294,23 +292,22 @@ export function useMobileNativeChatController(args: {
     nativeChatSettledTurns: activeTurn.settledTurns,
     nativeChatActionablePromptIds: structuredNativeChat.actionablePromptIds,
     nativeChatCommandRefusalCauses: structuredNativeChat.commandRefusalCauses,
-    nativeChatCanStop: activeChatStructured ? structuredNativeChat.canStop : nativeChatAgentWorking,
+    nativeChatCanStop: activeChatStructured ? structuredNativeChat.canStop : terminalTurn.isWorking,
     nativeChatStreamingText: terminalTurn.streamingText,
     ...prompts,
     handleNativeChatStop: activeChatStructured ? structuredNativeChat.cancel : terminalTurn.stop,
     nativeChatQueued: structuredNativeChat.queued,
     nativeChatMcpPanel: activeChatStructured ? structuredNativeChat.mcpPanel : null,
     ...workspaceCatalog,
-    handleNativeChatSend: activeChatStructured
-      ? structuredNativeChatSend.send
-      : handleNativeChatSend,
+    handleNativeChatSend: activeChatStructured ? structuredSend.send : handleNativeChatSend,
     handleNativeChatSendWithOutcome: activeChatStructured
-      ? structuredNativeChatSend.sendWithOutcome
+      ? structuredSend.sendWithOutcome
       : handleNativeChatSendWithOutcome,
     readSeededLaunchDraft,
     nativeChatSessionOptions,
-    nativeChatSessionCommands: nativeChatLane.sessionCommands,
+    ...nativeChatLane.controllerFields,
     nativeChatAcceptsImages: !activeChatStructured || structuredNativeChat.acceptsImages,
+    nativeChatUnresolvedFailureRows: structuredNativeChat.unresolvedFailureRows,
     ...mobileNativeChatStructuredControllerFields(
       activeChatStructured ? structuredNativeChat : null
     )

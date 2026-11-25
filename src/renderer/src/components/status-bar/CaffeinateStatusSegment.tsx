@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAppStore } from '@/store/index'
+import { useAppStoreWithHostStatuses } from '@/store/slices/runtime-status/views/use-runtime-status-view'
 import { isPairedWebClientWindow } from '@/app-shell/chrome/desktop-window-chrome'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
@@ -58,16 +59,22 @@ function remoteUnavailableLabel(
     : t('auto.components.status.bar.CaffeinateStatusSegment.unreachable', 'Unreachable')
 }
 
-export function CaffeinateStatusSegment({
-  iconOnly
-}: {
-  iconOnly: boolean
-}): React.JSX.Element | null {
+export function CaffeinateStatusSegment(): React.JSX.Element | null {
   const t = useTranslate()
   const settings = useAppStore((state) => state.settings)
   const updateSettings = useAppStore((state) => state.updateSettings)
   const runtimeEnvironments = useAppStore((state) => state.runtimeEnvironments)
-  const runtimeStatusByEnvironmentId = useAppStore((state) => state.runtimeStatusByEnvironmentId)
+  // Joined ids keep the selection equal until a listed host starts or stops answering.
+  const answeringHostIds = useAppStoreWithHostStatuses((state, statuses) =>
+    state.runtimeEnvironments
+      .filter(isListedRemoteServer)
+      .filter((environment) => {
+        const connection = runtimeHostConnectionStateForEntry(statuses.get(environment.id))
+        return connection === 'connected' || connection === 'workspace-window-closed'
+      })
+      .map((environment) => environment.id)
+      .join('\n')
+  )
   const configuredMode = normalizeComputerAwakeMode(
     settings?.computerAwakeMode,
     settings?.keepComputerAwakeWhileAgentsRun
@@ -102,23 +109,17 @@ export function CaffeinateStatusSegment({
   // Only hosts that answer now: a mode cannot be read from or sent to one that is still connecting.
   const remoteHosts = useMemo(() => {
     const labelOverrides = getHostDisplayLabelOverrides({ hostSettingOverrides })
-    return runtimeEnvironments.filter(isListedRemoteServer).flatMap((environment) => {
-      const state = runtimeHostConnectionStateForEntry(
-        runtimeStatusByEnvironmentId.get(environment.id)
-      )
-      return state === 'connected' || state === 'workspace-window-closed'
-        ? [
-            {
-              id: environment.id,
-              label:
-                labelOverrides.get(toRuntimeExecutionHostId(environment.id)) ||
-                environment.name ||
-                environment.id
-            }
-          ]
-        : []
-    })
-  }, [hostSettingOverrides, runtimeEnvironments, runtimeStatusByEnvironmentId])
+    const answering = new Set(answeringHostIds.split('\n'))
+    return runtimeEnvironments
+      .filter((environment) => isListedRemoteServer(environment) && answering.has(environment.id))
+      .map((environment) => ({
+        id: environment.id,
+        label:
+          labelOverrides.get(toRuntimeExecutionHostId(environment.id)) ||
+          environment.name ||
+          environment.id
+      }))
+  }, [answeringHostIds, hostSettingOverrides, runtimeEnvironments])
   // Why not cleared on disconnect: the choice returns with the host instead of moving here for good.
   const target = webClient ? null : (remoteHosts.find((host) => host.id === storedTargetId) ?? null)
   const { remote, setMode: setRemoteMode } = useRemoteComputerAwake(target?.id ?? null, menuOpen)
@@ -193,7 +194,7 @@ export function CaffeinateStatusSegment({
               aria-label={ariaLabel}
             >
               <Coffee className={`size-3 ${active ? 'text-foreground' : ''}`} />
-              {!iconOnly ? <span className="text-[11px] font-medium">{modeLabel}</span> : null}
+              <span className="text-[11px] font-medium">{modeLabel}</span>
               <span
                 aria-hidden
                 className={`size-1.5 rounded-full ${

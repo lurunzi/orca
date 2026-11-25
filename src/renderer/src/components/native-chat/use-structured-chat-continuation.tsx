@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AgentSessionContinuationDialog } from '@/components/agent-session-continuation/AgentSessionContinuationDialog'
-import type { AgentSessionContinuationRequest } from '@/lib/agent-session/context/agent-session-continuation'
+import type { AgentSessionContinuationRequest } from '../../../../shared/agent-session/conversation-context/agent-session-continuation'
 import { useAppStore } from '@/store'
 import { useAgentStatusSelector } from '@/runtime/agent-status/use-agent-status'
 import type { NativeChatMessage } from '../../../../shared/native-chat/native-chat-types'

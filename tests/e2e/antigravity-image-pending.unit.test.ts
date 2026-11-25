@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeAntigravityTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-antigravity'
+import { decodeAntigravityFullTranscriptLine } from '../../src/main/native-chat/transcript-decoding/transcript-line-decoders-antigravity-full'
 import { formatAgentImagePath } from '../../src/shared/native-chat/input/composer/agent-image-paste'
 import {
   pendingSendsAsMessages,
@@ -7,7 +7,7 @@ import {
 } from '../../src/shared/native-chat/transcript/pending-sends/native-chat-pending-sends'
 
 function userTurn(paths: string[], text: string) {
-  return decodeAntigravityTranscriptLine(
+  return decodeAntigravityFullTranscriptLine(
     JSON.stringify({
       source: 'USER_EXPLICIT',
       type: 'USER_INPUT',
@@ -39,7 +39,7 @@ describe('Antigravity attachment echoes', () => {
     ])
     expect(pendingSendsAsMessages(pending, [user])).toEqual([])
     expect(prunePendingSends(pending, [user])).toEqual(pending)
-    const assistant = decodeAntigravityTranscriptLine(
+    const assistant = decodeAntigravityFullTranscriptLine(
       JSON.stringify({ source: 'MODEL', type: 'PLANNER_RESPONSE', content: 'Response' }),
       'assistant-1'
     )!

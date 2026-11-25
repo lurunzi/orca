@@ -10,6 +10,7 @@ import { sortNativeChatSessionOptions } from '../../../../../../../shared/native
 import {
   sessionOptionDispatchUnconfirmed,
   type SessionOptionDescriptor,
+  type SessionOptionsCliUpdate,
   type SessionOptionsSurface,
   type SessionOptionValue
 } from '../../../../../../../shared/native-chat/input/native-chat-session-options'
@@ -131,6 +132,7 @@ function PickerTrigger(props: {
 
 function SessionOptionPopover(props: {
   demandModelCatalog?: () => void
+  cliUpdate?: SessionOptionsCliUpdate
   model: SessionOptionDescriptor
   options: readonly SessionOptionDescriptor[]
   isWorking: boolean
@@ -204,10 +206,11 @@ function SessionOptionPopover(props: {
     if (descriptor.id === 'effort') {
       setOpen(false)
     }
+    // During a provider fallback, picking the saved model is a real change.
     if (
       descriptor.valueSource === 'unknown' ||
       descriptor.valueSource === 'default' ||
-      descriptor.kind.currentValue !== value
+      (descriptor.fallbackModel ?? descriptor.kind.currentValue) !== value
     ) {
       props.onSet(descriptor, value)
     }
@@ -290,12 +293,13 @@ function SessionOptionPopover(props: {
         {model.kind.type === 'select' && !model.action ? (
           <NativeChatModelCombobox
             choices={model.kind.choices}
-            currentValue={model.kind.currentValue}
+            currentValue={model.fallbackModel ?? model.kind.currentValue}
             readOnly={!model.settable}
             readOnlyReason={modelReason}
             busy={pendingIds.has(model.id)}
             onSelect={(value) => set(model, value)}
             agent={props.agent}
+            cliUpdate={props.cliUpdate}
           />
         ) : (
           <NativeChatSessionOptionWriteGroup
@@ -364,6 +368,7 @@ function NativeChatSessionOptionPickersInner({
     <div className="flex min-w-0 items-center text-chat-foreground-faint">
       <SessionOptionPopover
         demandModelCatalog={surface.demandModelCatalog}
+        cliUpdate={surface.cliUpdate}
         model={model}
         options={options}
         isWorking={isWorking && (!surface.deferWhileWorking || Boolean(model.action))}

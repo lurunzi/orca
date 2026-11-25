@@ -9,7 +9,7 @@ vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () =
   sendRuntimePtyInputVerified: (...args: unknown[]) => sendRuntimePtyInputVerified(...args)
 }))
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
-import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
+import { cancelNativeChatPtySends } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   buildNativeChatPasteBytes,
   NATIVE_CHAT_SUBMIT
@@ -38,12 +38,12 @@ const BODY = [NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT, buildNativeChatPasteBytes('to
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
-  resetNativeChatPtySendQueuesForTests()
+  cancelNativeChatPtySends('pty-prose')
   sendRuntimePtyInputVerified.mockReset().mockResolvedValue(true)
   composerHoldsDraft.mockReset().mockReturnValue(true)
 })
 afterEach(() => {
-  resetNativeChatPtySendQueuesForTests()
+  cancelNativeChatPtySends('pty-prose')
   vi.useRealTimers()
 })
 

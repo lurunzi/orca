@@ -1,4 +1,4 @@
-import { copyFile, mkdtemp, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
@@ -16,7 +16,11 @@ it.each(['cursor', 'antigravity'] as const)(
   async (agent) => {
     const root = await mkdtemp(join(tmpdir(), 'orca-provider-journal-'))
     roots.push(root)
-    const filePath = join(root, 'transcript.jsonl')
+    // agy's transcript must sit under the folder of the conversation being adopted.
+    const dir =
+      agent === 'antigravity' ? join(root, 'conversation', '.system_generated', 'logs') : root
+    await mkdir(dir, { recursive: true })
+    const filePath = join(dir, 'transcript.jsonl')
     const cursorRecords = [
       { role: 'user', message: { content: [{ type: 'text', text: 'Inspect the sample file.' }] } },
       {
@@ -39,7 +43,7 @@ it.each(['cursor', 'antigravity'] as const)(
     if (!result.ok) {
       throw new Error(result.error)
     }
-    expect(result.items).toHaveLength(agent === 'cursor' ? 2 : 4)
+    expect(result.items).toHaveLength(2)
     expect(result.items[0]).toMatchObject({
       identity: { provider: 'legacy', agent, sessionId: 'conversation' },
       body: { kind: 'message', role: 'user' }

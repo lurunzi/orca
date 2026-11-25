@@ -1,5 +1,12 @@
 import { useEffect } from 'react'
-import { useMobileSessionDictation } from './use-mobile-session-dictation'
+import type { MobileSessionItemLink } from './mobile-session-item-target'
+import { useMobileScreenDictation } from './use-mobile-screen-dictation'
+import { HOST_SESSION_ROUTE } from '../navigation/host-stack-navigation'
+import {
+  useWorkspaceExecutionHost,
+  workspaceRouteHref
+} from '../navigation/workspace-execution-host'
+import { sessionTabPaneKey } from '../../../src/shared/remote-runtime/session-graph/session-tab-pane-key'
 import { useMobileNativeChatController } from './native-chat/use-mobile-native-chat-controller'
 import type { MobileNativeChatController } from './native-chat/mobile-native-chat-controller-contract'
 import { useMobileNativeChatReadability } from './native-chat/transcript/viewport/use-mobile-native-chat-readability'
@@ -12,7 +19,8 @@ import type { MobileSessionFeedbackCapabilitiesModel } from './use-mobile-sessio
 
 export function useMobileSessionNativeChatDictation(
   scope: MobileSessionFeedbackCapabilitiesModel,
-  sendLiveTerminalInput: (handle: string, bytes: string) => Promise<boolean>
+  sendLiveTerminalInput: (handle: string, bytes: string) => Promise<boolean>,
+  itemLink?: MobileSessionItemLink
 ) {
   const {
     hostId,
@@ -50,6 +58,7 @@ export function useMobileSessionNativeChatDictation(
   })
   const nativeChatController: MobileNativeChatController = {
     ...useMobileNativeChatController({
+      itemLink,
       client,
       pairedHostClient,
       hostId,
@@ -83,10 +92,22 @@ export function useMobileSessionNativeChatDictation(
     surfaceKey: JSON.stringify([routeKey, activeHandle, showNativeChat])
   })
 
-  const sessionDictation = useMobileSessionDictation(
+  const executionHost = useWorkspaceExecutionHost()
+  const paneKey = sessionTabPaneKey(activeSessionTab)
+  const sessionDictation = useMobileScreenDictation(
     scope,
     nativeChatController,
-    sendLiveTerminalInput
+    sendLiveTerminalInput,
+    {
+      key: JSON.stringify([hostId, executionHost ?? null, worktreeId]),
+      name: HOST_SESSION_ROUTE,
+      title: activeSessionTab?.title ?? '',
+      paneKey,
+      href: workspaceRouteHref(
+        `/h/${encodeURIComponent(hostId)}/session/${encodeURIComponent(worktreeId)}${paneKey ? `?paneKey=${encodeURIComponent(paneKey)}` : ''}`,
+        executionHost
+      )
+    }
   )
 
   useEffect(() => {

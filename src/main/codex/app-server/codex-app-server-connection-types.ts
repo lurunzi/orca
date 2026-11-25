@@ -21,6 +21,8 @@ export type CodexAppServerConnection = {
   /** Fork: the handshake records the version it read, wherever the handshake runs. */
   noteServerVersion?: (version: string | null) => void
   readonly pid: number | undefined
+  /** The launcher's watcher process, when the launch reported one. */
+  readonly watcherPid?: number
   readonly closed: boolean
   request: (
     method: string,
