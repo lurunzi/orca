@@ -29,7 +29,12 @@ describe('resolution receipt answers', () => {
     }
 
     expect(nativeChatReceiptAnswers(body)).toEqual([
-      { key: 'q2', question: 'Question 2?', answer: 'Answer 2' }
+      {
+        key: 'q2',
+        question: 'Question 2?',
+        answer: 'Answer 2',
+        options: [{ label: 'Answer 2', selected: true }]
+      }
     ])
   })
 })

@@ -18,7 +18,7 @@ import { AccountSwitchSection } from './AccountSwitchList'
 import { AccountSwitchRowItem } from './AccountSwitchRowItem'
 import { useCodexSwitcherController } from './use-codex-switcher-controller'
 import { providerChatAccountControl, type ChatAccountAction } from './ProviderAccountChatButton'
-import { signedInCodexAccountCount } from './status-bar-codex-accounts'
+import { scopeCodexAuthFailure, signedInCodexAccountCount } from './status-bar-codex-accounts'
 import {
   useAccountOwnerUsage,
   type OwnerUsageRateLimits
@@ -26,7 +26,6 @@ import {
 import { useAppStore } from '../../../store/index'
 import { isCodexUsageSignInRequired } from '../../../../../shared/agent-accounts/codex/codex-auth-errors'
 import { getCodexStatusRuntimeKey } from './status-bar-runtime-targets'
-import { scopeCodexAuthFailure } from './status-bar-codex-accounts'
 import type { AccountOwner } from '@/runtime/provider-accounts/ownership/wsl-host-account-owner'
 import { getAccountOwnerKey } from './owner-account-rows'
 
