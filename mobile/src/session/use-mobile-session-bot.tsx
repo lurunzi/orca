@@ -129,10 +129,12 @@ export function useMobileSessionBot(
     }
   }, [showCreateTabDrawer, client, routeBotId])
   const [confirmingHomeChat, setConfirmingHomeChat] = useState(false)
+  const botChatLaunchCount = useRef(0)
 
   // Opens the chat the host made, armed before asking so a tab picked meanwhile wins over it.
   const openBotChat = async (ask: () => Promise<string>) => {
-    const lock = `bot-chat:${Date.now().toString(36)}`
+    botChatLaunchCount.current += 1
+    const lock = `bot-chat:${botChatLaunchCount.current}`
     pendingSelectionRef.current = launchedSelection(lock, {}, null)
     try {
       const sessionId = await ask()

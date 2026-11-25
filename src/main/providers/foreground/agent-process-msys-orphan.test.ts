@@ -4,7 +4,7 @@ import { resolveAgentForegroundProcessWithAvailability } from './agent-process'
 
 type NativeProcessRow = { pid: number; ppid: number; name: string; commandLine?: string }
 
-const table = vi.hoisted(() => ({ rows: [] as WindowsProcessRow[] }))
+const table = vi.hoisted((): { rows: WindowsProcessRow[] } => ({ rows: [] }))
 vi.mock('../../windows/windows-process-table', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   readWindowsProcessTable: async () => table.rows,

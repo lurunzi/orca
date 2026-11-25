@@ -56,7 +56,8 @@ export class RuntimeClientSettingsWithComputerAwake extends RuntimeClientSetting
     const { computerAwakeMode, ...others } = updates
     // Refuses before anything is written; the mode's settings land in the same write.
     const awake = this.computerAwake.settingsFor(computerAwakeMode)
-    await super.update({ ...others, ...awake } as RuntimeClientSettingsUpdate)
+    const merged: RuntimeClientSettingsUpdate = { ...others, ...awake }
+    await super.update(merged)
     this.computerAwake.apply(computerAwakeMode)
     return this.get()
   }

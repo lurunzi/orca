@@ -14,7 +14,7 @@ import { SettingsSection } from '../../settings/settings-screen-frame'
 import { colors } from '../../theme/mobile-theme'
 import { mobileBotAccessCopy } from '../mobile-bot-access-copy'
 import type { PhoneBot } from '../host-bots-operations'
-import { MobileBotAccessDecisionContent } from '../MobileBotAccessDecision'
+import type { MobileBotAccessDecisionContent } from '../MobileBotAccessDecision'
 import {
   MobileWhoCanAskOwnerFace,
   MobileWhoCanAskPersonRow,

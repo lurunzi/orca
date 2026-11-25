@@ -19,22 +19,33 @@ const collapsibleTriggerVariants = cva('', {
       row: 'group flex w-full cursor-pointer items-center justify-between gap-4 rounded-md bg-transparent py-2 text-left text-sm font-medium outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:hover:bg-accent/50',
       // A one-line summary of settings inside a bordered box, opening to edit them.
       summary:
-        'group flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/50'
+        'group flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground outline-none hover:bg-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+      // A dialog's small muted label that reveals details below it.
+      disclosure:
+        'flex w-fit items-center gap-1 rounded-sm text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50'
+    },
+    // A one-line status toggle; `warning` tints it.
+    status: {
+      none: '',
+      muted: 'h-5 max-w-full min-w-0 gap-1.5 leading-5',
+      warning:
+        'h-5 max-w-full min-w-0 gap-1.5 leading-5 text-status-warning-text hover:text-status-warning-text'
     }
   },
-  defaultVariants: { variant: 'default' }
+  defaultVariants: { variant: 'default', status: 'none' }
 })
 
 function CollapsibleTrigger({
   className,
   variant,
+  status,
   ...props
 }: React.ComponentProps<typeof CollapsiblePrimitive.Trigger> &
   VariantProps<typeof collapsibleTriggerVariants>): React.JSX.Element {
   return (
     <CollapsiblePrimitive.Trigger
       data-slot="collapsible-trigger"
-      className={cn(collapsibleTriggerVariants({ variant }), className)}
+      className={cn(collapsibleTriggerVariants({ variant, status }), className)}
       {...props}
     />
   )
