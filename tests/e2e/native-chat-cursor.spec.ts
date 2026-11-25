@@ -16,7 +16,7 @@ import {
   clearTerminalPtyWriteLog,
   installTerminalPtyWriteSpy,
   readTerminalPtyWriteEntries
-} from './terminal/input/terminal-pty-write-spy'
+} from './terminal/input/native-chat-pty-write-spy'
 
 async function enableCursorNativeChat(page: Page): Promise<void> {
   await page.evaluate(async () => {
@@ -182,7 +182,7 @@ test.describe('Cursor Native Chat', () => {
     await orcaPage.getByRole('button', { name: 'Show terminal' }).click()
     await expect(chatRoot).toHaveCount(0)
     await expect(orcaPage.getByRole('textbox', { name: 'Terminal input' })).toBeVisible()
-    await orcaPage.getByRole('button', { name: 'Continue in Chat UI' }).click()
+    await orcaPage.getByRole('button', { name: 'Continue in chat' }).click()
     await expect(chatRoot).toBeVisible()
     await expect(chatRoot.getByText(liveText)).toBeVisible()
     await orcaPage.screenshot({ path: path.join(screenshotDir, '02-cursor-live-restored.png') })

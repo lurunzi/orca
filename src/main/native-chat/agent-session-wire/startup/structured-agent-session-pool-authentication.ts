@@ -1,4 +1,4 @@
-import type { AgentSessionProviderHandleLink } from '../../../../shared/agent-session/lifecycle/provider-handles/agent-session-provider-handle'
+import type { AgentSessionRecordCommand } from '../../../runtime/agent-session/records/agent-session-record-command'
 import { DashboardAllocationError } from '../../../dashboard-accounts/dashboard-allocation-protocol'
 import {
   DashboardCodexPoolAuthenticationSchema,
@@ -17,6 +17,8 @@ export type StructuredAgentSessionPoolAuthenticationContext = {
   runtimeState: { startupAttempts: Pick<StructuredAgentSessionStartupAttempts, 'onClock'> }
   now: () => number
 }
+
+type ProviderHandleCommand = Extract<AgentSessionRecordCommand, { kind: 'provider-handle' }>
 
 type PoolAuthenticationEvent = Pick<
   StructuredAgentSessionProviderOpenInput,
@@ -50,19 +52,24 @@ export function recordStructuredAgentSessionStartedHandle(
     deps: Pick<StructuredAgentSessionHostDeps, 'store'>
   },
   event: PoolAuthenticationEvent & { poolAuthentication?: DashboardCodexPoolAuthentication },
-  link: AgentSessionProviderHandleLink,
+  args: ProviderHandleCommand['args'],
+  launched: ProviderHandleCommand['launched'],
   signal?: AbortSignal
 ) {
   const { poolAuthentication } = event
-  const args = { fence: event.fence, link, now: context.now() }
   if (poolAuthentication === undefined) {
-    return context.deps.store.updateRecord(event.sessionId, { kind: 'provider-handle', args })
+    return context.deps.store.updateRecord(event.sessionId, {
+      kind: 'provider-handle',
+      args,
+      launched
+    })
   }
   return context.deps.store.updateRecord(
     event.sessionId,
     {
       kind: 'provider-handle',
       args,
+      launched,
       pool: { sessionId: event.sessionId, fence: event.fence, poolAuthentication }
     },
     () =>

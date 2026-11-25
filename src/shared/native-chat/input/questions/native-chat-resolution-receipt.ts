@@ -5,9 +5,11 @@ import type {
 } from '../../../agent-session/journal/agent-session-journal-types'
 import {
   agentSessionPromptQuestions,
+  isAgentSessionQuestionAnswered,
   legacyAgentSessionQuestionAnswers
 } from '../../../agent-session/requests/prompts/agent-session-question-answer'
 import type { NativeChatAskRowSubject } from './native-chat-ask-row'
+import { nativeChatQuestionOptionLabel } from './native-chat-question-option-label'
 
 /** Desktop's fallbacks for its translations; the phone's words. */
 export const NATIVE_CHAT_RECEIPT_COPY = {
@@ -43,6 +45,7 @@ export type NativeChatResolvedPrompt = AgentJournalApprovalItem | AgentJournalQu
 export type NativeChatReceiptOption = { label: string; description?: string; selected: boolean }
 /** `answer` is '' for an explicitly empty text answer and null when the answer cannot be read. */
 export type NativeChatReceiptAnswer = {
+  key: string
   question: string | null
   answer: string | null
   /** Everything that was offered, so a settled prompt can still show the choices it had. */
@@ -61,14 +64,21 @@ export function nativeChatReceiptAnswers(
     const answers =
       body.resolution.answers ??
       (selected ? legacyAgentSessionQuestionAnswers(body, selected) : null)
-    return agentSessionPromptQuestions(body).map((question) => {
+    return agentSessionPromptQuestions(body).flatMap((question) => {
       const answer = answers?.find((entry) => entry.questionId === question.id)
-      const labels = answer?.optionIds.map(
-        (id) => question.options.find((option) => option.id === id)?.label
-      )
+      // A question skipped in a partly answered set was never answered, so the receipt omits it.
+      if (answer && !isAgentSessionQuestionAnswered(question, answer)) {
+        return []
+      }
+      const labels = answer?.optionIds.map((id) => {
+        const label = question.options.find((option) => option.id === id)?.label
+        // The card showed "(Recommended)" as a tag; the receipt says only what was picked.
+        return label === undefined ? undefined : nativeChatQuestionOptionLabel(label).shown
+      })
       const valid = labels?.every((label) => label !== undefined)
       const parts = [...(labels ?? []), ...(answer?.other?.trim() ? [answer.other] : [])]
       return {
+        key: question.id,
         question: body.questions ? question.question : null,
         options: question.options.map((option) => ({
           label: option.label,
@@ -86,7 +96,7 @@ export function nativeChatReceiptAnswers(
     })
   }
   const option = body.options.find((option) => option.id === selected)
-  return [{ question: null, answer: option?.label ?? null, options: [] }]
+  return [{ key: 'answer', question: null, answer: option?.label ?? null, options: [] }]
 }
 
 /** Null for an approval, which shows its title instead. */

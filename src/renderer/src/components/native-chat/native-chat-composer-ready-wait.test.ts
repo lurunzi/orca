@@ -10,7 +10,7 @@ vi.mock('@/runtime/hosted-terminals/input/runtime-terminal-verified-input', () =
 
 import { sendNativeChatMessage } from './session/terminal/send/native-chat-runtime-send'
 import { NATIVE_CHAT_SUBMIT_DELAY_MS } from '../../../../shared/native-chat/input/questions/native-chat-answer-stepping'
-import { resetNativeChatPtySendQueuesForTests } from './session/terminal/send/native-chat-pty-send-queue'
+import { cancelNativeChatPtySends } from './session/terminal/send/native-chat-pty-send-queue'
 import {
   NATIVE_CHAT_COMPOSER_READY_POLL_MS,
   NATIVE_CHAT_COMPOSER_READY_TIMEOUT_MS
@@ -31,11 +31,11 @@ beforeEach(() => {
   vi.useFakeTimers()
   sendRuntimePtyInput.mockClear()
   sendRuntimePtyInput.mockReturnValue(true)
-  resetNativeChatPtySendQueuesForTests()
+  cancelNativeChatPtySends(PTY)
 })
 afterEach(() => {
   vi.useRealTimers()
-  resetNativeChatPtySendQueuesForTests()
+  cancelNativeChatPtySends(PTY)
 })
 
 describe('sendNativeChatMessage before the agent paints its composer', () => {

@@ -4,6 +4,7 @@ import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { getCodexAccountDisplayDetail } from '../../../../../../shared/agent-accounts/codex-account-display-label'
 import { selectCodexProviderAccount } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
+import { signInCodexAccountOnHost } from '@/runtime/provider-accounts/sign-in/runtime-host-account-sign-in-client'
 import { Badge } from '../../../ui/badge'
 import { Button } from '../../../ui/button'
 import { getCodexAccountAuthWarning } from './codex-account-auth-warning'
@@ -13,7 +14,6 @@ import {
 } from '../../../provider-accounts/provider-account-visibility'
 import { formatAccountTimestamp, getCodexAccountRuntimeLabel } from '../scope/accounts-pane-runtime'
 import type { AccountsPaneSectionModel } from '../accounts-pane-types'
-import { UnavailableEntryLabel, UnavailableEntryReason } from '../../../unavailable-entry'
 import { getManagedAccountPrimaryLabel } from '../../../../../../shared/agent-accounts/managed-account-display-names'
 import { AccountRenameButton, renameTargetFor } from '../account-rename-button'
 import { getObservedCodexAccountPlan } from '@/lib/provider-accounts/observed-account-plans'
@@ -163,14 +163,6 @@ export function renderCodexAccountRow(
 
         <div className="flex shrink-0 items-center justify-end gap-1 max-md:w-full max-md:flex-wrap">
           {/* Keep maintenance actions lighter so account selection remains primary in dense lists. */}
-          {isRemoteAccountScope ? (
-            <UnavailableEntryReason>
-              {t(
-                'settings.remoteUnavailable.signInRunsOnThisComputer',
-                'Sign-in runs on this computer'
-              )}
-            </UnavailableEntryReason>
-          ) : null}
           <AccountRenameButton
             t={t}
             disabled={isRemoving}
@@ -187,14 +179,15 @@ export function renderCodexAccountRow(
               void runCodexAccountAction(
                 `reauth:${account.id}`,
                 () =>
-                  window.api.codexAccounts.reauthenticate({
-                    accountId: account.id
-                  }),
+                  accountOwner.kind === 'environment'
+                    ? signInCodexAccountOnHost(accountOwner, account.id)
+                    : window.api.codexAccounts.reauthenticate({
+                        accountId: account.id
+                      }),
                 getProviderAccountRuntime(account)
               )
             }}
-            disabled={isRemoteAccountScope || isBusy}
-            aria-disabled={isRemoteAccountScope || undefined}
+            disabled={isBusy}
             className="h-6 px-2 text-muted-foreground hover:text-foreground"
           >
             {isReauthing ? (
@@ -202,9 +195,7 @@ export function renderCodexAccountRow(
             ) : (
               <RefreshCw className="size-3" />
             )}
-            <UnavailableEntryLabel unavailable={isRemoteAccountScope}>
-              {t('auto.components.settings.AccountsPane.8a0f870153', 'Re-authenticate')}
-            </UnavailableEntryLabel>
+            {t('auto.components.settings.AccountsPane.8a0f870153', 'Re-authenticate')}
           </Button>
           <Button
             variant="ghost"

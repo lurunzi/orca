@@ -22,6 +22,8 @@ export type NativeChatGlobalSettings = {
   nativeChatExpandFinishedTurns?: boolean
   /** Unlisted agents follow this default; absent means terminal. */
   agentDefaultSurface?: AgentDefaultSurface
+  /** A paired client saved agentDefaultSurface here, so a headless host's Terminal is a choice, not its untouched default. */
+  agentDefaultSurfaceChosen?: boolean
   nativeChatAppearance?: NativeChatAppearanceSettings
   /** Off keeps chats unnamed without running a naming agent. Absent means on. */
   nativeChatAutoName?: boolean

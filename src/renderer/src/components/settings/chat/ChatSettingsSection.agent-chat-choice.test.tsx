@@ -51,6 +51,7 @@ function renderChat(
         settings={settings}
         updateSettings={updateSettings}
         writeSourceControlAiSettings={async () => {}}
+        hostScope={{ target: { kind: 'local' }, available: true }}
         searchEntries={[
           ...(showDesktopOnlySettings ? getChatLaunchSearchEntries() : []),
           ...getChatAppearanceSearchEntries(),

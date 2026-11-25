@@ -103,7 +103,7 @@ export async function waitForAgentOnPty(
   return false
 }
 
-function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+export function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
   if (timeoutMs <= 0) {
     return Promise.resolve(null)
   }

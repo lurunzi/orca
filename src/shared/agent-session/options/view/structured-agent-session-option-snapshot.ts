@@ -24,10 +24,8 @@ import {
   type StructuredAgentSessionOptionRecord
 } from '../reconciliation/structured-agent-session-option-state'
 import { withUnlistedEffort } from '../model-catalog/structured-agent-session-unlisted-effort'
-import {
-  claudeFastModeUnconfirmed,
-  withClaudeUnconfirmedFastMode
-} from '../structured-agent-fast-mode-snapshot'
+import { fastModeBlocked, withUnconfirmedClaudeFast } from '../structured-agent-fast-mode-snapshot'
+import { unlistedModelLabel } from '../model-catalog/model-id-label'
 import { listedModelDescribing } from '../model-catalog/structured-agent-session-listed-model'
 import { structuredAgentSessionPermissionDescriptor } from '../permissions/structured-agent-session-permission-option'
 import { structuredAgentSessionInteractionDescriptor } from '../permissions/agent-session-interaction-mode'
@@ -159,7 +157,10 @@ function drawnModelControls(state: StructuredAgentSessionOptionState) {
   // Before discovery, name only accepted input; static rows cannot supply installed capabilities.
   const catalog =
     state.catalogSource === 'seed' ? { ...displayCatalog, models: [] } : displayCatalog
-  const models = withTrackedNativeChatModel(catalog, catalog.models, { model: record.values.model })
+  const models = withTrackedNativeChatModel(catalog, catalog.models, {
+    agent: record.agent,
+    model: record.values.model
+  })
   const shown = structuredAgentSessionShownModel(catalog, models, record)
   // A listed row describes the chat's model by id or resolved name; stand-ins keep their own options.
   const controls = shown.controlsModelId
@@ -245,18 +246,30 @@ function modelOptionSnapshot(state: StructuredAgentSessionOptionState): SessionO
   if (snapshot.length === 0 && state.catalogSource !== 'live') {
     return [PROVIDER_DEFAULT_MODEL_PLACEHOLDER]
   }
-  const shownSnapshot = withClaudeUnconfirmedFastMode(
-    state,
-    withUnlistedEffort(
-      catalog,
-      controlsModelId,
-      values.effort,
-      state.verifiedModelIds,
-      snapshot,
-      state.record.agent
-    )
+  const shownSnapshot = withUnlistedEffort(
+    catalog,
+    controlsModelId,
+    values.effort,
+    state.verifiedModelIds,
+    snapshot,
+    state.record.agent
   )
-  return snapshot.length === 0 ? [AGENT_CHOSEN_MODEL, ...shownSnapshot] : shownSnapshot
+  const withFast = withUnconfirmedClaudeFast(state, shownSnapshot)
+  return snapshot.length === 0 ? [AGENT_CHOSEN_MODEL, ...withFast] : withFast
+}
+
+/** The pill and the checked row name the fallback; an unlisted one is named like the agent's listed rows. */
+function withFallbackModel(
+  option: SessionOptionDescriptor,
+  model: string,
+  agent: string
+): SessionOptionDescriptor {
+  const { kind } = option
+  if (kind.type !== 'select' || kind.choices.some((choice) => choice.value === model)) {
+    return { ...option, fallbackModel: model }
+  }
+  const choice = { value: model, label: unlistedModelLabel(agent, model), description: model }
+  return { ...option, fallbackModel: model, kind: { ...kind, choices: [...kind.choices, choice] } }
 }
 
 export function structuredAgentSessionOptionSnapshot(
@@ -264,7 +277,11 @@ export function structuredAgentSessionOptionSnapshot(
 ): SessionOptionDescriptor[] {
   const permission = structuredAgentSessionPermissionDescriptor(state)
   const options = modelOptionSnapshot(state).map((option) =>
-    state.fastModeRestricted && option.id === 'fastMode' ? { ...option, settable: false } : option
+    state.fastModeRestricted && option.id === 'fastMode'
+      ? { ...option, settable: false }
+      : option.id === 'model' && state.fallbackModel
+        ? withFallbackModel(option, state.fallbackModel, state.record.agent)
+        : option
   )
   const interaction = structuredAgentSessionInteractionDescriptor(state)
   return [...options, ...(permission ? [permission] : []), ...(interaction ? [interaction] : [])]
@@ -290,11 +307,7 @@ export function canSetStructuredAgentSessionOption(
   interactionReady = true,
   pending = false
 ): boolean {
-  if (
-    !interactionReady ||
-    pending ||
-    (id === 'fastMode' && (state.fastModeRestricted || claudeFastModeUnconfirmed(state, snapshot)))
-  ) {
+  if (!interactionReady || pending || fastModeBlocked(state, id, snapshot)) {
     return false
   }
   if (id === 'permissionMode' || id === 'interactionMode') {

@@ -14,7 +14,6 @@ import { createCodebuddySessionResumeState } from '../scanners/codebuddy/session
 import { createGeminiJsonlSessionResumeState } from '../scanners/gemini/session-scanner-gemini-parsers'
 import { createCopilotSessionResumeState } from '../scanners/copilot/session-scanner-copilot-parser'
 import { createCursorSessionResumeState } from '../scanners/cursor/session-scanner-cursor-parser'
-import { isCursorAcpSessionMetaPath } from '../scanners/cursor/session-scanner-cursor-acp-parser'
 import { countSubagentTranscripts } from '../scanners/claude/session-scanner-subagent-transcripts'
 import { countOmpSubagentTranscripts } from '../scanners/omp/session-scanner-omp-subagent-transcripts'
 import type { ResumableSessionParseState, SessionFileCandidate } from '../session-scanner-types'
@@ -32,6 +31,7 @@ import {
   mergeSkippedTranscriptRecords,
   type SkippedTranscriptRecord
 } from '../transcripts/session-transcript-record-budget'
+import { isCursorAcpSessionStorePath } from '../../../shared/ai-vault/session-display/cursor-acp-session-path'
 import {
   enrichSessionFromSidecar,
   reuseUnchangedSidecarSession,
@@ -60,8 +60,7 @@ function resumableStateFactoryFor(
       return (messages) =>
         createCodexSessionResumeState(candidate.file, candidate.codexHome, messages)
     case 'cursor':
-      // ACP stores are SQLite, not appendable lines.
-      return isCursorAcpSessionMetaPath(candidate.file.path)
+      return isCursorAcpSessionStorePath(candidate.file.path)
         ? null
         : (messages) => createCursorSessionResumeState(candidate.file, messages)
     case 'copilot':

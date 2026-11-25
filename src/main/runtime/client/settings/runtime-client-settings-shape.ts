@@ -1,10 +1,12 @@
 // What a paired client reads and may write of this host's settings.
 
 import type { GlobalSettings } from '../../../../shared/settings/global-settings-types'
+import type { HostOwnedSettings } from '../../../../shared/settings/host-owned-settings'
 import type { VoiceSettings } from '../../../../shared/speech/speech-types'
 import type { ExecutionHostId } from '../../../../shared/execution-host/execution-host'
 import type { WorkspaceCleanupRules } from '../../../../shared/workspace-cleanup/workspace-cleanup-policy'
 import type { SourceControlAiActionDefaults } from '../../../../shared/source-control/ai/recipes/source-control-ai-actions'
+import type { HostNotificationSettings } from '../../../../shared/notifications/notification-settings-types'
 import type { NativeChatDefaultSettings } from '../../../../shared/agent-launch/choices/structured-native-chat-launch-route'
 import type { ComputerAwakeStatus } from '../../../../shared/app-lifecycle/computer-awake-mode'
 
@@ -17,10 +19,10 @@ export type RuntimeClientSettings = Pick<
   | 'agentDefaultArgs'
   | 'agentDefaultEnv'
   | 'agentStatusHooksEnabled'
-  | 'codexShareHistoryAcrossAccounts'
-  | 'deleteChatHistoryWithWorkspace'
   | 'claudeSubagentNavigationEnabled'
   | 'terminalCopyTrimsGutter'
+  | 'terminalScrollbackRows'
+  | 'terminalWordSeparator'
   | 'defaultTaskSource'
   | 'defaultTaskViewPreset'
   | 'visibleTaskProviders'
@@ -40,7 +42,6 @@ export type RuntimeClientSettings = Pick<
   | 'agentSkillSharingEnabled'
   | 'machineName'
   | 'nativeChatPermissionMode'
-  | 'nativeChatAutoContinueAfterUsageLimit'
   | 'nativeChatQueueFollowUps'
   | 'nativeChatCiResultLines'
   | 'sourceControlGroupOrder'
@@ -60,10 +61,19 @@ export type RuntimeClientSettings = Pick<
   voice: Pick<VoiceSettings, 'enabled' | 'sttModel'>
   /** Absent on hosts that cannot hold themselves awake (headless daemons, older builds). */
   computerAwake?: ComputerAwakeStatus
-}
+  /** Not `notifications`: older paired browsers merge that key over their own switches. */
+  hostNotifications: HostNotificationSettings
+  /** Where a phone's Linear account setup goes (the "New projects open on" host); the phone reads it once
+   *  when setup starts so a later change cannot move the key. Absent on older hosts. */
+  trackerAccountHost: ExecutionHostId
+} & HostOwnedSettings
 
-/** The saved per-action launch recipes (agent, prompt template, agent args), already migrated. */
-export type RuntimeClientSourceControlAi = { actions: SourceControlAiActionDefaults }
+/** The Source Control AI switch and saved per-action launch recipes (agent, prompt template, agent args), already migrated. */
+export type RuntimeClientSourceControlAi = {
+  /** Absent on older hosts, which read as on. */
+  enabled: boolean
+  actions: SourceControlAiActionDefaults
+}
 
 /** Safe paired projection: host labels only; filesystem defaults stay host-private. */
 export type RuntimeHostDisplayLabelOverrides = Partial<
@@ -74,7 +84,7 @@ export type RuntimeClientSettingsUpdate = Pick<
   Partial<GlobalSettings>,
   | 'agentStatusHooksEnabled'
   | 'claudeSubagentNavigationEnabled'
-  | 'experimentalConnectors'
+  | 'botsEnabled'
   | 'defaultTuiAgent'
   | 'disabledTuiAgents'
   | 'agentDefaultArgs'
@@ -96,10 +106,13 @@ export type RuntimeClientSettingsUpdate = Pick<
   | 'worktreeVisibilityDefaults'
   | 'machineName'
   | 'nativeChatPermissionMode'
-  | 'nativeChatAutoContinueAfterUsageLimit'
+  | 'nativeChatResumeWorkOnRestart'
+  | 'nativeChatQueueFollowUps'
+  | 'nativeChatCiResultLines'
+  | 'nativeChatAutoName'
   | 'workspaceCleanupPolicy'
   | 'prAutoRefresh'
   | 'newTabMenuLayout'
   | 'floatingTerminalNewTabMenuLayout'
   | 'computerAwakeMode'
->
+> & { hostNotifications?: Partial<HostNotificationSettings> } & Partial<HostOwnedSettings>

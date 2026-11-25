@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws'
 import {
   LOCAL_HTTPS_TEST_CERTIFICATE,
   LOCAL_HTTPS_TEST_PRIVATE_KEY
-} from '../../main/browser/electron-fixtures/browser-local-https-test-certificate'
+} from './remote-runtime-local-https.test-fixture'
 import { setNetworkProxySettingsSource } from '../../main/browser/network/execution-routes/browser-network-proxy-settings-source'
 import { setDefaultProxySessionResolver } from '../../main/network/electron-default-proxy-session'
 import { PROXY_ENVIRONMENT_KEYS } from '../network/network-proxy'

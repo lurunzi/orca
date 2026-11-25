@@ -1,19 +1,44 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { installFakeAppEnvironment } from '../../../../config/scripts/test-runtime/environment/vitest-host-ports-setup'
 import { buildCodexResetCreditExpectedScope } from '../../../shared/agent-accounts/codex/codex-reset-credit-scope'
-import {
-  createManagedHome,
-  createRateLimits,
-  createRuntimeHome,
-  createSettings,
-  createStore,
-  registerCodexAccountsTestHomes,
-  testState
-} from './service-test-harness'
+import type { CodexResetCreditAttemptLedger } from '../../../shared/agent-accounts/codex/codex-reset-credit-attempt-ledger'
+import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
+import { createCodexAccountSettings } from './codex-account-settings-fixture'
 import {
   createResetCreditLimits,
   createResetRateLimitState
 } from './codex-reset-credit-limits.test-fixture'
+
+const testState = vi.hoisted(() => ({ userDataDir: '', fakeHomeDir: '' }))
+
+function createStore(settings: GlobalSettings) {
+  let resetLedger: CodexResetCreditAttemptLedger = { version: 1, attempts: [] }
+  return {
+    getSettings: vi.fn(() => settings),
+    updateSettings: vi.fn(),
+    getCodexResetCreditAttemptLedger: vi.fn(() => structuredClone(resetLedger)),
+    replaceCodexResetCreditAttemptLedgerAndFlush: vi.fn(
+      async (next: CodexResetCreditAttemptLedger) => {
+        resetLedger = structuredClone(next)
+      }
+    )
+  }
+}
+
+function createManagedHome(rootDir: string, accountId: string): string {
+  const managedHomePath = join(rootDir, 'codex-accounts', accountId, 'home')
+  mkdirSync(managedHomePath, { recursive: true })
+  writeFileSync(
+    join(managedHomePath, '.orca-managed-home'),
+    `${accountId}
+`,
+    'utf-8'
+  )
+  return managedHomePath
+}
 
 vi.mock('electron', () => ({
   app: {
@@ -32,7 +57,17 @@ vi.mock(import('node:os'), async (importOriginal) => {
 })
 
 describe('Codex pool reset-credit rejection', () => {
-  registerCodexAccountsTestHomes()
+  beforeEach(() => {
+    vi.resetModules()
+    testState.userDataDir = mkdtempSync(join(tmpdir(), 'orca-codex-accounts-'))
+    testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'orca-codex-home-'))
+    vi.stubEnv('ORCA_USER_DATA_PATH', testState.userDataDir)
+    mkdirSync(join(testState.fakeHomeDir, '.codex'), { recursive: true })
+  })
+  afterEach(() => {
+    rmSync(testState.userDataDir, { recursive: true, force: true })
+    rmSync(testState.fakeHomeDir, { recursive: true, force: true })
+  })
 
   it('rejects both service reset entries before local selection, ledger writes or provider reset', async () => {
     vi.stubEnv('ORCA_DASHBOARD_INSTANCE_ID', 'instance-1')
@@ -48,7 +83,7 @@ describe('Codex pool reset-credit rejection', () => {
       lastAuthenticatedAt: 1
     }
     const store = createStore(
-      createSettings({
+      createCodexAccountSettings(testState.fakeHomeDir, {
         codexManagedAccounts: [account],
         activeCodexManagedAccountId: account.id,
         activeCodexManagedAccountIdsByRuntime: { host: account.id, wsl: {} }
@@ -57,11 +92,16 @@ describe('Codex pool reset-credit rejection', () => {
     const limits = createResetCreditLimits()
     const state = createResetRateLimitState(limits)
     const rateLimits = {
-      ...createRateLimits(),
+      refreshForCodexAccountChange: vi.fn().mockResolvedValue(undefined),
+      evictInactiveCodexCache: vi.fn(),
       getState: vi.fn(() => state),
       consumeCodexRateLimitResetCredit: vi.fn().mockResolvedValue({ outcome: 'reset', state })
     }
-    const runtimeHome = createRuntimeHome()
+    const runtimeHome = {
+      syncForCurrentSelection: vi.fn(),
+      clearLastWrittenAuthJson: vi.fn(),
+      prepareForRateLimitFetch: vi.fn()
+    }
     const expectedScope = buildCodexResetCreditExpectedScope({
       target: state.codexTarget,
       account,

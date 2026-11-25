@@ -120,7 +120,10 @@ function rewindRecoveryFailed(
 }
 
 type StartedHandleContext = StructuredAgentSessionPoolAuthenticationContext & {
-  deps: Pick<StructuredAgentSessionHostDeps, 'store' | 'logger' | 'nameProviderConversation'>
+  deps: Pick<
+    StructuredAgentSessionHostDeps,
+    'store' | 'logger' | 'nameProviderConversation' | 'turnContext'
+  >
 }
 
 /** Persist the opened handle before delivery so future starts can resume; false if no handle is proven. */
@@ -139,7 +142,14 @@ export async function recordStartedHandle(
     if (!link) {
       throw new DashboardAllocationError()
     }
-    const committed = await recordStructuredAgentSessionStartedHandle(context, event, link, signal)
+    const launched = context.deps.turnContext?.launchedInstructions?.(event.sessionId) ?? null
+    const committed = await recordStructuredAgentSessionStartedHandle(
+      context,
+      event,
+      { fence: event.fence, link, now: context.now() },
+      launched,
+      signal
+    )
     // Inherit only a committed new context; a resumed CLI keeps its own later title.
     if (event.newConversation ?? (link.origin === 'created' || link.origin === 'forked')) {
       context.deps.nameProviderConversation?.(committed)

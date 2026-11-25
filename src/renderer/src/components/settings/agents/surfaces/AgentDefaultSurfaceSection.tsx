@@ -1,4 +1,4 @@
-import { cancelSettingsListReveal } from '../../section-layout/settings-list-scroll'
+import { revealInstalledAgentChoice } from './installed-agent-choice-reveal'
 import { useEffect, useId, type JSX, type ReactNode } from 'react'
 import { Check, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,7 +8,6 @@ import { normalizeAgentDefaultSurface } from '../../../../../../shared/native-ch
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useImmediateMutation } from '@/hooks/useImmediateMutation'
 import { useMountedRef } from '@/hooks/useMountedRef'
-import { motionSafeScrollBehavior } from '@/hooks/theme/usePrefersReducedMotion'
 import { useTranslate } from '@/i18n/use-translate'
 import { cn } from '@/lib/class-names'
 import { useAppStore } from '@/store/index'
@@ -17,12 +16,19 @@ import {
   ChatSurfacePreview,
   TerminalSurfacePreview
 } from '../../../agent/launch-settings/AgentDefaultSurfacePreviews'
-import { AGENT_DEFAULT_SURFACE_SECTION_ID, AGENTS_INSTALLED_SECTION_ID } from '../agents-search'
+import { AGENT_DEFAULT_SURFACE_SECTION_ID } from '../agents-search'
 import { SettingsRow } from '../../form-controls/SettingsFormControls'
 import { SettingsGroup } from '../../section-layout/SettingsGroup'
 import { Button } from '../../../ui/button'
-import { UnavailableEntryLabel, UnavailableEntryReason } from '../../../unavailable-entry'
 import { saveAgentDefaultSurface } from '../../../../lib/agent-session/launch/native-chat-provider-choice'
+import type { SettingsHostScope } from '../../host-scope/settings-host-scope'
+import { LOCAL_SETTINGS_HOST_SCOPE } from '../../host-scope/settings-host-scope'
+import {
+  getHostSettingUnsupportedNote,
+  getHostSettingUpdateFailedMessage,
+  useHostSetting,
+  useSettingsHostLabel
+} from '../../host-scope/use-host-setting'
 import {
   agentSettingsSaveFailed,
   showKeptSurfaceNotice,
@@ -50,20 +56,21 @@ function SurfaceTile({
   name,
   checked,
   pending,
-  unavailable,
   title,
   description,
   preview,
-  onSelect
+  onSelect,
+  selectOnClick = false
 }: {
   name: string
   checked: boolean
   pending: boolean
-  unavailable: boolean
   title: string
   description: string
   preview: ReactNode
   onSelect: () => void
+  /** Saves even the checked tile, so a server's untouched default can be confirmed as a choice. */
+  selectOnClick?: boolean
 }): JSX.Element {
   return (
     <label
@@ -79,9 +86,9 @@ function SurfaceTile({
         type="radio"
         name={name}
         checked={checked}
-        disabled={pending || unavailable}
-        aria-disabled={unavailable || undefined}
-        onChange={onSelect}
+        disabled={pending}
+        onChange={selectOnClick ? () => {} : onSelect}
+        onClick={selectOnClick ? onSelect : undefined}
         className="sr-only"
       />
       <div aria-hidden className="h-[292px] rounded-lg bg-muted/70 p-3">
@@ -102,9 +109,7 @@ function SurfaceTile({
             <Check className="size-3" strokeWidth={3} />
           ) : null}
         </span>
-        <UnavailableEntryLabel unavailable={unavailable} className="text-[15px] font-semibold">
-          {title}
-        </UnavailableEntryLabel>
+        <span className="text-[15px] font-semibold">{title}</span>
       </div>
       <p className="mt-0.5 pr-1 pl-[34px] text-[12.5px] leading-[18px] text-muted-foreground">
         {description}
@@ -113,31 +118,50 @@ function SurfaceTile({
   )
 }
 
-/** This computer's default surface; agents set on their own Installed row keep their choice. */
+/** The picked host's default surface; on This computer, agents set on their own Installed row keep their choice. */
 export function AgentDefaultSurfaceSection({
   settings,
-  presentation = 'tiles',
-  unavailable = false
+  hostScope = LOCAL_SETTINGS_HOST_SCOPE,
+  presentation = 'tiles'
 }: {
   settings: GlobalSettings
+  /** A server's value only decides the agents that server starts itself. */
+  hostScope?: SettingsHostScope
   presentation?: 'tiles' | 'switch'
-  unavailable?: boolean
 }): JSX.Element {
   const t = useTranslate()
   const name = useId()
   const notify = useKeptSurfaceNotice()
   const updateSettings = useAppStore((s) => s.updateSettingsOrThrow)
   const mutation = useImmediateMutation()
-  const pending = mutation.isPending('default-surface')
-  const surface = normalizeAgentDefaultSurface(settings.agentDefaultSurface)
+  const hostLabel = useSettingsHostLabel(hostScope.target)
+  const hostSurface = useHostSetting({
+    owner: hostScope.target,
+    settingKey: 'agentDefaultSurface',
+    localSettings: settings,
+    updateLocalSettings: updateSettings,
+    updateFailedMessage: getHostSettingUpdateFailedMessage(hostLabel, t)
+  })
+  const onServer = hostScope.target.kind === 'environment'
+  const serverReady = hostScope.available && hostSurface.setting.state === 'ready'
+  const pending = mutation.isPending('default-surface') || (onServer && !serverReady)
+  const surface = onServer
+    ? hostSurface.setting.state === 'ready'
+      ? hostSurface.setting.value
+      : null
+    : normalizeAgentDefaultSurface(settings.agentDefaultSurface)
   const title = t('settings.agents.defaultSurfaceTitle', 'Open agents as')
   const choose = (next: AgentDefaultSurface): void => {
+    if (onServer) {
+      void hostSurface.update(next)
+      return
+    }
     const writer = { fallbackSettings: settings, updateSettings }
     void mutation.run('default-surface', {
       mutate: () => saveAgentDefaultSurface({ surface: next, ...writer }),
       onSuccess: () => {
         trackAgentDefaultSurfaceChanged({
-          from_mode: surface,
+          from_mode: normalizeAgentDefaultSurface(settings.agentDefaultSurface),
           to_mode: next,
           source: 'settings'
         })
@@ -145,19 +169,6 @@ export function AgentDefaultSurfaceSection({
       },
       onError: agentSettingsSaveFailed
     })
-  }
-  const showInstalledList = (): void => {
-    cancelSettingsListReveal()
-    const list = document.getElementById(AGENTS_INSTALLED_SECTION_ID)
-    list?.scrollIntoView({ behavior: motionSafeScrollBehavior(), block: 'start' })
-    const row = list
-      ?.querySelector('[data-settings-scroll-list]')
-      ?.querySelector<HTMLElement>('[data-agent-opens-as]')
-    row?.scrollIntoView({ behavior: motionSafeScrollBehavior(), block: 'nearest' })
-    const choice =
-      row?.querySelector<HTMLElement>('[role="radiogroup"] [aria-checked="true"]') ??
-      row?.querySelector<HTMLElement>('[role="radiogroup"] [role="radio"]')
-    ;(choice ?? list)?.focus({ preventScroll: true })
   }
   if (presentation === 'switch') {
     return (
@@ -199,11 +210,21 @@ export function AgentDefaultSurfaceSection({
   return (
     <div id={AGENT_DEFAULT_SURFACE_SECTION_ID} className="@container scroll-mt-8">
       <SettingsGroup
-        title={<UnavailableEntryLabel unavailable={unavailable}>{title}</UnavailableEntryLabel>}
-        description={t(
-          'settings.agents.defaultSurfaceDescription',
-          'The default for agents on this computer.'
-        )}
+        title={title}
+        description={
+          !onServer
+            ? t(
+                'settings.agents.defaultSurfaceDescription',
+                'The default for agents on this computer.'
+              )
+            : hostSurface.setting.state === 'unsupported'
+              ? getHostSettingUnsupportedNote(hostLabel, t)
+              : t(
+                  'settings.agents.defaultSurfaceServerDescription',
+                  "The default for agents {{host}} starts itself, such as from its CLI or orchestration workers. Agents you open from this computer follow This computer's choice.",
+                  { host: hostLabel }
+                )
+        }
         bodyClassName="py-4"
       >
         <div
@@ -215,7 +236,6 @@ export function AgentDefaultSurfaceSection({
           <SurfaceTile
             name={name}
             pending={pending}
-            unavailable={unavailable}
             checked={surface === 'chat'}
             title={t('settings.agents.defaultOpensAsChat', 'Chat')}
             description={t(
@@ -224,11 +244,11 @@ export function AgentDefaultSurfaceSection({
             )}
             preview={<ChatSurfacePreview />}
             onSelect={() => choose('chat')}
+            selectOnClick={onServer}
           />
           <SurfaceTile
             name={name}
             pending={pending}
-            unavailable={unavailable}
             checked={surface === 'terminal'}
             title={t('settings.agents.defaultSurfaceTerminal', 'Terminal')}
             description={t(
@@ -237,26 +257,21 @@ export function AgentDefaultSurfaceSection({
             )}
             preview={<TerminalSurfacePreview settings={settings} />}
             onSelect={() => choose('terminal')}
+            selectOnClick={onServer}
           />
         </div>
-        {unavailable ? (
-          <UnavailableEntryReason className="mt-3 block">
-            {t(
-              'settings.remoteUnavailable.appliesToThisComputerOnly',
-              'Applies to this computer only'
-            )}
-          </UnavailableEntryReason>
-        ) : null}
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={showInstalledList}
-            className="inline-flex items-center gap-0.5 rounded-sm text-[13px] font-medium underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            {t('settings.agents.defaultSurfacePerAgent', 'Choose per agent')}
-            <ChevronRight className="size-3.5" />
-          </button>
-        </div>
+        {onServer ? null : (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={revealInstalledAgentChoice}
+              className="inline-flex items-center gap-0.5 rounded-sm text-[13px] font-medium underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              {t('settings.agents.defaultSurfacePerAgent', 'Choose per agent')}
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        )}
       </SettingsGroup>
     </div>
   )

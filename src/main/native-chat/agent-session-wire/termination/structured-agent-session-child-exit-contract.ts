@@ -8,5 +8,6 @@ export type StructuredAgentSessionChildExitSession = Pick<
 
 export type StructuredAgentSessionGenerationEnded = (
   sessionId: string,
-  options?: { restate?: boolean }
+  /** settled: the dead generation's leftovers are written. */
+  options?: { restate?: boolean; settled?: boolean }
 ) => void

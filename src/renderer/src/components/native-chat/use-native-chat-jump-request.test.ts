@@ -18,7 +18,13 @@ describe('useNativeChatJumpRequest', () => {
     )
     expect(select).not.toHaveBeenCalled()
 
-    const older = { id: 'older-message', slotIndex: null, text: 'Earlier task', hasImages: false }
+    const older = {
+      id: 'older-message',
+      slotIndex: null,
+      text: 'Earlier task',
+      hasImages: false,
+      timestamp: null
+    }
     rerender({ items: [older] })
     expect(select).toHaveBeenCalledExactlyOnceWith(older)
 

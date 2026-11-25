@@ -5,7 +5,6 @@ import { parseWorkspaceSession } from '../../../shared/workspace-session/workspa
 import { structuredAgentSessionPaneKey } from '../../../shared/agent-session/view/structured-agent-session-projection'
 import { createTestStore } from '@/store/testing/app-store-test-fixture'
 import { acceptedAgentStatuses } from '@/store/slices/agent-status/status-ownership/accepted-agent-statuses'
-import { createTabsSliceMockApi } from '@/store/slices/tabs/tabs-slice-test-harness'
 import type * as WorktreeOwnerModule from './workspace/ownership/worktree-runtime-owner'
 import type * as RetirementModule from '@/runtime/native-chat/tab-retirement/structured-agent-session-tab-retirement'
 import type * as RpcModule from '@/runtime/rpc/calls/runtime-rpc-call'
@@ -39,7 +38,7 @@ import {
 import { activateStructuredAgentSessionTab } from './agent-session/structured-agent-session-tab-activation'
 import {
   addNativeChatPendingAttachment,
-  clearNativeChatPendingAttachmentsForTests
+  dropNativeChatPendingAttachmentsWhere
 } from '@/components/native-chat/attachments/chips/native-chat-pending-attachment-cache'
 import { clearNativeChatComposerDraftsForTests as clearNativeChatDraftCacheForTests } from '@/components/native-chat/drafts/native-chat-draft-reset'
 import {
@@ -47,7 +46,22 @@ import {
   writeNativeChatDraftCache
 } from '@/components/native-chat/drafts/native-chat-draft-views'
 
-const api = createTabsSliceMockApi()
+const api = {
+  worktrees: {
+    create: vi.fn().mockResolvedValue({}),
+    remove: vi.fn().mockResolvedValue(undefined),
+    updateMeta: vi.fn().mockResolvedValue({})
+  },
+  repos: { list: vi.fn().mockResolvedValue([]) },
+  pty: {
+    kill: vi.fn().mockResolvedValue(undefined),
+    spawn: vi.fn().mockResolvedValue({ id: 'pty-1' })
+  },
+  settings: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) },
+  ui: { set: vi.fn().mockResolvedValue(undefined) }
+}
+// @ts-expect-error -- the tab paths under test read only these window.api calls
+globalThis.window = { api }
 const WT = 'folder:worker'
 const PATH = 'C:/work/worker'
 const session: AiVaultSession = {
@@ -76,7 +90,7 @@ const session: AiVaultSession = {
 beforeEach(() => {
   vi.clearAllMocks()
   clearNativeChatDraftCacheForTests()
-  clearNativeChatPendingAttachmentsForTests()
+  dropNativeChatPendingAttachmentsWhere(() => true)
   mocks.host = 'local'
   store = createTestStore()
   store.setState({

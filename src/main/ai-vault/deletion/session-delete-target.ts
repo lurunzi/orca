@@ -20,7 +20,6 @@ import {
 } from '../discovery/session-scanner-agent-sources'
 import { isDiscoverableSessionFile } from '../discovery/session-file-discovery'
 import { subagentTranscriptsDirFor } from '../scanners/claude/session-scanner-subagent-transcripts'
-import { isCursorAcpSessionMetaPath } from '../scanners/cursor/session-scanner-cursor-acp-parser'
 import type { AiVaultScanOptions } from '../session-scanner-types'
 
 // These sessions own their containing directory, including companion files.
@@ -93,10 +92,7 @@ function sessionDeleteRemovals(args: {
 }): readonly AiVaultSessionDeleteRemoval[] | null {
   const { agent, resolvedPath, matchedRoot, roots } = args
 
-  if (
-    AI_VAULT_WHOLE_DIRECTORY_DELETE_AGENTS.has(agent) ||
-    (agent === 'cursor' && isCursorAcpSessionMetaPath(resolvedPath))
-  ) {
+  if (AI_VAULT_WHOLE_DIRECTORY_DELETE_AGENTS.has(agent)) {
     const sessionDir = dirname(resolvedPath)
     if (sessionDir === matchedRoot || !isPathInsideOrEqual(matchedRoot, sessionDir)) {
       return null

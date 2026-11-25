@@ -71,7 +71,7 @@ function facts({ style, detailsRow = true, branch = false }: FactsInput): Worksp
     checks: { total: 0, passing: 0, failing: 0, pending: 0 },
     // A linked item is what draws the link / doc icons.
     links: { count: 1, issue: false, linearIssue: false, jiraIssue: false },
-    provenance: { automation: false, cli: false },
+    provenance: { automation: false, cli: false, bot: false },
     ports: { count: 0 },
     lineage: { childCount: 0, collapsed: false, toggleable: false },
     place: {
@@ -80,7 +80,9 @@ function facts({ style, detailsRow = true, branch = false }: FactsInput): Worksp
       hideRepoBadge: true,
       showProjectName: false,
       affiliateList: false,
-      deleteQuickAction: false
+      deleteQuickAction: false,
+      compactLine: false,
+      lineHostLabel: null
     },
     options: {
       style,

@@ -6,7 +6,6 @@ import {
   readWindowsProcessIdentityTableFresh,
   readWindowsProcessTable,
   readWindowsProcessTableFresh,
-  resetWindowsProcessTableForTests,
   type WindowsProcessIdentityRow,
   type WindowsProcessRow as NativeWindowsProcessRow
 } from '../../../windows/windows-process-table'
@@ -16,6 +15,7 @@ export type WindowsProcessRow = {
   ppid: number
   name: string
   command: string
+  creationTimeMs?: number
 }
 
 export type WindowsProcessCandidate = WindowsProcessRow & { depth: number }
@@ -26,7 +26,8 @@ function toProcessRow(row: NativeWindowsProcessRow): WindowsProcessRow {
     ppid: row.ppid,
     name: row.name,
     // Query denial can hide command lines; preserve image-name recognition as fallback.
-    command: row.command || row.name
+    command: row.command || row.name,
+    ...(typeof row.creationTimeMs === 'number' ? { creationTimeMs: row.creationTimeMs } : {})
   }
 }
 
@@ -105,8 +106,4 @@ export async function queryWindowsPaneProcessInventory(
       })
     }
   }
-}
-
-export function resetWindowsProcessRowsSnapshotForTests(): void {
-  resetWindowsProcessTableForTests()
 }

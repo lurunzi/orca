@@ -1,4 +1,3 @@
-import type { ReadTerminalScreenReadiness } from '../../terminal-screen-readiness'
 import type {
   RuntimeTerminalWait as RuntimeTerminalWaitResult,
   RuntimeTerminalWaitCondition
@@ -22,7 +21,8 @@ import {
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
 import type { TerminalWaiter } from './terminal-waiter'
 import type { RuntimePtyWorktreeRecord } from '../records/runtime-terminal-state-records'
-import { screenRuledTuiIdleVerdict, type RuntimeTerminalIdlePolls } from './terminal-idle-polls'
+import type { RuntimeTerminalIdlePolls } from './terminal-idle-polls'
+import { screenRuledTuiIdleVerdict } from './screen-ruled-tui-idle-verdict'
 import type { RuntimeTerminalWaiterRegistry } from './terminal-waiter-registry'
 
 /** Probe unseen/provider-only panes and clockless screen-ruled agents with untrusted restored models; clocked panes settle through quiet polling. profile.screenProbeBanner also opts in. */
@@ -40,7 +40,6 @@ function shouldProbeVisibleScreen(
 }
 
 type RuntimeTerminalWaitDependencies = TuiIdleEvidenceSource & {
-  getScreenReadiness?: ReadTerminalScreenReadiness
   defaultTimeoutMs: number
   /** The terminal a handle names for this wait; throws `terminal_handle_stale` when it names none. */
   getTerminalPty(

@@ -1,6 +1,7 @@
 /** Rehydrate worker identity from durable rows after restart; records, tab index and orchestration state decide custody.
  * Mail reaches agents at rest and starts them, so routing ignores process liveness. Resolve clear successors for every worker-level operation. */
 
+import type { SessionPartyReader } from '../../addressing/session-party-reader'
 import type { AgentSessionConversationView } from '../../../../../shared/agent-session/lifecycle/leases/agent-session-conversation-view'
 import {
   isOrcaSessionId,
@@ -33,7 +34,7 @@ import {
   structuredWorkerProcessIncarnation,
   type StructuredWorkerIdentity
 } from './structured-worker-identity'
-import { rehydrateStructuredSessionGrantIdentity } from '../../../structured-session-identity-registry-row'
+import { rehydrateStructuredWorkerByHandle } from '../../../structured-session-identity-registry-row'
 
 /** A worker this runtime holds, with the session running it now (a `/clear` may have moved it). */
 export type StructuredWorkerAuthority = {
@@ -74,10 +75,7 @@ export function resolveStructuredWorkerIdentity(
   if (known) {
     return known
   }
-  const row = db?.getWorkerTerminalResourceByHandle?.(handle)
-  return row
-    ? structuredWorkerIdentities.rehydrate(row)
-    : rehydrateStructuredSessionGrantIdentity(handle, db)
+  return rehydrateStructuredWorkerByHandle(handle, db)
 }
 
 /** The worker a session runs for: minted for it, or one a `/clear` continued into it. */
@@ -95,7 +93,7 @@ export function resolveStructuredWorkerIdentityForSession(
 /** The worker minted for a lineage root session, rehydrated from its durable row after a restart. */
 export function resolveStructuredWorkerIdentityForRoot(
   rootSessionId: string,
-  db: OrchestrationDb | null | undefined
+  db: SessionPartyReader | null | undefined
 ): StructuredWorkerIdentity | null {
   const known = structuredWorkerIdentities.getBySessionId(rootSessionId)
   if (known) {
@@ -110,7 +108,7 @@ export function resolveStructuredWorkerIdentityForRoot(
 /** Recorded workers must retain handle identity; a missing handle cannot turn one into an ordinary chat caller. */
 export function isRecordedStructuredWorkerSession(
   sessionId: OrcaSessionId,
-  db: OrchestrationDb
+  db: SessionPartyReader
 ): boolean {
   return db.hasRecordedStructuredWorkerSession(
     sessionId,
@@ -292,7 +290,9 @@ export function observeStructuredSession(sessionId: string): StructuredWorkerObs
   }
   return {
     status: 'unverifiable',
-    reason: 'The session has no attached provider child in this runtime generation.'
+    reason: host.reads.agentStarting(sessionId)
+      ? 'Its agent is still starting; the task is delivered once it is up.'
+      : 'The session has no attached provider child in this runtime generation.'
   }
 }
 

@@ -17,13 +17,15 @@ type StopController = Pick<
 /** Bridge host Stopping with the local request; hold Stop only in flight so repeats can escalate, and queue sends for afterward. */
 export function nativeChatStructuredStopControls(
   controller: StopController,
-  hostStopping: boolean
+  hostStopping: boolean,
+  kickoff?: { live: boolean }
 ): {
   stopping: boolean
   composer: {
     isWorking: boolean
     isStopping: boolean
     onStop: (() => void) | undefined
+    escapeStops: boolean
     steerHead: (() => boolean) | undefined
     afterStop: NativeChatAfterStopSend | undefined
     /** After a turn settles, the composer's Stop ends the background work still running. */
@@ -44,6 +46,8 @@ export function nativeChatStructuredStopControls(
       isWorking: controller.canStop || controller.queueSendsNext,
       isStopping: stopInFlight,
       onStop: controller.canStop ? () => void (stopInFlight || controller.stop()) : undefined,
+      // A stray Escape (closing the New bot dialog, say) must not stop a new bot's first words.
+      escapeStops: !(controller.canStop && kickoff?.live === true),
       steerHead: stopping ? undefined : controller.queuedMessages.steerHead,
       afterStop: stopping ? (controller.sendsQueue ? 'queue' : 'send') : undefined,
       onStopBackgroundTasks:
