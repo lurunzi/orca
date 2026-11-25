@@ -1,9 +1,10 @@
 {
   "upstreamBase": "v1.4.275",
-  "total": 1070,
+  "total": 1071,
   "files": [
     ".claude/CLAUDE.md",
     ".gitattributes",
+    ".github/scripts/check-root-directory-entries.mjs",
     ".github/workflows/pr.yml",
     ".gitignore",
     "AGENTS.md",
