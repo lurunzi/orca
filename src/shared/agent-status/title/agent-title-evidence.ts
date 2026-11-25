@@ -7,12 +7,11 @@ import {
   containsAgentSpinnerGlyph
 } from './agent-title-glyphs'
 import {
-  isClaudeIdentityFrameSegment,
   isClaudeManagementTitle,
-  isCursorAgentTitle,
   isCursorNativeAgentTitle,
-  isGrokRotatingWorkingTitle
+  grokFrameTitleStatus
 } from './agent-title-core'
+import { identityFrameAgent } from './agent-title-identity-frame'
 import {
   isOpenCodeNativeTitle,
   isOpenCodeNativeTitleHeader,
@@ -180,11 +179,12 @@ function collectAnchoredNames(
     if (synthetic) {
       anchored.add(synthetic)
     }
-    if (isClaudeIdentityFrameSegment(segment)) {
-      anchored.add('claude')
+    if (grokFrameTitleStatus(segment)) {
+      anchored.add('grok')
     }
-    if (isCursorAgentTitle(segment)) {
-      anchored.add('cursor')
+    const identityFrame = identityFrameAgent(segment)
+    if (identityFrame) {
+      anchored.add(identityFrame)
     }
 
     // Parse agy identity plus Gemini model metadata structurally instead of giving Gemini a competitor-specific exception.
@@ -264,7 +264,7 @@ function collectObserverAnchors(title: string): TerminalAgent[] {
     agent = agentForNativeFrame(segment) === 'claude' ? 'claude' : null
   } else {
     agent =
-      (isGrokRotatingWorkingTitle(segment) ? 'grok' : null) ??
+      (grokFrameTitleStatus(segment) ? 'grok' : null) ??
       (isDeepSeekBuildWorkingTitle(segment) ||
       (!segment.includes('|') && isDeepSeekBuildTerminalTitle(segment))
         ? 'dsb'

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseAntigravityAskInput } from './native-chat-antigravity-ask'
 import { buildAntigravityAskAnswerKeys } from './native-chat-antigravity-answer'
 import { extractPendingAsk, parseAskFromStatus } from './native-chat/input/native-chat-ask'
-import { decodeAntigravityTranscriptLine } from '../main/native-chat/transcript-decoding/transcript-line-decoders-antigravity'
+import { decodeAntigravityFullTranscriptLine as decodeAntigravityTranscriptLine } from '../main/native-chat/transcript-decoding/transcript-line-decoders-antigravity-full'
 
 // Captured agy tool arguments; terminal evidence: antigravity-question-answer.txt.
 const input = {

@@ -15,7 +15,7 @@ import {
   type WindowsProcessCandidate,
   type WindowsProcessRow
 } from './process-rows'
-import { withMsysConsoleOrphans } from './msys-console-orphans'
+import { memoizedConsoleRead, withMsysConsoleOrphans } from './msys-console-orphans'
 
 export type AgentForegroundResolutionOptions = {
   contextPaths?: readonly string[]
@@ -36,6 +36,8 @@ export type WindowsAgentForegroundResolution = {
   processName: string | null
   /** Unambiguous recognized-name anchor; use the outer wrapper PID so embedded-child restarts do not imply exit. */
   processId?: number
+  /** The anchor's creation time, so a later check can tell it from a process that reused its pid. */
+  processCreationTimeMs?: number
   /** True when the scan proves `anchorProcessId` now belongs to a non-agent. */
   anchorPidForeign?: boolean
 }
@@ -66,27 +68,16 @@ export async function resolveWindowsAgentForegroundProcessWithAvailability(
   if (!inventory) {
     return { available: false, processName: null }
   }
-  let consoleRead: Promise<ReadonlySet<number> | null> | undefined
-  const readConsoleAttachedProcessIds = options.readWindowsConsoleAttachedProcessIds
-    ? () => (consoleRead ??= options.readWindowsConsoleAttachedProcessIds!())
-    : undefined
-  const candidates = await withMsysConsoleOrphans({
-    inventory,
-    fallbackProcess,
-    readConsoleAttachedProcessIds,
-    hasRecognizedAgent: (rows) =>
-      windowsCandidatesContainRecognizedAgent(rows, fallbackProcess, options.contextPaths)
-  })
+  const consoleRead = memoizedConsoleRead(options.readWindowsConsoleAttachedProcessIds)
+  const hasAgent = (rows: readonly WindowsProcessCandidate[]): boolean =>
+    windowsCandidatesContainRecognizedAgent(rows, fallbackProcess, options.contextPaths)
+  const candidates = await withMsysConsoleOrphans(inventory, fallbackProcess, consoleRead, hasAgent)
   // Filter console membership before ambiguity checks so detached agents cannot suppress the attached input owner.
-  const hasRecognizedCandidate = windowsCandidatesContainRecognizedAgent(
-    candidates,
-    fallbackProcess,
-    options.contextPaths
-  )
+  const hasRecognizedCandidate = hasAgent(candidates)
   let filteredCandidates = candidates
-  if (hasRecognizedCandidate && readConsoleAttachedProcessIds) {
+  if (hasRecognizedCandidate && consoleRead) {
     // Job membership retains detached descendants; only console attachment can exclude their byte authority.
-    const consoleProcessIds = await readConsoleAttachedProcessIds()
+    const consoleProcessIds = await consoleRead()
     if (!consoleProcessIds) {
       return { available: false, processName: null }
     }
@@ -103,9 +94,19 @@ export async function resolveWindowsAgentForegroundProcessWithAvailability(
         anchorRecognized.processName !== options.anchorProcessName
       : // Query-denied command === name is inconclusive, never foreign proof.
         anchorRow.command !== anchorRow.name)
+  const identity = resolveWindowsForegroundIdentity(
+    filteredCandidates,
+    fallbackProcess,
+    options.contextPaths
+  )
+  const processCreationTimeMs =
+    identity.processId === undefined
+      ? undefined
+      : candidates.find((candidate) => candidate.pid === identity.processId)?.creationTimeMs
   return {
     available: true,
-    ...resolveWindowsForegroundIdentity(filteredCandidates, fallbackProcess, options.contextPaths),
+    ...identity,
+    ...(processCreationTimeMs !== undefined ? { processCreationTimeMs } : {}),
     ...(anchorPidForeign ? { anchorPidForeign: true } : {})
   }
 }

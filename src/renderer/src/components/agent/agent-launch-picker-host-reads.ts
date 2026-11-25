@@ -4,6 +4,8 @@ import {
   agentPickerListsCliModels,
   readAgentPickerCliModelCatalog
 } from './agent-launch-picker-cli-model-catalog'
+import { structuredAgentSessionHostSupports } from '@/runtime/native-chat/host-capabilities/structured-agent-session-host-support'
+import { AGENT_SESSION_MODEL_CATALOG_RELIST_RUNTIME_CAPABILITY } from '../../../../shared/agent-session/capabilities/structured-agent-session-surface-capabilities'
 import { callStructuredAgentSession } from '@/runtime/native-chat/requests/structured-agent-session-call'
 import {
   readModelMenuCatalog,
@@ -25,7 +27,12 @@ export function agentPickerModelCatalogReads(
   const { target, cliDiscoveryRuntime } = input
   // Fork: Cursor and Antigravity fall back to the models their terminal chat discovers.
   return withTranscriptChatCatalogReads(cliDiscoveryRuntime, {
-    catalog: async (entry: AgentPickerEntry, waitForListing: boolean, signal: AbortSignal) =>
+    catalog: async (
+      entry: AgentPickerEntry,
+      waitForListing: boolean,
+      signal: AbortSignal,
+      relist = false
+    ) =>
       cliDiscoveryRuntime && agentPickerListsCliModels(entry)
         ? readAgentPickerCliModelCatalog(entry.agent, cliDiscoveryRuntime)
         : !target
@@ -37,7 +44,15 @@ export function agentPickerModelCatalogReads(
                 {
                   ...(input.worktree ? { worktree: input.worktree } : {}),
                   agent: entry.agent,
-                  ...(waitForListing ? { waitForListing } : {})
+                  ...(waitForListing ? { waitForListing } : {}),
+                  // The catalog this read answers from, on its host, lists again.
+                  ...(relist &&
+                  (await structuredAgentSessionHostSupports(
+                    target,
+                    AGENT_SESSION_MODEL_CATALOG_RELIST_RUNTIME_CAPABILITY
+                  ))
+                    ? { relist: true }
+                    : {})
                 }
               )
             : readModelMenuCatalog(

@@ -181,7 +181,7 @@ describe('TerminalPaneHeaderOverlay', () => {
     const onToggleNativeChat = vi.fn()
     const { container } = renderOverlay({ paneTitles: {}, canShowChat: true, onToggleNativeChat })
     const buttons = container.querySelectorAll<HTMLButtonElement>(
-      'button[aria-label="Continue in Chat UI"]'
+      'button[aria-label="Continue in chat"]'
     )
     expect(buttons).toHaveLength(1)
     expect(buttons[0].closest('.pane-title-bar')?.hasAttribute('data-active-pane')).toBe(true)

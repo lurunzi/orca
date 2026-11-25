@@ -15,6 +15,7 @@ export function mobileNativeChatStructuredControllerFields(
     nativeChatContextUsage: structured ? structured.contextUsage : null,
     nativeChatInterruptedContinue: structured ? structured.interruptedContinue : null,
     nativeChatThreadGoal: structured ? structured.threadGoal : null,
+    nativeChatAccountUsage: structured ? structured.accountUsage : null,
     nativeChatRewind: structured ? structured.rewind : undefined,
     nativeChatForkSupport: structured ? structured.forkSupport : undefined,
     nativeChatUsageLimit: structured ? structured.usageLimit : null

@@ -8,6 +8,10 @@ import { makeUnifiedTab } from '@/store/slices/tabs/tab-group.test-fixture'
 import { collectAiVaultTitleRequests } from './agent-session/history/title-sync/ai-vault-tab-title-requests'
 import { aiVaultTitleSyncInputsChanged } from './agent-session/history/title-sync/ai-vault-tab-title-sync-inputs'
 import { startAiVaultTabTitleSync } from './agent-session/history/title-sync/ai-vault-tab-title-sync'
+import {
+  runtimeStatusSubscriptionsFor,
+  subscribeStoreWithStatuses
+} from '@/store/slices/runtime-status/views/runtime-status-subscriptions'
 
 vi.mock('sonner', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() } }))
 
@@ -20,6 +24,16 @@ afterEach(() => {
   stops.splice(0).forEach((stop) => stop())
   vi.useRealTimers()
 })
+
+function withStatuses(
+  store: ReturnType<typeof createTestStore>
+): Pick<Parameters<typeof startAiVaultTabTitleSync>[0], 'getState' | 'subscribe' | 'readStatuses'> {
+  return {
+    getState: store.getState,
+    subscribe: (listener) => subscribeStoreWithStatuses(store, listener),
+    readStatuses: () => runtimeStatusSubscriptionsFor(store).readStatuses()
+  }
+}
 
 function fixture(
   agent: 'claude' | 'codex' = 'claude',
@@ -76,7 +90,7 @@ describe('structured chat conversation titles', () => {
       const resolveSessionTitles = vi.fn().mockResolvedValue({
         titles: [{ agent, sessionId: 'provider-1', title: 'Fix tab titles' }]
       })
-      stops.push(startAiVaultTabTitleSync({ ...store, resolveSessionTitles }))
+      stops.push(startAiVaultTabTitleSync({ ...withStatuses(store), resolveSessionTitles }))
       await vi.advanceTimersByTimeAsync(0)
       expect(resolveSessionTitles).toHaveBeenCalledWith({
         executionHostScope: 'runtime:server-1',
@@ -110,7 +124,7 @@ describe('structured chat conversation titles', () => {
       .fn()
       .mockReturnValueOnce(pending)
       .mockResolvedValue({ titles: [] })
-    stops.push(startAiVaultTabTitleSync({ ...store, resolveSessionTitles }))
+    stops.push(startAiVaultTabTitleSync({ ...withStatuses(store), resolveSessionTitles }))
     await vi.advanceTimersByTimeAsync(0)
     expect(resolveSessionTitles).toHaveBeenCalledTimes(1)
     const entry = store.getState().agentStatusByPaneKey.get(PANE)!

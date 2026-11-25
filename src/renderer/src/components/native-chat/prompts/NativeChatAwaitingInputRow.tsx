@@ -20,7 +20,8 @@ export function NativeChatAwaitingInputRow({
   disclosureKey,
   listsQuestions = true,
   onOpenTerminal,
-  readTerminalScreen
+  readTerminalScreen,
+  headline
 }: {
   /** Null when the payload named no question; the label carries the row alone. */
   subject: NativeChatAskRowSubject | null
@@ -33,6 +34,9 @@ export function NativeChatAwaitingInputRow({
   /** The terminal owns an interaction the transcript could not describe. */
   onOpenTerminal?: () => void
   readTerminalScreen?: (format?: 'text') => string | null
+  /** The collapsed line's words when they differ from the question (an item's Markdown question in
+   *  plain words); opening the row still shows the question in full. */
+  headline?: string
 }): React.JSX.Element {
   const t = useTranslate()
   // Separate group and question keys because a pending Codex group becomes individual rows when answered.
@@ -72,7 +76,7 @@ export function NativeChatAwaitingInputRow({
         {label}
       </span>
       {question !== null && toggles && open ? null : (
-        <span className="min-w-0 truncate text-chat-foreground">{text}</span>
+        <span className="min-w-0 truncate text-chat-foreground">{headline ?? text}</span>
       )}
       {toggles ? (
         <ChevronRight
@@ -140,7 +144,7 @@ export function NativeChatAwaitingInputRow({
           >
             {t(
               'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
-              'Continue with Terminal Agent'
+              'Continue in terminal'
             )}
           </button>
         </div>

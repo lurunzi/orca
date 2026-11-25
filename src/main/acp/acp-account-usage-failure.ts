@@ -22,3 +22,11 @@ export function explainAcpFailureFromAccount(
     () => {}
   )
 }
+
+/** Binds the host's per-agent account usage reader to one session's agent, when the host has one. */
+export function acpAccountUsageForAgent(
+  read: ((agent: string, failedAt: number) => Promise<AgentSessionUsageLimit | null>) | undefined,
+  agent: string
+): Pick<AcpAccountUsageFailureDeps, 'usageLimitFromAccount'> {
+  return read ? { usageLimitFromAccount: (failedAt) => read(agent, failedAt) } : {}
+}

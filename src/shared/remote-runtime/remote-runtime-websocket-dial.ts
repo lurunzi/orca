@@ -10,6 +10,7 @@ import { openExecutionRouteSocketAsDuplex } from '../../main/browser/network/tun
 import {
   REMOTE_RUNTIME_CONNECT_TIMEOUT_MS,
   WS_HANDSHAKE_TIMEOUT_MESSAGE,
+  remoteRuntimeConnectFailureMessage,
   remoteRuntimeConnectOptions,
   type RemoteRuntimeDialProxy
 } from './remote-runtime-connect-bound'
@@ -67,6 +68,15 @@ export function remoteRuntimeDialProxy(
   ws: WebSocket | null | undefined
 ): RemoteRuntimeDialProxy | null {
   return (ws && dialRoutes.get(ws)?.proxy) ?? null
+}
+
+/** A failed dial's message, naming the proxy it went through. */
+export function remoteRuntimeDialFailureMessage(
+  error: unknown,
+  endpoint: string,
+  ws: WebSocket | null | undefined
+): string {
+  return remoteRuntimeConnectFailureMessage(error, endpoint, remoteRuntimeDialProxy(ws))
 }
 
 async function dialRemoteRuntimeEndpoint(

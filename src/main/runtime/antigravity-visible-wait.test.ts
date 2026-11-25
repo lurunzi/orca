@@ -6,7 +6,7 @@ import {
   createTranscriptPane,
   TRANSCRIPT_PANE_PTY_ID
 } from './terminal/wait/agent-transcript-pane-test-harness'
-import { projectTerminalVisibleLines } from './terminal/view/orca-runtime-terminal-projection'
+import { projectTerminalVisibleLines } from '../daemon/emulation/terminal-screen-projection'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn(() => null) },

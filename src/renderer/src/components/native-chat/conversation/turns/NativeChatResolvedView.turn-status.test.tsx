@@ -150,7 +150,7 @@ describe('NativeChatResolvedView Antigravity prose question', () => {
     expect(screen.getByRole('group', { name: question })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Type your answer')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Awaiting user input' })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Continue with Terminal Agent/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Continue in terminal/ })).toBeNull()
     expect(readScreen).not.toHaveBeenCalled()
   })
 
@@ -180,7 +180,7 @@ describe('NativeChatResolvedView Antigravity prose question', () => {
       expect(readScreen).toHaveBeenCalledWith('text')
       expect(screen.getByText('Report ready: investigation.md')).toBeInTheDocument()
       expect(screen.getByText('The report is saved.')).toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: /Continue with Terminal Agent/ }))
+      fireEvent.click(screen.getByRole('button', { name: /Continue in terminal/ }))
       expect(openTerminal).toHaveBeenCalledOnce()
       fireEvent.click(screen.getByRole('button', { name: 'Awaiting user input' }))
       expect(screen.queryByText('Report ready: investigation.md')).toBeNull()
@@ -188,7 +188,7 @@ describe('NativeChatResolvedView Antigravity prose question', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Awaiting user input' }))
       expect(readScreen).toHaveBeenCalledTimes(2)
       expect(screen.queryByText('Report ready: investigation.md')).toBeNull()
-      expect(screen.getByRole('button', { name: /Continue with Terminal Agent/ })).toBeVisible()
+      expect(screen.getByRole('button', { name: /Continue in terminal/ })).toBeVisible()
       expect(document.querySelector('[data-native-chat-turn-activity]')).toBeNull()
       act(() => {
         retained.session = { ...retained.session!, hookAwaitingInput: false }
@@ -196,7 +196,7 @@ describe('NativeChatResolvedView Antigravity prose question', () => {
       })
       view.unmount()
       renderPane(openTerminal, 'antigravity', readScreen)
-      expect(screen.queryByRole('button', { name: /Continue with Terminal Agent/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /Continue in terminal/ })).toBeNull()
       expect(screen.queryByText('Awaiting user input')).toBeNull()
     }
   )

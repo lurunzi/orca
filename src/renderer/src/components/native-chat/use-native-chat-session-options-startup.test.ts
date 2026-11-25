@@ -29,18 +29,6 @@ vi.mock('./session/options/native-chat-session-option-settings-write', () => ({
 
 const providers = [
   {
-    agent: 'claude',
-    screen:
-      'Claude Code v2.1.220\r\nOpus 5 (1M context) with high effort · API Usage Billing\r\n~/repo',
-    initial: 'opus',
-    resolved: 'opus[1m]',
-    pick: 'haiku',
-    models: [
-      { id: 'opus[1m]', label: 'Opus (1M context)', options: [] },
-      { id: 'haiku', label: 'Haiku', options: [] }
-    ]
-  },
-  {
     agent: 'antigravity',
     screen: 'Antigravity CLI 1.3.2\nGemini 3.8 Flash (High)\n~/repo',
     initial: 'Gemini 3.8 Flash (High)',

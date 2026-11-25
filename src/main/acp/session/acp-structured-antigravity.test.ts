@@ -14,7 +14,7 @@ afterEach(closeProviderTimelineRigs)
 
 it("lets Orca answer a default Full access host chat's tool approvals, but not its plan", async () => {
   const spec = acpHostBackendSpec(ANTIGRAVITY.hostBackend!, {})
-  expect(spec.args({ fullAccess: true, pluginDir: null })).toEqual(['acp'])
+  expect(spec.args({ fullAccess: true, pluginDirs: [] })).toEqual(['acp'])
   let tool: unknown = null
   let planAnswered = false
   const rig = await openAcpAdapterRig({

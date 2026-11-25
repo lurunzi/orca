@@ -39,7 +39,7 @@ describe.skipIf(process.env.ORCA_REAL_CURSOR_CLI_TEST !== '1')('installed cursor
         launch: {
           command,
           prefixArgs,
-          args: CURSOR.args({ fullAccess: false, pluginDir: null }),
+          args: CURSOR.args({ fullAccess: false, pluginDirs: [] }),
           cwd,
           env,
           fullAccess: false

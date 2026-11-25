@@ -31,9 +31,9 @@ it('uses the shared Thinking switch while sending the exact Cursor model id', as
         options: []
       }
     ],
-    reportedValues: { model: 'claude-opus-5-high-fast' },
     dispatchCommand: dispatch
   })!
+  surface.reportSessionOptions({ model: 'claude-opus-5-high-fast' })
   render(
     <TooltipProvider>
       <NativeChatSessionOptionPickers
@@ -68,9 +68,9 @@ it('sends the exact Cursor Fast variant through the separate Speed row', async (
       { id: 'grok-4.7-high', label: 'Grok 4.7 High', options: [] },
       { id: 'grok-4.7-high-fast', label: 'Grok 4.7 High Fast', options: [] }
     ],
-    reportedValues: { model: 'grok-4.7-low' },
     dispatchCommand: dispatch
   })!
+  surface.reportSessionOptions({ model: 'grok-4.7-low' })
   render(
     <TooltipProvider>
       <NativeChatSessionOptionPickers
@@ -104,9 +104,9 @@ it('holds Antigravity model and effort picks until idle and sends only the final
       { id: 'gemini-4-argon-low', label: 'Gemini 4 Argon (Low)', options: [] },
       { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)', options: [] }
     ],
-    reportedValues: { model: 'gemini-4-argon-high' },
     dispatchCommand: dispatch
   })!
+  surface.reportSessionOptions({ model: 'gemini-4-argon-high' })
   const view = (isWorking: boolean) => (
     <TooltipProvider>
       <NativeChatSessionOptionPickers

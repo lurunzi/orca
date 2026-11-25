@@ -160,6 +160,7 @@ export function fakeClaude(
         connection.calls.push({ subtype: 'list_models' })
         return (routed('list_models') as unknown[] | undefined) ?? []
       },
+      mcpServerStatus: async () => [],
       setModel: async (model) => {
         connection.calls.push({ subtype: 'set_model', params: { model } })
         await routed('set_model', { model })

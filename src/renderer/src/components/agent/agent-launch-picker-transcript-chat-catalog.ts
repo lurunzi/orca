@@ -35,7 +35,8 @@ export async function withTranscriptChatCatalogFallback(
 type CatalogRead = (
   entry: AgentPickerEntry,
   waitForListing: boolean,
-  signal: AbortSignal
+  signal: AbortSignal,
+  relist?: boolean
 ) => Promise<AgentSessionModelCatalogResult | undefined>
 
 /** Fork: entries carry their picker's worktree, so the fallback reads the same workspace. */
@@ -46,13 +47,13 @@ export function withTranscriptChatCatalogReads<Reads extends { catalog: CatalogR
   const read = reads.catalog
   return {
     ...reads,
-    catalog: (entry, waitForListing, signal) =>
+    catalog: (entry, waitForListing, signal, relist) =>
       cliDiscoveryRuntime && agentPickerListsCliModels(entry)
-        ? read(entry, waitForListing, signal)
+        ? read(entry, waitForListing, signal, relist)
         : withTranscriptChatCatalogFallback(
             entry.agent,
             entry.worktreeId,
-            read(entry, waitForListing, signal)
+            read(entry, waitForListing, signal, relist)
           )
   }
 }

@@ -84,9 +84,7 @@ export abstract class HostRelayDirector extends HostRelayPhones {
       if (!namespace) { break }
       try {
         const index = namespace.get(namespace.idFromName(userId))
-        // react-doctor-disable-next-line unicorn/prefer-ternary -- Upstream v1.4.263 code kept as-is; only the fork release sync counts it as changed.
-        if (op === 'add') { await index.add(pending.relayHostId) }
-        else { await index.remove(pending.relayHostId) }
+        await (op === 'add' ? index.add(pending.relayHostId) : index.remove(pending.relayHostId))
         acked[userId] = op
       } catch {
         // Retried below.

@@ -1,11 +1,13 @@
-import { Trash2 } from 'lucide-react'
+import { Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import type { ClaudeRateLimitAccountsState } from '../../../../../../shared/agent-accounts/managed-account-types'
 import { getManagedAccountPrimaryLabel } from '../../../../../../shared/agent-accounts/managed-account-display-names'
 import { translate } from '@/i18n/i18n'
 import type { Translate } from '@/i18n/use-translate'
 import { selectClaudeProviderAccount } from '@/runtime/provider-accounts/observations/runtime-provider-accounts-client'
+import { signInClaudeAccountOnHost } from '@/runtime/provider-accounts/sign-in/runtime-host-account-sign-in-client'
 import { Badge } from '../../../ui/badge'
 import { Button } from '../../../ui/button'
+import { ButtonGroup } from '../../../ui/button-group'
 import {
   getProviderAccountRuntime,
   providerAccountIsActiveInView
@@ -16,8 +18,11 @@ import {
   joinAccountDetails
 } from '../scope/accounts-pane-runtime'
 import type { AccountsPaneSectionModel } from '../accounts-pane-types'
-import { withCopiedClaudeLink } from './claude-sign-in-link-menu'
-import { ClaudeSignInAgainControls } from './claude-sign-in-again-controls'
+import {
+  canOfferClaudeSignInLink,
+  ClaudeSignInLinkMenu,
+  withCopiedClaudeLink
+} from './claude-sign-in-link-menu'
 import { AccountRenameButton, renameTargetFor } from '../account-rename-button'
 import { getObservedAccountPlan } from '@/lib/provider-accounts/observed-account-plans'
 
@@ -58,13 +63,16 @@ export function renderClaudeAccountRow(
     runClaudeAccountAction(
       `reauth:${account.id}`,
       () =>
-        withCopiedClaudeLink(
-          copyLink,
-          window.api.claudeAccounts.reauthenticate({
-            accountId: account.id,
-            copyLink
-          })
-        ),
+        // A server's login runs there; its prompt in this section relays the link and code.
+        accountOwner.kind === 'environment'
+          ? signInClaudeAccountOnHost(accountOwner, account.id)
+          : withCopiedClaudeLink(
+              copyLink,
+              window.api.claudeAccounts.reauthenticate({
+                accountId: account.id,
+                copyLink
+              })
+            ),
       accountRuntimeView
     )
 
@@ -134,20 +142,32 @@ export function renderClaudeAccountRow(
             pending={renamingAccountKeys.has(`claude:${account.id}`)}
             onRename={() => setRenameTarget(renameTargetFor('claude', account, accountRuntimeView))}
           />
-          <ClaudeSignInAgainControls
-            runtime={accountRuntimeView.runtime}
-            busy={isBusy}
-            reauthing={isReauthing}
-            unavailableReason={
-              isRemoteAccountScope
-                ? t(
-                    'settings.remoteUnavailable.signInRunsOnThisComputer',
-                    'Sign-in runs on this computer'
-                  )
-                : undefined
-            }
-            onReauthenticate={(copyLink) => void reauthenticate(copyLink)}
-          />
+          <ButtonGroup>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={(event) => {
+                event.stopPropagation()
+                void reauthenticate(false)
+              }}
+              disabled={isBusy}
+              className="h-6 px-2 text-muted-foreground hover:text-foreground"
+            >
+              {isReauthing ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3" />
+              )}
+              {t('accounts.claude.signInAgain', 'Sign in again')}
+            </Button>
+            {canOfferClaudeSignInLink(accountRuntimeView.runtime) ? (
+              <ClaudeSignInLinkMenu
+                variant="ghost"
+                disabled={isRemoteAccountScope || isBusy}
+                onCopyLink={() => void reauthenticate(true)}
+              />
+            ) : null}
+          </ButtonGroup>
           <Button
             variant="ghost"
             size="xs"

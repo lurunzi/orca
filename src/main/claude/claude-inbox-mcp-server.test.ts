@@ -1,10 +1,12 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   SESSION_INBOX_GUIDANCE,
   sessionInboxItemId
 } from '../../shared/session-inbox-tool-contract'
 import { withClaudeInboxSdkOptions } from './claude-inbox-mcp-server'
+import { ClaudePromptRegistry } from './structured/permissions/claude-prompt-registry'
+import { buildClaudePermissionCallbacks } from './structured/permissions/claude-structured-inbound-control'
 
 type ServerOptions = Parameters<typeof createSdkMcpServer>[0]
 
@@ -98,5 +100,29 @@ describe('withClaudeInboxSdkOptions', () => {
     expect(await close({ id: 'f00k3x9a' })).toEqual({
       content: [{ type: 'text', text: 'Closed f00k3x9a.' }]
     })
+  })
+})
+
+describe('Claude permission callbacks for the inbox tools', () => {
+  it('allows the inbox tools without a prompt, since they only record into the journal', async () => {
+    const prompts = new ClaudePromptRegistry()
+    const emit = vi.fn()
+    const { canUseTool } = buildClaudePermissionCallbacks({
+      sessionId: 'session-1',
+      prompts,
+      emit,
+      fullAccessAt: () => false
+    })
+    const input = { kind: 'issue', title: 'Retry loop never gives up', detail: 'It spins.' }
+
+    await expect(
+      canUseTool('mcp__orca_inbox__record_finding', input, {
+        requestId: 'perm-inbox',
+        toolUseID: 'tool-inbox',
+        signal: new AbortController().signal
+      })
+    ).resolves.toEqual({ behavior: 'allow', updatedInput: input, toolUseID: 'tool-inbox' })
+    expect(emit).not.toHaveBeenCalled()
+    expect(prompts.find('perm-inbox')).toBeNull()
   })
 })

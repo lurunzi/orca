@@ -1,7 +1,13 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '../actions/native-chat-tooltip-test-harness'
+import {
+  cleanup,
+  fireEvent,
+  render as renderUnwrapped,
+  screen,
+  waitFor
+} from '@testing-library/react'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // Why: these fixtures have neither inline visual owners nor sender navigation.
@@ -26,15 +32,14 @@ afterEach(() => {
 import { MessageRow } from './NativeChatMessageRow'
 
 const confirm = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/syntax-highlighting/oniguruma', async () => ({
-  loadOniguruma: (await import('@/lib/syntax-highlighting/oniguruma-test-harness'))
-    .loadNodeOniguruma
-}))
 vi.mock('@/components/confirmation-dialog-context', () => ({
   useConfirmationDialog: () => confirm
 }))
 
 afterEach(cleanup)
+
+// Message timestamps carry tooltips, which App's TooltipProvider supplies in production.
+const render = (ui: React.ReactElement) => renderUnwrapped(ui, { wrapper: TooltipProvider })
 
 describe('MessageRow control visibility', () => {
   it.each(['[Image #1] 顺便把worktree清理了', '[Image #1]'])(

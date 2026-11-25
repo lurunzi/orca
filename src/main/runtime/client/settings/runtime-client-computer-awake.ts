@@ -4,6 +4,11 @@ import {
   type ComputerAwakeMode,
   type ComputerAwakeStatus
 } from '../../../../shared/app-lifecycle/computer-awake-mode'
+import { RuntimeClientSettingsController } from './runtime-client-settings'
+import type {
+  RuntimeClientSettings,
+  RuntimeClientSettingsUpdate
+} from './runtime-client-settings-shape'
 
 /** Fork: lets paired clients read and set the awake mode of the host they are connected to. */
 export class RuntimeClientComputerAwake {
@@ -36,5 +41,23 @@ export class RuntimeClientComputerAwake {
     if (mode !== undefined) {
       this.control?.setMode(mode)
     }
+  }
+}
+
+/** Fork: the client settings controller, plus this host's awake mode for paired clients. */
+export class RuntimeClientSettingsWithComputerAwake extends RuntimeClientSettingsController {
+  readonly computerAwake = new RuntimeClientComputerAwake()
+
+  override get(): RuntimeClientSettings {
+    return { ...super.get(), ...this.computerAwake.status() }
+  }
+
+  override async update(updates: RuntimeClientSettingsUpdate): Promise<RuntimeClientSettings> {
+    const { computerAwakeMode, ...others } = updates
+    // Refuses before anything is written; the mode's settings land in the same write.
+    const awake = this.computerAwake.settingsFor(computerAwakeMode)
+    await super.update({ ...others, ...awake } as RuntimeClientSettingsUpdate)
+    this.computerAwake.apply(computerAwakeMode)
+    return this.get()
   }
 }

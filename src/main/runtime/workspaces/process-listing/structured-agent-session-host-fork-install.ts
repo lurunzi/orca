@@ -10,13 +10,13 @@ type ForkStructuredAgentSessionHostRuntime = Parameters<
 /** Fork: the host install plus coordinator identities and account-switch settings. */
 export async function ensureForkStructuredAgentSessionHost(
   runtime: ForkStructuredAgentSessionHostRuntime,
-  deps: StructuredAgentSessionRuntimeDeps
+  deps: StructuredAgentSessionRuntimeDeps | (() => StructuredAgentSessionRuntimeDeps)
 ): Promise<void> {
   // Install BEFORE the host: host install can resume sessions that need their identity.
   sessionIdentity.installStructuredSessionIdentityLoader(() => runtime.getExistingOrchestrationDb())
-  await ensureStructuredAgentSessionHost({
-    ...deps,
+  await ensureStructuredAgentSessionHost(() => ({
+    ...(typeof deps === 'function' ? deps() : deps),
     accountSwitchSettings: () => runtime.requireStore().getSettings()
-  })
+  }))
   sessionIdentity.bindRuntimeStructuredSessionCoordinatorIdentities(runtime)
 }

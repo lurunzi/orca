@@ -20,7 +20,7 @@ import {
   clearTerminalPtyWriteLog,
   installTerminalPtyWriteSpy,
   readTerminalPtyWriteEntries
-} from './terminal/input/terminal-pty-write-spy'
+} from './terminal/input/native-chat-pty-write-spy'
 
 async function enableNativeChat(page: Page): Promise<void> {
   await page.evaluate(async () => {

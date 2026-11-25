@@ -1,12 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resetAgentLaunchPanesForTests } from '../../../agent-launch/agent-launch-pane-attachment'
 import { publishAgentLaunchTabEarly } from './agent-launch/agent-launch-tab-publication'
 import { rpcContext, runtimeStub } from './agent-launch/agent-launch.test-fixture'
 import { agentLaunchWorkspaceFactory } from './agent-launch/agent-launch-worktree-creation'
-
-afterEach(() => resetAgentLaunchPanesForTests())
 
 describe('Antigravity early tab view', () => {
   it.each([true, false])(

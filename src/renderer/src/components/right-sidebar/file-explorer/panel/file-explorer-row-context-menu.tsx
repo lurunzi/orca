@@ -59,7 +59,6 @@ type FileExplorerRowContextMenuProps = Pick<
   | 'deleteShortcutLabel'
   | 'connectionId'
   | 'runtimeDownloadContext'
-  | 'supportsFolderDownload'
   | 'canOpenInOrcaBrowser'
   | 'canCollapseFolderSubtree'
   | 'targetDir'
@@ -84,7 +83,6 @@ export function FileExplorerRowContextMenu({
   deleteShortcutLabel,
   connectionId,
   runtimeDownloadContext,
-  supportsFolderDownload,
   canOpenInOrcaBrowser,
   canCollapseFolderSubtree,
   targetDir,
@@ -111,8 +109,7 @@ export function FileExplorerRowContextMenu({
   const showRemoteDownloadAction = shouldShowRemoteDownloadAction(
     node,
     connectionId,
-    runtimeDownloadContext,
-    supportsFolderDownload
+    runtimeDownloadContext
   )
   const showCopyFileAction = shouldShowCopyFileAction(node, connectionId, selectionSize)
   const revealOwner = useAppStore((s) =>
@@ -134,7 +131,8 @@ export function FileExplorerRowContextMenu({
     }
   }, [activeWorktreeId, node.path])
   const handleDownload = useCallback(() => {
-    const downloadTarget = connectionId || runtimeDownloadContext
+    // The runtime serves the bytes; a bare SSH connection id no longer has a route.
+    const downloadTarget = runtimeDownloadContext ?? connectionId
     if (!downloadTarget) {
       return
     }

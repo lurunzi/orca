@@ -32,6 +32,7 @@ export function deliverLaunchPromptToAgentTab(args: {
   timeoutMs?: number
   beforePaste?: () => boolean
   onTimeout?: () => void
+  onAgentExited?: () => void
   /** The paste was written without ever observing the agent's composer. */
   onUnconfirmedDelivery?: () => void
   /** The launch pane's PTY once its agent started; the chat copy is seeded only then. */
@@ -82,6 +83,7 @@ export function deliverLaunchPromptToAgentTab(args: {
     ...(args.hostPlatform ? { hostPlatform: args.hostPlatform } : {}),
     timeoutMs,
     onTimeout,
+    onAgentExited: args.onAgentExited,
     onUnconfirmedDelivery,
     beforePaste: args.beforePaste,
     ...(launchPty ? { launchPty } : {})
