@@ -1,11 +1,12 @@
 {
   "upstreamBase": "v1.4.263",
-  "total": 1076,
+  "total": 1077,
   "files": [
     ".claude/CLAUDE.md",
     ".gitattributes",
     ".github/workflows/e2e.yml",
     ".github/workflows/pr.yml",
+    ".gitignore",
     "AGENTS.md",
     "cloud/apps/relay-edge/src/host-relay-director.ts",
     "config/build-plugins/cli-main-entry-names.ts",
