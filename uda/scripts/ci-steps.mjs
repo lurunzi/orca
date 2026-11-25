@@ -214,7 +214,11 @@ function nodeVersionProblem() {
   )
 }
 
+/** @typedef {{ name: string, status: string, note?: string, reason?: string, fix?: string }} StepResult */
+
+/** @param {StepResult[]} results */
 function printSummary(results) {
+  /** @type {Record<string, StepResult[]>} */
   const groups = { passed: [], failed: [], 'not-covered': [] }
   for (const result of results) {
     groups[result.status].push(result)
