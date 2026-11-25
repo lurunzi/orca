@@ -11,6 +11,7 @@
   "main": "./out/main/index.js",
   "scripts": {
     "ci:local": "node config/scripts/ci-local.mjs",
+    "uda": "node uda/scripts/run.mjs",
     "prepare:cross-version-releases": "node config/scripts/prepare-cross-version-releases.mjs",
     "check:dependencies": "pnpm run build:packages && node config/scripts/dependency-security/audit-tools/check-dependency-security.mjs",
     "install:release": "pnpm install --frozen-lockfile --cpu=current,x64,arm64",
