@@ -12,10 +12,9 @@ import {
   type RemoteRuntimeClientHandshake
 } from '../remote-runtime-client-framing'
 import { RemoteRuntimeClientError } from '../remote-runtime-client-error'
-import { remoteRuntimeConnectFailureMessage } from '../remote-runtime-connect-bound'
 import {
   createRemoteRuntimeWebSocket,
-  remoteRuntimeDialProxy
+  remoteRuntimeDialFailureMessage
 } from '../remote-runtime-websocket-dial'
 import { REMOTE_RUNTIME_MAX_WEBSOCKET_FRAME_BYTES } from '../remote-runtime-memory-limits'
 import {
@@ -51,10 +50,12 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
   prepareRequest?: RuntimeRequestPreparation,
   // Internal: the framing fallback's legacy status check on a latched host uses exactly this dial.
   latchedHostCheck?: RemoteRuntimeClientHandshake,
-  prepareGuard?: RuntimeRequestGuard
+  prepareGuard?: RuntimeRequestGuard,
+  /** Replaces timeoutMs once the host authenticates, so only a reachable host gets a long reply wait. */
+  responseTimeoutMs?: number
 ): Promise<RuntimeRpcResponse<TResult>> {
   throwIfSignalAborted(signal)
-  if (!isSafeTimerDelayMs(timeoutMs)) {
+  if (!isSafeTimerDelayMs(timeoutMs) || !isSafeTimerDelayMs(responseTimeoutMs ?? timeoutMs)) {
     throw new RemoteRuntimeClientError(
       'invalid_argument',
       `Runtime request timeout must be an integer between 0 and ${MAX_TIMER_DELAY_MS}ms.`
@@ -92,6 +93,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
         }
       }
 
+      let phaseTimeoutMs = timeoutMs
       let deadline = performance.now() + timeoutMs
       let timeout = setTimeout(onTimeout, timeoutMs)
 
@@ -110,14 +112,24 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
       }
 
       function refreshTimeout(): void {
-        deadline = performance.now() + timeoutMs
+        deadline = performance.now() + phaseTimeoutMs
         const refreshableTimeout = timeout as { refresh?: () => void }
         if (typeof refreshableTimeout.refresh === 'function') {
           refreshableTimeout.refresh()
           return
         }
         clearTimeout(timeout)
-        timeout = setTimeout(onTimeout, timeoutMs)
+        timeout = setTimeout(onTimeout, phaseTimeoutMs)
+      }
+
+      // Timeout.refresh() keeps the old delay, so a new phase budget needs a new timer.
+      function startResponseWait(): void {
+        if (responseTimeoutMs !== undefined) {
+          phaseTimeoutMs = responseTimeoutMs
+          deadline = performance.now() + phaseTimeoutMs
+          clearTimeout(timeout)
+          timeout = setTimeout(onTimeout, phaseTimeoutMs)
+        }
       }
 
       const finish = (
@@ -151,6 +163,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
           return
         }
         preparingSend = true
+        startResponseWait()
         void sendPreparedRpc(status).catch((error: unknown) =>
           finishError(error instanceof Error ? error : new Error(String(error)))
         )
@@ -257,11 +270,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
         finishError(
           new RemoteRuntimeClientError(
             'remote_runtime_unavailable',
-            remoteRuntimeConnectFailureMessage(
-              error,
-              connection.endpoint,
-              remoteRuntimeDialProxy(ws)
-            ),
+            remoteRuntimeDialFailureMessage(error, connection.endpoint, ws),
             { pairingStage: router.pairingStage }
           )
         )

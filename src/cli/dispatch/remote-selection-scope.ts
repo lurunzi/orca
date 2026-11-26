@@ -2,6 +2,7 @@
 export function ignoresRemoteSelection(commandPath: readonly string[]): boolean {
   return (
     commandPath[0] === 'account' ||
+    commandPath[0] === 'auth' ||
     commandPath[0] === 'dashboard-accounts' ||
     commandPath[0] === 'artifacts' ||
     commandPath[0] === 'environment' ||
@@ -17,6 +18,8 @@ export function ignoresRemoteSelection(commandPath: readonly string[]): boolean 
     commandPath[0] === 'profile' ||
     // Authoring works on local files; the handler refuses explicit remote flags.
     (commandPath[0] === 'plugin' &&
-      ['create', 'validate', 'inspect'].includes(commandPath[1] ?? ''))
+      ['create', 'validate', 'inspect'].includes(commandPath[1] ?? '')) ||
+    // Skill installs write this machine's agent folders; the handler refuses explicit remote flags.
+    (commandPath[0] === 'skills' && ['install', 'update'].includes(commandPath[1] ?? ''))
   )
 }

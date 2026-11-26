@@ -5,7 +5,7 @@ import { useAppStore } from '@/store'
 import { findCursorTranscriptTerminal } from '@/lib/cursor-transcript-terminal'
 import { getKnownExecutionHostIdForWorktree } from '@/lib/workspace/ownership/worktree-runtime-owner'
 import { NativeChatResolvedView } from './NativeChatResolvedView'
-import { NativeChatFileLinkExistenceProvider } from './links/actions/use-native-chat-file-link-existence'
+import { NativeChatTabTranscriptScope } from './native-chat-transcript-scope'
 import { CursorTranscriptComposer } from './CursorTranscriptComposer'
 import { useCursorTranscriptResume } from './use-cursor-transcript-resume'
 import { useNativeChatRetainedSession } from './session/terminal/read/use-native-chat-retained-session'
@@ -57,7 +57,11 @@ export function NativeChatTranscriptView({
   }, [terminal, sending, draft, worktreeId])
   if (terminal && !sending) {
     return (
-      <NativeChatFileLinkExistenceProvider tabId={terminal.tabId}>
+      <NativeChatTabTranscriptScope
+        tabId={terminal.tabId}
+        isVisible={isVisible}
+        sessionId={source.sessionId}
+      >
         <NativeChatResolvedView
           terminalTabId={terminal.tabId}
           paneKey={terminal.paneKey}
@@ -70,7 +74,7 @@ export function NativeChatTranscriptView({
           isFocusedGroup={isFocusedGroup}
           ownsTabWideLaunchDraft={false}
         />
-      </NativeChatFileLinkExistenceProvider>
+      </NativeChatTabTranscriptScope>
     )
   }
   return (

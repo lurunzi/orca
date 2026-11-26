@@ -124,7 +124,7 @@ export const STRUCTURED_AGENT_SESSION_ACCOUNT_USAGE_METHODS = [
         const offer = sessionAccountUsageOffer(
           record,
           ctx.runtime.requireStore().getSettings(),
-          ctx.runtime.getUsageRateLimits()?.getState(),
+          await ctx.runtime.getUsageRateLimits()?.getState(),
           result.pool === true
         )
         return {

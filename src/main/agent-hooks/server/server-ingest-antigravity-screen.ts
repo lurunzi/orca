@@ -1,6 +1,6 @@
 import type { AgentStatusIpcPayload } from '../../../shared/agent-status/contracts/agent-status-ipc-payload'
 import type { EnrichedAgentHookEventPayload } from './server-types'
-import { AgentHookServerIngestNormalization } from './server-ingest-normalization'
+import { AgentHookServerIngestLaunch } from './server-ingest-launch'
 
 export type AntigravityScreenPermissionObservation = {
   baseline: Pick<AgentStatusIpcPayload, 'paneKey' | 'terminalHandle' | 'observation'>
@@ -8,7 +8,7 @@ export type AntigravityScreenPermissionObservation = {
 
 const SCREEN_APPROVAL_PREFIX = '{"approval":{"source":"antigravity-screen",'
 
-export abstract class AgentHookServerIngestAntigravityScreen extends AgentHookServerIngestNormalization {
+export abstract class AgentHookServerIngestAntigravityScreen extends AgentHookServerIngestLaunch {
   ingestAntigravityScreenPermission(request: AntigravityScreenPermissionObservation): boolean {
     const { baseline, command } = request
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: This server's canonical row writer stores enriched events in the shared listener map.

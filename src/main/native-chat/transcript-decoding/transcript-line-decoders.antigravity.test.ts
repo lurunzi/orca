@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { decodeAntigravityTranscriptLine } from './transcript-line-decoders-antigravity'
+import { decodeAntigravityFullTranscriptLine } from './transcript-line-decoders-antigravity-full'
 
 const lines = readFileSync(
   new URL('../__fixtures__/antigravity/tool-turn.jsonl', import.meta.url),
@@ -10,7 +10,7 @@ const lines = readFileSync(
   .split('\n')
 
 function decode(record: unknown) {
-  return decodeAntigravityTranscriptLine(JSON.stringify(record), 'line-1')
+  return decodeAntigravityFullTranscriptLine(JSON.stringify(record), 'line-1')
 }
 
 describe('Antigravity transcript records', () => {
@@ -37,7 +37,7 @@ describe('Antigravity transcript records', () => {
 
   it('preserves the recorded prompt, tool arguments, output, and subsequent response', () => {
     const messages = lines.map((line, index) =>
-      decodeAntigravityTranscriptLine(line, `line-${index}`)
+      decodeAntigravityFullTranscriptLine(line, `line-${index}`)
     )
     expect(messages[0]).toMatchObject({
       role: 'user',
@@ -90,7 +90,7 @@ describe('Antigravity transcript records', () => {
   )
 
   it('ignores malformed, empty, and system bookkeeping records', () => {
-    expect(decodeAntigravityTranscriptLine('{', 'line')).toBeNull()
+    expect(decodeAntigravityFullTranscriptLine('{', 'line')).toBeNull()
     expect(decode({ source: 'MODEL', type: 'PLANNER_RESPONSE' })).toBeNull()
     expect(decode({ source: 'SYSTEM', type: 'CHECKPOINT', content: 'private context' })).toBeNull()
   })

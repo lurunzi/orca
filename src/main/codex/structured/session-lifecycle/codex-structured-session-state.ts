@@ -12,6 +12,7 @@ import type { AgentJournalDispatchRejection } from '../../../../shared/agent-ses
 import type { CodexAppServerConnection } from '../../app-server/codex-app-server-connection-types'
 import type { openCodexAppServerConnection } from '../../app-server/codex-app-server-connection'
 import { CodexAcquisitionWindow } from '../acquisition/codex-structured-acquisition-window'
+import type { CodexBotLaunchOptions } from '../launch/codex-bot-launch-options'
 import { AgentSessionStartEndings } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-start-failure'
 import {
   createCodexTurnOpenWaits,
@@ -27,15 +28,10 @@ import type { StructuredAgentSessionLifecycleEvent } from '../../../native-chat/
 import type { CodexStructuredLaunch } from '../launch/codex-structured-launch'
 import type { StructuredLaunchRequest } from '../../../runtime/agent-session/launch/structured-agent-launch-composition'
 import type { AgentModelCatalogStore } from '../../../native-chat/agent-model-catalog/agent-model-catalog-store'
-import type { AgentModelCatalogSessionAccess } from '../../../native-chat/agent-model-catalog/agent-model-catalog-lister'
+import type { CodexSessionCatalogAccess } from '../catalog/codex-session-catalog-access'
 import type { StructuredAgentSessionProviderOpen } from '../../../native-chat/agent-session-wire/startup/structured-agent-session-provider-open-contract'
 import type { CodexSessionPermissions } from './codex-structured-session-permissions'
 import type { StructuredAgentSessionEventSink } from '../../../native-chat/agent-session-wire/journal-ingress/structured-agent-session-event-sink'
-
-export type CodexSessionCatalogAccess = AgentModelCatalogSessionAccess & {
-  read?: (verifiedOnly?: boolean) => ReturnType<AgentModelCatalogStore['get']>
-  demand?: (legacy?: boolean) => Promise<unknown>
-}
 
 export type { CodexStructuredLaunch } from '../launch/codex-structured-launch'
 
@@ -91,7 +87,11 @@ export type CodexStructuredSessionAdapterDeps = {
   /** The provider's exact receipt or explicit refusal for a send admitted earlier. */
   onDispatchSettledLate?: (
     input: { sessionId: string; clientMessageId: string } & (
-      | { providerIdentity: AgentJournalItemIdentity }
+      | {
+          providerIdentity: AgentJournalItemIdentity
+          /** The running turn it joined, which another send opened. */
+          answeredInTurn?: AgentJournalAnsweredTurnIdentity
+        }
       | ({
           state: 'rejected'
           answeredInTurn?: AgentJournalAnsweredTurnIdentity
@@ -101,6 +101,8 @@ export type CodexStructuredSessionAdapterDeps = {
   /** The sends Codex holds (`CodexDispatchEchoes.heldSends`) changed with no journal row. */
   onHeldSendsChanged?: (input: { sessionId: string }) => void
   openConnection?: typeof openCodexAppServerConnection
+  /** Read per start: true leases a thread on a shared, capped app-server. */
+  sharedServers?: () => boolean
   readProcessStartTime?: (pid: number) => Promise<number | null>
   mintLinkId?: () => string
   mintAcquisitionGeneration?: () => string
@@ -115,7 +117,7 @@ export type CodexStructuredSessionAdapterDeps = {
   demandModelCatalog?: (sessionId: string, legacy?: boolean) => Promise<unknown>
 }
 
-export type CodexSession = {
+export type CodexSession = Pick<CodexBotLaunchOptions, 'readOnly'> & {
   dashboardAdoption?: DashboardCodexSessionAdoption
   promptSuggestion?: CodexPromptSuggestion
   events?: StructuredAgentSessionEventSink

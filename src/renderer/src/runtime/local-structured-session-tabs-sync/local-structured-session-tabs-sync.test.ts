@@ -6,7 +6,6 @@ import type { RuntimeMobileSessionTabsResult } from '../../../../shared/remote-r
 import type { Tab } from '../../../../shared/workspace-layout/tab-groups/tab-types'
 
 import { applyLocalStructuredSessionTabSnapshots } from './snapshot-apply'
-import { resetLocalStructuredSessionVersionForTests } from './inventory-generation-fence'
 import './subscription'
 import { resetWebSessionTabsSnapshotFreshnessForTests } from '../web-session-tabs-sync/tracking/tracking-lifecycle'
 import type { WebSessionTabsSyncState } from '../web-session-tabs-sync/state'
@@ -29,7 +28,6 @@ const PRIMARY_GROUP = 'primary-group'
 const SECONDARY_GROUP = 'secondary-group'
 
 afterEach(() => {
-  resetLocalStructuredSessionVersionForTests()
   resetWebSessionFocusIntentForTests()
   resetWebSessionTabsSnapshotFreshnessForTests()
   vi.useRealTimers()
@@ -80,6 +78,8 @@ function createSnapshot(): WebSessionTabsSyncState {
     activeWorktreeId: WORKTREE_ID,
     agentStatusByPaneKey: acceptedAgentStatuses(),
     agentStatusEpoch: 0,
+    browserAudiblePageIds: {},
+    browserAudioMutedTabIds: {},
     browserCertificateFailuresByPageId: {},
     browserPagesByWorkspace: {},
     browserTabsByWorktree: {},

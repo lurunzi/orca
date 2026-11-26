@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 import { isTaskProvider } from '../../work-items/task-providers'
 import type { TaskProvider } from '../../work-items/task-providers'
 import { isTuiAgent } from '../../agent-launch/catalog/tui-agent-config'
@@ -15,6 +15,7 @@ import { WorkspaceCleanupRulesParam } from '../workspace-cleanup/workspace-clean
 import { AGENT_CHAT_PERMISSION_MODES } from '../../agent-launch/permissions/agent-chat-permission-mode'
 import { PR_AUTO_REFRESH_CADENCES } from '../../source-control/hosted-review/review-refresh-policy'
 import { COMPUTER_AWAKE_MODES } from '../../app-lifecycle/computer-awake-mode'
+import { HOST_OWNED_SETTING_UPDATE_SHAPE } from '../../settings/host-owned-settings'
 
 export const TaskProviderParam = z.custom<TaskProvider>(isTaskProvider, {
   message: 'Unknown task provider'
@@ -54,7 +55,9 @@ export const NativeChatSessionOptionsMutation = z.discriminatedUnion('type', [
     .object({
       type: z.literal('apply-picks'),
       agent: NativeChatSessionOptionAgent,
-      picks: z.array(NativeChatSessionOptionPick).min(1).max(8)
+      picks: z.array(NativeChatSessionOptionPick).min(1).max(8),
+      /** The chat the picks were made in; a bot's conversation keeps them on the bot. Older clients omit it. */
+      sessionId: z.string().trim().min(1).max(512).optional()
     })
     .strict(),
   z
@@ -88,8 +91,18 @@ export const GitHubProjectSettings = z
   })
   .strict()
 
+const HostNotificationSettingsUpdate = z
+  .object({
+    enabled: z.boolean().optional(),
+    agentTaskComplete: z.boolean().optional(),
+    agentNeedsInput: z.boolean().optional(),
+    terminalBell: z.boolean().optional()
+  })
+  .strict()
+
 export const SettingsUpdate = z
   .object({
+    ...HOST_OWNED_SETTING_UPDATE_SHAPE,
     machineName: z.string().trim().max(MACHINE_NAME_MAX_LENGTH).optional(),
     worktreeVisibilityDefaults: WorktreeVisibilityDefaultsUpdate.optional(),
     defaultTuiAgent: z
@@ -117,11 +130,9 @@ export const SettingsUpdate = z
       .optional(),
     experimentalNewWorktreeCardStyle: z.boolean().optional(),
     worktreeCardDetailsRow: z.boolean().optional(),
-    /** No UI: the host-side switch for connectors, so a headless server can be turned on. */
-    experimentalConnectors: z.boolean().optional(),
+    /** The host-side switch for bots, so a headless server can turn them on. */
+    botsEnabled: z.boolean().optional(),
     agentStatusHooksEnabled: z.boolean().optional(),
-    codexShareHistoryAcrossAccounts: z.boolean().optional(),
-    deleteChatHistoryWithWorkspace: z.boolean().optional(),
     claudeSubagentNavigationEnabled: z.boolean().optional(),
     defaultRepoSelection: z.array(z.string()).nullable().optional(),
     defaultLinearTeamSelection: z.array(z.string()).nullable().optional(),
@@ -135,8 +146,13 @@ export const SettingsUpdate = z
       .unknown()
       .transform((value) => normalizePRBotAuthorOverrides(value))
       .optional(),
-    nativeChatAutoContinueAfterUsageLimit: z.boolean().optional(),
+    nativeChatResumeWorkOnRestart: z.boolean().optional(),
     nativeChatPermissionMode: z.enum(AGENT_CHAT_PERMISSION_MODES).optional(),
+    nativeChatQueueFollowUps: z.boolean().optional(),
+    nativeChatCiResultLines: z.boolean().optional(),
+    nativeChatAutoName: z.boolean().optional(),
+    /** This host's own notification switches; see HOST_NOTIFICATION_SETTINGS_RUNTIME_CAPABILITY. */
+    hostNotifications: HostNotificationSettingsUpdate.optional(),
     workspaceCleanupPolicy: WorkspaceCleanupRulesParam.optional(),
     prAutoRefresh: z.enum(PR_AUTO_REFRESH_CADENCES).optional(),
     newTabMenuLayout: z.unknown().transform(normalizeNewTabMenuLayout).optional(),

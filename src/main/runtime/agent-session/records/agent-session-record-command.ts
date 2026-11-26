@@ -20,6 +20,11 @@ import {
   reviseAgentSessionProviderResumePoint
 } from '../ownership/agent-session-provider-handle-transition'
 import { releaseAgentSessionOwnerAfterSurfaceClose } from '../ownership/agent-session-surface-release-transition'
+import {
+  recordAgentSessionInstructionsKey,
+  withOpenedAgentSessionInstructionsKey,
+  type AgentSessionInstructionsReceipt
+} from './agent-session-instructions-receipt'
 import { pinAgentSessionRecordLaunchDirectory } from './agent-session-record-launch-directory'
 import {
   recordCodexPoolAuthentication,
@@ -66,7 +71,10 @@ export type AgentSessionRecordCommand =
       kind: 'provider-handle'
       args: WithoutRecord<typeof recordAgentSessionProviderHandle>
       pool?: DashboardCodexPoolAuthenticationProof
+      /** The launch's instructions, recorded when the open confirms the agent was given them. */
+      launched?: { key: string; rebuilt: boolean } | null
     }
+  | { kind: 'instructions-key'; receipt: AgentSessionInstructionsReceipt }
   | { kind: 'resume-point'; args: WithoutRecord<typeof reviseAgentSessionProviderResumePoint> }
   | {
       kind: 'release-surface'
@@ -162,10 +170,17 @@ export function applyAgentSessionRecordCommand(
       next = releaseUnprovenAgentSessionOwner({ ...command.args, record })
       break
     case 'provider-handle':
-      next = recordAgentSessionProviderHandle({
-        ...command.args,
-        record: command.pool ? recordCodexPoolAuthentication(record, command.pool) : record
-      })
+      next = withOpenedAgentSessionInstructionsKey(
+        recordAgentSessionProviderHandle({
+          ...command.args,
+          record: command.pool ? recordCodexPoolAuthentication(record, command.pool) : record
+        }),
+        command.launched,
+        command.args.link
+      )
+      break
+    case 'instructions-key':
+      next = recordAgentSessionInstructionsKey(record, command.receipt)
       break
     case 'resume-point':
       next = reviseAgentSessionProviderResumePoint({ ...command.args, record })

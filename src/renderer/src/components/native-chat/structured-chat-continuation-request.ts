@@ -1,7 +1,7 @@
 import {
   buildAgentSessionContinuationPrompt,
   type AgentSessionContinuationRequest
-} from '@/lib/agent-session/context/agent-session-continuation'
+} from '../../../../shared/agent-session/conversation-context/agent-session-continuation'
 import type { AgentStatusEntry } from '../../../../shared/agent-status/contracts/agent-status-types'
 import { isNoiseMessage } from '../../../../shared/native-chat/transcript/messages/native-chat-noise'
 import {

@@ -33,6 +33,8 @@ import type { AcpStructuredSessionAdapterDeps } from '../acp-structured-session-
 import { AcpStructuredTurns } from '../../turns/acp-structured-turns'
 import type { AcpStructuredTurnsDeps } from '../../turns/acp-turn-dispatch-contract'
 import { acpNoModelSelected } from '../../turns/acp-model-command'
+import { acpAccountUsageForAgent } from '../../acp-account-usage-failure'
+import { requireAcpPermissionModeValue } from '../../acp-dialect-config-options'
 import {
   assertAcpStartingSession,
   isAcpReadySession,
@@ -73,6 +75,16 @@ export async function initializeAcpStructuredSession(
   const initialized = await connection.initialize()
   assertStarting()
   observeAcpForkSupport(spec.agent, initialized)
+  const sessionMetaRefused = Boolean(
+    launch.sessionMeta && launch.takesSessionMeta && !launch.takesSessionMeta(initialized)
+  )
+  if (sessionMetaRefused && !launch.sessionMetaOptional) {
+    const version = initialized.agentInfo?.version
+    throw new Error(
+      `${agentName}${version ? ` ${version}` : ''} cannot take this chat's standing instructions, so it did not start`
+    )
+  }
+  const sessionMeta = sessionMetaRefused ? undefined : launch.sessionMeta
   options.adoptInitialize(initialized)
   const meta = await spec.resolveSessionMeta?.({
     initialized,
@@ -88,7 +100,6 @@ export async function initializeAcpStructuredSession(
     antigravityChatAuth: launch.antigravityChatAuth
   })
   const setup = {
-    ...acpSessionStartMeta(spec, meta),
     authMethodId,
     authMethodUnavailableMessage: spec.authMethodUnavailableMessage,
     resumePreference: spec.resumePreference
@@ -107,6 +118,7 @@ export async function initializeAcpStructuredSession(
     options.adoptSession(accepted.response, accepted.kind === 'new' ? 'new' : 'loaded')
   }
   if (resume) {
+    const reopenMeta = launch.sessionMetaOnReopen ? sessionMeta : undefined
     const reopenIn = (cwd: string) =>
       retryAcpRequest(
         async () => {
@@ -115,7 +127,13 @@ export async function initializeAcpStructuredSession(
           const attaching = input.lanes.create(resume.sessionId, true)
           liveLane = attaching
           const opened = await connection.start(
-            { cwd, mcpServers: [], sessionId: resume.sessionId, ...setup },
+            {
+              cwd,
+              mcpServers: launch.mcpServers ?? [],
+              sessionId: resume.sessionId,
+              ...acpSessionStartMeta(spec, meta, reopenMeta),
+              ...setup
+            },
             acceptSession
           )
           assertStarting()
@@ -173,7 +191,20 @@ export async function initializeAcpStructuredSession(
   if (!started || !liveLane) {
     liveLane?.dispose()
     input.lanes.clear()
-    started = await connection.start({ cwd: launch.cwd, mcpServers: [], ...setup }, acceptSession)
+    const undo = await launch.aroundNewSession?.(launch.cwd)
+    try {
+      started = await connection.start(
+        {
+          cwd: launch.cwd,
+          mcpServers: launch.mcpServers ?? [],
+          ...acpSessionStartMeta(spec, meta, sessionMeta),
+          ...setup
+        },
+        acceptSession
+      )
+    } finally {
+      await undo?.()
+    }
     assertStarting()
   }
   if (!liveLane) {
@@ -214,13 +245,7 @@ export async function initializeAcpStructuredSession(
   if (mode && acquire.permissionMode !== 'own') {
     // Fail startup rather than silently use a different permission mode.
     const wanted = acquire.permissionMode ?? 'ask'
-    // Orca answers approvals itself for a Full access the agent lacks, running it in ask mode.
-    const requested =
-      child.permissionModes?.[wanted] ??
-      (wanted === 'full-access' ? child.permissionModes?.ask : undefined)
-    if (requested === undefined) {
-      throw new Error(`${agentName} on this host cannot run in the ${wanted} permission mode`)
-    }
+    const requested = requireAcpPermissionModeValue(child.permissionModes, wanted, agentName)
     const configId = options.modeConfigId()
     await connection.setConfigOption(configId, requested, undefined, ({ configOptions }) => {
       assertStarting()
@@ -280,12 +305,7 @@ export async function initializeAcpStructuredSession(
       settle: onSettled,
       sessionLost: input.onSessionLost,
       modelRefusal: (error) => acpNoModelSelected(spec.dialect, options, error),
-      ...(deps.usageLimitFromAccount
-        ? {
-            usageLimitFromAccount: (failedAt: number) =>
-              deps.usageLimitFromAccount!(spec.agent, failedAt)
-          }
-        : {})
+      ...acpAccountUsageForAgent(deps.usageLimitFromAccount, spec.agent)
     })
   })
   if (!isAcpReadySession(child)) {

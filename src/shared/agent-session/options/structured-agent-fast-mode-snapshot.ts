@@ -27,8 +27,19 @@ export function claudeFastModeUnconfirmed(
   return !state.optionsAnswerPresent || (Boolean(modelId) && row?.supportsFastMode === undefined)
 }
 
+/** Fast cannot be set while the host restricts it or has not verified the Claude account. */
+export function fastModeBlocked(
+  state: StructuredAgentSessionOptionState,
+  id: string,
+  snapshot: readonly SessionOptionDescriptor[]
+): boolean {
+  return (
+    id === 'fastMode' && (state.fastModeRestricted || claudeFastModeUnconfirmed(state, snapshot))
+  )
+}
+
 /** Shows an unconfirmed Claude Fast disabled instead of hiding it. */
-export function withClaudeUnconfirmedFastMode(
+export function withUnconfirmedClaudeFast(
   state: StructuredAgentSessionOptionState,
   snapshot: SessionOptionDescriptor[]
 ): SessionOptionDescriptor[] {

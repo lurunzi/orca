@@ -1,7 +1,7 @@
 import { decodeClaudeTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-claude'
 import { decodeCodexTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-codex'
 import { decodeCursorTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-cursor'
-import { decodeAntigravityTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-antigravity'
+import { decodeAntigravityFullTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-antigravity-full'
 import { decodeGrokTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-grok'
 import { decodeOmpTranscriptLine } from '../../transcript-decoding/transcript-line-decoders-omp'
 import { createReadStream } from 'node:fs'
@@ -40,7 +40,7 @@ export const TRANSCRIPT_DECODERS = {
   codex: (line: string, fallbackId: string) =>
     decodeCodexTranscriptLine(line, fallbackId, { historyImport: true }),
   cursor: decodeCursorTranscriptLine,
-  antigravity: decodeAntigravityTranscriptLine,
+  antigravity: decodeAntigravityFullTranscriptLine,
   grok: decodeGrokTranscriptLine,
   omp: decodeOmpTranscriptLine
 } as const

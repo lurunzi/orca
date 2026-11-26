@@ -23,11 +23,15 @@ export function structuredSessionIdentityRegistryRow(
   }
 }
 
-/** A handle no worker process row names may still be an active session grant's worker. */
-export function rehydrateStructuredSessionGrantIdentity(
+/** A handle's worker from its durable process row, else from an active session grant naming it. */
+export function rehydrateStructuredWorkerByHandle(
   handle: string,
   db: OrchestrationDb | null | undefined
 ): StructuredWorkerIdentity | null {
+  const row = db?.getWorkerTerminalResourceByHandle?.(handle)
+  if (row) {
+    return structuredWorkerIdentities.rehydrate(row)
+  }
   const granted = db?.getActiveStructuredSessionIdentityByHandle?.(handle)
   return granted
     ? structuredWorkerIdentities.rehydrate(structuredSessionIdentityRegistryRow(granted), 'session')

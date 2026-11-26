@@ -10,7 +10,7 @@ import {
 } from './terminal-wait-detection'
 import { isKnownReadyTerminalScreen } from '../../terminal-screen-readiness'
 import { readsTrustedScreen } from '../../agent-state-rules/agent-state-rules-engine'
-import { restoreProjectedComposerDraft } from '../view/orca-runtime-terminal-projection'
+import { restoreProjectedComposerDraft } from '../../../daemon/emulation/terminal-screen-projection'
 import type {
   RuntimeTerminalWait,
   RuntimeTerminalWaitBlockedReason
@@ -20,6 +20,7 @@ import {
   buildPtyTerminalWaitResult
 } from './terminal-wait-results'
 import { outputClockOf } from './tui-idle-evidence-source'
+import { hasTerminalAgentPainted, isShellInFront } from '../input/terminal-command-paint-record'
 import { createSetupCompletionScanner } from '../../orchestration/workers/launch/setup-completion-signal'
 import type { TuiAgent } from '../../../../shared/agent-launch/catalog/tui-agent'
 const TUI_IDLE_VISIBLE_PROBE_SETTLE_MARGIN_MS = 10
@@ -73,9 +74,12 @@ export abstract class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRu
         }
         const snapshotText = projection.tail.join('\n')
         const blockedReason = detectTerminalWaitBlockedReason(snapshotText)
-        // Why the shared tier-1 rule: a probe must not settle what the live screen would refuse.
+        // Why the shared tier-1 rule: a probe must not settle what the live screen would refuse,
+        // nor on a frame no current program painted (a reattach awaiting paint, or the shell back in front).
         const ready =
-          !agent && snapshotText.toLowerCase().includes('antigravity cli')
+          !isShellInFront(pty) &&
+          hasTerminalAgentPainted(pty, agent) &&
+          (!agent && snapshotText.toLowerCase().includes('antigravity cli')
             ? isKnownReadyTerminalScreen(projection)
             : screenRule
               ? isKnownReadyPromptBody(
@@ -85,7 +89,7 @@ export abstract class OrcaRuntimeWithStartTuiIdleVisibleReadProbe extends OrcaRu
                   // Why read now: output since the probe started makes the pane clocked.
                   outputClockOf(this.tuiIdleEvidenceSource, pty) !== null
                 )
-              : isKnownReadyPromptSettled(snapshotText)
+              : isKnownReadyPromptSettled(snapshotText))
         if (!blockedReason && !ready) {
           return
         }

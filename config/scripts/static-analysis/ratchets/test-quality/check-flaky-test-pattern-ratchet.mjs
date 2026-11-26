@@ -47,7 +47,7 @@ function git(root, args, options = {}) {
     cwd: root,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
-    // An upstream release merge lists more changed files than the 1 MiB default holds.
+    // A sync-sized diff (thousands of renames) overflows the 1 MB default with ENOBUFS.
     maxBuffer: 256 * 1024 * 1024,
     ...options
   })

@@ -163,3 +163,6 @@ ci-shards/
 /.build/windows-native-benchmark/
 
 .local/static-analysis-research/
+
+# Tools downloaded by `pnpm uda ci` (pinned and checksum-verified).
+.local/tools/

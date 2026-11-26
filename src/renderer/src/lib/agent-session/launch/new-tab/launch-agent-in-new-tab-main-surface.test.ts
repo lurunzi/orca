@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../../../../shared/orca-profiles/constants'
 import { createTestStore, seedStore } from '../../../../store/testing/app-store-test-fixture'
 import { makeWorktree } from '../../../../store/slices/worktrees/worktree.test-fixture'
-import { createStoreCascadesMockApi } from '../../../../store/testing/app-store-cascade-api.test-fixture'
 
 vi.mock('@/runtime/rpc/calls/runtime-rpc-call', async (importOriginal) =>
   (
@@ -38,7 +37,23 @@ vi.mock('@/lib/agent-session/launch/prompt/launch-agent-tab-prompt-paste', () =>
   pasteAgentLaunchPromptOnceReady: async () => ({ delivered: true, failureNotified: false })
 }))
 
-createStoreCascadesMockApi()
+const api = {
+  worktrees: {
+    create: vi.fn().mockResolvedValue({}),
+    remove: vi.fn().mockResolvedValue(undefined),
+    updateMeta: vi.fn().mockResolvedValue({})
+  },
+  repos: { list: vi.fn().mockResolvedValue([]) },
+  pty: {
+    kill: vi.fn().mockResolvedValue(undefined),
+    inspectProcess: vi.fn().mockResolvedValue({ foregroundProcess: null, hasChildProcesses: false })
+  },
+  runtime: { call: vi.fn() },
+  settings: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) },
+  runtimeEnvironments: { call: vi.fn() }
+}
+// @ts-expect-error -- the launch path reads only these window.api calls
+globalThis.window = { api }
 
 import { setLocalRuntimeCapabilitiesForTests } from '@/runtime/hosts/capabilities/local-runtime-capabilities'
 

@@ -14,7 +14,7 @@ import {
 import { CodexSubagentExecutions } from '../background-work/codex-subagent-executions'
 import { createCodexDispatchEchoes } from '../turns/codex-structured-dispatch-echo'
 import { createCodexSessionJournalTranslator } from '../session-lifecycle/codex-structured-session-journal'
-import { spawnCodexAppServerConnection } from '../../app-server/codex-app-server-connection'
+import { codexConnectionOpener, opensSharedCodexServer } from './codex-structured-connection-opener'
 import { codexSpawnedProcessIdentity } from './codex-structured-owner-identity'
 import {
   closeCodexPublishedSession,
@@ -33,6 +33,7 @@ import {
   codexDashboardAuthenticationCurrent
 } from '../../codex-structured-dashboard-authentication'
 import { codexStartFailure } from '../../app-server/codex-startup-outcome'
+import { codexAcceptedSend } from '../journal/codex-structured-journal-translation-turns'
 
 export async function acquireCodexStructuredSession(
   input: CodexStructuredSessionAcquireInput
@@ -52,7 +53,11 @@ export async function acquireCodexStructuredSession(
   const dispatchEchoes = createCodexDispatchEchoes(
     () => deps.onHeldSendsChanged?.({ sessionId }),
     (clientMessageId, providerIdentity) =>
-      deps.onDispatchSettledLate?.({ sessionId, clientMessageId, providerIdentity })
+      deps.onDispatchSettledLate?.({
+        sessionId,
+        clientMessageId,
+        ...codexAcceptedSend(sessionId, providerIdentity, dispatchEchoes.sentVia(clientMessageId))
+      })
   )
   let account: AgentSessionAccountKind | undefined
   // Frame row identities include this generation.
@@ -63,6 +68,9 @@ export async function acquireCodexStructuredSession(
   const translator = createCodexSessionJournalTranslator({
     sink: acquireInput.events,
     account: () => account,
+    localClock:
+      acquireInput.launch?.location.executionHostId === 'local' &&
+      acquireInput.launch.location.wslDistro === null,
     sessionId,
     acquisitionId: acquisitionGeneration,
     deps,
@@ -71,8 +79,8 @@ export async function acquireCodexStructuredSession(
     subagentExecutions,
     prompts: acquisition.prompts
   })
-  const open = deps.openConnection ?? spawnCodexAppServerConnection
-  const spawnIdentity = codexSpawnedProcessIdentity(acquireInput, deps.readProcessStartTime)
+  let sharedServer = (): boolean => false
+  const spawnIdentity = codexSpawnedProcessIdentity(acquireInput, deps, () => sharedServer())
   try {
     await stopSupersededCodexAcquisition({
       sessionId,
@@ -132,6 +140,10 @@ export async function acquireCodexStructuredSession(
       deliver: input.deliver,
       now: deps.now ?? Date.now
     })
+    const startup = { attempt, signal: acquireInput.signal }
+    const open = codexConnectionOpener(deps, sessionId, launch, startup)
+    // Read at spawn: a Windows shared open can fall back to the chat's own server.
+    sharedServer = () => opensSharedCodexServer(open)
     const connection = await open(
       codexStructuredChildLaunch(launch, dashboardAuthentication !== null),
       {

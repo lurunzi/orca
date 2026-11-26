@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { isRoutedOrcaDeepLink } from './orca-deep-link-url'
-import {
-  PluginInstallLinkState,
-  RemotePairingLinkState,
-  SkillShareDeepLinkState
-} from './skill-share-deep-link-state'
+import { DeepLinkState } from '../deep-link-state'
+import { PluginInstallLinkState, RemotePairingLinkState } from './skill-share-deep-link-state'
 
-describe('SkillShareDeepLinkState', () => {
+describe('UDA Orca deep link scheme', () => {
   it('routes the UDA Orca uda-orca:// scheme like orca://', () => {
-    const shares = new SkillShareDeepLinkState()
+    const shares = new DeepLinkState()
+    expect(shares.accepts('uda-orca://skills/share/share_uda')).toBe(true)
     expect(shares.capture(['orca', 'uda-orca://skills/share/share_uda'])).toBe(true)
-    expect(shares.consume()).toBe('share_uda')
+    expect(shares.consumeSkillShare()).toBe('share_uda')
 
     const plugins = new PluginInstallLinkState()
     expect(plugins.capture(['orca', 'uda-orca://plugins/acme.todo'])).toBe(true)

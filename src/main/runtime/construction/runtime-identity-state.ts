@@ -7,7 +7,7 @@ import type { TuiAgent } from '../../../shared/agent-launch/catalog/tui-agent'
 import type { TerminalAgent } from '../../../shared/agent-status/identity/terminal-agent'
 import { isTuiAgent } from '../../../shared/agent-launch/catalog/tui-agent-config'
 import type { RuntimeStore } from './runtime-store-contract'
-import type { RuntimeClientSettingsController } from '../client/settings/runtime-client-settings'
+import type { RuntimeClientSettingsWithComputerAwake } from '../client/settings/runtime-client-computer-awake'
 import type { RuntimeAutomationController } from '../integrations/automations/runtime-automation-controller'
 import { RuntimeArtifactController } from '../artifacts/runtime-artifact-controller'
 import type { OrchestrationEnvironmentTransport } from '../orchestration/federation/environment-transport'
@@ -36,7 +36,7 @@ import type { PtyIncarnationId } from '../../../shared/terminal/pty/lifecycle/pt
 import type { KeyedTrailingEdgeCoalescer } from '../client/events/keyed-trailing-edge-coalescer'
 import { createMobileSessionTabsNotifyCoalescer } from '../session-lifecycle/publication/mobile-session-tabs-notify-coalescer'
 
-import type { MobileSessionTabsAgentStatusHeartbeat } from '../session-lifecycle/publication/mobile-session-tabs-agent-status-heartbeat'
+import { MobileSessionSnapshotsByWorktree } from '../session-tabs/publication/mobile-session-snapshots-by-worktree'
 import { createMobileSessionTabsAgentStatusHeartbeat } from '../session-lifecycle/publication/mobile-session-tabs-agent-status-heartbeat'
 import { TerminalFocusNavigationCoalescer } from '../terminal/focus/terminal-focus-navigation-coalescer'
 import type {
@@ -59,7 +59,7 @@ import {
   type TerminalSpawnCommit
 } from '../terminal/lifecycle/terminal-run-facts'
 import type { TuiIdleEvidenceSource } from '../terminal/wait/tui-idle-evidence-source'
-import { hasRuntimePtyCommandPainted } from './runtime-pty-command-paint'
+import { hasTerminalCommandPainted } from '../terminal/input/terminal-command-paint-record'
 import {
   TUI_IDLE_DEFAULT_TIMEOUT_MS,
   TUI_IDLE_POLL_INTERVAL_MS,
@@ -70,7 +70,7 @@ import type { PtyLivenessVerdict } from '../../../shared/terminal/pty/lifecycle/
 import type { HostScopedWorktreeKey } from '../../../shared/worktree/host-qualified-identity'
 import type { TerminalHandleAccess } from '../agent-senders/runtime-agent-sender-associations'
 
-import { RuntimeConstructionServices } from './runtime-construction-services'
+import { RuntimeBotConstructionHooks } from './runtime-bot-construction-hooks'
 
 export type ClientHostedPageObservation = MobileSessionTabSubscription | symbol
 
@@ -86,13 +86,11 @@ export type MobileSessionTabSubscription = {
   acceptsWorktree?: (worktree: string) => boolean
 }
 
-export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServices {
+export abstract class OrcaRuntimeWithRuntimeId extends RuntimeBotConstructionHooks {
   protected getLeafKey(tabId: string, leafId: string): string {
     return `${tabId}::${leafId}`
   }
-
   protected abstract claimIdleShellPromptForPty(ptyId: string): Promise<boolean>
-  protected abstract isAgentSettledForDelivery(ptyId: string): boolean
   protected abstract terminalHandleAccess(): TerminalHandleAccess
   protected readonly runtimeId = randomUUID()
 
@@ -100,7 +98,7 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
 
   protected readonly store!: RuntimeStore | null
 
-  protected readonly clientSettings!: RuntimeClientSettingsController
+  protected readonly clientSettings!: RuntimeClientSettingsWithComputerAwake
 
   protected readonly automation!: RuntimeAutomationController
 
@@ -128,11 +126,10 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
 
   protected readonly graphReloadLifecycle = new RuntimeGraphReloadLifecycle({
     timeoutMs: RUNTIME_GRAPH_RELOAD_TIMEOUT_MS,
-    onSettled: ({ revision, windowId, outcome, durationMs }) => {
+    onSettled: ({ revision, windowId, outcome, durationMs }) =>
       console.info(
         `[runtime-graph] reload revision=${revision} window=${windowId} outcome=${outcome} durationMs=${durationMs}`
-      )
-    },
+      ),
     onTimeout: (_revision, windowId) => this.handleGraphReloadTimeout(windowId)
   })
 
@@ -140,7 +137,7 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
 
   protected legacyStructuredSessionTabIds: readonly string[] = []
 
-  mobileSessionTabsByWorktree = new Map<string, RuntimeMobileSessionTabsSnapshot>()
+  mobileSessionTabsByWorktree = new MobileSessionSnapshotsByWorktree()
 
   abstract storeMobileSessionSnapshot(
     worktreeId: string,
@@ -270,9 +267,9 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
       this.flushScheduledMobileSessionTabsChanged(worktreeId)
     )
 
-  protected readonly mobileSessionTabsAgentStatusHeartbeat: MobileSessionTabsAgentStatusHeartbeat =
+  protected readonly mobileSessionTabsAgentStatusHeartbeat =
     createMobileSessionTabsAgentStatusHeartbeat(
-      (ptyId) => this.getMobileSessionWorktreeIdsForPty(ptyId),
+      (ptyId) => this.mobileSessionTabsByWorktree.worktreeIdsForPty(ptyId),
       (worktreeId) => this.touchMobileSessionTabsForWorktree(worktreeId)
     )
 
@@ -355,15 +352,16 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
     readScreenLines: (ptyId) => this.readLiveTerminalScreenLines(ptyId),
     readRuledScreen: (ptyId) => this.readRuledScreen(ptyId),
     getOutputClockAt: (ptyId) => this.readOutputClockAt(ptyId),
-    isSettledForDelivery: (ptyId) => this.isAgentSettledForDelivery(ptyId)
+    isSettledForDelivery: (ptyId) => this.isAgentSettledForDelivery(ptyId),
+    readScreenClearingBlockedTail: (ptyId) => this.readScreenClearingBlockedTailForPty(ptyId),
+    getScreenReadiness: (ptyId, text) => this.getTerminalScreenReadiness(ptyId, text)
   }
 
   protected readonly terminalIdlePolls = new RuntimeTerminalIdlePolls({
     ...this.tuiIdleEvidenceSource,
-    getScreenReadiness: (ptyId, text) => this.getTerminalScreenReadiness(ptyId, text),
     intervalMs: TUI_IDLE_POLL_INTERVAL_MS,
     getForegroundProcess: (ptyId) => this.ptyController?.getForegroundProcess(ptyId) ?? null,
-    hasCommandPainted: (ptyId) => hasRuntimePtyCommandPainted(this.ptysById, ptyId),
+    hasCommandPainted: (ptyId) => hasTerminalCommandPainted(this.ptysById.get(ptyId) ?? {}),
     // Runtime emulator reads avoid a provider round trip on every poll.
     readVisibleScreen: (ptyId) =>
       this.headlessTerminals.has(ptyId)
@@ -371,13 +369,14 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
             (screen) => screen?.lines.join('\n') ?? null
           )
         : null,
-    resolve: (waiter, result) => this.terminalWaiters.resolve(waiter, result)
+    resolve: (waiter, result) => this.terminalWaiters.resolve(waiter, result),
+    requestReattachedRepaint: (ptyId) => this.requestReattachedRepaint(ptyId),
+    confirmRestTitle: (ptyId, agent) => this.confirmReattachedRestTitle(ptyId, agent)
   })
 
   protected readonly terminalWait = new RuntimeTerminalWaitController(
     {
       ...this.tuiIdleEvidenceSource,
-      getScreenReadiness: (ptyId, text) => this.getTerminalScreenReadiness(ptyId, text),
       defaultTimeoutMs: TUI_IDLE_DEFAULT_TIMEOUT_MS,
       getTerminalPty: (handle, condition) =>
         condition === 'exit'
@@ -393,6 +392,7 @@ export abstract class OrcaRuntimeWithRuntimeId extends RuntimeConstructionServic
     this.terminalIdlePolls
   )
 
+  protected ptyControllerGeneration = 0
   protected ptyController: RuntimePtyController | null = null
 
   protected readonly ptyLivenessVerdictByPtyId = new Map<

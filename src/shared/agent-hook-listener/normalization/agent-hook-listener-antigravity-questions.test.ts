@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeHookPayload } from './normalize-hook-payload'
 import { createHookListenerState } from '../listener-state'
-import { PANE_KEY } from './agent-hook-listener-test-harness'
 import { parseAskFromStatus } from '../../native-chat/input/native-chat-ask'
+import { makePaneKey } from '../../workspace-layout/stable-pane-id'
+
+const PANE_KEY = makePaneKey('tab-1', '11111111-1111-4111-8111-111111111111')
 
 describe('Antigravity question hook lifecycle', () => {
   it('publishes the full prompt, then clears it after the answer', () => {

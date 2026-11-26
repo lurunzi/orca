@@ -10,7 +10,7 @@ import { errorMessage } from '../../shared/errors/error-message'
 import { resolveSessionFilePath, type ResolveSessionFileOptions } from './session-file-resolver'
 import { openTranscriptReadStream } from './transcript-filesystem/wsl-transcript-fs-access'
 import { wslTranscriptFsRefusal } from './transcript-filesystem/wsl-transcript-fs-error'
-import { decodeAntigravityTranscriptLine } from './transcript-decoding/transcript-line-decoders-antigravity'
+import { decodeAntigravityFullTranscriptLine } from './transcript-decoding/transcript-line-decoders-antigravity-full'
 import { decodeClaudeChatTranscriptLine } from './transcript-decoding/transcript-line-decoders-claude'
 import { decodeCodexTranscriptLine } from './transcript-decoding/transcript-line-decoders-codex'
 import { decodeCursorTranscriptLine } from './transcript-decoding/transcript-line-decoders-cursor'
@@ -60,7 +60,7 @@ export async function readNativeChatTranscript(
   try {
     const transcriptAgent = resolveNativeChatTranscriptAgent(agent)
     if (transcriptAgent === 'antigravity') {
-      return { messages: await readTranscript(filePath, decodeAntigravityTranscriptLine) }
+      return { messages: await readTranscript(filePath, decodeAntigravityFullTranscriptLine) }
     }
     if (transcriptAgent === 'claude') {
       return {
