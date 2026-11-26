@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { resolvePnpmCliInvocation } from '../../config/scripts/tool-invocation/pnpm-cli-invocation.mjs'
 
@@ -42,4 +42,68 @@ export function pnpmCommand(args) {
     shell: invocation.shell,
     display: `pnpm ${args.join(' ')}`
   }
+}
+
+export function runCaptured(command, args, { env = process.env } = {}) {
+  const result = spawnSync(command, args, {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    windowsHide: true,
+    env,
+    maxBuffer: 64 * 1024 * 1024
+  })
+  return {
+    status: result.error ? 1 : (result.status ?? 1),
+    stdout: result.stdout ?? '',
+    stderr: result.error ? result.error.message : (result.stderr ?? '')
+  }
+}
+
+/** Runs `command` with stdout/stderr inherited and `input` (an async iterable of Buffers) as stdin. */
+export function runWithStdin(command, args, input) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      cwd: REPO_ROOT,
+      stdio: ['pipe', 'inherit', 'inherit'],
+      windowsHide: true
+    })
+    let failure = null
+    let closed = false
+    let wake = () => {}
+    child.stdin.on('error', () => {})
+    child.stdin.on('drain', () => wake())
+    child.on('error', (error) => {
+      failure = error
+    })
+    child.on('close', (code) => {
+      closed = true
+      wake()
+      if (failure) {
+        console.error(failure.message)
+      }
+      resolve(failure ? 1 : (code ?? 1))
+    })
+    ;(async () => {
+      try {
+        for await (const chunk of input) {
+          if (closed || child.stdin.destroyed) {
+            break
+          }
+          if (!child.stdin.write(chunk)) {
+            await new Promise((done) => {
+              wake = done
+              if (closed) {
+                done()
+              }
+            })
+          }
+        }
+      } catch (error) {
+        failure = error
+        child.kill()
+      } finally {
+        child.stdin.end()
+      }
+    })()
+  })
 }
