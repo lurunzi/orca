@@ -52,7 +52,7 @@ async function setup(version = '0.162.0-alpha.17.2') {
     await Promise.resolve()
     await Promise.resolve()
   }
-  const complete = (text = '{"suggestion":"添加测试"}') => {
+  const complete = (text = '{"suggestion":"add tests"}') => {
     notify('item/completed', { threadId: 'prediction', item: { type: 'agentMessage', text } })
     notify('turn/completed', {
       threadId: 'prediction',
@@ -109,7 +109,7 @@ it('uses a temporary prediction fork, publishes only the suggested text and rele
     approvalPolicy: 'never'
   })
   f.complete()
-  expect(f.read()).toBe('添加测试')
+  expect(f.read()).toBe('add tests')
   expect(
     f.events.filter((event) => 'threadId' in event && event.threadId === 'prediction')
   ).toEqual([])

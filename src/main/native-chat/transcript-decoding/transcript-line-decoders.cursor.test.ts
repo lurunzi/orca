@@ -33,13 +33,13 @@ describe('decodeCursorTranscriptLine', () => {
         JSON.stringify({
           role: 'user',
           message: {
-            content: [{ type: 'text', text: `${prefix}<user_query>\n1为eeqe\n</user_query>` }]
+            content: [{ type: 'text', text: `${prefix}<user_query>\ncheck status\n</user_query>` }]
           }
         }),
         'cursor:query'
       )
     ).toMatchObject({
-      blocks: [{ type: 'text', text: '1为eeqe' }],
+      blocks: [{ type: 'text', text: 'check status' }],
       timestamp: null
     })
   })

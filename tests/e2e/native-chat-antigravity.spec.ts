@@ -216,7 +216,7 @@ test.describe('Antigravity Native Chat', () => {
         )
       }
       const composer = chatRoot.getByRole('textbox')
-      const draft = '空闲后继续输入 / draft survives reconnect'
+      const draft = 'draft survives reconnect after idle'
       await expect(composer).toBeEditable()
       await composer.fill(draft)
       await page.clock.install()

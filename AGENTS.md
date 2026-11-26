@@ -13,7 +13,13 @@ Every change follows these steps, documentation included. Do all of them without
 5. **Merge**: when the gate is green for the current head, merge it yourself with `gh pr merge <number> -R lurunzi/orca --squash --delete-branch --match-head-commit <sha>`.
 6. **Finish**: confirm that `git ls-remote origin refs/heads/main` shows the merge, remove your worktree and local branch, close the task record, and report what merged, what you checked and what you did not.
 
-Merging does not build, install or publish. The owner asks for a build (`更新sop`), and one build then carries everything merged since the last one.
+Merging does not build, install or publish. Builds happen only when the owner requests a release build, and one build then carries everything merged since the last one.
+
+## Public Content
+
+Everything tracked in this repository or posted on GitHub — documentation, comments, commit messages, branch and tag names, PR titles, PR bodies, PR reviews, and general test fixtures — must be written in English.
+
+Exceptions are limited to built-in i18n locale catalogs, production logic that explicitly handles CJK or non-ASCII text, and tests whose purpose is verifying CJK, UTF-8, IME, or encoding behavior. Never commit personal conversation excerpts, local usernames, or machine-specific paths.
 
 ## When to Stop
 

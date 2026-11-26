@@ -35,14 +35,14 @@ it('retains the draft after unmount, a failed resume and lookup delays', async (
   const first = render(
     <CursorTranscriptComposer scopeKey="external" ready={false} resume={resume} />
   )
-  fireEvent.change(screen.getByRole('textbox'), { target: { value: '继续检查' } })
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'keep checking' } })
   expect(screen.getByRole('button')).toBeDisabled()
   first.unmount()
   render(<CursorTranscriptComposer scopeKey="external" ready resume={resume} />)
-  expect(screen.getByRole('textbox')).toHaveValue('继续检查')
+  expect(screen.getByRole('textbox')).toHaveValue('keep checking')
   fireEvent.click(screen.getByRole('button'))
   expect(await screen.findByRole('alert')).toHaveTextContent('Host unavailable')
-  expect(screen.getByRole('textbox')).toHaveValue('继续检查')
+  expect(screen.getByRole('textbox')).toHaveValue('keep checking')
 })
 
 it('submits once, holds the draft until confirmed, then clears it', async () => {
@@ -66,7 +66,7 @@ it('submits once, holds the draft until confirmed, then clears it', async () => 
 it('does not submit Shift+Enter or an IME confirmation', () => {
   const resume = vi.fn()
   render(<CursorTranscriptComposer scopeKey="external" ready resume={resume} />)
-  fireEvent.change(screen.getByRole('textbox'), { target: { value: '输入' } })
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'draft input' } })
   fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', keyCode: 13, shiftKey: true })
   fireEvent.compositionStart(screen.getByRole('textbox'))
   fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', keyCode: 229, isComposing: true })

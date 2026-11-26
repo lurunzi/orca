@@ -30,7 +30,7 @@ describe('Antigravity attachment echoes', () => {
     ['/home/ada/a "b.png'],
     ['/home/ada/@picture.png']
   ])('merges image references from %s into the submitted turn', (...imagePaths) => {
-    const text = 'antigravity的gui没有模型选择'
+    const text = 'antigravity GUI is missing the model picker'
     const pending = [{ id: 'send-1', text, imagePaths, sentAt: 1000, afterMessageId: null }]
     const user = userTurn(imagePaths, text)
     expect(user.blocks).toEqual([
