@@ -46,3 +46,16 @@ export async function prepareDashboardClaudeLaunch(
     inheritedEnvToDelete: allocation ? DASHBOARD_CLAUDE_ENV_TO_DELETE : []
   }
 }
+
+/** Fork: adds a dashboard-pooled account's binding and env to a built Claude launch part. */
+export async function withDashboardClaudeLaunch<
+  T extends { launch: object; env: Record<string, string>; inheritedEnvToDelete: readonly string[] }
+>(part: T): Promise<T> {
+  const dashboard = await prepareDashboardClaudeLaunch(part.env)
+  return {
+    ...part,
+    launch: { ...part.launch, ...dashboard.launch },
+    env: dashboard.env,
+    inheritedEnvToDelete: [...part.inheritedEnvToDelete, ...dashboard.inheritedEnvToDelete]
+  }
+}

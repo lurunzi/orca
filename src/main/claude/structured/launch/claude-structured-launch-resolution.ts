@@ -3,7 +3,7 @@ import { withBotLaunchToolsEnv } from '../../../bots/bot-launch-tools'
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
 import { prepareClaudeLaunchAccount, withClaudeLaunchAccountPin } from './claude-launch-account'
 import type { DashboardClaudeLaunchBinding } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
-import { prepareDashboardClaudeLaunch } from '../../../dashboard-accounts/dashboard-claude-environment'
+import { withDashboardClaudeLaunch } from '../../../dashboard-accounts/dashboard-claude-environment'
 import { assertStructuredAgentResolutionCurrent } from '../../../native-chat/agent-launch/structured-agent-command-resolution'
 import { activeProviderContext } from '../../../../shared/agent-session/conversation-context/agent-session-provider-context'
 import { getClaudeProfileRouter } from '../../../claude-accounts/profiles/routing/claude-profile-installed-router'
@@ -36,6 +36,8 @@ import type {
 } from '../../cli-capabilities/claude-cli-flag-support'
 import { resolveClaudeLaunchFlags } from './claude-structured-launch-flags'
 import { withNativeChatVisualsEnv } from '../../../native-chat/conversation-files/native-chat-visuals-delivery'
+import type { ResolvedLaunchAccount } from '../../../../shared/agent-accounts/launch-account-ref'
+import type { AgentSessionRecord } from '../../../../shared/agent-session/lifecycle/agent-session-record'
 import { claudeLaunchResumesTranscript } from './claude-structured-launch-home'
 import type { StructuredAgentLaunchPartResolver } from '../../../runtime/agent-session/launch/structured-agent-launch-composition'
 import { claudeSessionIdForOrcaSession } from '../lifecycle/claude-structured-session-id'
@@ -108,6 +110,9 @@ export type ClaudeStructuredLaunch = {
 export type ClaudeStructuredLaunchPartDeps = {
   resolveLaunchArgs: () => Promise<string[]> | string[]
   resolveCommand?: ClaudeEnvDeps['resolveCommand']
+  /** The account this session should launch under instead of the host's selection, as a bot's or
+   *  automation's own account (or a plugin) names it; null or absent follows the selection. */
+  resolveRequestedAccount?: (record: AgentSessionRecord) => Promise<ResolvedLaunchAccount | null>
   /** Explicit policy identifies the account for sign-in errors; use claudeStructuredAuthPolicyForSettings. */
   resolveAuthPolicy: () => Promise<ClaudeStructuredAuthPolicy> | ClaudeStructuredAuthPolicy
   /** Host attachment store outside the workspace, granted to the agent at launch. */
@@ -160,6 +165,9 @@ export function claudeStructuredLaunchPart(
     const { record } = basis
     const accountHome = requireLegacyAgentSessionAccountHome(record.accountHome)
     const router = getClaudeProfileRouter()
+    const requestedAccount = router
+      ? ((await deps.resolveRequestedAccount?.(record)) ?? null)
+      : null
     const active = activeProviderContext(record)
     const head = active.head?.handle ?? null
     if (
@@ -190,12 +198,13 @@ export function claudeStructuredLaunchPart(
       resolveAuthPolicy: deps.resolveAuthPolicy
     }
     const sources = await resolveClaudeChildEnvSources(envDeps)
+    const probeEnv = claudeProbeEnv(sources)
     // Overlap the version probe with remaining launch preparation.
     const probeLaunch = {
       command: sources.command,
       prefixArgs: sources.prefixArgs,
       cwd,
-      env: await withClaudeLaunchAccountPin(router, claudeProbeEnv(sources), accountHome.path)
+      env: await withClaudeLaunchAccountPin(router, probeEnv, accountHome.path, requestedAccount)
     }
     const launchFlags = resolveClaudeLaunchFlags(
       { ...deps, prepareVisuals: basis.visuals },
@@ -249,7 +258,12 @@ export function claudeStructuredLaunchPart(
       sources,
       { runtimeOnPath: false }
     )
-    const accountRecipe = await prepareClaudeLaunchAccount(router, env, accountHome.path)
+    const accountRecipe = await prepareClaudeLaunchAccount(
+      router,
+      env,
+      accountHome.path,
+      requestedAccount
+    )
     const launchHome = accountRecipe.home
     // Read the config of the account directory the spawn pins, as session acquisition does.
     const chromeArgs = await claudeInChromeDefaultArgs(
@@ -269,14 +283,12 @@ export function claudeStructuredLaunchPart(
         hasTranscript: deps.hasTranscript
       })
     }
-    const dashboard = await prepareDashboardClaudeLaunch(env)
-    return {
+    return withDashboardClaudeLaunch({
       launch: {
         pathToClaudeCodeExecutable: command,
         prefixArgs,
         account: accountRecipe.route === 'managed' ? 'managed' : 'system',
         accountRecipe,
-        ...dashboard.launch,
         options: {
           ...CLAUDE_STRUCTURED_BASE_OPTIONS,
           ...permission,
@@ -307,11 +319,11 @@ export function claudeStructuredLaunchPart(
           ? { forkedFromKey: agentSessionProviderHandleKey(head) }
           : {})
       },
-      env: dashboard.env,
-      inheritedEnvToDelete: [...refused.envToDelete, ...dashboard.inheritedEnvToDelete],
+      env,
+      inheritedEnvToDelete: refused.envToDelete,
       // The agent runtime follows Orca's CLI directory on PATH so another orca cannot shadow it.
       cliRuntimeCommand: command
-    }
+    })
   }
 }
 
