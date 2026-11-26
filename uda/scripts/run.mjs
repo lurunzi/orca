@@ -2,19 +2,16 @@ import process from 'node:process'
 
 const COMMANDS = {
   ci: async (argv) => (await import('./ci-steps.mjs')).runCi(argv),
+  'release-publish': async (argv) =>
+    (await import('./release-commands.mjs')).runReleasePublish(argv),
+  'release-rollback': async (argv) =>
+    (await import('./release-commands.mjs')).runReleaseRollback(argv),
+  'release-status': async (argv) => (await import('./release-commands.mjs')).runReleaseStatus(argv),
   'seam-check': async (argv) => (await import('./seam-check.mjs')).runSeamCheck(argv),
   version: async (argv) => (await import('./version.mjs')).runVersion(argv)
 }
 
-const RESERVED = [
-  'merge',
-  'sync',
-  'release-build',
-  'release-audit',
-  'release-publish',
-  'release-rollback',
-  'disable-upstream-workflows'
-]
+const RESERVED = ['merge', 'sync', 'release-build', 'release-audit', 'disable-upstream-workflows']
 
 function printUsage(stream) {
   stream.write(
