@@ -384,29 +384,28 @@ describe('a send glued onto a truncated earlier send', () => {
   })
 })
 
-// docs/bug-reproductions/native-chat-multiline-pending-ghost: Antigravity folded
-// three queued sends into one turn, and the unmatched echoes then floated below
-// every later turn.
+// Regression: Antigravity folded three queued sends into one turn, and the
+// unmatched echoes then floated below every later turn.
 describe('queued sends the agent coalesced into one turn', () => {
-  const path = 'C:\\Users\\ABSCOND\\.gemini\\antigravity-cli\\brain\\187a120b\\screenshots'
+  const path = 'C:\\Users\\alice\\.gemini\\antigravity-cli\\brain\\187a120b\\screenshots'
   const queued = (): NativeChatPendingSend[] => [
-    gluePending('p1', '哦对图挪走了'),
+    gluePending('p1', 'moved the screenshot'),
     gluePending('p2', `${path}\\`),
-    gluePending('p3', '我本来想让你清理，发错对话了')
+    gluePending('p3', 'meant to clean this up, wrong thread')
   ]
 
   it('retires all three when the continuation ate the trailing backslash', () => {
-    const row = `哦对图挪走了\n${path}我本来想让你清理，发错对话了`
+    const row = `moved the screenshot\n${path}meant to clean this up, wrong thread`
 
     expect(pendingSendsAsMessages(queued(), glueTranscript(row))).toEqual([])
     expect(prunePendingSends(queued(), advancedGlueTranscript(row))).toEqual([])
   })
 
   const unmatchableTurn = (): NativeChatMessage[] =>
-    advancedGlueTranscript('哦对图挪走了 C:\\Users\\ABSCOND.gemini 我本来想让你清理')
+    advancedGlueTranscript('moved the screenshot C:\\Users\\alice.gemini meant to clean this up')
   const followUp: NativeChatPendingSend = {
     id: 'p4',
-    text: '发出去了吗',
+    text: 'did it send',
     sentAt: 7000,
     afterMessageId: 'glue-answer',
     afterMessageTimestamp: 6100
@@ -419,7 +418,7 @@ describe('queued sends the agent coalesced into one turn', () => {
   })
 
   it('hides older unmatched echoes once a newer send lands', () => {
-    const messages = [...unmatchableTurn(), userMessage('u2', '发出去了吗', 7100)]
+    const messages = [...unmatchableTurn(), userMessage('u2', 'did it send', 7100)]
 
     expect(pendingSendsAsMessages([...queued(), followUp], messages)).toEqual([])
   })
@@ -427,7 +426,7 @@ describe('queued sends the agent coalesced into one turn', () => {
   it('retires older unmatched echoes once a newer send advances', () => {
     const messages = [
       ...unmatchableTurn(),
-      userMessage('u2', '发出去了吗', 7100),
+      userMessage('u2', 'did it send', 7100),
       assistantMessage('a2', 'Ran 1 command', 7200)
     ]
 
@@ -438,7 +437,7 @@ describe('queued sends the agent coalesced into one turn', () => {
     const later = { ...followUp, id: 'p5', text: 'still queued', sentAt: 7050 }
     const messages = [
       ...unmatchableTurn(),
-      userMessage('u2', '发出去了吗', 7100),
+      userMessage('u2', 'did it send', 7100),
       assistantMessage('a2', 'Ran 1 command', 7200)
     ]
 

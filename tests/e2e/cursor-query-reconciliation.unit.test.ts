@@ -17,13 +17,13 @@ function cursorMessage(role: 'user' | 'assistant', text: string, id: string) {
   return message
 }
 
-const pending = [{ id: 'send', text: '1为eeqe', sentAt: 100 }]
+const pending = [{ id: 'send', text: 'check status', sentAt: 100 }]
 
 describe.each([
   'Wednesday, Sep 23, 2026, 1:44 AM (UTC+1)\n',
   '<timestamp>Thursday, Oct 8, 2026, 2:41 PM (UTC+1)</timestamp>\n'
 ])('Cursor query envelope reconciliation with %j', (prefix) => {
-  const query = `${prefix}<user_query>\n1为eeqe\n</user_query>`
+  const query = `${prefix}<user_query>\ncheck status\n</user_query>`
   it('hides the echo when the user record arrives and retires it after the reply', () => {
     const user = cursorMessage('user', query, 'cursor:0')
     expect(pendingSendsAsMessages(pending, [user])).toEqual([])
@@ -45,9 +45,10 @@ describe.each([
 
   it('reconciles a first prompt supplied when launching Cursor', () => {
     expect(
-      launchPromptAsMessage({ tabId: 'tab', agent: 'cursor', text: '1为eeqe', createdAt: 100 }, [
-        cursorMessage('user', query, 'cursor:0')
-      ])
+      launchPromptAsMessage(
+        { tabId: 'tab', agent: 'cursor', text: 'check status', createdAt: 100 },
+        [cursorMessage('user', query, 'cursor:0')]
+      )
     ).toBeNull()
   })
 })

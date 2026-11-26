@@ -91,8 +91,8 @@ test('late Cursor identity collapses an empty reader into the managed chat and k
       )
   }, descriptor)
   await expect(chat.getByRole('textbox')).toHaveAttribute('contenteditable', 'true')
-  await chat.getByRole('textbox').fill('完成后仍能继续输入')
-  await expect(chat.getByRole('textbox')).toHaveText('完成后仍能继续输入')
+  await chat.getByRole('textbox').fill('still editable after completion')
+  await expect(chat.getByRole('textbox')).toHaveText('still editable after completion')
   expect(
     await page.evaluate(
       ({ tabId, worktreeId }) => {
@@ -189,7 +189,7 @@ test('external Cursor input survives tab switches and failed continuation', asyn
   await expect(surface.getByText('External Cursor response')).toBeVisible()
   const editor = surface.getByRole('textbox')
   await expect(editor).toBeEditable()
-  await editor.fill('继续这个任务')
+  await editor.fill('continue this task')
   await expect(surface.getByRole('button', { name: 'Resume and send' })).toBeEnabled()
   await orcaPage.screenshot({
     path: testInfo.outputPath('external-cursor-input.png'),
@@ -206,10 +206,10 @@ test('external Cursor input survives tab switches and failed continuation', asyn
     identity
   )
   await expect(editor).toBeEditable()
-  await expect(editor).toHaveText('继续这个任务')
+  await expect(editor).toHaveText('continue this task')
   await editor.press('Enter')
   await expect(surface.getByRole('alert')).toContainText('Test host unavailable')
-  await expect(editor).toHaveText('继续这个任务')
+  await expect(editor).toHaveText('continue this task')
   await expect(editor).toBeEditable()
   await orcaPage.evaluate(({ worktreeId }) => {
     const store = window.__store!
@@ -248,7 +248,7 @@ test('external Cursor input survives tab switches and failed continuation', asyn
   }, identity)
   await expect(surface.getByRole('button', { name: 'Resume and send' })).toHaveCount(0)
   await expect(editor).toBeEditable()
-  await expect(editor).toHaveText('继续这个任务')
+  await expect(editor).toHaveText('continue this task')
   await orcaPage.evaluate(() => {
     const state = window.__store!.getState()
     for (const paneKey of Array.from(state.agentStatusByPaneKey.keys())) {
@@ -256,7 +256,7 @@ test('external Cursor input survives tab switches and failed continuation', asyn
     }
   })
   await expect(editor).toBeEditable()
-  await expect(editor).toHaveText('继续这个任务')
+  await expect(editor).toHaveText('continue this task')
   const windows = await electronApp.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows().map((window) => ({
       visible: window.isVisible(),

@@ -1,6 +1,6 @@
 {
   "upstreamBase": "v1.4.275",
-  "total": 1071,
+  "total": 1069,
   "files": [
     ".claude/CLAUDE.md",
     ".gitattributes",
@@ -25,8 +25,6 @@
     "cursor-usage-compact.png",
     "cursor-usage-detailed.png",
     "docs/README.md",
-    "docs/bug-reproductions/native-chat-multiline-pending-ghost/README.md",
-    "docs/bug-reproductions/native-chat-multiline-pending-ghost/evidence.png",
     "docs/impl/runtime-performance-ratchets.md",
     "docs/reference/antigravity-native-chat.md",
     "docs/reference/antigravity-readiness-evidence.md",

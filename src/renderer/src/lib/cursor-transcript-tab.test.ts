@@ -229,11 +229,11 @@ it('converges a reader opened before its terminal hook, preserving the live PTY'
 it('keeps an unsent reader draft until delivery clears it, then converges', () => {
   openCursorTranscriptTab(session, WT)
   const reader = store.getState().unifiedTabsByWorktree[WT][0]
-  writeNativeChatDraftCache(reader.id, 'unsent 中文')
+  writeNativeChatDraftCache(reader.id, 'unsent draft')
   managedCursor()
   reconcileCursorTranscriptTabs(WT)
   expect(store.getState().unifiedTabsByWorktree[WT]).toHaveLength(2)
-  expect(readNativeChatDraftCache(reader.id)).toBe('unsent 中文')
+  expect(readNativeChatDraftCache(reader.id)).toBe('unsent draft')
   openCursorTranscriptTab(session, WT)
   expect(store.getState().getActiveTab(WT)?.id).toBe(reader.id)
   writeNativeChatDraftCache(reader.id, '')

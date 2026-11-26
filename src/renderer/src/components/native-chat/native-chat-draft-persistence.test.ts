@@ -16,16 +16,16 @@ describe('migrating fork drafts into the current persistent store', () => {
     const storage = createMemoryNativeChatComposerDraftStorage()
     const document = {
       type: 'doc',
-      content: [{ type: 'paragraph', content: [{ type: 'text', text: '尚未发送' }] }]
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'unsent draft' }] }]
     }
-    legacy('draft', 'local:pane', { text: '尚未发送\n$review', document })
+    legacy('draft', 'local:pane', { text: 'unsent draft\n$review', document })
     legacy('attachments', 'local:pane', [
       { id: 'image', path: '/remote/image.png', connectionId: 'ssh-a', previewUrl: 'blob:private' }
     ])
     legacy('draft', 'remote:pane', { text: 'remote draft' })
     await migrateNativeChatComposerStorage(storage)
     expect(storage.drafts.get('local:pane')).toEqual({
-      text: '尚未发送\n$review',
+      text: 'unsent draft\n$review',
       document,
       images: [{ id: 'image', path: '/remote/image.png', connectionId: 'ssh-a' }],
       savedAt: 10

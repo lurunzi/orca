@@ -72,10 +72,10 @@ describe('Codex prompt suggestions', () => {
     f.suggest('other', 'stale')
     f.suggest('one', 'foreign', 'child-thread')
     expect(f.read()).toBeNull()
-    f.suggest('one', '添加测试')
-    expect(f.read()).toBe('添加测试')
+    f.suggest('one', 'add tests')
+    expect(f.read()).toBe('add tests')
     f.notify('turn/completed', { threadId: THREAD_ID, turn: { id: 'one', status: 'completed' } })
-    expect(f.read()).toBe('添加测试')
+    expect(f.read()).toBe('add tests')
     expect(f.connection.calls.filter((call) => call.method === REQUEST)).toHaveLength(1)
   })
 

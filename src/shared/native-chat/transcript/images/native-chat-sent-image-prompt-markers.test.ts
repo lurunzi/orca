@@ -19,14 +19,16 @@ describe('withoutSentImagePromptMarkers', () => {
 
   it('drops a marker from the middle of the words, not only the start', () => {
     expect(
-      withoutSentImagePromptMarkers(sent('然后图片下面自带 [Image #1] 。如果不在开头', 1))[0]
+      withoutSentImagePromptMarkers(
+        sent('then the image adds [Image #1] . when not at the start', 1)
+      )[0]
     ).toEqual({
       type: 'text',
-      text: '然后图片下面自带  。如果不在开头'
+      text: 'then the image adds  . when not at the start'
     })
-    expect(withoutSentImagePromptMarkers(sent('[Image #1] 就像这样', 1))[0]).toEqual({
+    expect(withoutSentImagePromptMarkers(sent('[Image #1] like this', 1))[0]).toEqual({
       type: 'text',
-      text: '就像这样'
+      text: 'like this'
     })
   })
 

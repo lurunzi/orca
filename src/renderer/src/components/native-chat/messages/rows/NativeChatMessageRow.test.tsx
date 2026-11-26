@@ -42,7 +42,7 @@ afterEach(cleanup)
 const render = (ui: React.ReactElement) => renderUnwrapped(ui, { wrapper: TooltipProvider })
 
 describe('MessageRow control visibility', () => {
-  it.each(['[Image #1] 顺便把worktree清理了', '[Image #1]'])(
+  it.each(['[Image #1] also clean up the worktree', '[Image #1]'])(
     'hides sent image prefixes in the bubble: %s',
     (text) => {
       render(
@@ -63,8 +63,8 @@ describe('MessageRow control visibility', () => {
       )
       expect(screen.queryByText(/\[Image #1\]/)).toBeNull()
       expect(screen.getByTitle('Screenshot')).toBeInTheDocument()
-      if (text.includes('顺便')) {
-        expect(screen.getByText('顺便把worktree清理了')).toBeInTheDocument()
+      if (text.includes('worktree')) {
+        expect(screen.getByText('also clean up the worktree')).toBeInTheDocument()
       } else {
         expect(screen.queryByRole('button', { name: 'Copy message' })).toBeNull()
       }
