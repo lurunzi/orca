@@ -5,6 +5,7 @@ import {
   invalidateWorktreeCatalogForRepo,
   readWorktreeCatalog
 } from './repo-worktree-catalog-owner'
+import { setWorktreeCatalogRouteResolver } from './repo-worktree-catalog-route'
 
 const repo: Repo = {
   id: 'freshness-repo',
@@ -43,6 +44,8 @@ describe('worktree catalog freshness', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(0)
+    // A runtime built by an earlier file in a shared worker leaves its route resolver installed.
+    setWorktreeCatalogRouteResolver(null)
     invalidateWorktreeCatalogForRepo(repo.id)
   })
   afterEach(() => {
