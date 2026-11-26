@@ -186,6 +186,7 @@ export async function acquireClaudeSession(
     const connection = await withAgentSessionCreatePhase('spawn', input.recordPhase, () =>
       (deps.openConnection ?? openClaudeStreamJsonConnection)(
         {
+          ...(launch.pairedSubscription ? { pairedSubscription: launch.pairedSubscription } : {}),
           pathToClaudeCodeExecutable: launch.pathToClaudeCodeExecutable,
           prefixArgs: launch.prefixArgs,
           options: launch.options,

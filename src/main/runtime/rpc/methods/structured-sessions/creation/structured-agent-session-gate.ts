@@ -1,3 +1,4 @@
+import { assertSubscriptionSessionCaller } from '../../../../../dashboard-accounts/paired-subscription-owner'
 // Require structured.v1 across every agentSession method before exposing journals or mutations,
 // except rename, which also admits rename-only clients (requireRenameStructuredHost).
 // Legacy tab restore may still install the host for fallback rows; that never admits agentSession calls.
@@ -63,6 +64,7 @@ export function requireStructuredSessionHost(
   sessionId: string,
   readOnly = false
 ): StructuredAgentSessionHost {
+  assertSubscriptionSessionCaller(sessionId, ctx.caller)
   if (!readOnly) {
     assertBotGroupSessionAccess(ctx.runtime, sessionId)
   }

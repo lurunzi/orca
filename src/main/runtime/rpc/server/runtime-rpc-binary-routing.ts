@@ -1,3 +1,7 @@
+import {
+  pairedSubscriptionEnabled,
+  setSubscriptionDeviceLookup
+} from '../../../dashboard-accounts/paired-subscription-owner'
 import type { WebSocket } from 'ws'
 import type { TerminalStreamFrame } from '../../../../shared/terminal/stream/terminal-stream-protocol'
 import { DeviceRegistry } from './pairing/device-registry'
@@ -124,6 +128,11 @@ export class RuntimeRpcBinaryRouting extends RuntimeRpcState {
         ok: false,
         failure: pairingUnavailable('e2ee_key_unavailable', E2EE_KEY_UNAVAILABLE_GUIDANCE)
       }
+    }
+    if (pairedSubscriptionEnabled()) {
+      setSubscriptionDeviceLookup((id) =>
+        deviceRegistry.listDevices({ fresh: true }).some((device) => device.deviceId === id)
+      )
     }
     return { ok: true, deviceRegistry, e2eeKeypair }
   }

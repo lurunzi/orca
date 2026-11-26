@@ -1,3 +1,4 @@
+import { closeRevokedSubscriptionDevice } from '../../../../dashboard-accounts/paired-subscription-owner'
 // Per-device revocable tokens isolate compromises; persist with hardened metadata-style permissions.
 import type { DeviceScope } from '../../../../../shared/remote-runtime/session-graph/runtime-session-contracts'
 import { mintTokenDevice } from './device-credential'
@@ -148,6 +149,7 @@ export class DeviceRegistry extends DeviceRegistrySightings {
     }
     // Persist before swapping memory so failure cannot revoke a device only until restart.
     this.devices = this.save(nextDevices)
+    closeRevokedSubscriptionDevice(deviceId)
     return true
   }
 
