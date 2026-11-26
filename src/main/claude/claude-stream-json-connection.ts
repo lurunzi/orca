@@ -1,10 +1,10 @@
-import { withOrcaClaudeChatEntrypoint } from '../../shared/agent-launch/startup/claude-chat-entrypoint'
-import { claudeStartupAnswerObservation } from './child-process/claude-startup-answer-observation'
+import { startClaudeStreamJsonQuery } from './claude-stream-json-query'
+export { loadClaudeAgentSdk } from './claude-stream-json-query'
+import type { PairedClaudeSession } from '../dashboard-accounts/paired-claude-session'
 import type { ProviderProcessSpawner } from '../provider-process/provider-process-spawn'
 import type * as ClaudeAgentSdk from '@anthropic-ai/claude-agent-sdk'
 import type { CanUseTool, OnUserDialog, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import { spawnProcess } from '@orca/process-host'
-import { claudeStreamJsonChildEnv } from './claude-stream-json-child-env'
 import {
   createClaudeControlSurface,
   type ClaudeControlSurface
@@ -13,12 +13,7 @@ import { createClaudeChildTreeReaper } from './child-process/claude-agent-sdk-ex
 import { withTimeout } from '../../shared/concurrency/promise-timeout-fallback'
 import type { DescendantTreeVerdict } from '../pty/process-retirement/pty-descendant-exit-verification'
 import { claudeChildCloseProven } from './child-process/claude-child-exit-proof-ladder'
-import { createClaudeCodeProcessSpawn } from './child-process/claude-agent-sdk-process-spawn'
-import { withClaudeInboxSdkOptions } from './claude-inbox-mcp-server'
-import {
-  claudeUnwrittenUserMessageError,
-  createClaudeUserMessageQueue
-} from './sdk-transport/claude-agent-sdk-user-message-queue'
+import { claudeUnwrittenUserMessageError } from './sdk-transport/claude-agent-sdk-user-message-queue'
 import type { ClaudeStructuredSdkOptions } from './structured/launch/claude-structured-launch-resolution'
 import { withProviderSpawnAbsence } from '../provider-process/provider-executable-missing'
 import { claudeStreamJsonExitError } from './sdk-transport/claude-stream-json-exit-error'
@@ -29,20 +24,12 @@ import { withLostProviderOutcome } from '../provider-process/provider-process-ex
 /** Bound output draining after proven exit so inherited pipes cannot hold close open. */
 export const CLAUDE_READER_DRAIN_AFTER_EXIT_MS = 2_000
 
-/** Lazy import confines SDK executable-search env mutation and missing-package failures to structured Claude. */
-
-let claudeAgentSdk: Promise<typeof ClaudeAgentSdk> | null = null
-
-export function loadClaudeAgentSdk(): Promise<typeof ClaudeAgentSdk> {
-  claudeAgentSdk ??= import('@anthropic-ai/claude-agent-sdk')
-  return claudeAgentSdk
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
 export type ClaudeStreamJsonLaunch = {
+  pairedSubscription?: PairedClaudeSession
   /** Orca's resolved user CLI; the SDK falls back to a bundled binary that is not installed. */
   pathToClaudeCodeExecutable: string
   prefixArgs?: readonly string[]
@@ -98,29 +85,12 @@ export async function openClaudeStreamJsonConnection(
   spawnImpl: ProviderProcessSpawner = spawnProcess,
   queryImpl?: typeof ClaudeAgentSdk.query
 ): Promise<ClaudeStreamJsonConnection> {
-  const sdk = await loadClaudeAgentSdk()
-  const startup = claudeStartupAnswerObservation(handlers.onStdout)
-  const spawner = createClaudeCodeProcessSpawn(spawnImpl, process.platform, launch, startup.feed)
-  const env = await claudeStreamJsonChildEnv(launch)
-  const inbox = createClaudeUserMessageQueue()
-  const session = (queryImpl ?? sdk.query)({
-    prompt: inbox.messages,
-    options: {
-      ...launch.options,
-      ...withClaudeInboxSdkOptions(sdk, launch.options),
-      cwd: launch.cwd,
-      env: withOrcaClaudeChatEntrypoint(env, process.platform),
-      pathToClaudeCodeExecutable: launch.pathToClaudeCodeExecutable,
-      spawnClaudeCodeProcess: spawner.spawn,
-      ...(handlers.canUseTool ? { canUseTool: handlers.canUseTool } : {}),
-      ...(handlers.onUserDialog ? { onUserDialog: handlers.onUserDialog } : {})
-    }
-  })
-  const managed = spawner.managed
-  const child = managed?.child
-  if (!child || !managed) {
-    throw new Error('the claude agent SDK returned without spawning a child')
-  }
+  const { session, managed, child, spawner, inbox, startup } = await startClaudeStreamJsonQuery(
+    launch,
+    handlers,
+    spawnImpl,
+    queryImpl
+  )
   const exited = Promise.withResolvers<Error>()
   let closing = false
   let terminalError: Error | null = null

@@ -1,3 +1,9 @@
+import { observeSubscriptionRegistry } from '../../../dashboard-accounts/paired-device-registry-watch'
+import {
+  pairedSubscriptionEnabled,
+  setSubscriptionDeviceLookup,
+  watchSubscriptionDevices
+} from '../../../dashboard-accounts/paired-subscription-leases'
 import type { WebSocket } from 'ws'
 import type { TerminalStreamFrame } from '../../../../shared/terminal/stream/terminal-stream-protocol'
 import { DeviceRegistry } from './pairing/device-registry'
@@ -124,6 +130,19 @@ export class RuntimeRpcBinaryRouting extends RuntimeRpcState {
         ok: false,
         failure: pairingUnavailable('e2ee_key_unavailable', E2EE_KEY_UNAVAILABLE_GUIDANCE)
       }
+    }
+    if (pairedSubscriptionEnabled()) {
+      let observing = false
+      setSubscriptionDeviceLookup(
+        (id) =>
+          observing &&
+          deviceRegistry.listDevices({ fresh: true }).some((device) => device.deviceId === id)
+      )
+      watchSubscriptionDevices((changed, failed) =>
+        observeSubscriptionRegistry(this.userDataPath, changed, failed, () => {
+          observing = true
+        })
+      )
     }
     return { ok: true, deviceRegistry, e2eeKeypair }
   }

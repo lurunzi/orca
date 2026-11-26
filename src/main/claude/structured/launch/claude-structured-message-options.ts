@@ -1,3 +1,8 @@
+import { agentSessionFailureFact } from '../../../../shared/agent-session/failures/agent-session-failure'
+import { claudeDispatchRejection } from '../dispatch/claude-structured-dispatch-content'
+import { assertSubscriptionSessionCaller } from '../../../dashboard-accounts/paired-subscription-owner'
+import { pairedSubscriptionEnabled } from '../../../dashboard-accounts/paired-subscription-leases'
+import { getActiveRpcCaller } from '../../../runtime/rpc/callers/active-call'
 import { setTimeout as delay } from 'node:timers/promises'
 import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk'
 import { claudeBuildPermissionMode } from '../permissions/claude-plan-approval-mode'
@@ -212,6 +217,17 @@ export async function dispatchClaudeMessage(
   timeoutMs: number | undefined,
   logger: StructuredAgentSessionLogger = defaultLogger
 ): ReturnType<StructuredAgentSessionAdapter['dispatch']> {
+  assertSubscriptionSessionCaller(input.sessionId, getActiveRpcCaller())
+  if (pairedSubscriptionEnabled() && input.body.blocks.some((block) => block.type !== 'text')) {
+    return {
+      state: 'rejected',
+      ...claudeDispatchRejection(
+        agentSessionFailureFact('attachmentInvalid', {
+          attachment: { reason: 'unsupportedType' }
+        })
+      )
+    }
+  }
   let ranOptions: Record<string, string> = {}
   const outcome = await dispatchClaudeTurn(session, input, async () => {
     try {

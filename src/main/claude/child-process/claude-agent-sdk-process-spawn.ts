@@ -1,3 +1,4 @@
+import type { openPairedClaudeSession } from '../../dashboard-accounts/paired-claude-session'
 import { withOrcaClaudeChatEntrypoint } from '../../../shared/agent-launch/startup/claude-chat-entrypoint'
 import { awaitProviderChildSpawn, type ProviderChild } from '../../provider-process/provider-child'
 import type { ProviderProcessSpawner } from '../../provider-process/provider-process-spawn'
@@ -53,7 +54,8 @@ export function createClaudeCodeProcessSpawn(
   spawnImpl: ProviderProcessSpawner = spawnProcess,
   platform: NodeJS.Platform = process.platform,
   launch?: { pathToClaudeCodeExecutable: string; prefixArgs?: readonly string[] },
-  onStdout?: (chunk: Buffer | string) => void
+  onStdout?: (chunk: Buffer | string) => void,
+  relay?: Awaited<ReturnType<typeof openPairedClaudeSession>>
 ): ClaudeCodeProcessSpawn {
   let managed: ManagedProviderProcess | null = null
   return {
@@ -65,14 +67,18 @@ export function createClaudeCodeProcessSpawn(
       // SDK abort would kill the child outside Orca's ladder, losing observed exit proof.
       managed = spawnManagedProviderProcess(
         {
-          command: options.command,
-          args,
+          ...(relay ? { directRelay: true } : {}),
+          command: relay?.command ?? options.command,
+          args: relay?.args ?? args,
           ...(options.cwd === undefined ? {} : { cwd: options.cwd })
         },
         {
-          spawnImpl,
+          spawnImpl: relay?.spawn ?? spawnImpl,
           platform,
-          inheritedEnv: withOrcaClaudeChatEntrypoint(definedEnv(options.env), platform),
+          ...(relay ? { allowHost: false } : {}),
+          inheritedEnv: relay
+            ? {}
+            : withOrcaClaudeChatEntrypoint(definedEnv(options.env), platform),
           site: 'claude-stream-json-teardown',
           policy: (supervised) => claudeChildClosePolicy(supervised, platform),
           acceptClose: claudeChildCloseProven

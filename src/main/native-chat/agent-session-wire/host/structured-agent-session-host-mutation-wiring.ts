@@ -19,7 +19,7 @@ import { settleStructuredAgentSessionLateDispatch } from '../operations/structur
 import * as agentStart from '../startup/structured-agent-session-agent-start'
 import { joinClosingStructuredAgentSessionChild } from '../termination/structured-agent-session-child-close'
 import type { StructuredAgentSessionAttachContext } from '../acquisition/structured-agent-session-attach-context'
-import { restartStructuredAgentSessionForCredentials } from '../structured-agent-session-credential-restart'
+import type { createStructuredAgentSessionCredentials } from './structured-agent-session-credentials'
 import type { AgentSessionRewindParams } from '../../../../shared/agent-session/lifecycle/rewind/agent-session-rewind'
 import { rewindStructuredAgentSession } from '../rewind/structured-agent-session-rewind'
 import type { StructuredAgentSessionClientDelivery } from '../publication/subscribers/structured-agent-session-client-delivery'
@@ -96,11 +96,13 @@ export function createStructuredAgentSessionHostMutationContext(
 /** Resolve context per call so moved maps/fences cannot become stale closures. */
 export function structuredAgentSessionMutationDelegates(
   context: () => StructuredAgentSessionMutationContext,
-  attachContext: () => StructuredAgentSessionAttachContext
+  attachContext: () => StructuredAgentSessionAttachContext,
+  restartAgentForCredentials: ReturnType<
+    typeof createStructuredAgentSessionCredentials
+  >['restartAgentForCredentials']
 ) {
   return {
-    restartAgentForCredentials: (input: unknown) =>
-      restartStructuredAgentSessionForCredentials(attachContext(), input),
+    restartAgentForCredentials,
     cancel: (
       caller: StructuredAgentSessionCaller,
       params: Parameters<typeof cancelStructuredAgentSessionTurn>[2]

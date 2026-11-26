@@ -300,7 +300,7 @@ export function createProviderSpawnSpec(
 ) {
   assertGraceWithin('stdin-end', stdinEndGraceMs, PROVIDER_STDIN_END_GRACE_MS)
   assertGraceWithin('SIGTERM', sigtermGraceMs, PROVIDER_SIGTERM_GRACE_MS)
-  const supervised = platform !== 'win32'
+  const supervised = platform !== 'win32' && !launch.directRelay
   return {
     program: supervised ? resolveProviderExecPath(platform) : launch.command,
     args: supervised

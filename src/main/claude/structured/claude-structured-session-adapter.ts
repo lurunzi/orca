@@ -1,3 +1,4 @@
+import { pairedSubscriptionEnabled } from '../../dashboard-accounts/paired-subscription-leases'
 import { dispatchClaudeCommand } from './turns/claude-structured-command-dispatch'
 import { isKillDeliveredExitReceipt } from './lifecycle/claude-kill-delivered-exit-receipt'
 import { manageClaudeMcp } from './lifecycle/claude-structured-mcp'
@@ -87,8 +88,9 @@ export class ClaudeStructuredSessionAdapter implements StructuredAgentSessionAda
   acquire = (input: StructuredAgentSessionAcquireInput) => {
     this.settledExitErrors.delete(input.identity.sessionId)
     this.endings.retire(input.identity.sessionId)
-    const record = this.deps.namingRecord?.(input.identity.sessionId)
-    const naming = this.naming?.acquire(input, record)
+    const naming = pairedSubscriptionEnabled()
+      ? undefined
+      : this.naming?.acquire(input, this.deps.namingRecord?.(input.identity.sessionId))
     const start = claudeStartPublication(this.sessions, this.endings, input.identity.sessionId)
     return acquireClaudeSession({
       input,

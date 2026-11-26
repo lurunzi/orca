@@ -22,7 +22,7 @@ import {
 } from '../../agent-session/launch/structured-agent-launch-support'
 import { structuredAgentRuntimeMetadata } from '../../agent-session/installation/structured-agent-runtime-metadata'
 import { structuredAgentChatProgramNeedsInstall } from '../../agent-session/launch/structured-agent-availability'
-import { structuredLaunchSeedOptions } from '../../../../shared/native-chat/input/session-options/native-chat-session-option-defaults'
+import { dashboardStructuredLaunchSeedOptions as structuredLaunchSeedOptions } from '../../../dashboard-accounts/paired-claude-options'
 import { hasPersistedStructuredAgentSessionStore as hasPersistedStructuredAgentSessionStoreOnDisk } from '../../agent-session/records/agent-session-record-store-slot'
 import { ensureStructuredAgentSessionHostUnlessRefused } from '../../agent-session/installation/structured-agent-session-host-refusal'
 import { getProfileUserDataPath } from '../../../orca-profiles/profile-storage-paths'

@@ -1,4 +1,6 @@
 export type ProviderProcessLaunch = {
+  /** A tokenless relay for a preauthenticated descriptor starts no descendant process. */
+  directRelay?: true
   command: string
   args: string[]
   /** Workspace directory used by the provider process itself. */
