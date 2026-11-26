@@ -1,7 +1,11 @@
-import { fileStatSignature } from '../../filesystem/file-stat-signature'
+import {
+  fileStatSignature,
+  isFileStatSignatureConclusive
+} from '../../filesystem/file-stat-signature'
 import {
   existsSync,
   lstatSync,
+  type BigIntStats,
   readdirSync,
   rmdirSync,
   rmSync,
@@ -59,9 +63,10 @@ export async function claudeStateFileAsync(
 }
 
 // Cache large, frequently rewritten state files across account-list refreshes.
+// `conclusive` is false while the file's timestamps are too recent to reveal a same-size rewrite.
 const logins = new Map<
   string,
-  { signature: string; readAt: number; login: ClaudeFolderLogin | null }
+  { signature: string; conclusive: boolean; readAt: number; login: ClaudeFolderLogin | null }
 >()
 const loginObservations = new Map<string, { generation: number; readers: number }>()
 let loginObservationSequence = 0
@@ -102,27 +107,35 @@ export function readClaudeFolderLogin(stateFile: string, maxAgeMs = 0): ClaudeFo
     observation.generation = ++loginObservationSequence
   }
   pendingLogins.delete(stateFile)
-  let signature: string
+  const observedAt = Date.now()
+  let stats: BigIntStats
   try {
-    signature = fileStatSignature(statSync(stateFile, { bigint: true }))
+    stats = statSync(stateFile, { bigint: true })
   } catch {
     logins.delete(stateFile)
     return null
   }
-  if (recent?.signature === signature) {
+  const signature = fileStatSignature(stats)
+  if (recent?.conclusive && recent.signature === signature) {
     recent.readAt = Date.now()
     return recent.login
   }
   const read = readClaudeProfileObject(stateFile)
   const login = read.kind === 'present' ? claudeStateLogin(read.value) : null
-  logins.set(stateFile, { signature, readAt: Date.now(), login })
+  const conclusive = isFileStatSignatureConclusive(stats, observedAt)
+  logins.set(stateFile, { signature, conclusive, readAt: Date.now(), login })
   return login
 }
 
 // Concurrent chat reads of one state-file revision share a single read and parse.
 const pendingLogins = new Map<
   string,
-  { signature: string; generation: number; login: Promise<ClaudeFolderLogin | null> }
+  {
+    signature: string
+    conclusive: boolean
+    generation: number
+    login: Promise<ClaudeFolderLogin | null>
+  }
 >()
 
 /** Avoid blocking main on state files across WSL shares. */
@@ -147,6 +160,7 @@ async function readObservedLogin(
   observation: { generation: number; readers: number },
   generation: number
 ): Promise<ClaudeFolderLogin | null> {
+  const observedAt = Date.now()
   const current = await stat(stateFile, { bigint: true }).catch(() => null)
   if (observation.generation > generation) {
     return pendingLogins.get(stateFile)?.login ?? logins.get(stateFile)?.login ?? null
@@ -159,22 +173,23 @@ async function readObservedLogin(
   }
   const signature = fileStatSignature(current)
   const recent = logins.get(stateFile)
-  if (recent?.signature === signature) {
+  if (recent?.conclusive && recent.signature === signature) {
     pendingLogins.delete(stateFile)
     return recent.login
   }
   const pending = pendingLogins.get(stateFile)
-  if (pending?.signature === signature) {
+  if (pending?.conclusive && pending.signature === signature) {
     pending.generation = generation
     return pending.login
   }
-  const read = { signature, generation, login: readStateLogin(stateFile) }
+  const conclusive = isFileStatSignatureConclusive(current, observedAt)
+  const read = { signature, conclusive, generation, login: readStateLogin(stateFile) }
   pendingLogins.set(stateFile, read)
   const login = await read.login
   // A read superseded by a newer revision (or a deleted file) must not repopulate the cache.
   if (observation.generation === read.generation && pendingLogins.get(stateFile) === read) {
     pendingLogins.delete(stateFile)
-    logins.set(stateFile, { signature: read.signature, readAt: Date.now(), login })
+    logins.set(stateFile, { signature, conclusive, readAt: Date.now(), login })
   }
   return login
 }

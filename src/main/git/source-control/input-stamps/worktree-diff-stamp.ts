@@ -1,5 +1,6 @@
 import { readFile, stat } from 'node:fs/promises'
 import * as path from 'node:path'
+import { RACY_FILE_TIMESTAMP_MARGIN_MS } from '../../../filesystem/file-stat-signature'
 import { resolveWorktreeHostPath } from '../../../../shared/git/metadata/git-metadata-path'
 import type { GitRuntimeOptions } from '../../command-runner/git-runtime-options'
 import { resolveGitCommonDir, resolveGitDir } from '../resolve-git-dir'
@@ -13,8 +14,7 @@ export type WorktreeDiffStamp = {
   capturedAtMs: number
 }
 
-// Wait beyond FAT/exFAT's 2s timestamp bucket so another write cannot share a recent timestamp.
-export const DIFF_STAMP_RACY_WRITE_MARGIN_MS = 2_000
+export const DIFF_STAMP_RACY_WRITE_MARGIN_MS = RACY_FILE_TIMESTAMP_MARGIN_MS
 
 const MISSING = '-'
 const ABSENT: StampComponent = { text: MISSING, timestampMs: Number.NEGATIVE_INFINITY }
