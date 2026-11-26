@@ -125,6 +125,12 @@ describe('native browser tunnel dial', () => {
     const sockets = new Set<Socket>()
     const server = createServer((socket) => {
       sockets.add(socket)
+      // outcome() destroys the client on connect, so the reply can race a peer reset.
+      socket.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ECONNRESET' && error.code !== 'EPIPE') {
+          throw error
+        }
+      })
       socket.end('ok')
     })
     const port = await new Promise<number>((resolve) =>
