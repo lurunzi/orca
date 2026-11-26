@@ -1,3 +1,4 @@
+import { createStructuredAgentSessionAccountHomes } from './structured-agent-session-credentials'
 import { agentSessionLeaseOwnerVerdict } from '../../../../shared/agent-session/lifecycle/leases/agent-session-lease-adjudication'
 import { holdStructuredMailSources } from '../observations/structured-agent-session-mail-sources'
 import {
@@ -39,7 +40,10 @@ type ReadContext = {
 }
 
 /** Readers share the conversation owner; inventory never founds a journal or prepares a provider. */
-export function createStructuredAgentSessionConversationReads(context: () => ReadContext) {
+export function createStructuredAgentSessionConversationReads(
+  context: () => ReadContext,
+  { childAccountHome, prospectiveAccountHome } = createStructuredAgentSessionAccountHomes(context)
+) {
   const setUserConversationName: SetUserConversationName = (...args) =>
     context().deps.conversationNaming?.setUserName(...args) ?? Promise.resolve(null)
   const readModelCatalog = createStructuredAgentSessionCatalogReads(() => ({
@@ -196,15 +200,7 @@ export function createStructuredAgentSessionConversationReads(context: () => Rea
     sessionAgent: (id: string) => context().deps.store.getConversation(id)?.provider ?? null,
     /** After an out-of-turn options write, so an open tab re-reads the chat's options. */
     publishStatus: (id: string) => context().publishStatus(id),
-    /** The home a running child launched under. ACP adapters report none, so `orPinned` falls
-     *  back to the record's pinned home while a child runs. */
-    childAccountHome: (id: string, orPinned = false) => {
-      const { sessions, deps } = context()
-      const child = sessions.get(id)?.child
-      return child && orPinned
-        ? (child.accountHome ?? deps.store.getConversation(id)?.accountHome)
-        : child?.accountHome
-    },
+    childAccountHome,
     holdsSessions: () => context().deps.store.holdsRecords(),
     openConversationCount: () => context().sessions.size,
     /** Its agent is still starting: acquiring its process, or attached but not yet answering. */
@@ -220,12 +216,6 @@ export function createStructuredAgentSessionConversationReads(context: () => Rea
     /** A cancelled start's provider work, including releasing what it acquired, has ended. */
     startAttemptsEnded: (id: string) => context().runtimeState.startFlights.attemptsEnded(id),
     onSessionsHeld: (listener: () => void) => context().deps.store.onHeldChange(listener),
-    prospectiveAccountHome: (id: string) => {
-      const { deps, serialize } = context()
-      return serialize(
-        id,
-        async () => (await deps.launchAccountHome?.(deps.store.requireWritableRecord(id))) ?? null
-      )
-    }
+    prospectiveAccountHome
   }
 }
