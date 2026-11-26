@@ -99,6 +99,7 @@ describe('paired subscription relay', () => {
     try {
       fail?.()
       expect(stop).toHaveBeenCalledOnce()
+      expect(() => subscriptionDevice(alice)).toThrow('Paired subscription registry watcher unavailable')
       expect(() => retainSubscriptionSession('another-session', alice.deviceId, stop)).toThrow()
     } finally {
       release()

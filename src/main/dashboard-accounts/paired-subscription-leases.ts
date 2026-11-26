@@ -5,6 +5,7 @@ type Lease = { deviceId: string; revoked: boolean; stop: () => void }
 const leases = new Map<string, Lease>()
 let stopWatching: (() => void) | undefined
 let deviceIsCurrent: ((deviceId: string) => boolean) | null = null
+let watchFailed = false
 
 export function setSubscriptionDeviceLookup(lookup: (deviceId: string) => boolean): void {
   stopWatching?.()
@@ -13,6 +14,7 @@ export function setSubscriptionDeviceLookup(lookup: (deviceId: string) => boolea
     lease.stop()
   }
   deviceIsCurrent = lookup
+  watchFailed = false
 }
 
 /** Watch the directory: registry updates use a durable rename and replace the file inode. */
@@ -21,6 +23,7 @@ export function watchSubscriptionDevices(
 ): void {
   const failed = (): void => {
     setSubscriptionDeviceLookup(() => false)
+    watchFailed = true
   }
   try {
     stopWatching = start(() => {
@@ -43,9 +46,28 @@ export function closeRevokedSubscriptionDevice(deviceId: string): void {
   }
 }
 
+export function assertCurrentSubscriptionDevice(deviceId: string): void {
+  if (watchFailed) {
+    throw new Error('Paired subscription registry watcher unavailable')
+  }
+  if (!deviceIsCurrent) {
+    throw new Error('Paired subscription device registry not initialized')
+  }
+  let current: boolean
+  try {
+    current = deviceIsCurrent(deviceId)
+  } catch {
+    throw new Error('Paired subscription device registry unavailable')
+  }
+  if (!current) {
+    throw new Error('Paired subscription device no longer registered')
+  }
+}
+
 export function isCurrentSubscriptionDevice(deviceId: string): boolean {
   try {
-    return deviceIsCurrent?.(deviceId) === true
+    assertCurrentSubscriptionDevice(deviceId)
+    return true
   } catch {
     return false
   }
