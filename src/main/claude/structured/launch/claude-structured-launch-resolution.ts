@@ -3,7 +3,7 @@ import { withBotLaunchToolsEnv } from '../../../bots/bot-launch-tools'
 import type { ClaudeAccountRecipe } from '../../../../shared/agent-session/lifecycle/accounts/agent-session-acquired-account'
 import { prepareClaudeLaunchAccount, withClaudeLaunchAccountPin } from './claude-launch-account'
 import type { DashboardClaudeLaunchBinding } from '../../../dashboard-accounts/dashboard-claude-launch-protocol'
-import { prepareDashboardClaudeLaunch } from '../../../dashboard-accounts/dashboard-claude-environment'
+import { withDashboardClaudeLaunch } from '../../../dashboard-accounts/dashboard-claude-environment'
 import { assertStructuredAgentResolutionCurrent } from '../../../native-chat/agent-launch/structured-agent-command-resolution'
 import { activeProviderContext } from '../../../../shared/agent-session/conversation-context/agent-session-provider-context'
 import { getClaudeProfileRouter } from '../../../claude-accounts/profiles/routing/claude-profile-installed-router'
@@ -198,17 +198,13 @@ export function claudeStructuredLaunchPart(
       resolveAuthPolicy: deps.resolveAuthPolicy
     }
     const sources = await resolveClaudeChildEnvSources(envDeps)
+    const probeEnv = claudeProbeEnv(sources)
     // Overlap the version probe with remaining launch preparation.
     const probeLaunch = {
       command: sources.command,
       prefixArgs: sources.prefixArgs,
       cwd,
-      env: await withClaudeLaunchAccountPin(
-        router,
-        claudeProbeEnv(sources),
-        accountHome.path,
-        requestedAccount
-      )
+      env: await withClaudeLaunchAccountPin(router, probeEnv, accountHome.path, requestedAccount)
     }
     const launchFlags = resolveClaudeLaunchFlags(
       { ...deps, prepareVisuals: basis.visuals },
@@ -287,14 +283,12 @@ export function claudeStructuredLaunchPart(
         hasTranscript: deps.hasTranscript
       })
     }
-    const dashboard = await prepareDashboardClaudeLaunch(env)
-    return {
+    return withDashboardClaudeLaunch({
       launch: {
         pathToClaudeCodeExecutable: command,
         prefixArgs,
         account: accountRecipe.route === 'managed' ? 'managed' : 'system',
         accountRecipe,
-        ...dashboard.launch,
         options: {
           ...CLAUDE_STRUCTURED_BASE_OPTIONS,
           ...permission,
@@ -325,11 +319,11 @@ export function claudeStructuredLaunchPart(
           ? { forkedFromKey: agentSessionProviderHandleKey(head) }
           : {})
       },
-      env: dashboard.env,
-      inheritedEnvToDelete: [...refused.envToDelete, ...dashboard.inheritedEnvToDelete],
+      env,
+      inheritedEnvToDelete: refused.envToDelete,
       // The agent runtime follows Orca's CLI directory on PATH so another orca cannot shadow it.
       cliRuntimeCommand: command
-    }
+    })
   }
 }
 
