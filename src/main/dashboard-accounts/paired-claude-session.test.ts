@@ -1,6 +1,5 @@
 import { once } from 'node:events'
 import { createConnection, createServer } from 'node:net'
-import type { AddressInfo } from 'node:net'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { runWithActiveRpcCaller } from '../runtime/rpc/callers/active-call'
 import { openPairedClaudeSession } from './paired-claude-session'
@@ -98,7 +97,10 @@ describe('paired subscription relay', () => {
       })
       server.listen(0, '127.0.0.1')
       await once(server, 'listening')
-      const address = server.address() as AddressInfo
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        throw new Error('Missing loopback test listener')
+      }
       try {
         const relay = await runWithActiveRpcCaller(alice, () =>
           openPairedClaudeSession(expected, '/home/node/workspace', 'sonnet', () =>
