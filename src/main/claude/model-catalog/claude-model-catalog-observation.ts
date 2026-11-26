@@ -11,6 +11,7 @@ import {
   wireClaudeModels
 } from '../structured/launch/claude-structured-catalog-listing'
 import { readClaudeSettingsApplied } from '../structured/launch/claude-structured-session-options'
+import { pairedSubscriptionEnabled } from '../../dashboard-accounts/paired-subscription-leases'
 
 export function readClaudeCatalogObservation(
   replies: ReadonlyMap<string, unknown>,
@@ -36,7 +37,8 @@ export function readClaudeCatalogObservation(
     complete: isCompleteClaudeModelListing(listing) && configured !== undefined,
     ...(fastModeSupport ? { fastModeSupport } : {}),
     ...(configured ? { configured } : {}),
-    ...(claudeCatalogSignedOut(replies.get('orca-signin-discovery'), settings, env)
+    ...(!pairedSubscriptionEnabled() &&
+    claudeCatalogSignedOut(replies.get('orca-signin-discovery'), settings, env)
       ? { unavailable: { reason: 'notSignedIn', account } }
       : {})
   }
