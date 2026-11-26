@@ -5076,8 +5076,7 @@
               "expired": {
                 "label": "Oturum açma süresi doldu",
                 "message": "Orca'nın çalıştığı bilgisayarda bir terminalde cursor-agent login komutunu çalıştırın, ardından kullanım bilgilerini yeniden yüklemeyi deneyin."
-              },
-              "plan": "Plan"
+              }
             },
             "claude": {
               "waiting": {

@@ -182,8 +182,6 @@ function getWindowSectionLabel(
       return t('auto.components.status.bar.tooltip.a79c64f87e', 'Fable')
     case 'monthly':
       return t('auto.components.status.bar.tooltip.7f7f208060', 'Monthly')
-    case 'plan':
-      return t('auto.components.status.bar.tooltip.cursor.plan', 'Plan')
     case 'mcp':
       return t('auto.components.status.bar.tooltip.zcode.mcp', 'MCP')
   }
