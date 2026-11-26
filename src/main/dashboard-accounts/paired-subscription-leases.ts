@@ -3,13 +3,36 @@ export const pairedSubscriptionEnabled = (): boolean =>
 
 type Lease = { deviceId: string; revoked: boolean; stop: () => void }
 const leases = new Map<string, Lease>()
+let stopWatching: (() => void) | undefined
 let deviceIsCurrent: ((deviceId: string) => boolean) | null = null
 
 export function setSubscriptionDeviceLookup(lookup: (deviceId: string) => boolean): void {
+  stopWatching?.()
+  stopWatching = undefined
   for (const lease of leases.values()) {
     lease.stop()
   }
   deviceIsCurrent = lookup
+}
+
+/** Watch the directory: registry updates use a durable rename and replace the file inode. */
+export function watchSubscriptionDevices(
+  start: (changed: () => void, failed: () => void) => () => void
+): void {
+  const failed = (): void => {
+    setSubscriptionDeviceLookup(() => false)
+  }
+  try {
+    stopWatching = start(() => {
+      for (const lease of leases.values()) {
+        if (!isCurrentSubscriptionDevice(lease.deviceId)) {
+          lease.stop()
+        }
+      }
+    }, failed)
+  } catch {
+    failed()
+  }
 }
 
 export function closeRevokedSubscriptionDevice(deviceId: string): void {
@@ -55,7 +78,6 @@ export function retainSubscriptionSession(
     if (leases.get(sessionId) === lease) {
       leases.delete(sessionId)
     }
-    clearInterval(timer)
   }
   const lease: Lease = {
     deviceId,
@@ -65,16 +87,9 @@ export function retainSubscriptionSession(
         return
       }
       lease.revoked = true
-      clearInterval(timer)
       close()
     }
   }
-  const timer = setInterval(() => {
-    if (!isCurrentSubscriptionDevice(deviceId)) {
-      lease.stop()
-    }
-  }, 1000)
-  timer.unref()
   leases.set(sessionId, lease)
   return release
 }

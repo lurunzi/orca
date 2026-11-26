@@ -1,6 +1,10 @@
+import { watch } from 'node:fs'
+import { basename } from 'node:path'
+import { DEVICE_REGISTRY_FILENAME } from './pairing/mobile-pairing-files'
 import {
   pairedSubscriptionEnabled,
-  setSubscriptionDeviceLookup
+  setSubscriptionDeviceLookup,
+  watchSubscriptionDevices
 } from '../../../dashboard-accounts/paired-subscription-leases'
 import type { WebSocket } from 'ws'
 import type { TerminalStreamFrame } from '../../../../shared/terminal/stream/terminal-stream-protocol'
@@ -133,6 +137,26 @@ export class RuntimeRpcBinaryRouting extends RuntimeRpcState {
       setSubscriptionDeviceLookup((id) =>
         deviceRegistry.listDevices({ fresh: true }).some((device) => device.deviceId === id)
       )
+      watchSubscriptionDevices((changed, failed) => {
+        let active = true
+        const watcher = watch(this.userDataPath, { persistent: false }, (event, name) => {
+          if (event === 'rename' && name === basename(this.userDataPath)) {
+            failed()
+          } else if (name === null || name === DEVICE_REGISTRY_FILENAME) {
+            changed()
+          }
+        })
+        watcher.once('error', failed)
+        watcher.once('close', () => {
+          if (active) {
+            failed()
+          }
+        })
+        return () => {
+          active = false
+          watcher.close()
+        }
+      })
     }
     return { ok: true, deviceRegistry, e2eeKeypair }
   }

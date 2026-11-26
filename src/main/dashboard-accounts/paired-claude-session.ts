@@ -9,6 +9,8 @@ export type PairedClaudeSession = {
   configDir: string
   resume: boolean
 }
+type SubscriptionAdmission = PairedClaudeSession & { version: 1; deviceId: string; cwd: string }
+
 const socketPath = '/run/orca-dashboard/subscription.sock'
 const executable = '/usr/local/bin/node'
 const unavailable = (): Error => new Error('Paired subscription service unavailable')
@@ -16,14 +18,14 @@ const unavailable = (): Error => new Error('Paired subscription service unavaila
 // fd 3 already passed the orcad-only handshake. The process has no authority to open another link.
 const bridge = `const {Socket}=require('node:net');
 const {run}=require('/opt/orca-production-chat/runtime/tenant-launcher.cjs');
-const owner=Number(process.argv[1]);
-if(owner<1 || process.ppid!==owner) process.exit(74);
-const timer=setInterval(()=>{if(process.ppid!==owner)process.exit(74)},500);
-timer.unref();
-run(process.argv.slice(2),process.cwd(),process.stdin,process.stdout,()=>new Socket({fd:3,readable:true,writable:true}))
-.then(code=>{process.exitCode=code},()=>{process.exitCode=74})`
+const parent=new Socket({fd:4,readable:true,writable:false});
+const lost=()=>process.exit(74);
+parent.once('end',lost).once('error',lost).resume();
+const finish=code=>{parent.removeListener('end',lost);parent.destroy();process.exitCode=code};
+run(process.argv.slice(1),process.cwd(),process.stdin,process.stdout,()=>new Socket({fd:3,readable:true,writable:true}))
+.then(finish,()=>finish(74))`
 
-function acknowledge(socket: Socket, hello: object): Promise<void> {
+function acknowledge(socket: Socket, hello: SubscriptionAdmission): Promise<void> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
     let size = 0
@@ -127,7 +129,7 @@ export async function openPairedClaudeSession(
     release()
     close()
   }
-  const relayArgs = ['-e', bridge, '--', String(process.pid), ...args]
+  const relayArgs = ['-e', bridge, '--', ...args]
   return {
     command: executable,
     args: relayArgs,
@@ -142,7 +144,7 @@ export async function openPairedClaudeSession(
           args: relayArgs,
           cwd,
           env: {},
-          stdio: ['pipe', 'pipe', 'pipe', socket]
+          stdio: ['pipe', 'pipe', 'pipe', socket, 'pipe']
         })
         stopChild = () => {
           child.kill('SIGTERM')

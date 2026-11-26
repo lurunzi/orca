@@ -6,7 +6,8 @@ import { openPairedClaudeSession } from './paired-claude-session'
 import {
   closeRevokedSubscriptionDevice,
   retainSubscriptionSession,
-  setSubscriptionDeviceLookup
+  setSubscriptionDeviceLookup,
+  watchSubscriptionDevices
 } from './paired-subscription-leases'
 import { assertSubscriptionSessionCaller, subscriptionDevice } from './paired-subscription-owner'
 
@@ -68,16 +69,37 @@ describe('paired subscription relay', () => {
     }
   })
   it('closes an idle connection when its device is revoked outside this process', () => {
-    vi.useFakeTimers()
+    let changed: (() => void) | undefined
     let current = true
     setSubscriptionDeviceLookup(() => current)
+    watchSubscriptionDevices((notify) => {
+      changed = notify
+      return () => {}
+    })
     const stop = vi.fn()
     const release = retainSubscriptionSession(session.sessionId, alice.deviceId, stop)
     try {
       current = false
-      vi.advanceTimersByTime(1000)
+      changed?.()
       expect(stop).toHaveBeenCalledOnce()
       expect(() => assertSubscriptionSessionCaller(session.sessionId, alice)).toThrow()
+    } finally {
+      release()
+    }
+  })
+  it('closes the active lease and refuses new admission when watching fails', () => {
+    let fail: (() => void) | undefined
+    setSubscriptionDeviceLookup(() => true)
+    watchSubscriptionDevices((_changed, failed) => {
+      fail = failed
+      return () => {}
+    })
+    const stop = vi.fn()
+    const release = retainSubscriptionSession(session.sessionId, alice.deviceId, stop)
+    try {
+      fail?.()
+      expect(stop).toHaveBeenCalledOnce()
+      expect(() => retainSubscriptionSession('another-session', alice.deviceId, stop)).toThrow()
     } finally {
       release()
     }
