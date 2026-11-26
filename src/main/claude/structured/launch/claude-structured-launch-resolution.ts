@@ -7,7 +7,7 @@ export {
   CLAUDE_STRUCTURED_BASE_OPTIONS,
   type ClaudeStructuredSdkOptions
 } from './claude-structured-base-options'
-import { pairedSubscriptionEnabled } from '../../../dashboard-accounts/paired-subscription-owner'
+import { pairedSubscriptionEnabled } from '../../../dashboard-accounts/paired-subscription-leases'
 import type { PairedClaudeSession } from '../../../dashboard-accounts/paired-claude-session'
 import { claudeBotSessionOptions } from './claude-bot-session-options'
 import { withBotLaunchToolsEnv } from '../../../bots/bot-launch-tools'

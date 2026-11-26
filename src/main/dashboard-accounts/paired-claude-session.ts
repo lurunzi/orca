@@ -1,6 +1,7 @@
 import { createConnection, type Socket } from 'node:net'
 import { spawnProcess } from '@orca/process-host'
-import { retainSubscriptionSession, subscriptionDevice } from './paired-subscription-owner'
+import { retainSubscriptionSession } from './paired-subscription-leases'
+import { subscriptionDevice } from './paired-subscription-owner'
 
 export type PairedClaudeSession = {
   sessionId: string

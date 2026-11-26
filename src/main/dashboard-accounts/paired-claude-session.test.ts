@@ -4,12 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { runWithActiveRpcCaller } from '../runtime/rpc/callers/active-call'
 import { openPairedClaudeSession } from './paired-claude-session'
 import {
-  assertSubscriptionSessionCaller,
   closeRevokedSubscriptionDevice,
   retainSubscriptionSession,
-  setSubscriptionDeviceLookup,
-  subscriptionDevice
-} from './paired-subscription-owner'
+  setSubscriptionDeviceLookup
+} from './paired-subscription-leases'
+import { assertSubscriptionSessionCaller, subscriptionDevice } from './paired-subscription-owner'
 
 const alice = { kind: 'paired-device', deviceId: 'test-device-a' } as const
 const bob = { kind: 'paired-device', deviceId: 'test-device-b' } as const

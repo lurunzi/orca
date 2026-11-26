@@ -1,7 +1,7 @@
 import {
   pairedSubscriptionEnabled,
   setSubscriptionDeviceLookup
-} from '../../../dashboard-accounts/paired-subscription-owner'
+} from '../../../dashboard-accounts/paired-subscription-leases'
 import type { WebSocket } from 'ws'
 import type { TerminalStreamFrame } from '../../../../shared/terminal/stream/terminal-stream-protocol'
 import { DeviceRegistry } from './pairing/device-registry'

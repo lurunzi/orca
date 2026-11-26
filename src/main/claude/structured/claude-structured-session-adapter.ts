@@ -1,4 +1,4 @@
-import { pairedSubscriptionEnabled } from '../../dashboard-accounts/paired-subscription-owner'
+import { pairedSubscriptionEnabled } from '../../dashboard-accounts/paired-subscription-leases'
 import { dispatchClaudeCommand } from './turns/claude-structured-command-dispatch'
 import { isKillDeliveredExitReceipt } from './lifecycle/claude-kill-delivered-exit-receipt'
 import { manageClaudeMcp } from './lifecycle/claude-structured-mcp'

@@ -1,9 +1,7 @@
 import { agentSessionFailureFact } from '../../../../shared/agent-session/failures/agent-session-failure'
 import { claudeDispatchRejection } from '../dispatch/claude-structured-dispatch-content'
-import {
-  assertSubscriptionSessionCaller,
-  pairedSubscriptionEnabled
-} from '../../../dashboard-accounts/paired-subscription-owner'
+import { assertSubscriptionSessionCaller } from '../../../dashboard-accounts/paired-subscription-owner'
+import { pairedSubscriptionEnabled } from '../../../dashboard-accounts/paired-subscription-leases'
 import { getActiveRpcCaller } from '../../../runtime/rpc/callers/active-call'
 import { setTimeout as delay } from 'node:timers/promises'
 import type { PermissionMode } from '@anthropic-ai/claude-agent-sdk'
