@@ -17,9 +17,10 @@ describe('product identity', () => {
       homeDirName: '.uda-orca',
       cliCommandName: 'uda-orca',
       protocolScheme: 'uda-orca',
-      releaseRepo: { owner: 'lurunzi', repo: 'orca' }
+      installerFeedUrl: 'https://orca-releases.ultramarinedigitalart.com/channels/stable',
+      releaseRepo: { owner: 'Ultramarine-Digital-Art', repo: 'uda-orca-releases' }
     })
-    expect(PRODUCT_RELEASE_REPO_SLUG).toBe('lurunzi/orca')
+    expect(PRODUCT_RELEASE_REPO_SLUG).toBe('Ultramarine-Digital-Art/uda-orca-releases')
   })
 
   it('keeps the electron-builder config on the same identity', () => {
@@ -32,10 +33,9 @@ describe('product identity', () => {
     expect(config.extraMetadata.name).toBe(PRODUCT_IDENTITY.dataDirName)
     // Executable and installer file names stay upstream's: isolation comes from appId, userData and install dir.
     expect(config.win.executableName).toBe('Orca')
-    expect(config.publish).toMatchObject({
-      provider: 'github',
-      owner: PRODUCT_IDENTITY.releaseRepo.owner,
-      repo: PRODUCT_IDENTITY.releaseRepo.repo
+    expect(config.publish).toEqual({
+      provider: 'generic',
+      url: PRODUCT_IDENTITY.installerFeedUrl
     })
   })
 

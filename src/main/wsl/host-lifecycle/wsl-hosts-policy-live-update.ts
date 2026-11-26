@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
 import { readFetchResponseTextWithinLimit } from '../../../shared/network/fetch-response-body'
 import { readNodeFileSyncWithinLimit } from '../../../shared/file-content/node-bounded-file-reader'
-import { getVersionChannel, MAIN_RELEASE_REPO } from '../../../shared/updater/release-channel'
+import { getVersionChannel, POLICY_FEED_REPO } from '../../../shared/updater/release-channel'
 import { isWslHostsInternalGateOpen } from '../../../shared/remote-runtime/wsl-hosts/wsl-host-internal-gate'
 import {
   parseWslHostsPolicy,
@@ -30,7 +30,7 @@ export function wslHostsPolicyChannelForAppVersion(
 
 // A fixed release-asset URL: no API rate limit, and stable can be switched apart from prereleases.
 export function wslHostsPolicyDownloadUrl(channel: WslHostsPolicyChannel): string {
-  return `https://github.com/${MAIN_RELEASE_REPO}/releases/download/wsl-hosts-policy-${channel}/wsl-hosts-policy.json`
+  return `https://github.com/${POLICY_FEED_REPO}/releases/download/wsl-hosts-policy-${channel}/wsl-hosts-policy.json`
 }
 
 // Shared userData must not apply a prerelease-only switch to stable builds.

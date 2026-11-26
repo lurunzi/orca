@@ -17,8 +17,14 @@ export const PRODUCT_IDENTITY = {
   cliCommandName: 'uda-orca',
   /** URL scheme registered with the OS; links Orca generates keep the orca:// payload format. */
   protocolScheme: 'uda-orca',
-  releaseRepo: { owner: 'lurunzi', repo: 'orca' }
+  /** electron-updater generic feed (latest.yml, latest-mac.yml) that replaces the GitHub Releases API lookup. */
+  installerFeedUrl: 'https://orca-releases.ultramarinedigitalart.com/channels/stable',
+  /** GitHub mirror of the installer feed: backup download and release-notes links only. */
+  releaseRepo: { owner: 'Ultramarine-Digital-Art', repo: 'uda-orca-releases' }
 } as const
+
+/** Null keeps upstream's GitHub Releases lookup; set means the updater reads only this feed. */
+export const PRODUCT_INSTALLER_FEED_URL: string | null = PRODUCT_IDENTITY.installerFeedUrl
 
 /** `owner/repo` of the release feed. */
 export const PRODUCT_RELEASE_REPO_SLUG =

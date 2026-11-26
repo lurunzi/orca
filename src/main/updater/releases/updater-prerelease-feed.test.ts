@@ -14,7 +14,7 @@ function buildAtomFeed(tags: string[], updatedAt: Record<string, string> = {}): 
   const entries = tags
     .map(
       (tag) =>
-        `<entry>${updatedAt[tag] ? `<updated>${updatedAt[tag]}</updated>` : ''}<link rel="alternate" type="text/html" href="https://github.com/lurunzi/orca/releases/tag/${tag}"/><title>${tag}</title></entry>`
+        `<entry>${updatedAt[tag] ? `<updated>${updatedAt[tag]}</updated>` : ''}<link rel="alternate" type="text/html" href="https://github.com/Ultramarine-Digital-Art/uda-orca-releases/releases/tag/${tag}"/><title>${tag}</title></entry>`
     )
     .join('')
   return `<?xml version="1.0" encoding="UTF-8"?><feed>${entries}</feed>`
@@ -42,7 +42,7 @@ function respondWithAtom(
   const missingAssets = new Set(missingAssetTags)
   const unavailableManifests = new Set(unavailableManifestTags)
   netFetchMock.mockImplementation((url: string, init?: { method?: string }) => {
-    if (url === 'https://github.com/lurunzi/orca/releases.atom') {
+    if (url === 'https://github.com/Ultramarine-Digital-Art/uda-orca-releases/releases.atom') {
       return Promise.resolve({
         ok: true,
         text: () => Promise.resolve(buildAtomFeed(tags, updatedAt))
