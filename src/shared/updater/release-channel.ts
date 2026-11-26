@@ -26,6 +26,8 @@ export const HOURLY_RELEASE_REPO = `${RELEASE_OWNER}/orca-hourly`
 export const DAILY_RELEASE_REPO = `${RELEASE_OWNER}/orca-daily`
 export const ADHOC_RELEASE_REPO = `${RELEASE_OWNER}/orca-adhoc`
 export const MAIN_RELEASE_REPO = PRODUCT_RELEASE_REPO_SLUG
+// UDA Orca: agent-state-rules and WSL host policy stay upstream's; the fork publishes neither.
+export const POLICY_FEED_REPO = 'stablyai/orca'
 
 /** The dev channels, each published to its own repo rather than the main one. */
 const DEDICATED_REPO_CHANNELS = ['hourly', 'daily', 'adhoc'] as const

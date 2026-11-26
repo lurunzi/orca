@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
 import { readFetchResponseTextWithinLimit } from '../../../shared/network/fetch-response-body'
 import type { GlobalSettings } from '../../../shared/settings/global-settings-types'
-import { getVersionChannel, MAIN_RELEASE_REPO } from '../../../shared/updater/release-channel'
+import { getVersionChannel, POLICY_FEED_REPO } from '../../../shared/updater/release-channel'
 import { getMainHttpClient } from '../../network/http-client'
 import { writePluginFileAtomically } from '../../plugins/installation/plugin-atomic-file-write'
 import {
@@ -40,7 +40,7 @@ export function agentStateRulesChannelForAppVersion(
 // Fixed download URLs avoid API rate limits and latest-release redirects.
 export function agentStateRulesDownloadUrl(channel: AgentStateRulesChannel): string {
   const tag = `agent-state-rules-engine-${AGENT_STATE_RULES_ENGINE_VERSION}-${channel}`
-  return `https://github.com/${MAIN_RELEASE_REPO}/releases/download/${tag}/agent-state-rules.json`
+  return `https://github.com/${POLICY_FEED_REPO}/releases/download/${tag}/agent-state-rules.json`
 }
 
 // Shared userData must not expose next-only rules to stable builds.

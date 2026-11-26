@@ -1,10 +1,10 @@
 import { isBenignCheckFailure } from '../releases/updater-fallback'
 import { ReleaseFeedPreflightError } from './updater-state'
 import type { CheckFailureSource } from './updater-state'
-import { UpdaterReleaseFeed } from '../releases/updater-release-feed'
+import { UpdaterInstallerFeed } from '../releases/updater-installer-feed'
 import { updaterCodedMessage } from '../../../shared/updater/updater-failure-copy'
 
-export abstract class UpdaterCheckFailure extends UpdaterReleaseFeed {
+export abstract class UpdaterCheckFailure extends UpdaterInstallerFeed {
   protected isRetryableReleaseFeedPreflightFailure(sourceError: unknown): boolean {
     return (
       sourceError instanceof ReleaseFeedPreflightError &&

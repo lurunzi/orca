@@ -138,9 +138,16 @@ const UDA_ORCA_IDENTITY = {
   productName: 'UDA Orca',
   packageName: 'uda-orca',
   protocolScheme: 'uda-orca',
-  releaseOwner: 'lurunzi',
-  releaseRepo: 'orca'
+  installerFeedUrl: 'https://orca-releases.ultramarinedigitalart.com/channels/stable',
+  releaseOwner: 'Ultramarine-Digital-Art',
+  releaseRepo: 'uda-orca-releases',
+  // Put the Authenticode subject here once UDA has a signing certificate; null skips the check.
+  windowsPublisherName: null
 }
+if (devChannelRepo && UDA_ORCA_IDENTITY.installerFeedUrl) {
+  throw new Error('UDA Orca publishes no hourly, daily or adhoc channel')
+}
+const windowsPublisherName = isWinDevChannel ? null : UDA_ORCA_IDENTITY.windowsPublisherName
 const appId = UDA_ORCA_IDENTITY.appId
 // Electron's packaged app.getName() is package.json `name`, which picks the userData folder.
 const extraMetadataVersion = devChannelBuildVersion
@@ -641,9 +648,9 @@ module.exports = {
     // Sign hook signs nothing: it relays transient NSIS uninstaller files to CI SignPath; unset relay env leaves local/dev builds inert.
     signtoolOptions: {
       sign: signWindowsUninstallerViaSignPath,
-      ...(isWinDevChannel ? {} : { publisherName: 'SignPath Foundation' })
+      ...(windowsPublisherName ? { publisherName: windowsPublisherName } : {})
     },
-    ...(isWinDevChannel ? { verifyUpdateCodeSignature: false } : {}),
+    ...(windowsPublisherName ? {} : { verifyUpdateCodeSignature: false }),
     extraResources: [
       ...commonExtraResources,
       ...windowsRuntimeResources,
@@ -869,13 +876,15 @@ module.exports = {
   // Dual-arch builds need target node-pty rebuilds or Intel Macs get arm64 binaries and posix_spawnp failure.
   // beforeBuild performs targeted rebuild then returns false to skip optional cpu-features.
   npmRebuild: true,
-  publish: {
-    provider: 'github',
-    owner: UDA_ORCA_IDENTITY.releaseOwner,
-    repo: devChannelRepo ?? UDA_ORCA_IDENTITY.releaseRepo,
-    // Keep main-repo releases draft until release-cut verifies all assets; early --publish always would expose missing Windows installers.
-    releaseType: devChannelRepo ? 'prerelease' : 'draft'
-  }
+  publish: UDA_ORCA_IDENTITY.installerFeedUrl
+    ? { provider: 'generic', url: UDA_ORCA_IDENTITY.installerFeedUrl }
+    : {
+        provider: 'github',
+        owner: UDA_ORCA_IDENTITY.releaseOwner,
+        repo: devChannelRepo ?? UDA_ORCA_IDENTITY.releaseRepo,
+        // Keep main-repo releases draft until release-cut verifies all assets; early --publish always would expose missing Windows installers.
+        releaseType: devChannelRepo ? 'prerelease' : 'draft'
+      }
 }
 
 // Stamp the effective channel version where node-mode CLI code can read it.

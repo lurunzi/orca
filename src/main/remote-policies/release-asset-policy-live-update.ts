@@ -4,7 +4,7 @@ import {
   readNodeFileSyncWithinLimit,
   readNodeFileWithinLimit
 } from '../../shared/file-content/node-bounded-file-reader'
-import { getVersionChannel, MAIN_RELEASE_REPO } from '../../shared/updater/release-channel'
+import { getVersionChannel, POLICY_FEED_REPO } from '../../shared/updater/release-channel'
 import { writePluginFileAtomically } from '../plugins/installation/plugin-atomic-file-write'
 
 const REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000
@@ -41,7 +41,7 @@ export function releaseAssetPolicyDownloadUrl<P extends { revision: number }>(
   channel: ReleaseAssetPolicyChannel
 ): string {
   const tag = typeof spec.releaseTag === 'string' ? spec.releaseTag : spec.releaseTag(channel)
-  return `https://github.com/${MAIN_RELEASE_REPO}/releases/download/${tag}/${spec.assetName}`
+  return `https://github.com/${POLICY_FEED_REPO}/releases/download/${tag}/${spec.assetName}`
 }
 
 // Shared userData must not apply a prerelease-only switch to stable builds.
