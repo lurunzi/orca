@@ -5,7 +5,21 @@ type Lease = { deviceId: string; revoked: boolean; stop: () => void }
 const leases = new Map<string, Lease>()
 let stopWatching: (() => void) | undefined
 let deviceIsCurrent: ((deviceId: string) => boolean) | null = null
-let watchFailed = false
+type WatchFailure = 'startup' | 'error' | 'closed' | 'directory replaced'
+type WatchFailed = (reason: WatchFailure, error?: unknown) => void
+let watchFailure: string | undefined
+
+function watchErrorCode(error: unknown): string {
+  const code = error instanceof Error && 'code' in error ? error.code : undefined
+  return typeof code === 'string' &&
+    ['EACCES', 'ENOENT', 'ENOSPC', 'ENFILE', 'EMFILE', 'EPERM', 'ERR_INVALID_ARG_TYPE'].includes(
+      code
+    )
+    ? code
+    : error instanceof TypeError
+      ? 'TypeError'
+      : ''
+}
 
 export function setSubscriptionDeviceLookup(lookup: (deviceId: string) => boolean): void {
   stopWatching?.()
@@ -14,16 +28,16 @@ export function setSubscriptionDeviceLookup(lookup: (deviceId: string) => boolea
     lease.stop()
   }
   deviceIsCurrent = lookup
-  watchFailed = false
+  watchFailure = undefined
 }
 
 /** Watch the directory: registry updates use a durable rename and replace the file inode. */
 export function watchSubscriptionDevices(
-  start: (changed: () => void, failed: () => void) => () => void
+  start: (changed: () => void, failed: WatchFailed) => () => void
 ): void {
-  const failed = (): void => {
+  const failed: WatchFailed = (reason, error) => {
     setSubscriptionDeviceLookup(() => false)
-    watchFailed = true
+    watchFailure = [reason, watchErrorCode(error)].filter(Boolean).join(' ')
   }
   try {
     stopWatching = start(() => {
@@ -33,8 +47,8 @@ export function watchSubscriptionDevices(
         }
       }
     }, failed)
-  } catch {
-    failed()
+  } catch (error) {
+    failed('startup', error)
   }
 }
 
@@ -47,8 +61,8 @@ export function closeRevokedSubscriptionDevice(deviceId: string): void {
 }
 
 export function assertCurrentSubscriptionDevice(deviceId: string): void {
-  if (watchFailed) {
-    throw new Error('Paired subscription registry watcher unavailable')
+  if (watchFailure) {
+    throw new Error('Paired subscription registry watcher ' + watchFailure)
   }
   if (!deviceIsCurrent) {
     throw new Error('Paired subscription device registry not initialized')

@@ -1,4 +1,4 @@
-import { watch } from 'node:fs'
+import { statSync, watch } from 'node:fs'
 import { basename } from 'node:path'
 import { DEVICE_REGISTRY_FILENAME } from './pairing/mobile-pairing-files'
 import {
@@ -139,17 +139,36 @@ export class RuntimeRpcBinaryRouting extends RuntimeRpcState {
       )
       watchSubscriptionDevices((changed, failed) => {
         let active = true
-        const watcher = watch(this.userDataPath, { persistent: false }, (event, name) => {
-          if (event === 'rename' && name === basename(this.userDataPath)) {
-            failed()
-          } else if (name === null || name === DEVICE_REGISTRY_FILENAME) {
+        const dir = this.userDataPath
+        const identity = statSync(dir, { bigint: true })
+        const watcher = watch(dir, { persistent: false }, (event, name) => {
+          if (!active) {
+            return
+          }
+          if (event === 'rename' && name === basename(dir)) {
+            try {
+              const current = statSync(dir, { bigint: true })
+              if (identity.dev !== current.dev || identity.ino !== current.ino) {
+                failed('directory replaced')
+                return
+              }
+            } catch (error) {
+              failed('directory replaced', error)
+              return
+            }
+          }
+          if (name === null || name === DEVICE_REGISTRY_FILENAME) {
             changed()
           }
         })
-        watcher.once('error', failed)
+        watcher.once('error', (error) => {
+          if (active) {
+            failed('error', error)
+          }
+        })
         watcher.once('close', () => {
           if (active) {
-            failed()
+            failed('closed')
           }
         })
         return () => {

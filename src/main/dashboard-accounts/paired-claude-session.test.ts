@@ -91,7 +91,7 @@ describe('paired subscription relay', () => {
     let fail: (() => void) | undefined
     setSubscriptionDeviceLookup(() => true)
     watchSubscriptionDevices((_changed, failed) => {
-      fail = failed
+      fail = () => failed('error')
       return () => {}
     })
     const stop = vi.fn()
@@ -99,7 +99,7 @@ describe('paired subscription relay', () => {
     try {
       fail?.()
       expect(stop).toHaveBeenCalledOnce()
-      expect(() => subscriptionDevice(alice)).toThrow('Paired subscription registry watcher unavailable')
+      expect(() => subscriptionDevice(alice)).toThrow('Paired subscription registry watcher error')
       expect(() => retainSubscriptionSession('another-session', alice.deviceId, stop)).toThrow()
     } finally {
       release()
