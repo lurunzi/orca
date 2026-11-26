@@ -6,7 +6,7 @@ const leases = new Map<string, Lease>()
 let stopWatching: (() => void) | undefined
 let deviceIsCurrent: ((deviceId: string) => boolean) | null = null
 type WatchFailure = 'startup' | 'error' | 'closed' | 'directory replaced'
-type WatchFailed = (reason: WatchFailure, error?: unknown) => void
+export type SubscriptionWatchFailure = (reason: WatchFailure, error?: unknown) => void
 let watchFailure: string | undefined
 
 function watchErrorCode(error: unknown): string {
@@ -33,9 +33,9 @@ export function setSubscriptionDeviceLookup(lookup: (deviceId: string) => boolea
 
 /** Watch the directory: registry updates use a durable rename and replace the file inode. */
 export function watchSubscriptionDevices(
-  start: (changed: () => void, failed: WatchFailed) => () => void
+  start: (changed: () => void, failed: SubscriptionWatchFailure) => () => void
 ): void {
-  const failed: WatchFailed = (reason, error) => {
+  const failed: SubscriptionWatchFailure = (reason, error) => {
     setSubscriptionDeviceLookup(() => false)
     watchFailure = [reason, watchErrorCode(error)].filter(Boolean).join(' ')
   }
@@ -62,7 +62,7 @@ export function closeRevokedSubscriptionDevice(deviceId: string): void {
 
 export function assertCurrentSubscriptionDevice(deviceId: string): void {
   if (watchFailure) {
-    throw new Error('Paired subscription registry watcher ' + watchFailure)
+    throw new Error(`Paired subscription registry watcher ${watchFailure}`)
   }
   if (!deviceIsCurrent) {
     throw new Error('Paired subscription device registry not initialized')

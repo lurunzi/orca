@@ -1,6 +1,4 @@
-import { statSync, watch } from 'node:fs'
-import { basename } from 'node:path'
-import { DEVICE_REGISTRY_FILENAME } from './pairing/mobile-pairing-files'
+import { observeSubscriptionRegistry } from '../../../dashboard-accounts/paired-device-registry-watch'
 import {
   pairedSubscriptionEnabled,
   setSubscriptionDeviceLookup,
@@ -134,48 +132,17 @@ export class RuntimeRpcBinaryRouting extends RuntimeRpcState {
       }
     }
     if (pairedSubscriptionEnabled()) {
-      setSubscriptionDeviceLookup((id) =>
-        deviceRegistry.listDevices({ fresh: true }).some((device) => device.deviceId === id)
+      let observing = false
+      setSubscriptionDeviceLookup(
+        (id) =>
+          observing &&
+          deviceRegistry.listDevices({ fresh: true }).some((device) => device.deviceId === id)
       )
-      watchSubscriptionDevices((changed, failed) => {
-        let active = true
-        const dir = this.userDataPath
-        const identity = statSync(dir, { bigint: true })
-        const watcher = watch(dir, { persistent: false }, (event, name) => {
-          if (!active) {
-            return
-          }
-          if (event === 'rename' && name === basename(dir)) {
-            try {
-              const current = statSync(dir, { bigint: true })
-              if (identity.dev !== current.dev || identity.ino !== current.ino) {
-                failed('directory replaced')
-                return
-              }
-            } catch (error) {
-              failed('directory replaced', error)
-              return
-            }
-          }
-          if (name === null || name === DEVICE_REGISTRY_FILENAME) {
-            changed()
-          }
+      watchSubscriptionDevices((changed, failed) =>
+        observeSubscriptionRegistry(this.userDataPath, changed, failed, () => {
+          observing = true
         })
-        watcher.once('error', (error) => {
-          if (active) {
-            failed('error', error)
-          }
-        })
-        watcher.once('close', () => {
-          if (active) {
-            failed('closed')
-          }
-        })
-        return () => {
-          active = false
-          watcher.close()
-        }
-      })
+      )
     }
     return { ok: true, deviceRegistry, e2eeKeypair }
   }
