@@ -93,11 +93,14 @@ export function assertSubscriptionSessionDevice(
   deviceId: string | undefined
 ): void {
   const lease = leases.get(sessionId)
-  if (
-    lease &&
-    (lease.revoked || deviceId !== lease.deviceId || !isCurrentSubscriptionDevice(lease.deviceId))
-  ) {
+  if (!lease) {
+    return
+  }
+  // A rejected caller cannot change the writer's lifetime. The registry owns revocation.
+  if (deviceId === lease.deviceId && !isCurrentSubscriptionDevice(lease.deviceId)) {
     lease.stop()
+  }
+  if (lease.revoked || deviceId !== lease.deviceId) {
     throw new Error('Paired subscription session access denied')
   }
 }

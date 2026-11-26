@@ -40,16 +40,20 @@ describe('paired subscription relay', () => {
       expect(() => runWithActiveRpcCaller(caller, () => subscriptionDevice())).toThrow()
     }
   })
-  it('a second subject closes a writer, which remains denied until exit is observed', () => {
+  it('refuses foreign and unidentified callers while preserving the authorized writer', () => {
     setSubscriptionDeviceLookup(() => true)
     const stop = vi.fn()
     const release = retainSubscriptionSession(session.sessionId, alice.deviceId, stop)
     try {
       expect(() => assertSubscriptionSessionCaller(session.sessionId, alice)).not.toThrow()
       expect(() => assertSubscriptionSessionCaller(session.sessionId, bob)).toThrow()
-      expect(() => assertSubscriptionSessionCaller(session.sessionId, alice)).toThrow()
+      expect(() => assertSubscriptionSessionCaller(session.sessionId, undefined)).toThrow()
+      expect(() =>
+        assertSubscriptionSessionCaller(session.sessionId, { kind: 'local-cli' })
+      ).toThrow()
+      expect(() => assertSubscriptionSessionCaller(session.sessionId, alice)).not.toThrow()
       expect(() => retainSubscriptionSession(session.sessionId, bob.deviceId, stop)).toThrow()
-      expect(stop).toHaveBeenCalledTimes(1)
+      expect(stop).not.toHaveBeenCalled()
     } finally {
       release()
     }
