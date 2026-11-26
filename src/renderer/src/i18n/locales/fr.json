@@ -4732,8 +4732,7 @@
               "expired": {
                 "label": "Connexion expirée",
                 "message": "Exécutez cursor-agent login dans un terminal sur l'ordinateur qui exécute Orca, puis réessayez."
-              },
-              "plan": "Forfait"
+              }
             },
             "zcode": {
               "mcp": "MCP"

@@ -3868,8 +3868,7 @@
               "expired": {
                 "label": "Login expirado",
                 "message": "Execute cursor-agent login em um terminal no computador que executa o Orca e tente consultar o uso novamente."
-              },
-              "plan": "Plano"
+              }
             },
             "claude": {
               "waiting": {

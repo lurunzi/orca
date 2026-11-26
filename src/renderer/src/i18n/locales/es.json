@@ -4427,8 +4427,7 @@
               "expired": {
                 "label": "Inicio de sesión caducado",
                 "message": "Ejecuta cursor-agent login en una terminal del equipo donde se ejecuta Orca y vuelve a intentar consultar el uso."
-              },
-              "plan": "Plan"
+              }
             },
             "zcode": {
               "mcp": "MCP"

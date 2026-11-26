@@ -4992,8 +4992,7 @@
               "expired": {
                 "label": "Anmeldung abgelaufen",
                 "message": "cursor-agent login in einem Terminal auf dem Computer ausführen, auf dem Orca läuft, und anschließend den Abruf der Nutzung erneut versuchen."
-              },
-              "plan": "Tarif"
+              }
             },
             "claude": {
               "waiting": {

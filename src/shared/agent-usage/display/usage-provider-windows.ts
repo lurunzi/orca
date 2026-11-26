@@ -15,7 +15,7 @@ type ProviderUsageWindows = {
 export type UsageWindowSection =
   | { kind: 'bucket'; name: string; window: RateLimitWindow }
   | {
-      kind: 'session' | 'weekly' | 'fableWeekly' | 'monthly' | 'plan' | 'mcp'
+      kind: 'session' | 'weekly' | 'fableWeekly' | 'monthly' | 'mcp'
       window: RateLimitWindow | null
     }
 
@@ -70,14 +70,9 @@ export function getUsageWindowSections(p: ProviderUsageWindows): UsageWindowSect
         name: bucket.name,
         window: bucket
       })),
-      // Include Cursor’s monthly plan total because pools can understate proximity to its cap.
-      ...(p.monthly
-        ? [
-            {
-              kind: p.provider === 'cursor' ? ('plan' as const) : ('monthly' as const),
-              window: p.monthly
-            }
-          ]
+      // Cursor's plan total only restates its pools, so the fork shows the pools alone.
+      ...(p.monthly && p.provider !== 'cursor'
+        ? [{ kind: 'monthly' as const, window: p.monthly }]
         : []),
       ...(weeklyDuplicatesBucket ? [] : [{ kind: 'weekly' as const, window: p.weekly }])
     ]

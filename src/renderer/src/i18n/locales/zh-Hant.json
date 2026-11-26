@@ -4912,8 +4912,7 @@
               "expired": {
                 "label": "登入已過期",
                 "message": "請在執行 Orca 的電腦上的終端機中執行 cursor-agent login，然後重新整理用量。"
-              },
-              "plan": "方案"
+              }
             },
             "claude": {
               "waiting": {

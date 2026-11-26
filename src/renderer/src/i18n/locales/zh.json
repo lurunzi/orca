@@ -5301,8 +5301,7 @@
               "expired": {
                 "label": "登录已过期",
                 "message": "请在运行 Orca 的电脑上的终端中运行 cursor-agent login，然后重新刷新用量"
-              },
-              "plan": "套餐"
+              }
             },
             "zcode": {
               "mcp": "MCP"
