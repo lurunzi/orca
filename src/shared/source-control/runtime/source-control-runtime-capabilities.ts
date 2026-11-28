@@ -25,6 +25,8 @@ export const GITLAB_READY_FOR_REVIEW_UPDATE_REQUIRED_MESSAGE =
 export const GITLAB_MR_INVOLVEMENT_RUNTIME_CAPABILITY = 'gitlab.listMRs.involvement.v1' as const
 export const GITLAB_MR_INVOLVEMENT_UPDATE_REQUIRED_MESSAGE =
   'Filtering merge requests by you requires a newer Orca server. Update the server and try again.'
+// Host signs its own gh in through GitHub's device page (github.hostAuth.*); older hosts only show `gh auth login`.
+export const GITHUB_HOST_AUTH_RUNTIME_CAPABILITY = 'github.hostAuth.v1' as const
 // Still advertised so older clients send a saved Antigravity choice here, where it falls back.
 export const ANTIGRAVITY_CONFIGURED_MODEL_RUNTIME_CAPABILITY =
   'git.antigravity-configured-model.v1' as const
@@ -44,5 +46,6 @@ export const SOURCE_CONTROL_RUNTIME_CAPABILITIES = [
   MOBILE_GITHUB_MARK_PR_DRAFT_RUNTIME_CAPABILITY,
   GITLAB_READY_FOR_REVIEW_RUNTIME_CAPABILITY,
   GITLAB_MR_INVOLVEMENT_RUNTIME_CAPABILITY,
-  BITBUCKET_CREDENTIALS_RUNTIME_CAPABILITY
+  BITBUCKET_CREDENTIALS_RUNTIME_CAPABILITY,
+  GITHUB_HOST_AUTH_RUNTIME_CAPABILITY
 ] as const

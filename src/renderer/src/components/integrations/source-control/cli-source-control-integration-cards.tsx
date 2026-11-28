@@ -13,6 +13,7 @@ import {
 import { useProviderAccountScope } from '../../provider-accounts/use-provider-host-scope'
 import { ProviderHostScopeControl } from '../../provider-accounts/ProviderHostScopeControl'
 import { usePreflightCardStatuses } from './source-control-preflight-card-status'
+import { GitHubHostSignInButton } from './github-host-sign-in-button'
 import { translate } from '@/i18n/i18n'
 import { useTranslate, type Translate } from '@/i18n/use-translate'
 import { openAppHttpLink } from '@/lib/browser/navigation/app-http-link-open'
@@ -75,6 +76,7 @@ function ProviderAccountScopeDetails({
 export function GitHubIntegrationCard(): React.JSX.Element {
   const t = useTranslate()
   const { statuses, unavailable, refresh } = usePreflightCardStatuses('gh')
+  const ghSignInTarget = useAppStore((s) => s.preflightStatusGhTarget)
   const status = unavailable ? 'unavailable' : statuses.ghStatus
   const connected = status === 'connected'
   const commandRowClass = useIntegrationCommandRowClass()
@@ -159,7 +161,8 @@ export function GitHubIntegrationCard(): React.JSX.Element {
                   'gh auth login'
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <GitHubHostSignInButton target={ghSignInTarget} onSignedIn={refresh} />
                 <Button
                   variant="outline"
                   size="sm"

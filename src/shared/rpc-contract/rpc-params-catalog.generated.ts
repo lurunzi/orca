@@ -462,6 +462,11 @@ import {
   TerminalArtifactFileChunk,
   TerminalArtifactFileWrite
 } from './filesystem/files-terminal-artifact-params'
+import {
+  GitHubHostAuthFlowParams,
+  GitHubHostAuthStartParams,
+  GitHubHostAuthWaitParams
+} from './github-host-auth-params'
 import { BindableAccounts, ValidateAccountBinding } from './github/github-account-binding-params'
 import { UploadGitHubAttachment } from './github/github-attachment-params'
 import { CreateIssue, Issue, IssueComment, UpdateIssue } from './github/github-issue-params'
@@ -1729,6 +1734,9 @@ export const RPC_PARAMS_BY_METHOD = {
   'github.addPRReviewCommentReply': PRReviewCommentReply,
   'github.countWorkItems': WorkItemsCount,
   'github.createIssue': CreateIssue,
+  'github.hostAuth.cancel': GitHubHostAuthFlowParams,
+  'github.hostAuth.start': GitHubHostAuthStartParams,
+  'github.hostAuth.wait': GitHubHostAuthWaitParams,
   'github.issue': Issue,
   'github.listAssignableUsers': RepoWithGitHubAccountExpectation,
   'github.listBindableAccounts': BindableAccounts,

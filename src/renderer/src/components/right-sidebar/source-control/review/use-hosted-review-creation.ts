@@ -234,7 +234,12 @@ export function useSourceControlHostedReviewCreation({
 
         setCreatePrIntentNotice(operationStore, {
           tone: 'destructive',
-          message: localizedCreateFailure(result, hostedReviewCreateProvider)
+          message: localizedCreateFailure(result, hostedReviewCreateProvider),
+          ...(hostedReviewCreateProvider === 'github' &&
+          'reason' in result &&
+          result.reason === 'auth_required'
+            ? { action: 'githubHostSignIn' as const }
+            : {})
         })
       } catch (error) {
         setCreatePrIntentNotice(operationStore, {

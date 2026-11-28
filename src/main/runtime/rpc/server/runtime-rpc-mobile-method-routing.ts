@@ -21,6 +21,10 @@ export const EXECUTION_HOST_METHODS = [
   'orcaAccount.unsubscribe',
   // A relayed phone asks the server itself for its own pairing; the server refuses any other caller.
   'pairing.delegatedMobileDevice.createOffer',
+  // The host's own gh login, signed in from a phone through GitHub's device page.
+  'github.hostAuth.cancel',
+  'github.hostAuth.start',
+  'github.hostAuth.wait',
   'ui.getJiraQuickFilters',
   'ui.setJiraQuickFilters',
   'ui.getJiraSavedFilters',

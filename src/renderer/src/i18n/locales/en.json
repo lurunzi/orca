@@ -25236,6 +25236,37 @@
       "switchedIn": "In {{workspace}}",
       "thisComputer": "this computer",
       "updateHost": "Update Orca on {{host}} to switch branches from here."
+    },
+    "githubHostSignIn": {
+      "action": "Sign in on this host",
+      "title": "Sign in to GitHub on this host",
+      "description": "The GitHub CLI on this host signs in. Enter the code on GitHub to approve it; the token stays on the host.",
+      "starting": "Starting gh on this host…",
+      "codeLabel": "One-time code",
+      "copyCode": "Copy code",
+      "copied": "Copied",
+      "copyFailed": "Could not copy",
+      "openPage": "Open github.com/login/device",
+      "waiting": "Waiting for approval on GitHub…",
+      "signedIn": "Signed in as {{login}}. Try the action again.",
+      "signedInNoLogin": "Signed in. Try the action again.",
+      "cancelled": "Sign-in cancelled.",
+      "updateRequired": "Signing in from here requires a newer Orca server. Update the server and try again.",
+      "busy": "Another device is already signing this host in.",
+      "replace": "Replace it",
+      "retry": "Start again",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Done",
+      "failure": {
+        "notInstalled": "The GitHub CLI (gh) is not installed on this host.",
+        "noCode": "The GitHub CLI did not show a sign-in code. Update gh on this host and try again.",
+        "promptTimeout": "The GitHub CLI did not show a sign-in code within 30 seconds. Try again.",
+        "expired": "The sign-in code expired before it was approved. Start again.",
+        "denied": "The sign-in was not approved on GitHub.",
+        "envToken": "This host signs gh in with GH_TOKEN or GITHUB_TOKEN. Change that variable on the host instead.",
+        "ownerSilent": "The device that started this sign-in stopped answering."
+      }
     }
   },
   "agentsSidebarIntro": {

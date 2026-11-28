@@ -22,6 +22,8 @@ export type PreflightSlice = {
   preflightStatusLoading: boolean
   preflightStatusError: string | null
   preflightStatusHost: PreflightStatusHost | null
+  /** Where the shown gh status was read, for signing that gh in; null for a WSL read. */
+  preflightStatusGhTarget: RuntimeClientTarget | null
 
   /** `wakeWslDistro`: a user act (window focus, a click) that may start the focused workspace's stopped WSL distro. */
   refreshPreflightStatus: (options?: { force?: boolean; wakeWslDistro?: boolean }) => Promise<void>
@@ -60,6 +62,22 @@ function buildPreflightArgs(
   }
 }
 
+// A local read inside a WSL distro checks that distro's gh, which the host sign-in does not reach.
+function ghSignInTarget(
+  target: RuntimeClientTarget,
+  context: LocalPreflightContext
+): RuntimeClientTarget | null {
+  if (target.kind === 'environment') {
+    return target
+  }
+  const wsl =
+    Boolean(context?.wslDistro) ||
+    context?.wslDefault === true ||
+    (context?.projectRuntime?.status === 'resolved' &&
+      context.projectRuntime.runtime.kind === 'wsl')
+  return wsl ? null : target
+}
+
 export const createPreflightSlice: StateCreator<AppState, [], [], PreflightSlice> = (set, get) => ({
   preflightStatus: null,
   preflightStatusChecked: false,
@@ -67,6 +85,7 @@ export const createPreflightSlice: StateCreator<AppState, [], [], PreflightSlice
   preflightStatusLoading: false,
   preflightStatusError: null,
   preflightStatusHost: null,
+  preflightStatusGhTarget: null,
 
   invalidatePreflightStatus: () => {
     latestPreflightRequestId += 1
@@ -78,7 +97,8 @@ export const createPreflightSlice: StateCreator<AppState, [], [], PreflightSlice
       preflightStatusContextKey: null,
       preflightStatusLoading: false,
       preflightStatusError: null,
-      preflightStatusHost: null
+      preflightStatusHost: null,
+      preflightStatusGhTarget: null
     })
   },
 
@@ -135,7 +155,8 @@ export const createPreflightSlice: StateCreator<AppState, [], [], PreflightSlice
           preflightStatusContextKey: contextKey,
           preflightStatusLoading: false,
           preflightStatusError: null,
-          preflightStatusHost: statusHost
+          preflightStatusHost: statusHost,
+          preflightStatusGhTarget: ghSignInTarget(runtimeTarget, context)
         })
       })
       .catch((error) => {
