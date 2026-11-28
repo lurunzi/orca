@@ -95,6 +95,8 @@ describe('DragOutCache', () => {
     expect(await cache.begin(key('full.bin', 25), 'full.bin', 1)).toEqual({ status: 'rejected' })
     expect(cache.hasEntry(active)).toBe(true)
     expect(writing.status === 'started' && cache.hasEntry(writing.entryId)).toBe(true)
+    // The unfinished write still holds its file open; Node 24 throws when GC has to close it.
+    await cache.dispose()
   })
 
   it('binds writes to the writing sender and drags to senders that began the entry', async () => {
