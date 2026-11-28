@@ -88,6 +88,7 @@ export const HOST_OPERATION_OWNERSHIP = {
 /** Method overrides for scope-picked forge reads and streams without a subscription name. */
 const HOST_OPERATION_METHOD_OWNERSHIP = {
   'desktopBrowserBridge.attach': 'stream',
+  'github.listRepos': 'scope-picked',
   'github.project.listAccessible': 'scope-picked',
   'github.project.listViews': 'scope-picked',
   'github.project.resolveRef': 'scope-picked',

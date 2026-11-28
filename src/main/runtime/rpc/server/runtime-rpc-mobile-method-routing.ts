@@ -19,6 +19,8 @@ export const EXECUTION_HOST_METHODS = [
   'orcaAccount.status',
   'orcaAccount.subscribe',
   'orcaAccount.unsubscribe',
+  // A relayed phone asks the server itself for its own pairing; the server refuses any other caller.
+  'pairing.delegatedMobileDevice.createOffer',
   'ui.getJiraQuickFilters',
   'ui.setJiraQuickFilters',
   'ui.getJiraSavedFilters',
@@ -103,6 +105,11 @@ export const EXECUTION_HOST_METHODS = [
   'files.readTerminalArtifactPreview',
   'files.resolveTerminalPath',
   'files.searchPaths',
+  // Upload into a workspace folder (files.upload.staged.v1): bytes stage outside the worktree, the commit never replaces a file.
+  'files.uploadBegin',
+  'files.saveChunk',
+  'files.uploadCommit',
+  'files.saveAbort',
   'files.stat',
   'files.statTerminalArtifact',
   'files.writeTerminalArtifact',
@@ -153,6 +160,8 @@ export const EXECUTION_HOST_METHODS = [
   'github.uploadAttachment',
   'github.listAssignableUsers',
   'github.listLabels',
+  // The clone picker lists repos the target host's gh login reaches.
+  'github.listRepos',
   'github.listWorkItems',
   'github.markPRDraft',
   'github.markPRReadyForReview',
@@ -279,6 +288,7 @@ export const EXECUTION_HOST_METHODS = [
   'terminal.createAgentSession',
   'terminal.ensureAgentSession',
   'terminal.focus',
+  'terminal.inspectProcess',
   'terminal.isRunningAgent',
   'terminal.list',
   'terminal.multiplex',
