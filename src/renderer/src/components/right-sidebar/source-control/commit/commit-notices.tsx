@@ -7,6 +7,32 @@ import { SourceControlRecoveryNotice } from './recovery-notice'
 import type { CommitNoticesProps } from './commit-area-types'
 import { useTranslate } from '@/i18n/use-translate'
 import { cn } from '@/lib/class-names'
+import { useAppStore } from '@/store/index'
+import { tryResolveGitOperationTarget } from '@/store/slices/editor/git/git-operation-target'
+import { GitHubHostSignInButton } from '../../../integrations/source-control/github-host-sign-in-button'
+import type { RuntimeClientTarget } from '../../../../../../shared/remote-runtime/host-catalog/runtime-client-target'
+
+/** The host whose gh runs this workspace's git; none for direct SSH, where Orca runs no gh login. */
+function useWorkspaceGitHostTarget(
+  worktreeId: string | null,
+  connectionId: string | null | undefined
+): RuntimeClientTarget | null {
+  const key = useAppStore((s) => {
+    const target = worktreeId ? tryResolveGitOperationTarget(s, worktreeId) : null
+    if (!target) {
+      return null
+    }
+    return target.kind === 'environment' ? `env:${target.environmentId}` : 'local'
+  })
+  return React.useMemo(() => {
+    if (!key || (key === 'local' && connectionId)) {
+      return null
+    }
+    return key === 'local'
+      ? { kind: 'local' }
+      : { kind: 'environment', environmentId: key.slice(4) }
+  }, [key, connectionId])
+}
 
 export function CommitNotices({
   worktreeId,
@@ -21,6 +47,7 @@ export function CommitNotices({
   commitFailureRecoveryPrompt,
   pushRecovery,
   remoteActionError,
+  remoteActionNeedsGitHubSignIn,
   createPrIntentNotice,
   generateError,
   sourceControlAiActionsVisible,
@@ -34,6 +61,7 @@ export function CommitNotices({
   onFixPushFailureWithAI
 }: CommitNoticesProps): React.JSX.Element {
   const t = useTranslate()
+  const gitHostTarget = useWorkspaceGitHostTarget(worktreeId, connectionId)
   return (
     <>
       {commitError && commitFailureSummary ? (
@@ -96,14 +124,19 @@ export function CommitNotices({
       {remoteActionError && isPullPolicyRemoteActionError(remoteActionError) ? (
         <PullPolicyRemoteActionNotice id="commit-area-remote-error" />
       ) : remoteActionError ? (
-        <p
-          id="commit-area-remote-error"
-          role="alert"
-          aria-live="polite"
-          className="mt-1 text-[11px] text-destructive"
-        >
-          {remoteActionError}
-        </p>
+        <div className="mt-1 flex min-w-0 flex-col items-start gap-1 text-[11px]">
+          <p
+            id="commit-area-remote-error"
+            role="alert"
+            aria-live="polite"
+            className="text-destructive"
+          >
+            {remoteActionError}
+          </p>
+          {remoteActionNeedsGitHubSignIn ? (
+            <GitHubHostSignInButton target={gitHostTarget} variant="link" />
+          ) : null}
+        </div>
       ) : null}
       {createPrIntentNotice && (
         <div
@@ -121,6 +154,9 @@ export function CommitNotices({
           <span className="min-w-0 self-stretch break-words leading-4 [overflow-wrap:anywhere]">
             {createPrIntentNotice.message}
           </span>
+          {createPrIntentNotice.action === 'githubHostSignIn' ? (
+            <GitHubHostSignInButton target={gitHostTarget} variant="link" />
+          ) : null}
           {createPrIntentNotice.action === 'settings' && onOpenSourceControlAiSettings ? (
             <button
               type="button"

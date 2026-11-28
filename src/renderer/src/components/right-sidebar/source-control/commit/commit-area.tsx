@@ -50,6 +50,7 @@ export function CommitArea({
   commitFailureRecoveryPrompt,
   pushRecovery,
   remoteActionError,
+  remoteActionNeedsGitHubSignIn,
   createPrIntentNotice,
   isCommitting,
   isFixingCommitFailureWithAI,
@@ -256,6 +257,7 @@ export function CommitArea({
         commitFailureRecoveryPrompt={commitFailureRecoveryPrompt}
         pushRecovery={pushRecovery}
         remoteActionError={remoteActionError}
+        remoteActionNeedsGitHubSignIn={remoteActionNeedsGitHubSignIn}
         createPrIntentNotice={createPrIntentNotice}
         generateError={generateError}
         sourceControlAiActionsVisible={sourceControlAiActionsVisible}

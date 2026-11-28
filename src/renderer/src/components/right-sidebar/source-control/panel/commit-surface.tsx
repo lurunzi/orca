@@ -2,6 +2,7 @@ import { githubCreationImageUploadAddress } from '@/components/github/github-cre
 import { CreateHostedReviewComposer } from '../../hosted-review/creation/CreateHostedReviewComposer'
 import { CommitArea } from '../commit/commit-area'
 import type { SourceControlPanelReadyProps } from './panel-props'
+import { GIT_AUTHENTICATION_FAILED_MESSAGE } from '../../../../../../shared/git/remotes/git-remote-error'
 
 type SourceControlCommitSurfaceProps = SourceControlPanelReadyProps & {
   showGenericEmptyState: boolean
@@ -143,6 +144,10 @@ export function SourceControlCommitSurface({
       commitFailureRecoveryPrompt={commitFailureRecoveryPrompt}
       pushRecovery={pushRecovery}
       remoteActionError={pushRecovery ? null : (remoteActionError?.message ?? null)}
+      remoteActionNeedsGitHubSignIn={
+        hostedReviewCreateProvider === 'github' &&
+        !!remoteActionError?.rawError.includes(GIT_AUTHENTICATION_FAILED_MESSAGE)
+      }
       createPrIntentNotice={createPrIntentNotice}
       isCommitting={isCommitting}
       isFixingCommitFailureWithAI={isLaunchingCommitFailureAgent}

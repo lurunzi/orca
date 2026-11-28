@@ -11,6 +11,7 @@ import { LinkRoutingPreferenceDialogProvider } from './components/link-actions/l
 import { SkillFreshnessNudge } from './components/skills/freshness/SkillFreshnessNudge'
 import PinnedTabCloseDialog from './components/terminal-pane/layout/close/PinnedTabCloseDialog'
 import RunningTerminalCloseDialog from './components/terminal-pane/layout/close/RunningTerminalCloseDialog'
+import { GitHubHostSignInDialog } from './components/integrations/source-control/github-host-sign-in-dialog'
 import WorktreeBaseFallbackDialog from './components/sidebar/workspace-creation/base-ref-update/WorktreeBaseFallbackDialog'
 import ClaudeAccountSwitchDialog from './components/provider-accounts/claude/ClaudeAccountSwitchDialog'
 import { AppBackgroundServices } from './app-shell/AppBackgroundServices'
@@ -135,6 +136,7 @@ function App(): React.JSX.Element {
       <ClaudeAccountSwitchDialog />
       <PinnedTabCloseDialog />
       <RunningTerminalCloseDialog />
+      <GitHubHostSignInDialog />
       {/* Electron drag hit-testing follows DOM order, ignoring z-index; render controls last to keep them clickable. */}
       {hasCustomTitleBar && <WindowControls closeOnly={tilingWindowMode} />}
     </div>

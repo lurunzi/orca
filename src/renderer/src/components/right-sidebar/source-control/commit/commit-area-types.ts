@@ -13,7 +13,8 @@ import type { SourceControlAiWriteTarget } from '../../../../../../shared/source
 export type CreatePrIntentNotice = {
   message: string
   tone: 'muted' | 'destructive'
-  action?: 'settings'
+  /** `githubHostSignIn` offers signing the workspace host's gh in from here. */
+  action?: 'settings' | 'githubHostSignIn'
 }
 
 export type CommitAreaProps = {
@@ -27,6 +28,8 @@ export type CommitAreaProps = {
   commitFailureRecoveryPrompt: string | null
   pushRecovery: SourceControlPushRecovery | null
   remoteActionError: string | null
+  /** The remote refused the host's GitHub credentials, so signing its gh in may fix it. */
+  remoteActionNeedsGitHubSignIn?: boolean
   createPrIntentNotice?: CreatePrIntentNotice | null
   isCommitting: boolean
   isFixingCommitFailureWithAI: boolean
@@ -74,6 +77,7 @@ export type CommitNoticesProps = Pick<
   | 'commitFailureRecoveryPrompt'
   | 'pushRecovery'
   | 'remoteActionError'
+  | 'remoteActionNeedsGitHubSignIn'
   | 'createPrIntentNotice'
   | 'generateError'
   | 'sourceControlAiActionsVisible'
