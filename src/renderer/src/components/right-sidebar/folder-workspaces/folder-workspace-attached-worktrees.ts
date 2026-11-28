@@ -9,6 +9,9 @@ import {
 } from '../../../../../shared/workspace/identity/workspace-scope'
 import type { FolderWorkspace } from '../../../../../shared/folder-workspaces/folder-workspace-types'
 import type { Worktree } from '../../../../../shared/worktree/types'
+import type { Repo } from '../../../../../shared/repository/repo-types'
+import { isGitRepoKind } from '../../../../../shared/repository/repo-kind'
+import { isPathInsideOrEqual } from '../../../../../shared/file-access/cross-platform-path'
 import type {
   WorkspaceLineage,
   WorktreeLineage
@@ -109,4 +112,45 @@ export function getAttachedWorktreesForFolderWorkspace({
       attachedWorktreeOwnerKey(left).localeCompare(attachedWorktreeOwnerKey(right))
   )
   return { folderWorkspace, owners, ...children }
+}
+
+/** Main checkouts of registered git repos inside the folder, so nested repos get cards without a linked worktree. */
+export function getFolderRepoCheckoutOwners(
+  folderWorkspace: FolderWorkspace | null,
+  repos: readonly Repo[],
+  worktreesByRepo: Readonly<Record<string, readonly Worktree[]>>,
+  attached: readonly AttachedWorktreeOwner[]
+): AttachedWorktreeOwner[] {
+  if (!folderWorkspace) {
+    return []
+  }
+  const folderHost = getRepoExecutionHostId(folderWorkspace)
+  const taken = new Set(attached.map((owner) => getWorktreeHostIdentity(owner.worktree)))
+  const owners: AttachedWorktreeOwner[] = []
+  for (const repo of repos) {
+    if (
+      !isGitRepoKind(repo) ||
+      getRepoExecutionHostId(repo) !== folderHost ||
+      !isPathInsideOrEqual(folderWorkspace.folderPath, repo.path)
+    ) {
+      continue
+    }
+    const main = worktreesByRepo[repo.id]?.find(
+      (worktree) =>
+        worktree.isMainWorktree &&
+        (worktree.hostId ?? folderHost) === folderHost &&
+        !isWorktreeRetiredByRemoval(worktree)
+    )
+    if (main && !taken.has(getWorktreeHostIdentity(main))) {
+      taken.add(getWorktreeHostIdentity(main))
+      owners.push({
+        worktreeId: main.id,
+        repoId: main.repoId,
+        executionHostId: folderHost,
+        worktree: main,
+        attachedAt: main.createdAt ?? 0
+      })
+    }
+  }
+  return owners.sort((left, right) => left.worktree.path.localeCompare(right.worktree.path))
 }

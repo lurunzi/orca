@@ -4,11 +4,16 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useAppStore } from '@/store/index'
 import { activateAndRevealWorktree } from '@/lib/workspace/activation/worktree-activation'
-import { selectFolderWorkspaces } from '@/store/workspaces/catalog/workspace-record-fields'
+import {
+  selectFolderWorkspaces,
+  selectWorktreesByRepo
+} from '@/store/workspaces/catalog/workspace-record-fields'
 import {
   getAttachedWorktreesForFolderWorkspace,
+  getFolderRepoCheckoutOwners,
   attachedWorktreeOwnerKey
 } from './folder-workspace-attached-worktrees'
+import { FolderWorkspaceNestedRepos } from './folder-workspace-nested-repos'
 import { resolveReviewRepository } from '@/lib/source-control/review/review-owner'
 import { useTranslate } from '@/i18n/use-translate'
 import { useUiLanguageRevision } from '@/i18n/use-ui-language-revision'
@@ -197,6 +202,7 @@ export default function FolderWorkspaceSourceControlPanel() {
   const workspaceLineageByChildKey = useAppStore((state) => state.workspaceLineageByChildKey)
   const worktreeLineageById = useAppStore((state) => state.worktreeLineageById)
   const repos = useAppStore((state) => state.repos)
+  const worktreesByRepo = useAppStore(selectWorktreesByRepo)
   const resolution = useMemo(
     () =>
       getAttachedWorktreesForFolderWorkspace({
@@ -218,20 +224,33 @@ export default function FolderWorkspaceSourceControlPanel() {
       worktreeLineageById
     ]
   )
+  const checkoutOwners = useMemo(
+    () =>
+      getFolderRepoCheckoutOwners(
+        resolution.folderWorkspace,
+        repos,
+        worktreesByRepo,
+        resolution.owners
+      ),
+    [resolution, repos, worktreesByRepo]
+  )
+  const attachedCount = resolution.owners.length
   const owners = useMemo(
     () =>
-      resolution.owners.flatMap((owner) => {
+      [...resolution.owners, ...checkoutOwners].flatMap((owner) => {
         const repo = resolveReviewRepository(repos, owner.worktree)
         return repo && resolution.folderWorkspace
           ? [{ ...owner, repo, placementWorkspaceId: `folder:${resolution.folderWorkspace.id}` }]
           : []
       }),
-    [resolution, repos]
+    [resolution, checkoutOwners, repos]
   )
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null)
   const [refreshers] = useState(() => new Set<() => void>())
+  const [nestedScanKey, setNestedScanKey] = useState(0)
   // Each section's scheduler applies the status tier, coalescing, abort and stale-result guards.
   const refresh = () => {
+    setNestedScanKey((key) => key + 1)
     for (const refreshNow of refreshers) {
       refreshNow()
     }
@@ -245,7 +264,7 @@ export default function FolderWorkspaceSourceControlPanel() {
             {t(
               'auto.components.rightSidebar.FolderWorkspaceWorktreesPanel.attachedCount',
               '{{count}} attached worktrees',
-              { count: owners.length, defaultValue_one: '{{count}} attached worktree' }
+              { count: attachedCount, defaultValue_one: '{{count}} attached worktree' }
             )}
           </div>
         </div>
@@ -271,7 +290,7 @@ export default function FolderWorkspaceSourceControlPanel() {
       {owners.length === 0 ? (
         <FolderWorkspaceEmptyState
           folderWorkspace={resolution.folderWorkspace ?? null}
-          showRepoActions={resolution.owners.length === 0}
+          showRepoActions={attachedCount === 0}
           title={t(
             'auto.components.rightSidebar.FolderWorkspaceWorktreesPanel.emptyTitle',
             'No attached worktrees yet'
@@ -280,7 +299,15 @@ export default function FolderWorkspaceSourceControlPanel() {
             'auto.components.rightSidebar.FolderWorkspaceWorktreesPanel.emptyCopy',
             'Worktrees created from this workspace will show up here.'
           )}
-        />
+        >
+          {resolution.folderWorkspace ? (
+            <FolderWorkspaceNestedRepos
+              folderWorkspace={resolution.folderWorkspace}
+              refreshKey={nestedScanKey}
+              className="mt-4 w-full max-w-72"
+            />
+          ) : null}
+        </FolderWorkspaceEmptyState>
       ) : (
         <div
           ref={setScrollRoot}
@@ -294,6 +321,12 @@ export default function FolderWorkspaceSourceControlPanel() {
               refreshers={refreshers}
             />
           ))}
+          {resolution.folderWorkspace ? (
+            <FolderWorkspaceNestedRepos
+              folderWorkspace={resolution.folderWorkspace}
+              refreshKey={nestedScanKey}
+            />
+          ) : null}
         </div>
       )}
     </div>

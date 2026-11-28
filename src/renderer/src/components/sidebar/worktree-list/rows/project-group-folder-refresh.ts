@@ -22,13 +22,13 @@ export type FolderProjectGroupRefreshDependencies = Pick<
   getProjectGroups: () => readonly ProjectGroup[]
 }
 
-function getRefreshOwner(
-  group: ProjectGroup | null
-): { id: string; runtimeEnvironmentId: string | null } | null {
-  if (!group || group.createdFrom !== 'folder-scan' || !group.parentPath) {
-    return null
-  }
-  const hostId = getRepoExecutionHostId(group)
+export type NestedScanHostOwner = { id: string; runtimeEnvironmentId: string | null }
+
+/** Hosts the nested scanner can read: this app or a paired runtime; direct SSH targets cannot. */
+export function getNestedScanHostOwner(
+  record: Parameters<typeof getRepoExecutionHostId>[0]
+): NestedScanHostOwner | null {
+  const hostId = getRepoExecutionHostId(record)
   const owner = parseExecutionHostId(hostId)
   if (owner?.kind === 'local') {
     return { id: hostId, runtimeEnvironmentId: null }
@@ -37,6 +37,13 @@ function getRefreshOwner(
     return { id: hostId, runtimeEnvironmentId: owner.environmentId }
   }
   return null
+}
+
+function getRefreshOwner(group: ProjectGroup | null): NestedScanHostOwner | null {
+  if (!group || group.createdFrom !== 'folder-scan' || !group.parentPath) {
+    return null
+  }
+  return getNestedScanHostOwner(group)
 }
 
 export function canRefreshFolderProjectGroup(group: ProjectGroup | null): group is ProjectGroup {
