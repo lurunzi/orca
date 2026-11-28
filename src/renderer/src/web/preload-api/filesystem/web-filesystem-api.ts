@@ -94,6 +94,21 @@ export function createFileApi(): NonNullable<Partial<PreloadApi>['fs']> {
     cancelDownloadedFile: async () => {
       throw new Error('Remote file download is unavailable in paired web clients.')
     },
+    startDownloadedFolder: async () => {
+      throw new Error('Remote folder download is unavailable in paired web clients.')
+    },
+    createDownloadedFolderDirectory: async () => {
+      throw new Error('Remote folder download is unavailable in paired web clients.')
+    },
+    writeDownloadedFolderFileChunk: async () => {
+      throw new Error('Remote folder download is unavailable in paired web clients.')
+    },
+    finishDownloadedFolder: async () => {
+      throw new Error('Remote folder download is unavailable in paired web clients.')
+    },
+    cancelDownloadedFolder: async () => {
+      throw new Error('Remote folder download is unavailable in paired web clients.')
+    },
     listMarkdownDocuments: async ({ rootPath }) => {
       const file = await resolveRuntimeFilePath(rootPath)
       return callRuntimeResult('files.listMarkdownDocuments', {
@@ -186,8 +201,9 @@ export function createFileApi(): NonNullable<Partial<PreloadApi>['fs']> {
     // Why: the paired web client watches nothing, so there is no symlinked folder to add a watch for.
     findSymlinkBelowRoot: () => Promise.resolve(null),
     watchWorktree: () => Promise.resolve(undefined),
-    unwatchWorktree: () => Promise.resolve(),
-    onFsChanged: () => noopUnsubscribe
+    unwatchWorktree: () => Promise.resolve(undefined),
+    onFsChanged: () => noopUnsubscribe,
+    onWatchPaused: () => noopUnsubscribe
   }
 }
 

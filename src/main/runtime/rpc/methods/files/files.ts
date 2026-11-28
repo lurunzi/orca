@@ -31,6 +31,7 @@ import {
   ResolveTerminalPath,
   ServerDirectoryBrowse
 } from '../../../../../shared/rpc-contract/filesystem/files-params'
+import { FILE_TREE_LIST_METHODS } from './files-tree-list-methods'
 import { limitSearchResultToContentBudget } from '../../../../../shared/file-search/search-result-transport-budget'
 
 let filesWatchSubscriptionSeq = 0
@@ -183,6 +184,7 @@ export const FILE_METHODS = [
         params.length
       )
   }),
+  ...FILE_TREE_LIST_METHODS,
   defineMethod({
     name: 'files.readDir',
     permission: 'workspace',

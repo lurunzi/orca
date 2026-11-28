@@ -4,7 +4,10 @@ import type { RuntimeFileReadChunkResult } from '../../../shared/file-content/ru
 import type { SearchOptions, SearchResult } from '../../../shared/file-search/code-search-types'
 import type { PdfExportResult } from '../../../shared/document-preview/pdf-export-failure-copy'
 import type { DirEntry } from '../../../shared/file-listing/directory-entry'
-import type { FsChangedPayload } from '../../../shared/file-watch/filesystem-change-event'
+import type {
+  FsChangedPayload,
+  FsWatchPausedPayload
+} from '../../../shared/file-watch/filesystem-change-event'
 import type { MarkdownDocument } from '../../../shared/file-listing/file-document'
 import type {
   ImportItemResult,
@@ -126,6 +129,22 @@ export type FilesystemApi = {
       transferId: string
     }) => Promise<{ canceled: false; destinationPath: string }>
     cancelDownloadedFile: (args: { transferId: string }) => Promise<{ ok: true }>
+    /** Picks a parent folder; entries stage in a hidden sibling until finish names it without overwriting. */
+    startDownloadedFolder: (args: {
+      suggestedName: string
+    }) => Promise<{ canceled: true } | { canceled: false; transferId: string; parentPath: string }>
+    createDownloadedFolderDirectory: (args: {
+      transferId: string
+      relativePath: string
+    }) => Promise<{ ok: true }>
+    writeDownloadedFolderFileChunk: (args: {
+      transferId: string
+      relativePath: string
+      contentBase64: string
+      append: boolean
+    }) => Promise<{ ok: true }>
+    finishDownloadedFolder: (args: { transferId: string }) => Promise<{ destinationPath: string }>
+    cancelDownloadedFolder: (args: { transferId: string }) => Promise<{ ok: true }>
     listMarkdownDocuments: (args: {
       rootPath: string
       connectionId?: string
@@ -256,8 +275,15 @@ export type FilesystemApi = {
       worktreePath: string
       connectionId?: string
     }) => Promise<WatchWorktreeResult | undefined>
-    unwatchWorktree: (args: { worktreePath: string; connectionId?: string }) => Promise<void>
+    /** With `handOver`, a local root resolves with the events queued for this window that it would otherwise miss. */
+    unwatchWorktree: (args: {
+      worktreePath: string
+      connectionId?: string
+      handOver?: boolean
+    }) => Promise<FsChangedPayload | undefined>
     onFsChanged: (callback: (payload: FsChangedPayload) => void) => () => void
+    /** Local watch roots whose auto-reload paused or resumed; main pushes only on change. */
+    onWatchPaused: (callback: (payload: FsWatchPausedPayload) => void) => () => void
   }
   notebook: {
     listPythonEnvironments: (args: {

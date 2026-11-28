@@ -22,12 +22,14 @@ export function shouldShowRemoteDownloadAction(
   connectionId?: string | null,
   runtimeDownloadContext?: RuntimeFileOperationArgs | null
 ): boolean {
-  // Native save dialogs require desktop; no host serves a recursive folder transfer.
-  return (
-    !node.isDirectory &&
-    Boolean(connectionId || runtimeDownloadContext) &&
-    (globalThis as { __ORCA_WEB_CLIENT__?: boolean }).__ORCA_WEB_CLIENT__ !== true
-  )
+  // Native save dialogs require desktop; only a paired runtime serves a recursive folder listing.
+  if ((globalThis as { __ORCA_WEB_CLIENT__?: boolean }).__ORCA_WEB_CLIENT__ === true) {
+    return false
+  }
+  if (node.isDirectory) {
+    return runtimeDownloadContext?.target.kind === 'environment'
+  }
+  return Boolean(connectionId || runtimeDownloadContext)
 }
 
 export function shouldShowCopyFileAction(
