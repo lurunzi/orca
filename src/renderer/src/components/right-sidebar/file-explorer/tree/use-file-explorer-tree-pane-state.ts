@@ -228,7 +228,8 @@ export function useFileExplorerTreePaneState({
     refreshDir,
     clearNativeDragState: dragDrop.clearNativeDragState,
     setSelectedPath: setSingleSelectedPath,
-    operationOwner: rootCache?.operationOwner
+    operationOwner: rootCache?.operationOwner,
+    onDragOutMoveDrop: dragDrop.handleMoveDrop
   })
 
   const rowScrolling = useFileExplorerRowScrolling({

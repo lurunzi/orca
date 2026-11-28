@@ -1,3 +1,4 @@
+import type { DragOutApi } from '../../../shared/file-drag-out/drag-out-contract'
 import type { WatchWorktreeResult } from '../../../shared/file-watch/watch-worktree-result'
 import type { PathExistenceResult } from '../../../shared/file-access/path-existence-batch'
 import type { RuntimeFileReadChunkResult } from '../../../shared/file-content/runtime-file-read'
@@ -129,6 +130,8 @@ export type FilesystemApi = {
       transferId: string
     }) => Promise<{ canceled: false; destinationPath: string }>
     cancelDownloadedFile: (args: { transferId: string }) => Promise<{ ok: true }>
+    /** Desktop only: caches a remote file in main so a drag can hand the OS a real path. */
+    dragOut?: DragOutApi
     listMarkdownDocuments: (args: {
       rootPath: string
       connectionId?: string

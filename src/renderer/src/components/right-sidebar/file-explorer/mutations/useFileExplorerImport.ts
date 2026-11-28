@@ -19,6 +19,7 @@ import {
   type FileExplorerOperationGuard
 } from '../navigation/file-explorer-operation-owner'
 import { runWithFinally } from '@/lib/run-with-finally'
+import { takeRuntimeDragOutDrop } from './file-explorer-runtime-drag-out'
 
 export const FILE_EXPLORER_DROP_DIR_ATTRIBUTE = 'data-file-explorer-drop-dir'
 
@@ -30,6 +31,8 @@ type UseFileExplorerImportParams = {
   clearNativeDragState: () => void
   setSelectedPath: (path: string | null) => void
   operationOwner?: FileExplorerOperationOwner
+  /** Moves the tree node whose drag-out copy was dropped back into this explorer. */
+  onDragOutMoveDrop?: (sourcePath: string, destDir: string) => void
 }
 
 type FileExplorerDropDestination =
@@ -54,7 +57,8 @@ export function useFileExplorerImport({
   refreshDir,
   clearNativeDragState,
   setSelectedPath,
-  operationOwner
+  operationOwner,
+  onDragOutMoveDrop
 }: UseFileExplorerImportParams): (root: HTMLElement | null) => void {
   const t = useTranslate()
   const rootRef = useRef<HTMLElement | null>(null)
@@ -80,6 +84,12 @@ export function useFileExplorerImport({
     captureDestination: (event) => {
       const destinationDir = resolveDropDir(event)
       if (!destinationDir || !worktreeId || !worktreePath) {
+        return null
+      }
+      const dragOutSource = onDragOutMoveDrop ? takeRuntimeDragOutDrop(event, worktreeId) : null
+      if (dragOutSource) {
+        // A null destination skips the copy-import of the cached file.
+        onDragOutMoveDrop?.(dragOutSource, destinationDir)
         return null
       }
       try {

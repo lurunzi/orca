@@ -1,6 +1,7 @@
 import type { WatchWorktreeResult } from '../../../shared/file-watch/watch-worktree-result'
 import type { PathExistenceResult } from '../../../shared/file-access/path-existence-batch'
 import { ipcRenderer, webUtils } from 'electron'
+import { dragOutBridge } from './drag-out-bridge'
 import type {
   PrepareDroppedPathsRequest,
   PreparedDroppedPaths
@@ -133,6 +134,7 @@ export const fsApi = {
     ipcRenderer.invoke('fs:finishDownloadedFile', args),
   cancelDownloadedFile: (args: { transferId: string }): Promise<{ ok: true }> =>
     ipcRenderer.invoke('fs:cancelDownloadedFile', args),
+  dragOut: dragOutBridge,
   listMarkdownDocuments: (args: {
     rootPath: string
     connectionId?: string
