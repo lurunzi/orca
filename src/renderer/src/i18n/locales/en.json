@@ -25594,6 +25594,13 @@
       "titleRecycleBin": "Couldn't move '{{name}}' to the Recycle Bin. Delete it permanently?",
       "titleTrash": "Couldn't move '{{name}}' to the Trash. Delete it permanently?",
       "description": "This cannot be undone."
+    },
+    "folderDownload": {
+      "preparing": "Preparing '{{name}}'…",
+      "progress": "Downloading '{{name}}': {{done}} of {{total}} files",
+      "cancel": "Cancel",
+      "skipped": "Downloaded '{{name}}'; {{count}} items were skipped (links, special files, or names this computer cannot store).",
+      "failed": "Failed to download folder '{{name}}'."
     }
   },
   "sparsePreset": {

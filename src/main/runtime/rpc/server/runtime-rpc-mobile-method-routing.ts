@@ -97,6 +97,7 @@ export const EXECUTION_HOST_METHODS = [
   'files.read',
   'files.readChatImage',
   'files.readChunk',
+  'files.listTree',
   'files.readDir',
   'files.readDocPreview',
   'files.readPreview',

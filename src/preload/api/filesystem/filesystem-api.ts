@@ -129,6 +129,22 @@ export type FilesystemApi = {
       transferId: string
     }) => Promise<{ canceled: false; destinationPath: string }>
     cancelDownloadedFile: (args: { transferId: string }) => Promise<{ ok: true }>
+    /** Picks a parent folder; entries stage in a hidden sibling until finish names it without overwriting. */
+    startDownloadedFolder: (args: {
+      suggestedName: string
+    }) => Promise<{ canceled: true } | { canceled: false; transferId: string; parentPath: string }>
+    createDownloadedFolderDirectory: (args: {
+      transferId: string
+      relativePath: string
+    }) => Promise<{ ok: true }>
+    writeDownloadedFolderFileChunk: (args: {
+      transferId: string
+      relativePath: string
+      contentBase64: string
+      append: boolean
+    }) => Promise<{ ok: true }>
+    finishDownloadedFolder: (args: { transferId: string }) => Promise<{ destinationPath: string }>
+    cancelDownloadedFolder: (args: { transferId: string }) => Promise<{ ok: true }>
     listMarkdownDocuments: (args: {
       rootPath: string
       connectionId?: string

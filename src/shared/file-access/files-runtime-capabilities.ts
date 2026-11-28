@@ -7,6 +7,7 @@ import {
   STAGED_FILE_UPLOAD_RUNTIME_CAPABILITY
 } from '../file-write/staged-file-save'
 import { FILE_REPLACE_WITH_UPLOAD_RUNTIME_CAPABILITY } from '../file-write/file-bytes-write'
+import { FILE_TREE_LIST_RUNTIME_CAPABILITY } from '../file-listing/file-tree-listing'
 
 // Why: older runtimes strip mutation owner fields, so clients must fence writes before RPC.
 export const FILE_MUTATION_OWNERSHIP_RUNTIME_CAPABILITY = 'files.mutation-ownership.v1' as const
@@ -35,5 +36,6 @@ export const FILES_RUNTIME_CAPABILITIES = [
   STAGED_FILE_SAVE_RUNTIME_CAPABILITY,
   STAGED_FILE_UPLOAD_RUNTIME_CAPABILITY,
   FILE_REPLACE_WITH_UPLOAD_RUNTIME_CAPABILITY,
-  TERMINAL_ARTIFACT_CHUNK_RUNTIME_CAPABILITY
+  TERMINAL_ARTIFACT_CHUNK_RUNTIME_CAPABILITY,
+  FILE_TREE_LIST_RUNTIME_CAPABILITY
 ] as const

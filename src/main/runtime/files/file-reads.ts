@@ -45,6 +45,8 @@ import type {
   DocPreviewFileTarget
 } from '../../../shared/document-preview/doc-preview-file-access'
 import type { LocalFilesystemProvider } from '../../providers/filesystem/local-provider'
+import type { FileTreeListResult } from '../../../shared/file-listing/file-tree-listing'
+import { walkLocalFileTree } from './file-tree-walk'
 
 const CHAT_IMAGE_ACCESS: LocalFileAccess = { kind: 'chat-image' }
 
@@ -197,10 +199,28 @@ export class RuntimeFileReads {
     offset: number,
     length: number
   ): Promise<RuntimeFileReadChunkResult> {
+    const filePath = await this.resolveAuthorizedExplorerPath(worktreeSelector, relativePath)
+    return readLocalFileRange(filePath, offset, length)
+  }
+
+  /** A recursive listing for folder downloads; each file is then paged through readFileExplorerChunk. */
+  async listFileExplorerTree(
+    worktreeSelector: string,
+    relativePath: string,
+    signal?: AbortSignal
+  ): Promise<FileTreeListResult> {
+    const rootPath = await this.resolveAuthorizedExplorerPath(worktreeSelector, relativePath)
+    return walkLocalFileTree(rootPath, { signal })
+  }
+
+  /** Local-route explorer path, canonicalized and checked against this host's allowed roots. */
+  private async resolveAuthorizedExplorerPath(
+    worktreeSelector: string,
+    relativePath: string
+  ): Promise<string> {
     const target = await resolveFileExplorerPath(this.host, worktreeSelector, relativePath)
     requireLocalRuntimeFileRoute(target)
-    const filePath = await resolveRuntimeAuthorizedPath(target.path, this.host.requireStore())
-    return readLocalFileRange(filePath, offset, length)
+    return resolveRuntimeAuthorizedPath(target.path, this.host.requireStore())
   }
 
   /** A file an agent on this host named by absolute path, read where that agent runs. */

@@ -28,6 +28,7 @@ export type RuntimeFileReadsSurface = Pick<
   | 'readFileExplorerPreview'
   | 'readChatImagePreview'
   | 'readFileExplorerChunk'
+  | 'listFileExplorerTree'
   | 'readHostFileChunk'
   | 'readDocPreviewFile'
   | 'readDocPreviewChunk'
@@ -136,6 +137,9 @@ export class LazyRuntimeFileReads implements RuntimeFileReadsSurface {
 
   readFileExplorerChunk: RuntimeFileReadsSurface['readFileExplorerChunk'] = async (...args) =>
     (await this.load()).readFileExplorerChunk(...args)
+
+  listFileExplorerTree: RuntimeFileReadsSurface['listFileExplorerTree'] = async (...args) =>
+    (await this.load()).listFileExplorerTree(...args)
 
   readHostFileChunk: RuntimeFileReadsSurface['readHostFileChunk'] = async (...args) =>
     (await this.load()).readHostFileChunk(...args)

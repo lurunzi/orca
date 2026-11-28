@@ -46,7 +46,11 @@ import {
   shouldShowRemoteDownloadAction,
   shouldShowViewFileAction
 } from './file-explorer-row-action-visibility'
-import { copyFileToOsClipboard, downloadRemoteFile } from './file-explorer-row-file-transfer'
+import {
+  copyFileToOsClipboard,
+  downloadRemoteFile,
+  downloadRemoteFolder
+} from './file-explorer-row-file-transfer'
 import { fileExplorerNodeTabRelativePath } from '../tree/file-explorer-directory-listing'
 
 const isMac = navigator.userAgent.includes('Mac')
@@ -133,6 +137,12 @@ export function FileExplorerRowContextMenu({
     // The runtime serves the bytes; a bare SSH connection id no longer has a route.
     const downloadTarget = runtimeDownloadContext ?? connectionId
     if (!downloadTarget) {
+      return
+    }
+    if (node.isDirectory) {
+      if (runtimeDownloadContext) {
+        void downloadRemoteFolder(node, runtimeDownloadContext)
+      }
       return
     }
     void downloadRemoteFile(node, downloadTarget)

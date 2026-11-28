@@ -1637,6 +1637,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'files.list': WorktreeSelector,
   'files.listAll': FileListAll,
   'files.listMarkdownDocuments': WorktreeSelector,
+  'files.listTree': FileOpen,
   'files.open': FileOpenTab,
   'files.openDiff': FileOpenDiff,
   'files.pathsExist': FilePathsExist,

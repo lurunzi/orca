@@ -12,6 +12,14 @@ const FILESYSTEM_DOWNLOAD_CHANNELS = [
   'fs:cancelDownloadedFile'
 ] as const
 
+const FILESYSTEM_FOLDER_DOWNLOAD_CHANNELS = [
+  'fs:startDownloadedFolder',
+  'fs:createDownloadedFolderDirectory',
+  'fs:writeDownloadedFolderFileChunk',
+  'fs:finishDownloadedFolder',
+  'fs:cancelDownloadedFolder'
+] as const
+
 const FILESYSTEM_GIT_COMMIT_GENERATION_CHANNELS = [
   'git:generateCommitMessage',
   'git:cancelGenerateCommitMessage'
@@ -38,6 +46,13 @@ export function registerLazyFilesystemSecondaryHandlers(context: FilesystemHandl
     const { registerFilesystemDownloadHandlers } =
       await import('./downloads/filesystem-download-handlers')
     registerFilesystemDownloadHandlers(context, ipc)
+  })
+
+  clearChannels(FILESYSTEM_FOLDER_DOWNLOAD_CHANNELS)
+  registerLazyIpcHandleGroup(FILESYSTEM_FOLDER_DOWNLOAD_CHANNELS, async (ipc) => {
+    const { registerFilesystemFolderDownloadHandlers } =
+      await import('./downloads/filesystem-folder-download-handlers')
+    registerFilesystemFolderDownloadHandlers(ipc)
   })
 
   clearChannels(FILESYSTEM_GIT_COMMIT_GENERATION_CHANNELS)

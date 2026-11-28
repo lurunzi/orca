@@ -57,6 +57,7 @@ export function installRuntimeFileCommandSurface(
     readFileExplorerPreview: fileReads.readFileExplorerPreview.bind(fileReads),
     readChatImagePreview: fileReads.readChatImagePreview.bind(fileReads),
     readFileExplorerChunk: fileReads.readFileExplorerChunk.bind(fileReads),
+    listFileExplorerTree: fileReads.listFileExplorerTree.bind(fileReads),
     readHostFileChunk: fileReads.readHostFileChunk.bind(fileReads),
     readDocPreviewFile: fileReads.readDocPreviewFile.bind(fileReads),
     readDocPreviewChunk: fileReads.readDocPreviewChunk.bind(fileReads),

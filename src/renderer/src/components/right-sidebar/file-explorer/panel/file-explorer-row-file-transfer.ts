@@ -2,6 +2,10 @@ import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import { extractIpcErrorMessage } from '@/runtime/errors/ipc-error'
 import { downloadRuntimeFile } from '@/runtime/files/reads/runtime-file-read-client'
+import {
+  downloadRuntimeFolder,
+  type RuntimeFolderDownloadProgress
+} from '@/runtime/files/reads/runtime-remote-folder-download'
 import { showDownloadedFileToast } from '@/lib/files/download/downloaded-file-toast'
 import type { RuntimeFileOperationArgs } from '@/runtime/files/runtime-file-client-types'
 import type { TreeNode } from '../tree/file-explorer-types'
@@ -32,6 +36,72 @@ export async function downloadRemoteFile(
           "Failed to download '{{value0}}'.",
           { value0: node.name }
         )
+      )
+    )
+  }
+}
+
+export async function downloadRemoteFolder(
+  node: TreeNode,
+  runtimeContext: RuntimeFileOperationArgs
+): Promise<void> {
+  const controller = new AbortController()
+  const toastId = `folder-download:${node.path}:${Date.now()}`
+  const cancelAction = {
+    label: translate('fileExplorer.folderDownload.cancel', 'Cancel'),
+    onClick: () => controller.abort()
+  }
+  const showProgress = (progress: RuntimeFolderDownloadProgress | null): void => {
+    const message = progress
+      ? translate(
+          'fileExplorer.folderDownload.progress',
+          "Downloading '{{name}}': {{done}} of {{total}} files",
+          { name: node.name, done: progress.filesDone, total: progress.filesTotal }
+        )
+      : translate('fileExplorer.folderDownload.preparing', "Preparing '{{name}}'…", {
+          name: node.name
+        })
+    toast.loading(message, { id: toastId, action: cancelAction, duration: Infinity })
+  }
+  showProgress(null)
+  let lastFilesDone = -1
+  try {
+    const result = await downloadRuntimeFolder(runtimeContext, node.path, node.name, {
+      signal: controller.signal,
+      onProgress: (progress) => {
+        // Byte progress fires per chunk; repaint only when the file count moves.
+        if (progress.filesDone !== lastFilesDone) {
+          lastFilesDone = progress.filesDone
+          showProgress(progress)
+        }
+      }
+    })
+    toast.dismiss(toastId)
+    if (result.canceled) {
+      return
+    }
+    if (result.skippedCount > 0) {
+      toast.warning(
+        translate(
+          'fileExplorer.folderDownload.skipped',
+          "Downloaded '{{name}}'; {{count}} items were skipped (links, special files, or names this computer cannot store).",
+          { name: node.name, count: result.skippedCount }
+        )
+      )
+      return
+    }
+    showDownloadedFileToast(result.destinationPath)
+  } catch (error) {
+    toast.dismiss(toastId)
+    if (controller.signal.aborted) {
+      return
+    }
+    toast.error(
+      extractIpcErrorMessage(
+        error,
+        translate('fileExplorer.folderDownload.failed', "Failed to download folder '{{name}}'.", {
+          name: node.name
+        })
       )
     )
   }
