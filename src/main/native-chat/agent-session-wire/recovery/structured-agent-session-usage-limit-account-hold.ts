@@ -33,7 +33,8 @@ import {
 } from './structured-agent-session-usage-limit-account-verdict'
 import type {
   UsageLimitAccountScope,
-  UsageLimitAccountVerdict
+  UsageLimitAccountVerdict,
+  UsageLimitKeptAgentFence
 } from './structured-agent-session-usage-limit-account-types'
 export type {
   UsageLimitAccountScope,
@@ -67,6 +68,9 @@ export class UsageLimitAccountHolds {
   private launchHomes = new Map<string, Promise<AgentSessionAccountHome | null>>()
   private readings = new Map<string, Promise<UsageLimitAccountScope | undefined>>()
 
+  /** The fence of a chat's live agent kept for owed work; see `attribute`. */
+  constructor(private readonly keptAgentFence?: UsageLimitKeptAgentFence) {}
+
   beginPass(now = Date.now()): void {
     this.launchHomes = new Map()
     this.readings = new Map()
@@ -83,9 +87,12 @@ export class UsageLimitAccountHolds {
       SwitchReset,
     now = Date.now()
   ): Promise<void> {
+    const keptFence = await this.keptAgentFence?.(id)?.catch(() => undefined)
     const record = host.store.getRecord(id)
     const cutLaunch = usageLimitCutLaunch(record?.launchedAccount, limited.fence)
     const hit = { cut: switchFreeIdentity(limited), ...cutLaunch }
+    // The agent the cut hit, kept for owed work, takes a continue on the spent account.
+    const movableFrom = keptFence !== undefined && keptFence === limited.fence ? null : hit.home
     const read = host.usageLimitAutoContinue?.accountUsage
     const binding = {
       witness: record ? host.usageLimitAutoContinue?.accountWitness?.(record.provider) : undefined,
@@ -110,10 +117,10 @@ export class UsageLimitAccountHolds {
           this.launchHomes.set(target, launch)
         }
         const home = (await launch) ?? record.accountHome
-        movedTo = hit.home && !sameAccountHome(home, hit.home) ? home : null
+        movedTo = movableFrom && !sameAccountHome(home, movableFrom) ? home : null
         // In the same home, the selected saved account may be another than the one the cut hit.
         savedMove =
-          !movedTo && hit.home
+          !movedTo && movableFrom
             ? this.savedAccounts.move(
                 record.provider,
                 hit.accountId,

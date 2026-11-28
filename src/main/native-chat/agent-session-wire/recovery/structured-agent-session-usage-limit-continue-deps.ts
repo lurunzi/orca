@@ -21,5 +21,7 @@ export type UsageLimitContinueDeps = UsageLimitCutReads & {
     params: Parameters<typeof sendStructuredAgentSessionTurn>[2]
   ) => ReturnType<typeof sendStructuredAgentSessionTurn>
   publish: (id: string) => void
+  /** The fence of the chat's live agent when it is kept for owed work, so a send reaches it. */
+  keptAgentFence?: (id: string) => Promise<number | undefined>
   now: () => number
 }

@@ -6,13 +6,17 @@ import {
   readSavedUsageLimitCut,
   type HostUsageLimitCut
 } from './structured-agent-session-usage-limit-chain'
+import { structuredAgentSessionKeptAgentFence } from '../delivery/structured-agent-session-retained-work'
 import { isUsageLimitChatOpen } from './structured-agent-session-usage-limit-disposition'
 import type { AgentSessionStatusSummary } from '../../../../shared/agent-session/agent-session-wire'
 
 export function start(
   context: StructuredAgentSessionMutationContext,
   host: Pick<StructuredAgentSessionHost, 'send'>,
-  delivery: Pick<StructuredAgentSessionClientDelivery, 'publishStatus' | 'readUsageLimitCut'>
+  delivery: Pick<
+    StructuredAgentSessionClientDelivery,
+    'publishStatus' | 'readUsageLimitCut' | 'readChildWork' | 'childWorkOpen'
+  >
 ): StructuredAgentSessionUsageLimitContinue {
   const limit = new StructuredAgentSessionUsageLimitContinue({
     host: context.deps,
@@ -22,6 +26,11 @@ export function start(
     serialize: context.serialize,
     send: (params) => host.send({ callerKey: 'trusted-local:usage-limit-continue' }, params),
     publish: delivery.publishStatus,
+    keptAgentFence: (id) =>
+      structuredAgentSessionKeptAgentFence(
+        { deps: context.deps, sessions: context.sessions, clientDelivery: delivery },
+        id
+      ),
     now: context.now
   })
   limit.start()

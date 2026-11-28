@@ -22,3 +22,6 @@ export type UsageLimitAccountVerdict = {
   /** The saved account the chat moved to, out of quota until `resetsAt`; '' when it has no name. */
   limitedAccount?: string
 }
+
+/** The fence of a chat's live agent that owed work keeps running. */
+export type UsageLimitKeptAgentFence = (id: string) => Promise<number | undefined> | undefined

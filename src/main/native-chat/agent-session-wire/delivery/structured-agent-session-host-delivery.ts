@@ -33,6 +33,7 @@ import { structuredAgentSessionConversationFence } from '../host/structured-agen
 import { readStructuredAgentSessionFailureWordsContext } from '../operations/structured-agent-session-send-preparation'
 import { settleInterruptedStructuredAgentSessionCommands } from '../rewind/structured-rewind-recovery'
 import { structuredAgentSessionChildOwesWork } from '../recovery/structured-agent-session-outgrown-child'
+import { structuredAgentSessionRetainedWork } from './structured-agent-session-retained-work'
 import { structuredAgentSessionImmediatePermission } from '../options/structured-agent-session-launch-permission'
 import {
   createStructuredAgentSessionOutgrownRetirement,
@@ -100,19 +101,7 @@ export function createStructuredAgentSessionConversationDelivery(input: {
   const { deps, sessions } = input
   const { launchTools } = deps
   const workHost = { store: deps.store, sessions }
-  const retainedWork = (sessionId: string, continuingId?: string) => ({
-    currentWork: () =>
-      readHostStructuredAgentSessionWork(workHost, sessionId, { kind: 'child-work' }),
-    childWork: () => input.clientDelivery.readChildWork(sessionId),
-    childWorkOpen: () => input.clientDelivery.childWorkOpen(sessionId),
-    hasOpenDispatch: () => {
-      const record = deps.store.getConversation(sessionId)
-      return record !== null && deps.hasOpenDispatch?.(record) === true
-    },
-    providerHoldsDispatch: () =>
-      deps.adapter.holdsDispatch?.(sessionId) === true ||
-      [...(sessions.get(sessionId)?.child?.heldSends?.() ?? [])].some((id) => id !== continuingId)
-  })
+  const retainedWork = structuredAgentSessionRetainedWork(input)
   const owesWork = async (sessionId: string, id: string): Promise<boolean> =>
     sessions.has(sessionId) &&
     (await structuredAgentSessionChildOwesWork(retainedWork(sessionId, id)))

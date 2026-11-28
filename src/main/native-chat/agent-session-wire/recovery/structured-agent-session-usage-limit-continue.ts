@@ -39,7 +39,7 @@ export class StructuredAgentSessionUsageLimitContinue {
   private running = false
   private disposed = false
   private readonly attempts = new Map<string, Attempt>()
-  private readonly holds = new UsageLimitAccountHolds()
+  private readonly holds = new UsageLimitAccountHolds((id) => this.deps.keptAgentFence?.(id))
   private readonly cold: UsageLimitColdCuts
   private shown = new Set<string>()
   private readonly told = new Set<(sessionId?: string) => void>()

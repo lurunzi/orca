@@ -21,8 +21,12 @@ const CUT: NativeChatUsageLimitCut & { fence: number } = {
   fence: 3
 }
 
-function attributed(current: LegacyAgentSessionAccountHome, reading: ProviderRateLimits | null) {
-  const holds = new UsageLimitAccountHolds()
+function attributed(
+  current: LegacyAgentSessionAccountHome,
+  reading: ProviderRateLimits | null,
+  keptFence?: number
+) {
+  const holds = new UsageLimitAccountHolds(async () => keptFence)
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: attribution reads only these fields
   const host = {
     store: {
@@ -59,6 +63,14 @@ it('continues an unknown-reset cut once the chat moved to an account with room',
   expect(cut.resetsAt).toBe(SWITCHED)
   expect(holds.schedulable('chat', cut, SWITCHED + 20_000)).toBe(true)
   expect(holds.ready('chat', { ...cut, resetsAt: SWITCHED }, SWITCHED + 20_000)).toBe(true)
+})
+
+it('keeps a cut held while the agent that hit it stays on the spent account', async () => {
+  const room = reading({ usedPercent: 10, resetsAt: SWITCHED + 3_600_000 })
+  const kept = await attributed(NEXT, room, CUT.fence)
+  expect(kept.withSwitchReset('chat', CUT).resetsAt).toBeUndefined()
+  const replaced = await attributed(NEXT, room, CUT.fence + 1)
+  expect(replaced.withSwitchReset('chat', CUT).resetsAt).toBe(SWITCHED)
 })
 
 it('holds it while the account it moved to is spent too', async () => {
