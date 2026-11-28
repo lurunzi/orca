@@ -160,6 +160,8 @@ export const EXECUTION_HOST_METHODS = [
   'github.uploadAttachment',
   'github.listAssignableUsers',
   'github.listLabels',
+  // The clone picker lists repos the target host's gh login reaches.
+  'github.listRepos',
   'github.listWorkItems',
   'github.markPRDraft',
   'github.markPRReadyForReview',

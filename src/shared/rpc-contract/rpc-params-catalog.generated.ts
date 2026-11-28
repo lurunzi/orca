@@ -505,6 +505,7 @@ import {
   UpdatePrState,
   UpdatePrTitle
 } from './github/github-pull-request-update-params'
+import { GithubListReposParams } from './github/github-repo-list-params'
 import {
   RepoIssueCommandRead,
   RepoSelector,
@@ -1734,6 +1735,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'github.listBindableAccounts': BindableAccounts,
   'github.listIssues': IssuesList,
   'github.listLabels': RepoWithGitHubAccountExpectation,
+  'github.listRepos': GithubListReposParams,
   'github.listWorkItems': WorkItemsList,
   'github.markPRDraft': MarkPrDraft,
   'github.markPRReadyForReview': MarkPrReadyForReview,

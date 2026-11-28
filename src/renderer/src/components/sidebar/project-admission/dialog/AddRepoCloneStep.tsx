@@ -7,6 +7,7 @@ import { useTranslate } from '@/i18n/use-translate'
 import { RemoteFileBrowser } from '../../host-path-browser/RemoteFileBrowser'
 import type { CloneFolderOverride } from '../clone-folder/use-clone-folder-override'
 import { CloneFolderNameField } from '../clone-folder/CloneFolderNameField'
+import { GitHubRepoPicker } from '../github-repo-picker/GitHubRepoPicker'
 
 type CloneStepProps = {
   cloneUrl: string
@@ -109,6 +110,14 @@ export function CloneStep({
       </DialogHeader>
 
       <div className="space-y-3 pt-1">
+        <GitHubRepoPicker
+          runtimeEnvironmentId={runtimeEnvironmentId ?? null}
+          hostLabel={cloneTargetLabel ?? null}
+          selectedUrl={cloneUrl.trim()}
+          disabled={isCloning}
+          onPick={(repo) => onUrlChange(repo.cloneUrl)}
+        />
+
         <div className="space-y-1">
           <label className="text-[11px] font-medium text-muted-foreground">
             {t('auto.components.sidebar.AddRepoSteps.3d4acbe693', 'Git URL')}
