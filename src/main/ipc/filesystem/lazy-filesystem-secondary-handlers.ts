@@ -12,6 +12,16 @@ const FILESYSTEM_DOWNLOAD_CHANNELS = [
   'fs:cancelDownloadedFile'
 ] as const
 
+const FILESYSTEM_DRAG_OUT_CHANNELS = [
+  'fs:dragOutBegin',
+  'fs:dragOutAppend',
+  'fs:dragOutFinish',
+  'fs:dragOutCancel',
+  'fs:dragOutStart'
+] as const
+// Why: the sweep only frees disk; keep it off the startup critical path.
+const DRAG_OUT_STARTUP_SWEEP_DELAY_MS = 15_000
+
 const FILESYSTEM_GIT_COMMIT_GENERATION_CHANNELS = [
   'git:generateCommitMessage',
   'git:cancelGenerateCommitMessage'
@@ -39,6 +49,18 @@ export function registerLazyFilesystemSecondaryHandlers(context: FilesystemHandl
       await import('./downloads/filesystem-download-handlers')
     registerFilesystemDownloadHandlers(context, ipc)
   })
+
+  clearChannels(FILESYSTEM_DRAG_OUT_CHANNELS)
+  registerLazyIpcHandleGroup(FILESYSTEM_DRAG_OUT_CHANNELS, async (ipc) => {
+    const { registerDragOutHandlers } = await import('./drag-out/drag-out-handlers')
+    registerDragOutHandlers(ipc)
+  })
+  const dragOutStartupSweep = setTimeout(() => {
+    void import('./drag-out/drag-out-handlers')
+      .then(({ sweepEarlierDragOutCacheSessions }) => sweepEarlierDragOutCacheSessions())
+      .catch(() => undefined)
+  }, DRAG_OUT_STARTUP_SWEEP_DELAY_MS)
+  dragOutStartupSweep.unref?.()
 
   clearChannels(FILESYSTEM_GIT_COMMIT_GENERATION_CHANNELS)
   registerLazyIpcHandleGroup(FILESYSTEM_GIT_COMMIT_GENERATION_CHANNELS, async (ipc) => {

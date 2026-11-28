@@ -18,6 +18,12 @@ import { useTranslate } from '@/i18n/use-translate'
 import { CLOSE_ALL_CONTEXT_MENUS_EVENT } from '@/lib/overlay-interaction/close-all-context-menus'
 import type { RuntimeFileOperationArgs } from '@/runtime/files/runtime-file-client-types'
 import { createMultiSelectDragGhost } from '../mutations/file-explorer-multi-drag-image'
+import {
+  canDragOutRuntimeNode,
+  prefetchRuntimeDragOut,
+  readyRuntimeDragOutEntry,
+  startRuntimeDragOut
+} from '../mutations/file-explorer-runtime-drag-out'
 import { FileExplorerRowContextMenu } from './file-explorer-row-context-menu'
 
 export type FileExplorerRowProps = {
@@ -155,11 +161,30 @@ export function FileExplorerRow({
           // Let wheel capture rescue scrolling Chromium swallows over draggable rows (file-explorer-drag-scroll-marker).
           data-explorer-draggable="true"
           draggable
+          onPointerDown={(event) => {
+            const dragPathCount =
+              selectedPaths.has(node.path) && selectedPaths.size > 1 ? selectedPaths.size : 1
+            if (
+              event.button === 0 &&
+              canDragOutRuntimeNode(node, runtimeDownloadContext, dragPathCount)
+            ) {
+              prefetchRuntimeDragOut(node, runtimeDownloadContext)
+            }
+          }}
           onDragStart={(event) => {
             const paths =
               selectedPaths.has(node.path) && selectedPaths.size > 1
                 ? [...selectedPaths]
                 : [node.path]
+            if (canDragOutRuntimeNode(node, runtimeDownloadContext, paths.length)) {
+              const entryId = readyRuntimeDragOutEntry(node, runtimeDownloadContext.worktreeId)
+              if (entryId) {
+                // Uncached files keep the in-app drag; startDrag cannot be added mid-flight.
+                event.preventDefault()
+                startRuntimeDragOut(entryId, node, runtimeDownloadContext.worktreeId)
+                return
+              }
+            }
             event.dataTransfer.setData(WORKSPACE_FILE_PATH_MIME, node.path)
             if (paths.length > 1) {
               event.dataTransfer.setData(WORKSPACE_FILE_PATHS_MIME, encodeWorkspaceFilePaths(paths))

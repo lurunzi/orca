@@ -1,10 +1,14 @@
+import type { DragOutApi } from '../../../shared/file-drag-out/drag-out-contract'
 import type { WatchWorktreeResult } from '../../../shared/file-watch/watch-worktree-result'
 import type { PathExistenceResult } from '../../../shared/file-access/path-existence-batch'
 import type { RuntimeFileReadChunkResult } from '../../../shared/file-content/runtime-file-read'
 import type { SearchOptions, SearchResult } from '../../../shared/file-search/code-search-types'
 import type { PdfExportResult } from '../../../shared/document-preview/pdf-export-failure-copy'
 import type { DirEntry } from '../../../shared/file-listing/directory-entry'
-import type { FsChangedPayload } from '../../../shared/file-watch/filesystem-change-event'
+import type {
+  FsChangedPayload,
+  FsWatchPausedPayload
+} from '../../../shared/file-watch/filesystem-change-event'
 import type { MarkdownDocument } from '../../../shared/file-listing/file-document'
 import type {
   ImportItemResult,
@@ -126,6 +130,8 @@ export type FilesystemApi = {
       transferId: string
     }) => Promise<{ canceled: false; destinationPath: string }>
     cancelDownloadedFile: (args: { transferId: string }) => Promise<{ ok: true }>
+    /** Desktop only: caches a remote file in main so a drag can hand the OS a real path. */
+    dragOut?: DragOutApi
     listMarkdownDocuments: (args: {
       rootPath: string
       connectionId?: string
@@ -256,8 +262,15 @@ export type FilesystemApi = {
       worktreePath: string
       connectionId?: string
     }) => Promise<WatchWorktreeResult | undefined>
-    unwatchWorktree: (args: { worktreePath: string; connectionId?: string }) => Promise<void>
+    /** With `handOver`, a local root resolves with the events queued for this window that it would otherwise miss. */
+    unwatchWorktree: (args: {
+      worktreePath: string
+      connectionId?: string
+      handOver?: boolean
+    }) => Promise<FsChangedPayload | undefined>
     onFsChanged: (callback: (payload: FsChangedPayload) => void) => () => void
+    /** Local watch roots whose auto-reload paused or resumed; main pushes only on change. */
+    onWatchPaused: (callback: (payload: FsWatchPausedPayload) => void) => () => void
   }
   notebook: {
     listPythonEnvironments: (args: {
