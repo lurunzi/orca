@@ -3,7 +3,10 @@ import type { AgentSessionAccountHome } from '../../../../shared/agent-session/l
 import { switchFreeIdentity } from './structured-agent-session-usage-limit-chain'
 import type { SwitchReset } from './structured-agent-session-usage-limit-chain'
 import { withMovedCutReset } from './structured-agent-session-usage-limit-account-schedule'
-import type { UsageLimitAccountScope } from './structured-agent-session-usage-limit-account-types'
+import type {
+  UsageLimitAccountScope,
+  UsageLimitKeptAgentFence
+} from './structured-agent-session-usage-limit-account-types'
 import type { UsageLimitRelaunchedCuts } from './structured-agent-session-usage-limit-relaunch'
 
 export function accountSwitchReset<T extends NativeChatUsageLimitCut>(
@@ -34,4 +37,24 @@ export function accountSwitchRoom(
     scope: scopes.get(id),
     now
   })
+}
+
+/** Whether the live agent kept for owed work is the one the cut hit. */
+export async function keptOnCut(
+  kept: UsageLimitKeptAgentFence | undefined,
+  id: string,
+  cut: { fence?: number }
+): Promise<boolean> {
+  const fence = await kept?.(id)?.catch(() => undefined)
+  return fence !== undefined && fence === cut.fence
+}
+
+/** A recorded move of the cut no longer frees it once the agent it hit owes work. */
+export async function accountMoveOutdated(
+  id: string,
+  cut: Pick<NativeChatUsageLimitCut, 'turnItemId' | 'resetsAt'> & SwitchReset & { fence?: number },
+  moved: ReadonlyMap<string, { cut: string }>,
+  kept: UsageLimitKeptAgentFence | undefined
+): Promise<boolean> {
+  return moved.get(id)?.cut === switchFreeIdentity(cut) && (await keptOnCut(kept, id, cut))
 }

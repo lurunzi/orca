@@ -24,9 +24,9 @@ const CUT: NativeChatUsageLimitCut & { fence: number } = {
 function attributed(
   current: LegacyAgentSessionAccountHome,
   reading: ProviderRateLimits | null,
-  keptFence?: number
+  kept: () => number | undefined = () => undefined
 ) {
-  const holds = new UsageLimitAccountHolds(async () => keptFence)
+  const holds = new UsageLimitAccountHolds(async () => kept())
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: attribution reads only these fields
   const host = {
     store: {
@@ -67,10 +67,19 @@ it('continues an unknown-reset cut once the chat moved to an account with room',
 
 it('keeps a cut held while the agent that hit it stays on the spent account', async () => {
   const room = reading({ usedPercent: 10, resetsAt: SWITCHED + 3_600_000 })
-  const kept = await attributed(NEXT, room, CUT.fence)
-  expect(kept.withSwitchReset('chat', CUT).resetsAt).toBeUndefined()
-  const replaced = await attributed(NEXT, room, CUT.fence + 1)
+  const held = await attributed(NEXT, room, () => CUT.fence)
+  expect(held.withSwitchReset('chat', CUT).resetsAt).toBeUndefined()
+  const replaced = await attributed(NEXT, room, () => CUT.fence + 1)
   expect(replaced.withSwitchReset('chat', CUT).resetsAt).toBe(SWITCHED)
+})
+
+it('outdates a recorded move once the agent the cut hit starts owing work', async () => {
+  let kept: number | undefined
+  const room = reading({ usedPercent: 10, resetsAt: SWITCHED + 3_600_000 })
+  const holds = await attributed(NEXT, room, () => kept)
+  expect(await holds.moveOutdated('chat', CUT)).toBe(false)
+  kept = CUT.fence
+  expect(await holds.moveOutdated('chat', CUT)).toBe(true)
 })
 
 it('holds it while the account it moved to is spent too', async () => {

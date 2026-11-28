@@ -24,8 +24,10 @@ import {
   type UsageLimitSavedAccountMove
 } from './structured-agent-session-usage-limit-saved-accounts'
 import {
+  accountMoveOutdated,
   accountSwitchReset,
-  accountSwitchRoom
+  accountSwitchRoom,
+  keptOnCut
 } from './structured-agent-session-usage-limit-account-cache'
 import {
   accountHoldVerdict,
@@ -33,8 +35,7 @@ import {
 } from './structured-agent-session-usage-limit-account-verdict'
 import type {
   UsageLimitAccountScope,
-  UsageLimitAccountVerdict,
-  UsageLimitKeptAgentFence
+  UsageLimitAccountVerdict
 } from './structured-agent-session-usage-limit-account-types'
 export type {
   UsageLimitAccountScope,
@@ -69,7 +70,11 @@ export class UsageLimitAccountHolds {
   private readings = new Map<string, Promise<UsageLimitAccountScope | undefined>>()
 
   /** The fence of a chat's live agent kept for owed work; see `attribute`. */
-  constructor(private readonly keptAgentFence?: UsageLimitKeptAgentFence) {}
+  constructor(private readonly keptAgentFence?: Parameters<typeof keptOnCut>[0]) {}
+
+  /** A move recorded this pass no longer frees the cut: the agent it hit started owing work. */
+  moveOutdated = (id: string, cut: Pick<HostUsageLimitCut, 'turnItemId' | 'resetsAt' | 'fence'>) =>
+    accountMoveOutdated(id, cut, this.movedSince, this.keptAgentFence)
 
   beginPass(now = Date.now()): void {
     this.launchHomes = new Map()
@@ -87,12 +92,11 @@ export class UsageLimitAccountHolds {
       SwitchReset,
     now = Date.now()
   ): Promise<void> {
-    const keptFence = await this.keptAgentFence?.(id)?.catch(() => undefined)
     const record = host.store.getRecord(id)
     const cutLaunch = usageLimitCutLaunch(record?.launchedAccount, limited.fence)
     const hit = { cut: switchFreeIdentity(limited), ...cutLaunch }
     // The agent the cut hit, kept for owed work, takes a continue on the spent account.
-    const movableFrom = keptFence !== undefined && keptFence === limited.fence ? null : hit.home
+    const movableFrom = (await keptOnCut(this.keptAgentFence, id, limited)) ? null : hit.home
     const read = host.usageLimitAutoContinue?.accountUsage
     const binding = {
       witness: record ? host.usageLimitAutoContinue?.accountWitness?.(record.provider) : undefined,

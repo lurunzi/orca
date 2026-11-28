@@ -312,7 +312,8 @@ export class StructuredAgentSessionUsageLimitContinue {
             attemptIdentity(current) !== attemptIdentity(cut) ||
             !this.eligible(id, current) ||
             !this.holds.bindingHolds(id, this.deps.host, binding) ||
-            !this.holds.ready(id, current, this.deps.now())
+            !this.holds.ready(id, current, this.deps.now()) ||
+            (await this.holds.moveOutdated(id, current))
           ) {
             throw new RestartContinuationSupersededError()
           }
