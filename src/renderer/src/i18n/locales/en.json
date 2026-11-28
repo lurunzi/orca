@@ -20259,6 +20259,9 @@
           "reloaded": "Reloaded"
         },
         "FolderWorkspaceSourceControl": {
+          "manageAll": "Manage all",
+          "manageAsProject": "Manage as project",
+          "nestedReposTitle": "Repositories found in this folder",
           "changeCount_one": "{{count}} change",
           "changeCount_other": "{{count}} changes",
           "openWorktree": "Open this worktree",

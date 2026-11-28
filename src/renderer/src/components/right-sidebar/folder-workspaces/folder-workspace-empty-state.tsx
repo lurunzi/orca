@@ -24,6 +24,8 @@ type FolderWorkspaceEmptyStateProps = {
   copy: string
   /** False when worktrees are attached but this panel can't show them, so creating would duplicate. */
   showRepoActions?: boolean
+  /** Rendered under the repository rows, e.g. repos found in the folder that aren't projects yet. */
+  children?: React.ReactNode
 }
 
 /** A folder workspace with no attached worktrees: its copy, then one create row per repository. */
@@ -31,7 +33,8 @@ export const FolderWorkspaceEmptyState = memo(function FolderWorkspaceEmptyState
   folderWorkspace,
   title,
   copy,
-  showRepoActions = true
+  showRepoActions = true,
+  children
 }: FolderWorkspaceEmptyStateProps): React.JSX.Element {
   const t = useTranslate()
   const repos = useAppStore((s) => s.repos)
@@ -97,6 +100,7 @@ export const FolderWorkspaceEmptyState = memo(function FolderWorkspaceEmptyState
             })}
           </ul>
         ) : null}
+        {children}
       </div>
     </div>
   )
